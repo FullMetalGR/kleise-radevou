@@ -1,0 +1,11 @@
+[
+    { "line": "{0} none|{1} one|[2,*] :count many", "chosen": { "0": "none", "1": "one", "2": ":count many", "7": ":count many" } },
+    { "line": "{1} one|[2,4] few|[5,*] many", "chosen": { "1": "one", "3": "few", "4": "few", "5": "many", "10": "many" } },
+    { "line": "[*,0] none|[1,1] one|[2,*] many", "chosen": { "0": "none", "1": "one", "2": "many" } },
+    { "line": "one|many", "chosen": { "0": "many", "1": "one", "2": "many" } },
+    { "line": "plain", "chosen": { "1": "plain", "3": "plain" } },
+    { "line": "{1} one|:count many", "chosen": { "0": ":count many", "1": "one", "3": ":count many" } },
+    { "line": "{0} :count|one|many", "chosen": { "0": ":count", "1": " :count", "2": "one" } },
+    { "line": "{1}  one  |[2,*]  many  ", "chosen": { "1": "one", "2": "many" } },
+    { "line": ":count min", "chosen": { "5": ":count min", "45": ":count min" } }
+]

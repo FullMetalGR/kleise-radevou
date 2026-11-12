@@ -1,0 +1,76 @@
+/*
+ * The provisional brand: the one tokens file, imported by the site's stylesheet and by the
+ * admin's, and the wordmark's look. A change of brand changes the values here; this file and the
+ * mark, public/favicon.svg, are the one place that changes.
+ *
+ * The tokens are the brand's own custom properties, every one named --brand-, so the admin's own
+ * theme, its --primary and the rest, is never redefined here: the admin's stylesheet takes the
+ * brand into its tokens inside the brand's scope alone (app.css). Each is also a Tailwind colour
+ * or font, inline, for the site's views to spell as a utility. The type is a system font stack and
+ * no web font: a font file is binary under the ASCII rule, and a hosted font is a third-party
+ * request before consent.
+ *
+ * The primary carries white text at 7.1:1 and its hover at 9.2:1; the accent is a colour for the
+ * mark and for shapes, never for text. The mark draws itself in the primary, the accent and the
+ * contrast, spelled as these values, since a favicon reads no stylesheet.
+ */
+
+:root {
+    --brand-primary: #1d5b8f;
+    --brand-primary-hover: #174a75;
+    --brand-primary-contrast: #ffffff;
+    --brand-accent: #e0704f;
+    --brand-ink: #14212d;
+    --brand-muted: #5a6876;
+    --brand-line: #dbe2e9;
+    --brand-paper: #f4f7fa;
+    --brand-surface: #ffffff;
+    --brand-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+@theme inline {
+    --color-brand-primary: var(--brand-primary);
+    --color-brand-primary-hover: var(--brand-primary-hover);
+    --color-brand-primary-contrast: var(--brand-primary-contrast);
+    --color-brand-accent: var(--brand-accent);
+    --color-brand-ink: var(--brand-ink);
+    --color-brand-muted: var(--brand-muted);
+    --color-brand-line: var(--brand-line);
+    --color-brand-paper: var(--brand-paper);
+    --color-brand-surface: var(--brand-surface);
+    --font-brand: var(--brand-font);
+}
+
+/*
+ * The wordmark: the mark, inlined from its one source, beside the public name set in the brand's
+ * type. The name takes the colour of the text around it, so it reads on the site's white and on
+ * the admin's dark theme alike; the mark keeps its own colours. The small one is the admin's top
+ * bar's, beside the business's name.
+ */
+@layer components {
+    .brand-wordmark {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4em;
+        font-family: var(--brand-font);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .brand-wordmark__mark {
+        display: inline-flex;
+        flex: none;
+    }
+
+    .brand-wordmark__mark > svg {
+        width: 1.5em;
+        height: 1.5em;
+    }
+
+    .brand-wordmark--small {
+        font-size: 0.8125rem;
+        font-weight: 600;
+    }
+}

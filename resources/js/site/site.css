@@ -1,0 +1,26 @@
+/*
+ * The marketing site's one stylesheet: Tailwind v4, an entry of the admin build beside the
+ * admin's own stylesheet, scanning the site's Blade views alone, so it carries the classes they
+ * use and nothing the admin's pages do. The layout links it and loads no script. It is dressed in
+ * the brand's tokens, which it shares with the admin's stylesheet through the one tokens file
+ * (brand/brand.css), and it names the site's two shared controls: the button, primary and
+ * secondary, and the link inside a sentence.
+ */
+@import "tailwindcss" source(none);
+@import "../brand/brand.css";
+
+@source "../../views/site";
+
+@layer components {
+    .site-button {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-primary px-5 py-2.5 font-semibold text-brand-primary-contrast no-underline hover:bg-brand-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary;
+    }
+
+    .site-button--secondary {
+        @apply bg-brand-surface text-brand-primary ring-1 ring-brand-primary ring-inset hover:bg-brand-paper;
+    }
+
+    .site-link {
+        @apply font-medium text-brand-primary underline underline-offset-4 hover:text-brand-primary-hover;
+    }
+}

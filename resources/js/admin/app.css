@@ -1,0 +1,576 @@
+/*
+ * The admin's one stylesheet, Tailwind v4 with the tokens the copied shadcn components read.
+ * The admin has no byte budget and no containment rule: it owns its whole page. The dark theme
+ * is a class on the root element, set from the per-machine choice the top bar remembers. The
+ * brand's tokens and the wordmark's look come from the one tokens file the site's stylesheet
+ * imports too (brand/brand.css); they redefine none of the admin's own.
+ */
+@import "tailwindcss";
+@import "../brand/brand.css";
+@import "react-day-picker/style.css" layer(components);
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * The admin's one breakpoint: at or above it the desktop layout, below it the phone layout, the
+ * rail behind a control in the top bar. It is the desktop: and max-desktop: variants, and static
+ * so the root carries it for lib/viewport.ts to read by name where the branch is React's; no
+ * component spells its number. 48rem keeps every width the desktop layout served before it, a
+ * tablet held upright included, on that layout.
+ */
+@theme static {
+    --breakpoint-desktop: 48rem;
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+}
+
+:root {
+    --radius: 0.625rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+}
+
+/*
+ * The tenant's named themes: the root view writes the settings row's word as the body's
+ * data-theme, and each coloured theme redefines the primary, the text on it and the ring there,
+ * in a light block and a dark one under the root's .dark, so every primitive and every Radix
+ * portal in the body takes the colour and nothing else moves.
+ * The ring takes the primary. Neutral has no block: it is the root's own values above.
+ */
+[data-theme="blue"] {
+    --primary: oklch(0.546 0.215 262.881);
+    --primary-foreground: oklch(1 0 0);
+    --ring: oklch(0.546 0.215 262.881);
+}
+
+.dark [data-theme="blue"] {
+    --primary: oklch(0.714 0.143 254.624);
+    --primary-foreground: oklch(0.282 0.087 267.935);
+    --ring: oklch(0.714 0.143 254.624);
+}
+
+[data-theme="green"] {
+    --primary: oklch(0.527 0.137 150.069);
+    --primary-foreground: oklch(1 0 0);
+    --ring: oklch(0.527 0.137 150.069);
+}
+
+.dark [data-theme="green"] {
+    --primary: oklch(0.8 0.182 151.711);
+    --primary-foreground: oklch(0.266 0.063 152.934);
+    --ring: oklch(0.8 0.182 151.711);
+}
+
+[data-theme="orange"] {
+    --primary: oklch(0.5534 0.1739 38.4022);
+    --primary-foreground: oklch(1 0 0);
+    --ring: oklch(0.5534 0.1739 38.4022);
+}
+
+.dark [data-theme="orange"] {
+    --primary: oklch(0.758 0.159 55.934);
+    --primary-foreground: oklch(0.266 0.076 36.259);
+    --ring: oklch(0.758 0.159 55.934);
+}
+
+[data-theme="red"] {
+    --primary: oklch(0.577 0.215 27.325);
+    --primary-foreground: oklch(1 0 0);
+    --ring: oklch(0.577 0.215 27.325);
+}
+
+.dark [data-theme="red"] {
+    --primary: oklch(0.711 0.166 22.216);
+    --primary-foreground: oklch(0.258 0.089 26.042);
+    --ring: oklch(0.711 0.166 22.216);
+}
+
+[data-theme="rose"] {
+    --primary: oklch(0.586 0.222 17.585);
+    --primary-foreground: oklch(1 0 0);
+    --ring: oklch(0.586 0.222 17.585);
+}
+
+.dark [data-theme="rose"] {
+    --primary: oklch(0.719 0.169 13.428);
+    --primary-foreground: oklch(0.271 0.101 12.094);
+    --ring: oklch(0.719 0.169 13.428);
+}
+
+[data-theme="violet"] {
+    --primary: oklch(0.541 0.247 293.009);
+    --primary-foreground: oklch(1 0 0);
+    --ring: oklch(0.541 0.247 293.009);
+}
+
+.dark [data-theme="violet"] {
+    --primary: oklch(0.709 0.159 293.541);
+    --primary-foreground: oklch(0.283 0.135 291.089);
+    --ring: oklch(0.709 0.159 293.541);
+}
+
+/*
+ * The brand's scope: the console's shell and the signup's guest layout wear the brand by taking
+ * its primary into the admin's own tokens inside the scope alone, so the admin's primitives keep
+ * their shapes, and the admin, which never enters the scope, keeps its theme unchanged. On the
+ * dark theme the primary is lightened to read on the dark page and carries the brand's ink. The
+ * console's top bar carries the primary as a rule along its top edge.
+ */
+.brand-scope {
+    --primary: var(--brand-primary);
+    --primary-foreground: var(--brand-primary-contrast);
+    --ring: var(--brand-primary);
+    font-family: var(--brand-font);
+}
+
+.dark .brand-scope {
+    --primary: color-mix(in oklab, var(--brand-primary) 45%, white);
+    --primary-foreground: var(--brand-ink);
+    --ring: color-mix(in oklab, var(--brand-primary) 45%, white);
+}
+
+.brand-scope .admin-topbar {
+    box-shadow: inset 0 3px 0 var(--primary);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+
+    /*
+     * A card's title: every h2 is 21px semibold, so no card spells its title's size. Its line is
+     * 26px, never below the size, so a title that wraps does not crowd its own lines; a card's
+     * header strip pins its height itself (Strip, figures/kit.tsx). A heading that is no card's
+     * title (the rail's group, a tile's label, the calendar's and the Shifts week's title, a
+     * dialog's) sets its own size and weight as a utility, which wins over this layer.
+     */
+    h2 {
+        font-size: 21px;
+        line-height: 26px;
+        font-weight: 600;
+    }
+}
+
+/*
+ * Each status chip family's hue, one token each: the chips below paint with them, and the
+ * calendar colours a block and a legend swatch by status with the same tokens (calendar/model.ts
+ * statusHueOf), so a hue is spelled here alone. Past has no hue on its chip, a flat grey tag, and
+ * keeps a lighter grey than void's on the calendar.
+ */
+:root {
+    --admin-status-live: var(--color-emerald-700);
+    --admin-status-attention: var(--color-amber-500);
+    --admin-status-provisional: var(--color-sky-600);
+    --admin-status-void: var(--muted-foreground);
+    --admin-status-past: var(--color-neutral-400);
+}
+
+/*
+ * The status chips, separated by shape first with colour agreeing, so nine statuses read apart
+ * without hue. Live is a solid pill; attention is a solid pill with a heavy ring and bold type,
+ * the only one allowed to shout; provisional is a dashed outline, the slot only held; void is an
+ * outline with the label struck through; past is a flat square tag. An unrecognised status keeps
+ * the base chip alone.
+ */
+@layer components {
+    .admin-chip {
+        @apply inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs whitespace-nowrap text-foreground;
+    }
+
+    .admin-chip--live {
+        @apply border-(--admin-status-live) bg-(--admin-status-live) text-white;
+    }
+
+    .admin-chip--attention {
+        @apply border-(--admin-status-attention) bg-amber-400 font-bold text-black ring-2 ring-(--admin-status-attention)/60;
+    }
+
+    .admin-chip--provisional {
+        @apply border-dashed border-(--admin-status-provisional) text-sky-700 dark:text-sky-300;
+    }
+
+    .admin-chip--void {
+        @apply border-(--admin-status-void)/60 text-muted-foreground line-through;
+    }
+
+    .admin-chip--past {
+        @apply rounded-sm border-transparent bg-muted text-muted-foreground;
+    }
+
+    /*
+     * The compact chip, the month overview's: a booking status's figure stands where its counted
+     * line places it, an unknown status's before the label; the label giving way first.
+     */
+    .admin-chip--compact {
+        @apply max-w-full gap-1 px-1.5 py-0 text-[11px] leading-4;
+    }
+
+    .admin-chip__count {
+        @apply font-semibold tabular-nums;
+    }
+
+    .admin-chip__label {
+        @apply min-w-0 truncate;
+    }
+}
+
+/*
+ * The day calendar, behind the date field and the day step, over react-day-picker: the
+ * library's stylesheet is imported once above, into the components layer so the kit's utilities
+ * still win, and its own variables are mapped here onto the theme's tokens, the days the kit's
+ * size, the chosen day the primary fill, today underlined.
+ */
+@layer components {
+    .admin-day-calendar {
+        --rdp-accent-color: var(--primary);
+        --rdp-accent-background-color: var(--accent);
+        --rdp-day-height: 2.25rem;
+        --rdp-day-width: 2.25rem;
+        --rdp-day_button-height: 2rem;
+        --rdp-day_button-width: 2rem;
+        --rdp-day_button-border-radius: var(--radius-md);
+        --rdp-selected-border: 2px solid transparent;
+        --rdp-nav-height: 2.25rem;
+        --rdp-nav_button-height: 2rem;
+        --rdp-nav_button-width: 2rem;
+        font-size: var(--text-sm);
+
+        .rdp-month_caption {
+            font-size: var(--text-sm);
+            font-weight: 600;
+            align-items: center;
+        }
+
+        .rdp-button_previous,
+        .rdp-button_next {
+            border-radius: var(--radius-md);
+        }
+
+        .rdp-button_previous:hover,
+        .rdp-button_next:hover,
+        .rdp-day_button:hover {
+            background-color: var(--accent);
+        }
+
+        .rdp-chevron {
+            fill: currentColor;
+        }
+
+        .rdp-weekday {
+            color: var(--muted-foreground);
+            opacity: 1;
+        }
+
+        .rdp-day_button {
+            font-family: var(--font-mono);
+        }
+
+        .rdp-selected {
+            font-size: inherit;
+            font-weight: inherit;
+        }
+
+        .rdp-selected .rdp-day_button,
+        .rdp-selected .rdp-day_button:hover {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+        }
+
+        .admin-day-calendar__today:not(.rdp-outside) .rdp-day_button {
+            text-decoration: underline;
+        }
+    }
+}
+
+/*
+ * The calendar grid, over FullCalendar's time grid: the library's own variables mapped onto the
+ * theme's tokens so the rules, the page and today's column follow the theme, and the block body's
+ * shape. A block's colours are set on the element itself by the
+ * grid, from the hue function; nothing here names a hue.
+ */
+@layer components {
+    .admin-calendar-grid {
+        --fc-border-color: var(--border);
+        --fc-page-bg-color: var(--card);
+        --fc-neutral-bg-color: var(--muted);
+        --fc-today-bg-color: color-mix(in oklab, var(--primary) 6%, var(--card));
+        --fc-highlight-color: color-mix(in oklab, var(--primary) 14%, var(--card));
+        --fc-event-text-color: var(--foreground);
+        --fc-now-indicator-color: var(--destructive);
+        --fc-small-font-size: 0.75rem;
+    }
+
+    .admin-calendar-columns {
+        --fc-today-bg-color: transparent;
+    }
+
+    .admin-calendar-grid .fc .fc-timegrid-slot-label,
+    .admin-calendar-grid .fc .fc-col-header-cell {
+        @apply text-xs text-muted-foreground;
+    }
+
+    .admin-calendar-grid .fc .fc-timegrid-event {
+        @apply cursor-pointer rounded-sm px-1.5 py-0.75 shadow-none;
+    }
+
+    /*
+     * Day's member columns: the light hatch of the time outside a member's hours, a closure's
+     * grey hatch and its border, and the gap's swatch, all from the theme's tokens so the dark
+     * theme holds; one spelling each for the columns and the legend's entries.
+     */
+    .admin-calendar {
+        --admin-calendar-hatch: repeating-linear-gradient(135deg, var(--muted) 0 6px, var(--card) 6px 12px);
+        --admin-calendar-closure: repeating-linear-gradient(135deg, var(--border) 0 6px, var(--muted) 6px 12px);
+        --admin-calendar-closure-border: color-mix(in oklab, var(--muted-foreground) 30%, var(--card));
+    }
+
+    .admin-calendar-hatch {
+        background-image: var(--admin-calendar-hatch);
+        border: 1px solid var(--border);
+    }
+
+    .admin-calendar-closure-swatch {
+        background-image: var(--admin-calendar-closure);
+        border: 1px solid var(--admin-calendar-closure-border);
+    }
+
+    .admin-calendar-gap-swatch {
+        background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--primary) 40%, transparent) 0 3px, transparent 3px 6px);
+        border: 1px dashed var(--primary);
+    }
+
+    .admin-calendar-now {
+        @apply rounded-full bg-destructive px-1.5 font-mono text-[11px] leading-4 font-semibold text-white;
+    }
+
+    /*
+     * Month: the day's cell is the press, the number on top and a chip per status under it. Its
+     * focus is the ring every admin control wears, drawn inside the cell, where the next cell
+     * cannot paint over it.
+     */
+    .admin-calendar-day {
+        @apply cursor-pointer outline-none focus-visible:inset-ring-3 focus-visible:inset-ring-ring/50;
+    }
+
+    .admin-calendar-day__number {
+        @apply text-xs font-medium text-muted-foreground;
+    }
+
+    .admin-calendar-day--other .admin-calendar-day__number {
+        @apply opacity-40;
+    }
+}
+
+/*
+ * Week's and Day's scale, outside a layer for the reason Month's below are: an hour is sixty
+ * pixels whatever the step, each slot the height the grid's wrapper carries as a variable from
+ * the tenant's granularity, so a click or a drag still lands on a bookable start; the library's
+ * spacer in an empty slot goes, or it would hold a short slot open; a rule on the hour alone; the
+ * labels on the hour, in mono, on a 56px axis, each centred on its rule but the first, and taking
+ * no height of their own, so a slot shorter than a label's line keeps its height; the blocks four
+ * pixels in from each side.
+ */
+.admin-calendar-grid .fc .fc-timegrid-slot {
+    height: var(--admin-calendar-slot-height, 1.5em);
+}
+
+.admin-calendar-grid .fc .fc-timegrid-slot:empty::before {
+    content: none;
+}
+
+.admin-calendar-grid .fc .fc-timegrid-slot-minor {
+    border-top-color: transparent;
+}
+
+.admin-calendar-grid .fc .fc-timegrid-slot-label {
+    vertical-align: top;
+}
+
+.admin-calendar-grid .fc .fc-timegrid-slot-label-frame {
+    height: 0;
+    overflow: visible;
+}
+
+.admin-calendar-grid .fc .fc-timegrid-slot-label-cushion,
+.admin-calendar-grid .fc .fc-timegrid-axis-cushion {
+    box-sizing: border-box;
+    min-width: 56px;
+    padding: 0 8px 0 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 14px;
+    color: var(--muted-foreground);
+    text-align: right;
+}
+
+.admin-calendar-grid .fc .fc-timegrid-slots tr:not(:first-child) .fc-timegrid-slot-label-cushion {
+    transform: translateY(-50%);
+}
+
+.admin-calendar-grid .fc .fc-timegrid-col-events {
+    margin: 0 4px;
+}
+
+/*
+ * The grid sits flush in its card, so the library's own frame goes: no outer border, and no
+ * vertical rule at either end of a row, the card's border standing for both; a Day column after
+ * the first keeps the rule at its start, its axis of no width carrying it, so the columns are
+ * parted by one rule each.
+ */
+.admin-calendar-grid .fc-theme-standard .fc-scrollgrid {
+    border: 0;
+}
+
+.admin-calendar-grid .fc-theme-standard td:first-child,
+.admin-calendar-grid .fc-theme-standard th:first-child {
+    border-left: 0;
+}
+
+.admin-calendar-grid .fc-theme-standard td:last-child,
+.admin-calendar-grid .fc-theme-standard th:last-child {
+    border-right: 0;
+}
+
+/*
+ * The now line, 2px in the destructive token, and at the axis a pill showing the time in place of
+ * the library's arrow.
+ */
+.admin-calendar-grid .fc .fc-timegrid-now-indicator-line {
+    border-top-width: 2px;
+}
+
+.admin-calendar-grid .fc .fc-timegrid-now-indicator-arrow {
+    display: flex;
+    justify-content: flex-end;
+    width: 56px;
+    margin-top: -8px;
+    padding-right: 4px;
+    border: 0;
+}
+
+/*
+ * Day's member columns' overrides of the time grid's own rules, outside a layer for the reason
+ * Month's below are: the library's non-business shade becomes the light hatch, a closure's
+ * background block the closure's grey hatch at full opacity inside a border, inset as a block
+ * is, with its words, and a column after the first keeps an axis of no width, its labels empty
+ * and no pill, so the axis is drawn once.
+ */
+.admin-calendar-columns .fc .fc-non-business {
+    background: var(--admin-calendar-hatch);
+}
+
+.admin-calendar-columns .fc .fc-bg-event.admin-calendar-closure {
+    left: 4px;
+    right: 4px;
+    background: var(--admin-calendar-closure);
+    border: 1px solid var(--admin-calendar-closure-border);
+    border-radius: 6px;
+    color: var(--muted-foreground);
+    opacity: 1;
+    padding: 3px 6px;
+}
+
+.admin-calendar-column--bare .fc .fc-timegrid-slot-label-cushion,
+.admin-calendar-column--bare .fc .fc-timegrid-axis-cushion {
+    min-width: 0;
+    padding: 0;
+}
+
+.admin-calendar-column--bare .fc .fc-timegrid-now-indicator-arrow {
+    display: none;
+}
+
+/*
+ * Month's overrides of the day grid's own rules. The library injects its stylesheet unlayered,
+ * and an unlayered rule beats every layer whatever its specificity, so these sit outside one and
+ * outrank the library's selectors by one class each: the day-number anchor holding the day's
+ * content is stretched to the cell and lays it out, the hover tints the whole cell over the
+ * library's own background for today, the library's dimming of another month's days moves from
+ * the whole top to the number, and the empty events row the library keeps under every day
+ * collapses.
+ */
+.admin-calendar-grid .fc .fc-daygrid-day-top {
+    display: block;
+}
+
+.admin-calendar-grid .fc .fc-day-other .fc-daygrid-day-top {
+    opacity: 1;
+}
+
+.admin-calendar-grid .fc .admin-calendar-day:hover {
+    background-color: var(--muted);
+}
+
+.admin-calendar-grid .fc .fc-daygrid-day-number {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    width: 100%;
+    min-height: 6rem;
+    padding: 0.375rem;
+}
+
+.admin-calendar-grid .fc .fc-daygrid-body .fc-daygrid-day-events {
+    min-height: 0;
+    margin: 0;
+}

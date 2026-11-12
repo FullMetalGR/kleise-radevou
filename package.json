@@ -1,0 +1,39 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "php artisan lang:export booking && php artisan lang:export admin && vite build && vite build --config vite.admin.config.ts",
+        "size": "node bin/size-gate.mjs",
+        "tsc": "php artisan lang:export booking && php artisan lang:export admin && tsc --noEmit",
+        "test:js": "php artisan lang:export booking && php artisan lang:export admin && vitest run",
+        "fallow": "php artisan lang:export booking && php artisan lang:export admin && (rm -f .fallow-report.sarif; fallow --ci --output-file .fallow-report.sarif; node bin/fallow-gate.mjs .fallow-report.sarif)"
+    },
+    "dependencies": {
+        "@fullcalendar/core": "6.1.21",
+        "@fullcalendar/daygrid": "6.1.21",
+        "@fullcalendar/interaction": "6.1.21",
+        "@fullcalendar/react": "6.1.21",
+        "@fullcalendar/timegrid": "6.1.21",
+        "@inertiajs/react": "2.3.28",
+        "@tanstack/react-query": "5.103.2",
+        "clsx": "2.1.1",
+        "radix-ui": "1.6.7",
+        "react": "19.3.0",
+        "react-day-picker": "10.0.2",
+        "react-dom": "19.3.0",
+        "tailwind-merge": "3.7.0"
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "4.3.3",
+        "@types/node": "22.20.4",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
+        "fallow": "3.27.0",
+        "jsdom": "30.1.0",
+        "playwright": "^1.62.1",
+        "tailwindcss": "4.3.3",
+        "typescript": "7.0.2",
+        "vite": "8.3.0",
+        "vitest": "5.0.1"
+    }
+}

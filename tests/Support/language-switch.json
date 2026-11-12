@@ -1,0 +1,16 @@
+[
+    { "path": "/", "default": "en", "language": "en", "switch": "/el" },
+    { "path": "/", "default": "el", "language": "el", "switch": "/en" },
+    { "path": "/el", "default": "en", "language": "el", "switch": "/en" },
+    { "path": "/el/", "default": "en", "language": "el", "switch": "/en" },
+    { "path": "/en", "default": "en", "language": "en", "switch": "/el" },
+    { "path": "/manage/0b9e6c1a-2f3d-4a5b-8c7d-9e0f1a2b3c4d?token=abc", "default": "en", "language": "en", "switch": "/el/manage/0b9e6c1a-2f3d-4a5b-8c7d-9e0f1a2b3c4d?token=abc" },
+    { "path": "/el/manage/0b9e6c1a-2f3d-4a5b-8c7d-9e0f1a2b3c4d?token=abc&b=2", "default": "en", "language": "el", "switch": "/en/manage/0b9e6c1a-2f3d-4a5b-8c7d-9e0f1a2b3c4d?token=abc&b=2" },
+    { "path": "/en/manage/0b9e6c1a-2f3d-4a5b-8c7d-9e0f1a2b3c4d?token=abc", "default": "el", "language": "en", "switch": "/el/manage/0b9e6c1a-2f3d-4a5b-8c7d-9e0f1a2b3c4d?token=abc" },
+    { "path": "/my-bookings", "default": "el", "language": "el", "switch": "/en/my-bookings" },
+    { "path": "/my-bookings/", "default": "en", "language": "en", "switch": "/el/my-bookings" },
+    { "path": "/el/my-bookings/sometoken", "default": "el", "language": "el", "switch": "/en/my-bookings/sometoken" },
+    { "path": "/pay/0b9e6c1a-2f3d-4a5b-8c7d-9e0f1a2b3c4d?token=abc", "default": "en", "language": "en", "switch": "/el/pay/0b9e6c1a-2f3d-4a5b-8c7d-9e0f1a2b3c4d?token=abc" },
+    { "path": "/elephant", "default": "en", "language": "en", "switch": "/el/elephant" },
+    { "path": "/?service=4&staff=2", "default": "en", "language": "en", "switch": "/el?service=4&staff=2" }
+]

@@ -1,0 +1,9 @@
+[
+    { "field": "currency", "typed": "EU", "times": 1, "key": "validation.currency", "values": {} },
+    { "field": "reminder_lead_hours", "typed": "-1", "times": 1, "key": "validation.reminder", "values": {} },
+    { "field": "about", "typed": "a", "times": 2001, "key": "validation.about", "values": { "max": "2000" } },
+    { "field": "address_line2", "typed": "a", "times": 201, "key": "validation.address_line", "values": { "max": "200" } },
+    { "field": "postal_code", "typed": "1", "times": 21, "key": "validation.postal_code", "values": { "max": "20" } },
+    { "field": "website", "typed": "http://luna.example", "times": 1, "key": "validation.website", "values": {} },
+    { "field": "important_info", "typed": "a", "times": 1001, "key": "validation.important_info", "values": { "max": "1000" } }
+]

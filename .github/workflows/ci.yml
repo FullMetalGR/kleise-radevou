@@ -1,0 +1,203 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    # The gates run side by side, one job a group, each on a runner and a database of its own.
+    # Every job prepares the same way, so a gate's result does not depend on the job it ran in.
+    # The two long suites are cut into shards, which Pest deals out by file; a suite is whole
+    # when every one of its shards is green. A red job leaves the others to finish, so one run
+    # names every gate that fails.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Static analysis
+            encoding: true
+            run: |
+              composer lint
+              composer stan
+
+          # The npm gates, in this order: the byte budgets and the externals contract, the type
+          # check, the component tests (the stylesheet audit reads the built file), and the
+          # static analysis. The type check, the component tests and the static analysis each
+          # write the booking bundle's generated language module from lang/ first (php artisan
+          # lang:export booking), and the admin tests' module of its sections (php artisan
+          # lang:export admin), so each reads them as lang/ stands.
+          - name: Bundle
+            run: |
+              npm run size
+              npm run tsc
+              npm run test:js
+              npm run fallow
+
+          - name: Unit and concurrency
+            run: |
+              composer test:unit
+              composer test:concurrency
+
+          # Under Pest's parallel runner, one process per core, every feature worker on a database
+          # of its own named from DB_DATABASE and dropped at the end (composer.json).
+          - name: Feature 1/4
+            run: composer test:feature -- --shard=1/4
+          - name: Feature 2/4
+            run: composer test:feature -- --shard=2/4
+          - name: Feature 3/4
+            run: composer test:feature -- --shard=3/4
+          - name: Feature 4/4
+            run: composer test:feature -- --shard=4/4
+
+          # The browser gate is Pest over Playwright: the playwright npm package from the lock, a
+          # browser build, then the suite, which serves the bundle the build step wrote.
+          - name: Browser 1/2
+            browser: true
+            run: composer test:browser -- --shard=1/2
+          - name: Browser 2/2
+            browser: true
+            run: composer test:browser -- --shard=2/2
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kleise_radevou_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: kleise_radevou_test
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Every file is ASCII but those under lang/el, the Greek language directory, which hold Greek
+      # and must be valid UTF-8 instead. The script holds both halves of the rule, and a sweep
+      # over a working tree runs the same command. Once a run is enough, on the tree as it was
+      # checked out, before anything is installed or built into it.
+      - name: Every file is ASCII, but lang/el, which is valid UTF-8
+        if: matrix.encoding
+        run: bin/ascii-check.sh
+
+      # The extensions composer.json and the lock declare (gd, intl; exif for the tools; the
+      # browser gate's sockets), with the database driver's. The runner having every one of them
+      # is why no gate can notice an undeclared extension: a new use of one is declared in
+      # composer.json first, and only then added here. intl is built against a named ICU release:
+      # the tests pin dates, numbers and money as that release spells them, and the runner's own
+      # ICU moves with its image.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: exif, gd, iconv, intl-76.1, mbstring, pdo_pgsql, pgsql, sockets
+          coverage: none
+
+      # A named Node as well, for the same reason: the component tests pin what its Intl prints.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.2'
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Prepare the environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+
+      # The bundle before any gate: a feature test that renders a page reads the build's manifest,
+      # the npm gates measure what this step wrote and the browser suite serves it. The build
+      # writes the generated language modules from lang/ first, as the npm gates do.
+      - run: npm ci
+      - run: npm run build
+
+      - name: Install the browser
+        if: matrix.browser
+        run: npx playwright install --with-deps chromium
+
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.run }}
+
+      # What a failed browser gate leaves behind, kept for a week: the page as each failing test
+      # last saw it, and the application's log of the whole run.
+      - name: Keep the screenshots and the log of a failed browser gate
+        if: failure() && matrix.browser
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-${{ strategy.job-index }}-attempt-${{ github.run_attempt }}
+          path: |
+            tests/Browser/Screenshots
+            storage/logs/laravel.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The deploy, after every gate and only for a push to main: one call to the server's deploy
+  # hook, whose address is a repository secret. The hook reads a push as the code host sends
+  # one, so the body is this push event's own, cut down to what the hook reads: the branch, the
+  # commit and who pushed it, and no email address. The hook answers before the server has
+  # deployed, so a green job says the server was told, not that it finished.
+  deploy:
+    name: Deploy
+    needs: gates
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    # One deploy at a time; a second push waits for the first one's call rather than racing it.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Call the deploy hook
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "The DEPLOY_HOOK_URL secret is not set."
+            exit 1
+          fi
+          python3 - "$GITHUB_EVENT_PATH" > "$RUNNER_TEMP/push.json" <<'PY'
+          import json, sys
+
+          event = json.load(open(sys.argv[1]))
+          head = event['head_commit']
+
+
+          def who(person):
+              return {'name': person.get('name'), 'username': person.get('username')}
+
+
+          commit = {'id': head['id'], 'message': head['message'],
+                    'author': who(head['author']), 'committer': who(head['committer'])}
+          kept = ('name', 'full_name', 'ssh_url', 'clone_url', 'default_branch')
+          json.dump({
+              'ref': event['ref'], 'before': event['before'], 'after': event['after'],
+              'repository': {key: event['repository'][key] for key in kept},
+              'pusher': {'name': event['pusher']['name']},
+              'commits': [commit], 'head_commit': commit,
+          }, sys.stdout)
+          PY
+          curl --fail --silent --show-error --max-time 30 --request POST \
+            --header 'Content-Type: application/json' --header 'X-GitHub-Event: push' \
+            --data @"$RUNNER_TEMP/push.json" "$DEPLOY_HOOK_URL"

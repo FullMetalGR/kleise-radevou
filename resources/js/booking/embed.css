@@ -1,0 +1,1423 @@
+/*
+ * The embed's stylesheet. It runs inside somebody else's CSS, so every selector starts with the
+ * prefixed class, no bare element selector appears anywhere, and nothing is marked important:
+ * unclassed elements keep the host theme's styling, which is what makes the embed look like it
+ * belongs. The eight custom properties on the mount element are the theming surface; an inline
+ * declaration on that element beats the defaults here.
+ *
+ * The tenant's theme is the mount's data-theme, the word the snippet and the hosted page write
+ * there: the light blocks of the admin's seven themes restated under this prefix, the primary,
+ * the text on it and the ring, neutral's on the bare mount, so a mount with no attribute or an
+ * unknown word is neutral. The focus ring reads the ring; the embed has no dark mode, so there
+ * are no dark blocks.
+ * A test reads the built copy of this file and holds it to those rules.
+ *
+ * The look: ink text, muted secondary text, light lines, white cards on the theming radius, pills
+ * for every control, the theme's primary on the primary button, the chosen card and the current
+ * crumb. The font is the host page's: nothing here names a family. Icons are inline drawings in
+ * the markup; nothing here draws a picture.
+ *
+ * Ink #111827, muted #52606d (6.5:1 on white), line #e5e7eb, line-strong #d1d5db, soft #f9fafb;
+ * a disabled control is #4b5563 on #e5e7eb (5.3:1).
+ */
+
+.kr-booking {
+    --kr-primary: #171717;
+    --kr-primary-foreground: #fafafa;
+    --kr-ring: #a1a1a1;
+    --kr-radius: 0.75rem;
+    --kr-spacing: 1rem;
+    --kr-error: #b42318;
+    --kr-success: #067647;
+    --kr-focus: var(--kr-ring);
+    box-sizing: border-box;
+    line-height: 1.5;
+}
+
+.kr-booking[data-theme="blue"] {
+    --kr-primary: #2563eb;
+    --kr-primary-foreground: #ffffff;
+    --kr-ring: #2563eb;
+}
+
+.kr-booking[data-theme="green"] {
+    --kr-primary: #15803d;
+    --kr-primary-foreground: #ffffff;
+    --kr-ring: #15803d;
+}
+
+.kr-booking[data-theme="orange"] {
+    --kr-primary: #c2410c;
+    --kr-primary-foreground: #ffffff;
+    --kr-ring: #c2410c;
+}
+
+.kr-booking[data-theme="red"] {
+    --kr-primary: #dc2626;
+    --kr-primary-foreground: #ffffff;
+    --kr-ring: #dc2626;
+}
+
+.kr-booking[data-theme="rose"] {
+    --kr-primary: #e11d48;
+    --kr-primary-foreground: #ffffff;
+    --kr-ring: #e11d48;
+}
+
+.kr-booking[data-theme="violet"] {
+    --kr-primary: #7c3aed;
+    --kr-primary-foreground: #ffffff;
+    --kr-ring: #7c3aed;
+}
+
+/* The frame: no border, no padding; it paints its own white canvas and carries the ink and the step's title. */
+.kr-booking__frame {
+    box-sizing: border-box;
+    background: #ffffff;
+    color: #111827;
+}
+
+.kr-booking__frame[aria-busy="true"] {
+    opacity: 0.7;
+}
+
+.kr-booking__title {
+    margin: 0 0 1.25rem;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+.kr-booking__subtitle {
+    margin: 0 0 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.kr-booking__notice {
+    margin: 0;
+}
+
+/* An error or a success is a soft panel tinted in its own colour, which is also its text. */
+.kr-booking__notice--error,
+.kr-booking__notice--success {
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+}
+
+.kr-booking__notice--error {
+    background: color-mix(in srgb, var(--kr-error) 8%, #ffffff);
+    color: var(--kr-error);
+}
+
+.kr-booking__notice--success {
+    background: color-mix(in srgb, var(--kr-success) 8%, #ffffff);
+    color: var(--kr-success);
+}
+
+/* Words kept for assistive technology and hidden from sight. */
+.kr-booking__crumb-state,
+.kr-booking__arrow-label,
+.kr-booking__no-times {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+    white-space: nowrap;
+}
+
+/* Every drawing is a block the size of its control's icon, in the control's text colour. */
+.kr-booking__icon {
+    display: block;
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/*
+ * The crumb: the round back control, then the trail in small text. A finished step is a text
+ * button in ink, the current one bold over the primary, the ones ahead muted.
+ */
+.kr-booking__crumbbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1.5rem;
+    font-size: 0.875rem;
+}
+
+.kr-booking__back,
+.kr-booking__remove {
+    box-sizing: border-box;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #111827;
+    cursor: pointer;
+}
+
+.kr-booking__back {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.kr-booking__back[disabled] {
+    border-color: #e5e7eb;
+    background: #e5e7eb;
+    color: #4b5563;
+    cursor: default;
+}
+
+.kr-booking__back .kr-booking__icon {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.kr-booking__crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    color: #52606d;
+    list-style: none;
+}
+
+.kr-booking__crumb-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.kr-booking__crumb,
+.kr-booking__crumb-end {
+    padding: 0 0 0.125rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    line-height: 1.4;
+}
+
+.kr-booking__crumb {
+    background: transparent;
+    color: #111827;
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.kr-booking__crumb[disabled] {
+    color: #52606d;
+    font-weight: 400;
+    cursor: default;
+}
+
+.kr-booking__crumb[aria-current="step"] {
+    border-bottom-color: var(--kr-primary);
+    color: #111827;
+    font-weight: 700;
+}
+
+.kr-booking__crumb-sep {
+    display: flex;
+}
+
+.kr-booking__crumb-sep .kr-booking__icon {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+/*
+ * The step and the summary card: two columns where the frame is wide enough, the card sticky
+ * beside the step; the card under the step where it is narrower than both; the bottom bar at or
+ * under 640px, through the media query at the end of this file. On review and done there is no
+ * card and the step stands alone, centred.
+ */
+.kr-booking__layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    align-items: flex-start;
+}
+
+.kr-booking__main {
+    flex: 1 1 480px;
+    min-width: 0;
+}
+
+.kr-booking__layout--single .kr-booking__main {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.kr-booking__estimate {
+    box-sizing: border-box;
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex: 0 0 360px;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 100%;
+    padding: 1.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--kr-radius);
+    background: #ffffff;
+    color: #111827;
+    box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+}
+
+.kr-booking__estimate-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.kr-booking__estimate-disc {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.75rem;
+    background: var(--kr-primary);
+    color: var(--kr-primary-foreground);
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.kr-booking__estimate-business {
+    min-width: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.kr-booking__estimate-empty,
+.kr-booking__estimate-when {
+    margin: 0;
+    color: #52606d;
+    font-size: 0.875rem;
+}
+
+.kr-booking__estimate-items {
+    gap: 1rem;
+}
+
+.kr-booking__estimate-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    column-gap: 0.625rem;
+    align-items: start;
+}
+
+.kr-booking__estimate-name {
+    grid-column: 1;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.kr-booking__estimate-detail {
+    grid-column: 1;
+    color: #52606d;
+    font-size: 0.8125rem;
+}
+
+.kr-booking__estimate-price {
+    grid-column: 2;
+    grid-row: 1;
+    font-weight: 600;
+}
+
+.kr-booking__estimate-item .kr-booking__remove {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: center;
+}
+
+.kr-booking__remove {
+    width: 2rem;
+    height: 2rem;
+    color: #52606d;
+}
+
+.kr-booking__remove .kr-booking__icon {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+.kr-booking__estimate-total {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1rem;
+    margin: 0;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    font-weight: 700;
+}
+
+.kr-booking__estimate-word {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.kr-booking__estimate-sum {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.kr-booking__estimate-duration {
+    grid-column: 1;
+    grid-row: 2;
+    color: #52606d;
+    font-size: 0.8125rem;
+    font-weight: 400;
+}
+
+.kr-booking__estimate-price,
+.kr-booking__estimate-sum,
+.kr-booking__estimate-duration {
+    font-variant-numeric: tabular-nums;
+}
+
+/* The brief count is the phone bar's alone. */
+.kr-booking__estimate-brief {
+    display: none;
+    margin: 0;
+    color: #52606d;
+    font-size: 0.8125rem;
+}
+
+.kr-booking__estimate-label {
+    margin: -0.5rem 0 0;
+    color: #52606d;
+    font-size: 0.75rem;
+}
+
+.kr-booking__continue {
+    width: 100%;
+    min-height: 3rem;
+    font-weight: 700;
+}
+
+/* Lists, the service cards' and every step's. */
+.kr-booking__list {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.kr-booking__item {
+    margin: 0;
+}
+
+/*
+ * The service step: the chips, then each group's heading over its cards. A card is one button;
+ * chosen, its border is the primary's at 2px and loses a pixel of padding so nothing moves, and
+ * its round mark turns from a plus to a filled check.
+ */
+.kr-booking__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0 0 1.75rem;
+}
+
+.kr-booking__chip {
+    box-sizing: border-box;
+    min-height: 2.75rem;
+    padding: 0 1.125rem;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.kr-booking__chip[aria-pressed="true"] {
+    border-color: #111827;
+    background: #111827;
+    color: #ffffff;
+}
+
+.kr-booking__group + .kr-booking__group {
+    margin-top: 1.75rem;
+}
+
+.kr-booking__limit {
+    margin: 0 0 1rem;
+    color: #52606d;
+    font-size: 0.875rem;
+}
+
+.kr-booking__service {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    width: 100%;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--kr-radius);
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    line-height: 1.5;
+    text-align: left;
+    cursor: pointer;
+}
+
+.kr-booking__service:hover {
+    border-color: #d1d5db;
+}
+
+.kr-booking__service[aria-pressed="true"] {
+    padding: calc(1.25rem - 1px) calc(1.5rem - 1px);
+    border: 2px solid var(--kr-primary);
+}
+
+.kr-booking__service[disabled] {
+    border-color: #e5e7eb;
+    background: #f9fafb;
+    cursor: default;
+}
+
+.kr-booking__service-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.kr-booking__service-name {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.kr-booking__service-duration,
+.kr-booking__service-description {
+    color: #52606d;
+    font-size: 0.875rem;
+}
+
+.kr-booking__service-price {
+    margin-top: 0.375rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.kr-booking__service-mark {
+    box-sizing: border-box;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #111827;
+}
+
+.kr-booking__service[aria-pressed="true"] .kr-booking__service-mark {
+    border-color: var(--kr-primary);
+    background: var(--kr-primary);
+    color: var(--kr-primary-foreground);
+}
+
+.kr-booking__service[disabled] .kr-booking__service-mark {
+    border-color: #e5e7eb;
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* A card disabled at the chain's maximum shows it: its name and its price turn muted. */
+.kr-booking__service[disabled] .kr-booking__service-name,
+.kr-booking__service[disabled] .kr-booking__service-price {
+    color: #52606d;
+}
+
+/* The description of My bookings' form, set apart as secondary text. */
+.kr-booking__description {
+    margin: 0 0 1rem;
+    color: #52606d;
+    font-size: 0.875rem;
+}
+
+/*
+ * The buttons: pills, the secondary white with a strong line by default, the primary in the
+ * theme's colour, the danger in the error colour, a disabled one grey with dark text.
+ */
+.kr-booking__button {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 1.25rem;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+}
+
+.kr-booking__button--primary {
+    border-color: var(--kr-primary);
+    background: var(--kr-primary);
+    color: var(--kr-primary-foreground);
+}
+
+.kr-booking__button--danger {
+    border-color: var(--kr-error);
+    background: var(--kr-error);
+    color: #ffffff;
+}
+
+.kr-booking__button[disabled] {
+    border-color: #e5e7eb;
+    background: #e5e7eb;
+    color: #4b5563;
+    cursor: default;
+}
+
+.kr-booking__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+/* The cards of the later views: white, the light line, the theming radius. */
+.kr-booking__card,
+.kr-booking__mine-form,
+.kr-booking__confirm-row,
+.kr-booking__dialog {
+    box-sizing: border-box;
+    margin-top: 1rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--kr-radius);
+    background: #ffffff;
+    color: #111827;
+}
+
+/* A card that is a row of a list keeps the list's gap and the card's own radius. */
+.kr-booking__list > .kr-booking__card {
+    margin-top: 0;
+}
+
+.kr-booking__card > .kr-booking__subtitle,
+.kr-booking__dialog-title {
+    margin-top: 0;
+}
+
+.kr-booking__card .kr-booking__list + .kr-booking__total {
+    margin-top: 0.75rem;
+}
+
+/*
+ * The staff step: a grid of cards, one button each, the disc over the name and the line under
+ * it, centred; the pressed card bordered in the primary at 2px, losing a pixel of padding so
+ * nothing moves, with a small check in the primary at its corner. View profile is a secondary
+ * pill under the card, and the bio opens under that.
+ */
+.kr-booking__staff + .kr-booking__staff {
+    margin-top: 1.75rem;
+}
+
+.kr-booking__people {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.kr-booking__person {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.kr-booking__choice {
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: center;
+    width: 100%;
+    padding: 1.75rem 1.25rem 1.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    line-height: 1.4;
+    text-align: center;
+    cursor: pointer;
+}
+
+.kr-booking__choice:hover {
+    border-color: #d1d5db;
+}
+
+.kr-booking__choice[aria-pressed="true"] {
+    padding: calc(1.75rem - 1px) calc(1.25rem - 1px) calc(1.5rem - 1px);
+    border: 2px solid var(--kr-primary);
+}
+
+.kr-booking__choice-mark {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--kr-primary);
+    color: var(--kr-primary-foreground);
+}
+
+.kr-booking__choice-mark .kr-booking__icon {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+.kr-booking__face {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--kr-primary) 12%, #ffffff);
+    color: var(--kr-primary);
+    font-size: 1.375rem;
+    font-weight: 700;
+    object-fit: cover;
+}
+
+.kr-booking__face::before {
+    content: attr(data-initials);
+}
+
+.kr-booking__face .kr-booking__icon {
+    width: 1.875rem;
+    height: 1.875rem;
+}
+
+.kr-booking__person-name {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.kr-booking__person-title {
+    color: #52606d;
+    font-size: 0.875rem;
+}
+
+.kr-booking__choice[aria-pressed="true"] .kr-booking__person-title {
+    color: #52606d;
+}
+
+.kr-booking__profile {
+    box-sizing: border-box;
+    min-height: 2.75rem;
+    padding: 0 1.125rem;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.kr-booking__bio {
+    width: 100%;
+    margin: 0;
+    color: #52606d;
+    font-size: 0.9375rem;
+    white-space: pre-line;
+}
+
+.kr-booking__picker[aria-busy="true"] {
+    opacity: 0.7;
+}
+
+.kr-booking__timezone {
+    margin: 1rem 0 0.5rem;
+    color: #52606d;
+    font-size: 0.875rem;
+}
+
+/* The time step's two captions: Select a date over the week, Pick a time over the times. */
+.kr-booking__caption {
+    margin: 1.5rem 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.kr-booking__caption + .kr-booking__timezone {
+    margin: -0.25rem 0 0.75rem;
+}
+
+/*
+ * The review step's Important info: a soft panel under its own heading, keeping the line breaks
+ * its owner typed, as the hosted page's about does.
+ */
+.kr-booking__important {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.75rem;
+    background: #f9fafb;
+}
+
+.kr-booking__important .kr-booking__subtitle {
+    margin: 0 0 0.375rem;
+    font-size: 1rem;
+}
+
+.kr-booking__important-text {
+    margin: 0;
+    white-space: pre-line;
+}
+
+/*
+ * The week row: a Previous slot, the seven days in equal columns, a Next slot. The days and Next
+ * are placed in their own columns, so the row keeps its shape when Previous is absent on the
+ * first week and while a week loads. The arrows are round controls; each day a tall pill of its
+ * weekday over its number, the selected one ink, an empty one greyed with its No times kept for
+ * assistive technology. At a phone's width the row tightens, through the media query at the end
+ * of this file, and nothing scrolls sideways.
+ */
+.kr-booking__week {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+    gap: 0.625rem;
+    align-items: center;
+}
+
+.kr-booking__previous,
+.kr-booking__next {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    min-height: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.kr-booking__next {
+    grid-column: 3;
+}
+
+.kr-booking__previous .kr-booking__icon,
+.kr-booking__next .kr-booking__icon {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.kr-booking__days {
+    grid-column: 2;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.625rem;
+}
+
+.kr-booking__day,
+.kr-booking__period,
+.kr-booking__slot {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.kr-booking__day:hover,
+.kr-booking__slot:hover {
+    border-color: #111827;
+}
+
+.kr-booking__day {
+    display: grid;
+    align-content: center;
+    gap: 0.125rem;
+    height: 100%;
+    min-height: 4.75rem;
+    padding: 0.375rem 0;
+    border-radius: 1rem;
+    line-height: 1.2;
+}
+
+.kr-booking__weekday {
+    color: #52606d;
+    font-size: 0.8125rem;
+}
+
+.kr-booking__date {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.kr-booking__day[aria-pressed="true"] {
+    border-color: #111827;
+    background: #111827;
+    color: #ffffff;
+}
+
+.kr-booking__day[aria-pressed="true"] .kr-booking__weekday {
+    color: #d1d5db;
+}
+
+/* An empty day is greyed and still says No times in its own text, for assistive technology. */
+.kr-booking__day[disabled] {
+    border-color: #e5e7eb;
+    background: #f9fafb;
+    color: #6b7280;
+    cursor: default;
+}
+
+.kr-booking__day[disabled] .kr-booking__weekday {
+    color: #6b7280;
+}
+
+/* The period control: the periods holding starts as pills, each a name and its count. */
+.kr-booking__periods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0;
+}
+
+.kr-booking__period {
+    width: auto;
+    min-height: 2.5rem;
+    padding: 0 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+}
+
+.kr-booking__period[aria-pressed="true"] {
+    border-color: #111827;
+    background: #111827;
+    color: #ffffff;
+}
+
+.kr-booking__period-name {
+    font-weight: 600;
+}
+
+/* A period's count is in its pill's own colour, so it reads on the pressed ink as well. */
+.kr-booking__period .kr-booking__count {
+    color: inherit;
+}
+
+/*
+ * The grid: equal columns of at least 5.25rem, as many as fit, each label on one line. At 390px
+ * that is three columns on the booking page and in the reschedule dialog, where 6rem would leave
+ * two; the slot's narrow inline padding keeps a twelve-hour label inside its border at the
+ * narrowest column.
+ */
+.kr-booking__grid {
+    grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
+    gap: 0.625rem;
+    margin-top: 0.75rem;
+}
+
+.kr-booking__periods + .kr-booking__grid {
+    margin-top: 0.75rem;
+}
+
+.kr-booking__slot {
+    min-height: 3rem;
+    padding: 0.5rem 0.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.kr-booking__hint,
+.kr-booking__empty {
+    margin: 0;
+}
+
+.kr-booking__hint,
+.kr-booking__mine .kr-booking__empty {
+    margin-top: 1rem;
+}
+
+/* A loading state shaped like what it waits for: blank cards for the service list, blank times for the grid. No animation. */
+.kr-booking__skeleton {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.kr-booking__skeleton--grid {
+    grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
+    margin-top: 0.75rem;
+}
+
+.kr-booking__blank {
+    display: block;
+    height: 5.5rem;
+    border-radius: var(--kr-radius);
+    background: #f3f4f6;
+}
+
+.kr-booking__skeleton--grid .kr-booking__blank {
+    height: 3rem;
+}
+
+/* Next available date, a secondary pill, sits under the hint or the empty day's sentence it answers. */
+.kr-booking__jump {
+    margin-top: 0.75rem;
+}
+
+/* The details form: labelled inputs 48px tall, the note growing downwards only. */
+.kr-booking__form {
+    display: grid;
+    gap: 1rem;
+    max-width: 36rem;
+}
+
+.kr-booking__field {
+    display: grid;
+    gap: 0.375rem;
+}
+
+.kr-booking__label {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.kr-booking__input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.kr-booking__note {
+    min-height: 6rem;
+    resize: vertical;
+}
+
+.kr-booking__count {
+    color: #52606d;
+    font-size: 0.75rem;
+}
+
+/*
+ * The review step's and the manage view's summary of the booking the server answered, in a
+ * card; on review the stylesheet alone moves the countdown reading from the step's head to
+ * just above the action button, the DOM keeping its order and the regions their places.
+ */
+.kr-booking__frame[data-kr-step="review"] .kr-booking__step {
+    display: flex;
+    flex-direction: column;
+}
+
+.kr-booking__frame[data-kr-step="review"] .kr-booking__countdown {
+    order: 1;
+}
+
+.kr-booking__frame[data-kr-step="review"] .kr-booking__step > .kr-booking__actions,
+.kr-booking__frame[data-kr-step="review"] .kr-booking__step > .kr-booking__notice {
+    order: 2;
+}
+
+.kr-booking__review {
+    margin-top: 0;
+}
+
+.kr-booking__summary {
+    gap: 0;
+}
+
+.kr-booking__summary-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    align-items: baseline;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.kr-booking__summary-item:first-child {
+    border-top: 1px solid #e5e7eb;
+}
+
+.kr-booking__summary-service {
+    flex: 1 1 auto;
+    font-weight: 600;
+}
+
+.kr-booking__summary-staff,
+.kr-booking__summary-when {
+    color: #52606d;
+}
+
+.kr-booking__summary-when,
+.kr-booking__summary-price {
+    font-variant-numeric: tabular-nums;
+}
+
+.kr-booking__total {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 1rem 0 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.kr-booking__card .kr-booking__timezone {
+    margin-bottom: 0;
+}
+
+/* The countdown reading: the step's sentence with the ticking value in bold beside it. */
+.kr-booking__countdown {
+    margin: 1.25rem 0 0;
+}
+
+.kr-booking__countdown-reading {
+    margin: 0 0 0.75rem;
+    color: #52606d;
+    font-size: 0.9375rem;
+}
+
+.kr-booking__countdown-value {
+    color: #111827;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The review step's action button fills the width; the restart control sits under it, centred. */
+.kr-booking__confirm {
+    width: 100%;
+    min-height: 3rem;
+    font-weight: 700;
+}
+
+.kr-booking__restart {
+    margin: 0 auto;
+}
+
+/* The done step: the success panel, a success disc over the one sentence, both centred. */
+.kr-booking__frame[data-kr-step="done"] .kr-booking__title {
+    text-align: center;
+}
+
+.kr-booking__done {
+    padding: 2rem 1.5rem;
+    text-align: center;
+}
+
+.kr-booking__success {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background: var(--kr-success);
+    color: #ffffff;
+}
+
+.kr-booking__success .kr-booking__icon {
+    width: 2rem;
+    height: 2rem;
+}
+
+.kr-booking__done .kr-booking__notice {
+    font-size: 1.0625rem;
+}
+
+/* The manage view's and My bookings' lines under a booking. */
+.kr-booking__customer,
+.kr-booking__status {
+    margin: 0.5rem 0 0;
+}
+
+.kr-booking__customer {
+    color: #52606d;
+    font-size: 0.9375rem;
+}
+
+/* The cancel is the outlined danger pill; Yes, cancel it the filled one. */
+.kr-booking__cancel {
+    border-color: var(--kr-error);
+    color: var(--kr-error);
+}
+
+/* Book again, on a My bookings card and the manage page: a link to the hosted page, as a secondary pill. */
+.kr-booking__again {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    margin-top: 1.25rem;
+    padding: 0 1.25rem;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+}
+
+.kr-booking__question {
+    margin: 0;
+    font-weight: 600;
+}
+
+/*
+ * The language switch under the view, a link on the hosted page and a button in the embed: a quiet
+ * text link at the secondary text's size, in the colours already here.
+ */
+.kr-booking__language {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #52606d;
+    font: inherit;
+    font-size: 0.8125rem;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.kr-booking__language:hover {
+    color: #111827;
+}
+
+/* The focus outline, on every control and on the containers focus is landed on. */
+.kr-booking__frame:focus-visible,
+.kr-booking__button:focus-visible,
+.kr-booking__chip:focus-visible,
+.kr-booking__service:focus-visible,
+.kr-booking__choice:focus-visible,
+.kr-booking__profile:focus-visible,
+.kr-booking__crumb:focus-visible,
+.kr-booking__back:focus-visible,
+.kr-booking__remove:focus-visible,
+.kr-booking__day:focus-visible,
+.kr-booking__period:focus-visible,
+.kr-booking__slot:focus-visible,
+.kr-booking__input:focus-visible,
+.kr-booking__group-heading:focus-visible,
+.kr-booking__again:focus-visible,
+.kr-booking__language:focus-visible,
+.kr-booking__dialog:focus-visible {
+    outline: 2px solid var(--kr-focus);
+    outline-offset: 2px;
+}
+
+/*
+ * The one media query, at a phone's width: one column, the step title smaller, and the summary
+ * card in its compact form as the bar stuck to the bottom of the screen while the flow scrolls
+ * under it: the sum over the brief count at the left, Continue at the right, everything else of
+ * the card hidden, painted white with a shadow so it reads over the flow.
+ */
+@media (max-width: 640px) {
+    .kr-booking__layout {
+        display: block;
+    }
+
+    .kr-booking__title {
+        font-size: 1.625rem;
+    }
+
+    /* The crumb is one line that scrolls sideways, the back control staying at the left. It holds
+       its hidden step states, which are absolute, so a longer language's crumbs scroll under it
+       rather than push the page wider. */
+    .kr-booking__crumbs {
+        position: relative;
+        flex: 1 1 auto;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .kr-booking__crumb-item {
+        flex: none;
+    }
+
+    .kr-booking__estimate {
+        position: sticky;
+        top: auto;
+        bottom: 0;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0 1rem;
+        align-items: center;
+        margin-top: 1.5rem;
+        padding: 0.75rem 1rem 1rem;
+        border-width: 1px 0 0;
+        border-radius: 0;
+        box-shadow: 0 -6px 16px rgba(17, 24, 39, 0.06);
+    }
+
+    /* The bar is hidden while it holds no segment, so the page's own Book now bar keeps the bottom
+       edge until then; this rule follows the bar's, since both weigh one class and the later wins. */
+    .kr-booking__estimate--empty {
+        display: none;
+    }
+
+    .kr-booking__estimate-head,
+    .kr-booking__estimate-items,
+    .kr-booking__estimate-when,
+    .kr-booking__estimate-label,
+    .kr-booking__estimate-word,
+    .kr-booking__estimate-duration {
+        display: none;
+    }
+
+    .kr-booking__estimate-empty,
+    .kr-booking__estimate-total,
+    .kr-booking__estimate-brief {
+        grid-column: 1;
+    }
+
+    .kr-booking__estimate-total {
+        display: block;
+        padding: 0;
+        border: 0;
+        font-size: 1rem;
+    }
+
+    .kr-booking__estimate-brief {
+        display: block;
+    }
+
+    .kr-booking__continue {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        width: auto;
+        padding: 0 1.75rem;
+    }
+
+    .kr-booking__service {
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .kr-booking__service[aria-pressed="true"] {
+        padding: calc(1rem - 1px);
+    }
+
+    .kr-booking__people {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .kr-booking__choice {
+        padding: 1.25rem 0.75rem 1rem;
+    }
+
+    .kr-booking__choice[aria-pressed="true"] {
+        padding: calc(1.25rem - 1px) calc(0.75rem - 1px) calc(1rem - 1px);
+    }
+
+    .kr-booking__face {
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 1.125rem;
+    }
+
+    .kr-booking__week {
+        grid-template-columns: 2rem minmax(0, 1fr) 2rem;
+        gap: 0.25rem;
+    }
+
+    .kr-booking__previous,
+    .kr-booking__next {
+        width: 2rem;
+        min-height: 2rem;
+        height: 2rem;
+    }
+
+    .kr-booking__days {
+        gap: 0.25rem;
+    }
+
+    .kr-booking__day {
+        min-height: 4rem;
+        border-radius: 0.75rem;
+    }
+
+    .kr-booking__weekday {
+        font-size: 0.6875rem;
+    }
+
+    .kr-booking__date {
+        font-size: 1.0625rem;
+    }
+
+    .kr-booking__card,
+    .kr-booking__mine-form,
+    .kr-booking__confirm-row,
+    .kr-booking__dialog {
+        padding: 1rem;
+    }
+}

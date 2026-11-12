@@ -1,0 +1,21 @@
+{
+    "$schema": "./node_modules/fallow/schema.json",
+    "entry": [
+        "resources/js/booking/embed.ts",
+        "resources/js/admin/app.tsx",
+        "resources/js/site/site.css",
+        "resources/js/site/consent.ts",
+        "bin/*.mjs",
+        "vite.config.ts",
+        "vite.admin.config.ts",
+        "vitest.config.ts"
+    ],
+    "ignorePatterns": [
+        "vendor/**",
+        "public/**",
+        "storage/**"
+    ],
+    "cache": {
+        "dir": "node_modules/.cache/fallow"
+    }
+}

@@ -1,0 +1,168 @@
+<?php
+
+/*
+ * Reports: the filter card, the six tiles with their comparisons and footnote, Over time's two
+ * charts and its table, the cards and tables below them with Occupancy by staff, and the CSV's
+ * own words. The range's line is one whole sentence per word of the Range, a custom range's
+ * single day its own. A comparison is one whole sentence per kind of range and per kind of
+ * change, so a language can inflect "the week before" as its own grammar asks, a rise or a fall
+ * one sentence whose :change is the signed percentage as the language writes it, as Home's; a
+ * custom range's sentences choose by its days. Its Greek twin is lang/el/admin/reports.php.
+ */
+
+return [
+    'page_title' => 'Reports',
+    'filters' => [
+        'range' => 'Range',
+        'words' => [
+            'today' => 'Today',
+            'yesterday' => 'Yesterday',
+            'week' => 'This week',
+            'last_7_days' => 'Last 7 days',
+            'last_30_days' => 'Last 30 days',
+            'month' => 'This month',
+            'last_month' => 'Last month',
+            'year' => 'This year',
+            'custom' => 'Custom range',
+        ],
+        'staff' => 'Staff',
+        'all_staff' => 'All staff',
+        'service' => 'Service',
+        'all_services' => 'All services',
+        'from' => 'From',
+        'to' => 'To',
+        'apply' => 'Apply',
+        'applying' => 'Applying...',
+        'stated' => [
+            'today' => 'Today: :date',
+            'yesterday' => 'Yesterday: :date',
+            'week' => 'This week: :from to :to',
+            'last_7_days' => 'Last 7 days: :from to :to',
+            'last_30_days' => 'Last 30 days: :from to :to',
+            'month' => 'This month: :from to :to',
+            'last_month' => 'Last month: :from to :to',
+            'year' => 'This year: :from to :to',
+            'custom' => 'Custom range: :from to :to',
+            'custom_day' => 'Custom range: :date',
+        ],
+        'to_before_from' => 'The To date is before the From date.',
+        'too_long' => 'A custom range covers at most :count days.',
+        'loading' => 'Loading the figures for the range you chose.',
+        'error' => 'The figures could not be loaded. Check your connection and choose the range again.',
+        'download' => 'Download CSV',
+        'downloading' => 'Downloading...',
+        'download_error' => 'The CSV could not be downloaded. Try again.',
+    ],
+    'tiles' => [
+        'bookings' => 'Bookings',
+        'revenue' => 'Revenue',
+        'occupancy' => 'Occupancy',
+        'new_customers' => 'New customers',
+        'cancelled' => 'Cancelled',
+        'no_shows' => 'No-shows',
+        'returning' => '{1} :count returning|[0,*] :count returning',
+        'occupancy_of' => ':filled of :offered',
+        'hours_minutes' => ':hours :minutes',
+        'no_hours' => 'No hours offered',
+        'elsewhere' => 'Plus :amount',
+        'note' => 'Bookings and revenue count confirmed and completed bookings by their first start. Occupancy is the minutes those bookings fill over the minutes your staff hours offer less closures, plus any booked minute outside those hours, so it never passes 100%.',
+    ],
+    'compare' => [
+        'day' => [
+            'by' => ':change vs the day before',
+            'same' => 'No change vs the day before',
+            'from_zero' => 'Up from 0 vs the day before',
+        ],
+        'week' => [
+            'by' => ':change vs the week before',
+            'same' => 'No change vs the week before',
+            'from_zero' => 'Up from 0 vs the week before',
+        ],
+        'last_7_days' => [
+            'by' => ':change vs the 7 days before',
+            'same' => 'No change vs the 7 days before',
+            'from_zero' => 'Up from 0 vs the 7 days before',
+        ],
+        'last_30_days' => [
+            'by' => ':change vs the 30 days before',
+            'same' => 'No change vs the 30 days before',
+            'from_zero' => 'Up from 0 vs the 30 days before',
+        ],
+        'month' => [
+            'by' => ':change vs the month before',
+            'same' => 'No change vs the month before',
+            'from_zero' => 'Up from 0 vs the month before',
+        ],
+        'year' => [
+            'by' => ':change vs the year before',
+            'same' => 'No change vs the year before',
+            'from_zero' => 'Up from 0 vs the year before',
+        ],
+        'custom' => [
+            'by' => '{1} :change vs the day before|[2,*] :change vs the :count days before',
+            'same' => '{1} No change vs the day before|[2,*] No change vs the :count days before',
+            'from_zero' => '{1} Up from 0 vs the day before|[2,*] Up from 0 vs the :count days before',
+        ],
+    ],
+    'over_time' => [
+        'title' => 'Over time',
+        'bookings' => [
+            'day' => 'Bookings per day',
+            'week' => 'Bookings per week',
+            'month' => 'Bookings per month',
+        ],
+        'revenue' => [
+            'day' => 'Revenue per day',
+            'week' => 'Revenue per week',
+            'month' => 'Revenue per month',
+        ],
+        'chart' => ':chart, :from to :to: :values',
+        'chart_revenue' => ':chart in :currency, :from to :to: :values',
+        'from' => 'From',
+        'to' => 'To',
+        'bookings_head' => 'Bookings',
+        'revenue_head' => 'Revenue',
+    ],
+    'tables' => [
+        'statuses' => 'Bookings by status',
+        'revenue' => 'Revenue',
+        'confirmed' => 'Confirmed',
+        'completed' => 'Completed',
+        'no_show_rate' => 'No-show rate',
+        'no_shows' => 'No-shows',
+        'no_completed' => 'No completed bookings yet',
+        'cancelled_by' => 'Cancelled by',
+        'by_customer' => 'Customer',
+        'by_business' => 'Business',
+        'unrecorded' => 'Not recorded',
+        'by_service' => 'By service',
+        'by_staff' => 'By staff',
+        'by_source' => 'By source',
+        'by_channel' => 'By channel',
+        'service' => 'Service',
+        'staff' => 'Staff',
+        'source' => 'Source',
+        'channel' => 'Channel',
+        'bookings' => 'Bookings',
+        'revenue_head' => 'Revenue',
+        'no_channel' => 'None',
+        'note' => 'Bookings counts every booking in the range, whatever its status; revenue counts confirmed and completed bookings.',
+    ],
+    'occupancy' => [
+        'title' => 'Occupancy by staff',
+        'booked' => 'Booked',
+        'available' => 'Available',
+        'no_hours' => 'No hours',
+    ],
+    'csv' => [
+        'filters' => 'Filters',
+        'figures' => 'Figures',
+        'figure' => 'Figure',
+        'value' => 'Value',
+        'before' => 'Period before',
+        'change' => 'Change',
+        'detail' => 'Detail',
+        'status' => 'Status',
+        'in_currency' => ':column (:currency)',
+    ],
+];

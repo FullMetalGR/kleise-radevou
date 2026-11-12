@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+        <testsuite name="Concurrency">
+            <directory>tests/Concurrency</directory>
+        </testsuite>
+        <testsuite name="Browser">
+            <directory>tests/Browser</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BILLING_AUTOMATIC_TAX" value="(false)" force="true"/>
+        <env name="BILLING_FLOOR_PRICE" value="price_floor_test"/>
+        <env name="BILLING_PROVIDER" value="Tests\Support\FakeBillingProvider" force="true"/>
+        <env name="BILLING_SECRET_KEY" value="" force="true"/>
+        <env name="BILLING_STAFF_PRICE" value="price_staff_test"/>
+        <env name="BILLING_WEBHOOK_SECRET" value="" force="true"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_DATABASE" value="kleise_radevou_test"/>
+        <env name="DB_URL" value=""/>
+        <env name="GA_MEASUREMENT_ID" value=""/>
+        <env name="GOOGLE_MAPS_KEY" value=""/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="PAYMENT_PLATFORM_FEE_FIXED" value=""/>
+        <env name="PAYMENT_PLATFORM_FEE_PERCENT" value=""/>
+        <env name="PAYMENT_PLATFORM_STRIPE_SECRET_KEY" value=""/>
+        <env name="PAYMENT_PLATFORM_STRIPE_WEBHOOK_SECRET" value=""/>
+        <env name="PAYMENT_PROVIDER_BESIDE" value="Tests\Support\FakePaymentAdapter"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="TURNSTILE_SECRET_KEY" value=""/>
+        <env name="TURNSTILE_SITE_KEY" value=""/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>

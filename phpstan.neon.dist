@@ -1,0 +1,20 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/pestphp/pest-plugin-phpstan/extension.neon
+
+parameters:
+    # The highest level the codebase holds. Lowering it is a visible diff and is refused.
+    level: 10
+
+    paths:
+        - app
+        - bin
+        - bootstrap/app.php
+        - bootstrap/providers.php
+        - config
+        - database
+        - routes
+        - tests
+
+    databaseMigrationsPath:
+        - database/migrations
