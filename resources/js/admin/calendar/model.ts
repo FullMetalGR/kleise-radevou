@@ -57,7 +57,9 @@ export type NextWorking = { date: string; windows: HoursWindow[] } | null;
  * bookings are drawn though it is never listed (Scheduled staff and All staff), each member's
  * hours per date, the next working day of each member with no hours in the window, and every
  * booking in it. hours is keyed by the member's id and then the date, next_working by the
- * member's id; an empty answer may arrive as a list, so each is read by key alone.
+ * member's id; an empty answer may arrive as a list, so each is read by key alone. closures are
+ * the closures, per row and per date, of a row whose bookings are drawn but which hours does not
+ * cover, the implicit row's, so a block on it can tell whether a closure holds it.
  */
 export type Window = {
     from: string;
@@ -68,6 +70,7 @@ export type Window = {
     implicit: number | null;
     hours: Record<string, Record<string, DayHours>> | [];
     next_working: Record<string, NextWorking> | [];
+    closures?: Record<string, Record<string, Closure[]>> | [];
     bookings: CalendarBooking[];
 };
 
@@ -273,7 +276,8 @@ function badgeOf(status: string): Badge | null {
  * kind: a booking block per item, or a processing gap. start and end are the tenant's wall
  * clock with no zone, the only form the grid is handed. minutes is the block's length, for
  * the time-range rule. staffId is the item's, the gap inheriting its parent's. badge is the
- * booking's where it is one of the two badged statuses, and a gap's is always null.
+ * booking's where it is one of the two badged statuses, and a gap's is always null. inside marks
+ * a block whose service a closure holds (insideClosure), a gap's always false.
  */
 export type Block = {
     id: string;
@@ -292,6 +296,7 @@ export type Block = {
     segment: number;
     /** Whether this viewer may move the booking now, the server's BookingActions::movable, false where the payload says nothing. */
     movable: boolean;
+    inside: boolean;
 };
 
 export const GAP_TITLE: CalendarKey = 'grid.gap';
@@ -324,7 +329,7 @@ function minutesBetween(start: string, end: string): number {
  * item. The selection is applied here regardless of whether the fetch was already narrowed, 5.5,
  * so it is a guarantee and not a payload optimisation.
  */
-export function blocksOf(bookings: readonly CalendarBooking[], staff: readonly number[] | null, timezone: string, words: CalendarWords): Block[] {
+export function blocksOf(bookings: readonly CalendarBooking[], staff: readonly number[] | null, timezone: string, words: CalendarWords, closed: Closed = NO_CLOSURES): Block[] {
     const blocks: Block[] = [];
 
     for (const booking of bookings) {
@@ -350,6 +355,7 @@ export function blocksOf(bookings: readonly CalendarBooking[], staff: readonly n
                 status: booking.status,
                 segment: item.sort,
                 movable: booking.movable === true,
+                inside: HELD.includes(booking.status) && insideClosure(closed, item, timezone),
             });
 
             const processing = item.processing_ends_utc;
@@ -369,12 +375,58 @@ export function blocksOf(bookings: readonly CalendarBooking[], staff: readonly n
                     status: booking.status,
                     segment: item.sort,
                     movable: booking.movable === true,
+                    inside: false,
                 });
             }
         }
     }
 
     return blocks;
+}
+
+/** Where the closures of a row and a date are read: the hours of the members listed, and the closures sent for a row drawn without them. */
+export type Closed = Pick<Window, 'hours' | 'closures'>;
+
+const NO_CLOSURES: Closed = { hours: [], closures: [] };
+
+/** The statuses that still keep their time, and so the ones a closure can hold a booking inside of. */
+const HELD: readonly string[] = ['confirmed', 'awaiting_approval', 'awaiting_payment'];
+
+/** The closures reaching a row on a date, its own and the business's: from its hours where it has them, else from those sent for it. */
+function closuresOn(closed: Closed, staffId: number, date: string): Closure[] {
+    const listed = closed.hours as Partial<Record<string, Partial<Record<string, DayHours>>>>;
+    const day = listed[String(staffId)]?.[date];
+
+    if (day !== undefined) {
+        return day.closures;
+    }
+
+    const sent = (closed.closures ?? []) as Partial<Record<string, Partial<Record<string, Closure[]>>>>;
+
+    return sent[String(staffId)]?.[date] ?? [];
+}
+
+/**
+ * Whether a closure holds a service: its own range, read on the tenant's wall clock, overlaps a
+ * closure of its member or of the whole business on any date it touches. Both ranges are
+ * half-open, so a service ending as the closure starts, or starting as it ends, is outside it.
+ * The marker is worked out here each time the blocks are drawn and never kept anywhere.
+ */
+export function insideClosure(closed: Closed, item: Pick<CalendarItem, 'staff_id' | 'start' | 'end'>, timezone: string): boolean {
+    const start = wallOf(item.start, timezone);
+    const end = wallOf(item.end, timezone);
+
+    for (let date = start.slice(0, 10); date <= end.slice(0, 10); date = addDays(date, 1)) {
+        for (const closure of closuresOn(closed, item.staff_id, date)) {
+            const span = closureSpanOf(closure, date);
+
+            if (start < span.end && end > span.start) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 /** One chip of a month day: a status and how many bookings that day hold it. */

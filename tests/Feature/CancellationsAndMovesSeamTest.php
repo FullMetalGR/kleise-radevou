@@ -11,6 +11,7 @@ use App\Domain\Enum\BookingStatus;
 use App\Infrastructure\BookingTransitionFactory;
 use App\Infrastructure\Db\BookingReader;
 use App\Infrastructure\Events\TransitionPublishers;
+use App\Jobs\SendCancellation;
 use App\Jobs\SendMove;
 use App\Notifications\MyBookingsLine;
 use App\Site\SiteLanguage;
@@ -682,6 +683,34 @@ it('sends the move its transition made true even where the booking was cancelled
         ->and((string) $sent[2]->getTextBody())->toContain(expectingLine('cancelled.booking.by_customer.cancelled'))
         ->and((string) $sent[3]->getTextBody())->toContain(expectingNotice('cancellation_notice.by.customer'))
         ->and(LunaFixture::row($held['uuid'])['status'])->toBe('cancelled')
+        ->and(DB::table('jobs')->count())->toBe(0)
+        ->and(DB::table('failed_jobs')->count())->toBe(0);
+});
+
+it('sends the customer the usual cancellation from a job the queue took before the job carried a closure\'s cause, which a worker restores from a payload that does not name one', function () {
+    $held = expectingConfirmed($this);
+
+    config(['queue.default' => 'database']);
+
+    app(BookingTransitionFactory::class)->cancel(LunaFixture::tenant())->cancel($held['uuid'], Actor::user(tenantUserId(EXPECTING_OWNER)));
+
+    // The customer's job is put back as the job's earlier code serialized it, before a job
+    // carried a closure's cause: the tenant, the booking and the two facts, and no property for
+    // a cause at all. A job that waited on the queue, or failed and is retried, while the code
+    // under it changed is this row, and a worker restores it without running the constructor
+    // that would default the property.
+    seamQueuedAs(SendCancellation::class, 'O:25:"App\Jobs\SendCancellation":4:{s:8:"tenantId";i:'.LunaFixture::tenant()->id.';s:4:"uuid";s:36:"'.$held['uuid'].'";s:11:"wasARequest";b:0;s:13:"byTheCustomer";b:0;}');
+
+    expect(seamSent())->toBe([]);
+
+    Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 0, '--no-interaction' => true]);
+
+    $mine = (string) seamAt(EXPECTING_CUSTOMER)->getTextBody();
+
+    // The usual words of a cancel the business made, and nothing left behind to retry.
+    expect(seamAt(EXPECTING_CUSTOMER)->getSubject())->toBe(expectingLine('cancelled.booking.by_business.subject'))
+        ->and($mine)->toContain(expectingLine('cancelled.booking.by_business.cancelled'))
+        ->and($mine)->toContain(expectingLine('cancelled.booking.by_business.means'))
         ->and(DB::table('jobs')->count())->toBe(0)
         ->and(DB::table('failed_jobs')->count())->toBe(0);
 });

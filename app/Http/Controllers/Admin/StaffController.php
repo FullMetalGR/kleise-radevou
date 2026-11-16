@@ -179,7 +179,9 @@ final readonly class StaffController
     {
         $tenant = $this->current->get();
         $slug = Slug::of($tenant->slug);
-        AdminStrings::need($request, self::SECTION);
+        // The bookings section rides along for the closures card's list of bookings a new closure
+        // falls over and the Move form it opens.
+        AdminStrings::need($request, self::SECTION, BookingListController::SECTION);
         $megabytes = ImageUploadRequest::megabytesOf(StaffPhotoRequest::MAX_KILOBYTES);
 
         return Inertia::render(self::PAGE, [

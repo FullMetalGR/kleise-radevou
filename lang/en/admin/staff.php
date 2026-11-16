@@ -65,13 +65,18 @@
  * (:n the title's or the bio's longest, from the columns; the colour's :count the palette's
  * colours, StaffColour's cases spelled in words by ICU, and its :automatic colours.automatic);
  * refusals are the links route's unknown service, which StaffRequest adds to the errors bag too,
- * and the delete's two 409s; flashes are the ten writes' answers: five of the member, two of a
- * closure, two of the photo and the member's colour.
+ * the delete's two 409s, and the closure add's 409 over bookings inside it, bookings_inside when
+ * the add carried no choice and bookings_changed when the bookings found differ from those seen;
+ * flashes are the ten writes' answers: five of the member, two of a closure, two of the photo and
+ * the member's colour, and the closure add's bulk cancel, closure_cancelled with how many went and
+ * closure_skipped naming those left as they were (:bookings, each its customer and its start in
+ * the tenant's clock).
  *
  * Three keys are read as choices, by the admin's mirror of the translator's choice, choose(), on
  * the client, and their Greek keeps the choice syntax: table.count by the rows shown,
- * form.bio_count by the characters written, and form.photo_help by the megabytes. Every other key
- * is read as plain text.
+ * form.bio_count by the characters written, and form.photo_help by the megabytes. Three more are
+ * read as choices on the server, by the count of bookings: refusals.bookings_inside,
+ * flashes.closure_cancelled and flashes.closure_skipped. Every other key is read as plain text.
  */
 
 return [
@@ -246,12 +251,16 @@ return [
         'closure_until_date' => 'Until is a date, such as 2026-12-31, or empty for a closure of one day.',
         'closure_until_order' => 'Until is on or after the closure\'s date.',
         'closure_until_span' => 'A closure runs :n days at most. Add a longer one in parts.',
+        'closure_choice' => 'The choice is keep, move or cancel, or none at all.',
+        'closure_seen' => 'The bookings seen are a list, each named by its id and its status.',
         'colour' => 'The colour is :automatic or one of the palette\'s :count.',
     ],
     'refusals' => [
         'unknown_service' => 'One of the services named is not in the catalog.',
         'referenced' => 'This staff member is still named by existing bookings and cannot be deleted.',
         'implicit' => 'This staff member stands for the business itself and cannot be deleted.',
+        'bookings_inside' => '{1} :count booking falls inside this closure.|[2,*] :count bookings fall inside this closure.',
+        'bookings_changed' => 'The bookings inside this closure changed meanwhile. Here they are as they stand now.',
     ],
     'flashes' => [
         'created' => 'Staff member added.',
@@ -261,6 +270,8 @@ return [
         'deleted' => 'Staff member deleted.',
         'closure_added' => 'Closure added.',
         'closure_removed' => 'Closure removed.',
+        'closure_cancelled' => '{1} Closure added, and :count booking inside it cancelled.|[2,*] Closure added, and :count bookings inside it cancelled.',
+        'closure_skipped' => '{1} :count booking changed meanwhile and was left as it is: :bookings.|[2,*] :count bookings changed meanwhile and were left as they are: :bookings.',
         'colour_saved' => 'Colour saved.',
         'photo_uploaded' => 'Photo uploaded.',
         'photo_removed' => 'Photo removed.',

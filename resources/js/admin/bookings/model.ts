@@ -166,8 +166,14 @@ export function customerName(booking: Pick<Booking, 'customer_name'>, words: Boo
     return booking.customer_name ?? words.text(CUSTOMER_ERASED);
 }
 
+/**
+ * What the Move form reads of a booking: its id, its customer and each service's name, member and
+ * start. A booking in full is one; so is a row of the list a closure over bookings shows.
+ */
+export type Movable = Pick<Booking, 'uuid' | 'customer_name'> & { items: Pick<BookingItem, 'service_name' | 'staff_name' | 'start'>[] };
+
 /** The booking's own start: its earliest item's. */
-export function startOf(booking: Booking): string {
+export function startOf(booking: Pick<Movable, 'items'>): string {
     return booking.items.reduce((earliest, item) => (Date.parse(item.start) < Date.parse(earliest) ? item.start : earliest), booking.items[0]?.start ?? '');
 }
 

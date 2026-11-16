@@ -11,19 +11,21 @@ import { useShell } from '@/lib/strings';
 import { type Failure, owningFailure as owning } from '@/lib/visits';
 import { ImageSlot, type ImageSlotWords } from '@/settings/ImageSlot';
 import { useColourByWrite } from '@/calendar/colour-by';
+import { bookingsWordsOf } from '@/bookings/words';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import type { StaffColour } from '@/lib/hue';
-import { BlackoutsCard, closureBody, closurePath, type ClosureWho, type Draft, type InFlight } from '@/staff/BlackoutsCard';
+import { closurePath, type ClosureWho } from '@/staff/BlackoutsCard';
+import { Closures } from '@/staff/Closures';
 import { ColoursCard } from '@/staff/ColoursCard';
 import { FeatureGone } from '@/shell/NarrowedBanner';
-import { type Blackout, blankForm, type CatalogService, type ClosureLine, type Form, formOf, inactiveCount, membersShown, patchOf, searchRows, type StaffMember, type TenantUser, type View, visibleRows } from '@/staff/model';
+import { blankForm, type CatalogService, type ClosureLine, type Form, formOf, inactiveCount, membersShown, patchOf, searchRows, type StaffMember, type TenantUser, type View, visibleRows } from '@/staff/model';
 import { type PhotoLimit, SHIFTS_PATH, StaffDangerZone, StaffForm } from '@/staff/StaffForm';
 import { StaffTable } from '@/staff/StaffTable';
 import { StaffView } from '@/staff/StaffView';
 import { type StaffKey, StaffProvider, type StaffWords, staffWordsOf, useStaff } from '@/staff/words';
 import { useToasts } from '@/toast/toasts';
-import type { SharedProps, StaffStrings } from '@/types';
+import type { BookingsStrings, SharedProps, StaffStrings } from '@/types';
 
 /*
  * The Staff screen, over the list-detail scaffold: one page for the list with the tenant-wide
@@ -84,7 +86,7 @@ type Props = SharedProps & {
     /** The largest photo, its megabytes and their spelling in words, named by the photo's help. */
     photo_limit: PhotoLimit;
     /** The staff section beside the shell's. */
-    strings: SharedProps['strings'] & { staff?: StaffStrings };
+    strings: SharedProps['strings'] & { staff?: StaffStrings; bookings?: BookingsStrings };
 };
 
 const LIST = '/admin/staff';
@@ -155,6 +157,7 @@ export default function Staff() {
     const toasts = useToasts();
     const shell = useShell();
     const words = staffWordsOf(props.strings, shell.language);
+    const bookings = bookingsWordsOf(props.strings, shell.language);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [showInactive, setShowInactive] = useState(false);
@@ -212,6 +215,8 @@ export default function Staff() {
             title={words.text(editable ? CLOSURES : CLOSED_DAYS)}
             idPrefix="blackout"
             onFailure={(failure) => toasts.push('error', failure.sentence ?? words.text(CLOSURE_ERROR))}
+            staffShown={editable}
+            bookings={bookings}
         />
     );
 
@@ -355,6 +360,8 @@ export default function Staff() {
                                         title={words.text('page.exceptions')}
                                         idPrefix="exception"
                                         onFailure={(failure) => toasts.push('error', failure.sentence ?? words.text(CLOSURE_ERROR))}
+                                        staffShown={editable}
+                                        bookings={bookings}
                                     />
                                 }
                                 danger={<RowDanger row={row} onDeactivated={() => go(LIST)} />}
@@ -440,73 +447,6 @@ function Editor({ row, initial, users, services, clock, busy, wait, photo, photo
             exceptions={exceptions}
             danger={danger}
             copyLink={copyLink}
-        />
-    );
-}
-
-type ClosuresProps = {
-    /** The route a line or a draft is written to, by its member, null for the whole business. */
-    pathOf: (staffId: number | null) => string;
-    blackouts: readonly (Blackout & { staff_id?: number | null })[];
-    who: ClosureWho | null;
-    clock: TenantClock;
-    weekStart: number;
-    granularity: number;
-    title: string;
-    idPrefix: string;
-    onFailure: (failure: Failure) => void;
-};
-
-/**
- * One closures card and its two writes, each to its scope's route, the business's or a member's,
- * by the line or by Who: an add is a POST and a removal a DELETE carrying the dates and the
- * window seen, a folded run's first and last, never a row id. The card
- * is told which action is in flight, and for which row, so the pressed control alone shows
- * busy. A landed add rekeys the card so its draft clears; a refused one keeps it, with the
- * sentence toasted.
- */
-function Closures({ pathOf, blackouts, who, clock, weekStart, granularity, title, idPrefix, onFailure }: ClosuresProps) {
-    const shell = useShell();
-    const [inFlight, setInFlight] = useState<InFlight>(null);
-    const [added, setAdded] = useState(0);
-
-    const visit = (method: 'post' | 'delete', blackout: Blackout & { staff_id?: number | null }, onSuccess: () => void) => {
-        const path = pathOf(blackout.staff_id ?? null);
-        const owned = owning(onFailure, shell);
-        const options = {
-            preserveState: true,
-            preserveScroll: true,
-            onStart: () => {
-                setInFlight(method === 'post' ? { action: 'add' } : { action: 'remove', blackout });
-                owned.onStart();
-            },
-            onSuccess,
-            onFinish: () => {
-                setInFlight(null);
-                owned.onFinish();
-            },
-        };
-
-        if (method === 'post') {
-            router.post(path, closureBody(blackout), options);
-        } else {
-            router.delete(path, { ...options, data: closureBody(blackout) });
-        }
-    };
-
-    return (
-        <BlackoutsCard
-            key={added}
-            title={title}
-            idPrefix={idPrefix}
-            blackouts={blackouts}
-            who={who}
-            clock={clock}
-            weekStart={weekStart}
-            granularity={granularity}
-            inFlight={inFlight}
-            onAdd={(draft: Draft) => visit('post', draft, () => setAdded((count) => count + 1))}
-            onRemove={(blackout) => visit('delete', blackout, () => undefined)}
         />
     );
 }

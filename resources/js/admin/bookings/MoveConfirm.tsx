@@ -5,7 +5,7 @@ import { Notice } from '@/components/ui/notice';
 import { formatInstant, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
 import { reasonLines } from './closed-time';
-import { type Booking, customerName, distinct, startOf } from './model';
+import { customerName, distinct, type Movable, startOf } from './model';
 import type { MemberChange, NamedCrossing } from './moving';
 import { useBookings } from './words';
 
@@ -31,7 +31,7 @@ export type MoveChoice = { warningAccepted: boolean; tellCustomer: boolean };
 
 type Props = {
     open: boolean;
-    booking: Booking;
+    booking: Movable;
     /** The start the booking goes to, an RFC 3339 instant. */
     to: string;
     changes: readonly MemberChange[];

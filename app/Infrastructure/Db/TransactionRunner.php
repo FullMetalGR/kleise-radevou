@@ -46,7 +46,7 @@ final readonly class TransactionRunner
 
     public const int ATTEMPTS = 3;
 
-    private const string ISOLATION = 'read committed';
+    public const string ISOLATION = 'read committed';
 
     public function __construct(
         private DatabaseManager $db,

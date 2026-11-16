@@ -6,8 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 /*
  * A dated override that removes availability: tenant-wide with no staff member, personal with
- * one; the whole day with no window, that window with one. The reason is a note for the owner
- * and never reaches a customer.
+ * one; the whole day with no window, that window with one. The reason is the owner's note on the
+ * closure. It reaches a customer in one case: where the closure is added over bookings and they
+ * are cancelled or rejected for it, the message each customer gets prints the reason as typed.
  *
  * The one CHECK holds the window to both ends null or both set and ordered, which is what the
  * domain refuses too. The index on the date serves the tenant-wide read over a window of days

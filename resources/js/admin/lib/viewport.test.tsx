@@ -118,6 +118,13 @@ describe('the breakpoint', () => {
 
 const ADMIN = join(process.cwd(), 'resources/js/admin');
 
+/*
+ * A width asked of the viewport: an arbitrary breakpoint variant, or a media query written by
+ * hand. A container variant, the same word behind an "@", asks how wide its own box is, which
+ * says nothing of phone or desktop, so it is no breakpoint and is not counted.
+ */
+const VIEWPORT_QUESTION = /(?<!@)\b(?:max|min)-\[|matchMedia|@media/;
+
 function sourcesUnder(directory: string): string[] {
     return readdirSync(directory).flatMap((name) => {
         const path = join(directory, name);
@@ -144,9 +151,18 @@ describe('the token', () => {
         const exempt = [join('lib', 'viewport.ts'), join('components', 'ui', 'harness.tsx')];
         const offenders = sourcesUnder(ADMIN)
             .filter((path) => !exempt.some((name) => path.endsWith(name)))
-            .filter((path) => /\b(?:max|min)-\[|matchMedia|@media/.test(readFileSync(path, 'utf8')))
+            .filter((path) => VIEWPORT_QUESTION.test(readFileSync(path, 'utf8')))
             .map((path) => relative(ADMIN, path));
 
         expect(offenders).toEqual([]);
+    });
+
+    it('counts a breakpoint variant and a media query, and leaves a container variant alone', () => {
+        expect(VIEWPORT_QUESTION.test('max-[900px]:hidden')).toBe(true);
+        expect(VIEWPORT_QUESTION.test('sm:min-[900px]:flex')).toBe(true);
+        expect(VIEWPORT_QUESTION.test("window.matchMedia('(min-width: 900px)')")).toBe(true);
+        expect(VIEWPORT_QUESTION.test('@media (min-width: 900px)')).toBe(true);
+        expect(VIEWPORT_QUESTION.test('@max-[220px]:sr-only')).toBe(false);
+        expect(VIEWPORT_QUESTION.test('@min-[220px]:inline')).toBe(false);
     });
 });

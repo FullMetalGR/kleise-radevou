@@ -11,8 +11,8 @@
  * booking as it was typed. An item is its service with its staff member after "with", as
  * booking.php writes it. :from and :to are instants as ICU spells them in Greek, each after the
  * article and preposition a date takes. The bookings link's lifetime is spelled in words by ICU
- * in Greek and read as a choice by it, one and many. Service names and the business's name are
- * the tenant's own and are never here.
+ * in Greek and read as a choice by it, one and many. Service names, the business's name and a
+ * closure's reason are the tenant's own and are never here.
  */
 
 return [
@@ -105,6 +105,22 @@ return [
                 'means' => 'Το ραντεβού δεν θα πραγματοποιηθεί. Αν δεν το περιμένατε, επικοινωνήστε με την επιχείρηση :business.',
             ],
         ],
+    ],
+
+    // A booking or a request the business cancelled because it added a closure over its time.
+    'closure' => [
+        'booking' => [
+            'subject' => 'Η επιχείρηση :business αναγκάστηκε να ακυρώσει την κράτησή σας',
+            'cancelled' => 'Η επιχείρηση :business αναγκάστηκε να ακυρώσει την κράτησή σας:',
+            'after' => 'Το ραντεβού δεν θα πραγματοποιηθεί και δεν χρειάζεται να κάνετε τίποτα άλλο. Μπορείτε να κλείσετε ραντεβού για άλλη ώρα.',
+        ],
+        'request' => [
+            'subject' => 'Η επιχείρηση :business αναγκάστηκε να ακυρώσει το αίτημά σας',
+            'cancelled' => 'Η επιχείρηση :business αναγκάστηκε να ακυρώσει το αίτημά σας:',
+            'after' => 'Δεν έγινε καμία κράτηση και δεν χρειάζεται να κάνετε τίποτα άλλο. Μπορείτε να ζητήσετε ραντεβού για άλλη ώρα.',
+        ],
+        'reason' => 'Ο λόγος που δόθηκε: :reason',
+        'book' => 'Κλείστε ραντεβού για άλλη ώρα: :link',
     ],
 
     // The move of a request or a booking to another time.

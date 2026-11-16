@@ -36,6 +36,11 @@ use DateTimeImmutable;
  * status found under the lock is the only account of the booking there is. The landing is asked
  * only once the guard has allowed, of the same re-read and the same now.
  *
+ * One thing a caller read may stand in front of a guard, and only to refuse: a cancel or a reject
+ * may be handed the booking as its caller read it, and then asks first whether the re-read is
+ * still that booking (BookingAsRead). It allows nothing; where it does not refuse, the guard is
+ * asked as ever.
+ *
  * The facts are what a transition says of itself to the trail, known before the transaction
  * opens. Today one transition states any: the paid transition says whether its notice named the
  * payment, and the amount the notice says was paid, in minor units and its currency. A

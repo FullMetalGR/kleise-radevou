@@ -147,6 +147,16 @@ final readonly class ErrorEnvelope
         return new self('server_error', 500, ApiLines::line(self::SERVER_ERROR_DETAIL, language: $language));
     }
 
+    /**
+     * Busy, try again in a moment: the answer to a write that lost to somebody else's and wrote
+     * nothing. A throwable that means it is answered so by for(); a caller that reads another
+     * failure of its own write as the same thing asks for it here.
+     */
+    public static function busy(?SiteLanguage $language = null): self
+    {
+        return new self('busy', 503, ApiLines::line(self::BUSY_DETAIL, language: $language), headers: ['Retry-After' => self::RETRY_AFTER_BUSY]);
+    }
+
     public function toResponse(): JsonResponse
     {
         return new JsonResponse([
@@ -194,7 +204,7 @@ final readonly class ErrorEnvelope
             $e instanceof UnacceptedWarning => new self('unaccepted_warning', 409, $line(self::UNACCEPTED_WARNING_DETAIL), ['crossings' => self::crossingsOf($e->crossings)]),
             $e instanceof TransitionRefused => new self($e->reason->value, self::statusOf($e->reason), $line(self::sentenceOf($e->reason))),
             $e instanceof BookingUnknown => new self('not_found', 404, $line(self::detailFor(404))),
-            $e instanceof Busy, $e instanceof WriteContended, $e instanceof KeySetMoved => new self('busy', 503, $line(self::BUSY_DETAIL), headers: ['Retry-After' => self::RETRY_AFTER_BUSY]),
+            $e instanceof Busy, $e instanceof WriteContended, $e instanceof KeySetMoved => self::busy($language),
             $e instanceof MissingManageToken => new self('invalid_request', 400, $line(self::MISSING_TOKEN_DETAIL)),
             $e instanceof PlanChangeRefused => new self($e->reason, $e->reason === PlanChangeRefused::UNKNOWN ? 400 : 409, $e->sentence($language)),
             $e instanceof ResubscribeRefused => new self($e->reason, 409, $line($e->key)),

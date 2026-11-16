@@ -18,8 +18,10 @@
  * The four upload sizes are read as choices by their megabytes, :n the figure spelled by ICU in
  * Greek, neuter as the unit is; both cases are kept, the unit's abbreviation not bending. The
  * eight bounded lines of kit.counted are read as choices by their count too, :count the figure
- * formatCount writes, grouped as Greek groups it (1.234). Email,
- * Instagram, Facebook and Google are the same in both languages and on the shared list.
+ * formatCount writes, grouped as Greek groups it (1.234). The three answers of shared.closure are
+ * choices by the count too, the booking in the genitive singular for one and plural from two. Its
+ * two row lines keep the English order, layouts of placeholders and commas alone. Email, Instagram,
+ * Facebook and Google are the same in both languages and on the shared list, as those two are.
  */
 
 return [
@@ -177,7 +179,20 @@ return [
             'named' => 'Υποστήριξη (:operator)',
         ],
         'closure' => [
-            'reason_help' => 'Μια σημείωση για εσάς. Οι πελάτες δεν τη βλέπουν ποτέ.',
+            'reason_help' => 'Μια σημείωση για εσάς. Ο πελάτης τη βλέπει μόνο στο email που αποστέλλεται όταν αυτή η κλειστή περίοδος ακυρώνει την κράτησή του.',
+            'keep' => '{1} Προσθήκη και διατήρηση της κράτησης|[2,*] Προσθήκη και διατήρηση των κρατήσεων',
+            'move' => '{1} Προσθήκη και μεταφορά της κράτησης|[2,*] Προσθήκη και μεταφορά των κρατήσεων',
+            'cancel' => '{1} Προσθήκη και ακύρωση :count κράτησης|[2,*] Προσθήκη και ακύρωση :count κρατήσεων',
+            'adding' => 'Γίνεται προσθήκη',
+            'back' => 'Πίσω',
+            'row' => ':customer, :services',
+            'row_staff' => ':customer, :services, :staff',
+            'final' => 'Η ακύρωση δεν αναιρείται.',
+            'reason_sent' => 'Το email προς κάθε πελάτη περιλαμβάνει τον λόγο που γράψατε.',
+            'to_move' => 'Κρατήσεις για μεταφορά',
+            'move_one' => 'Μεταφορά',
+            'moved' => 'Μεταφέρθηκε',
+            'done' => 'Τέλος',
         ],
     ],
     'validation' => [

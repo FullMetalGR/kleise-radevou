@@ -84,10 +84,10 @@ function aslRoutes(): array
         'a new service in its form' => ['/admin/services/new', ['strings.services' => 'services']],
         'the Calendar with its closure words, the day editor\'s and the wizard over it' => ['/admin/calendar', ['strings.calendar' => 'calendar', 'strings.bookings' => 'bookings', 'strings.shifts' => 'shifts', 'wizard' => 'customers.wizard']],
         'the Shifts screen' => ['/admin/shifts', ['strings.shifts' => 'shifts']],
-        'the Staff list' => ['/admin/staff', ['strings.staff' => 'staff']],
-        'the floor\'s closures, the staff feature off' => ['/admin/staff', ['strings.staff' => 'staff'], true],
-        'a new staff member in its form' => ['/admin/staff/new', ['strings.staff' => 'staff']],
-        'a staff member\'s page' => ['/admin/staff/{staff}', ['strings.staff' => 'staff']],
+        'the Staff list' => ['/admin/staff', ['strings.staff' => 'staff', 'strings.bookings' => 'bookings']],
+        'the floor\'s closures, the staff feature off' => ['/admin/staff', ['strings.staff' => 'staff', 'strings.bookings' => 'bookings'], true],
+        'a new staff member in its form' => ['/admin/staff/new', ['strings.staff' => 'staff', 'strings.bookings' => 'bookings']],
+        'a staff member\'s page' => ['/admin/staff/{staff}', ['strings.staff' => 'staff', 'strings.bookings' => 'bookings']],
         'the Settings page' => ['/admin/settings', ['strings.settings' => 'settings', 'strings.payments' => 'payments', 'strings.billing' => 'billing', 'strings.emails' => 'emails']],
         'the Team screen' => ['/admin/team', ['strings.team' => 'team'], false, true],
         'the Billing screen' => ['/admin/billing', ['strings.billing' => 'billing'], false, true],
@@ -256,17 +256,18 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
         $walked['rows']++;
     }
 
-    // Eighteen rows and forty-four props: shell.php's 124 leaves on every row, its kit's nine
-    // counted lines among them; bookings.php's 174 on five (the Home screen, the Bookings list, a
-    // booking opened by its address, a customer's page and the Calendar); home.php's 159 on the
+    // Eighteen rows and forty-eight props: shell.php's 137 leaves on every row, its kit's nine
+    // counted lines among them; bookings.php's 174 on nine (the Home screen, the Bookings list, a
+    // booking opened by its address, a customer's page, the Calendar and the four Staff rows, whose
+    // closures card lists bookings and opens the Move form); home.php's 159 on the
     // Home screen; customers.php's 146 on two; services.php's 116 on three (the list, a service's
-    // form and the new service's form); the wizard's group's 38 over the Calendar; staff.php's 162
+    // form and the new service's form); the wizard's group's 38 over the Calendar; staff.php's 168
     // on four (the Staff list with the staff feature and without it, a new member's form and a
     // member's page); settings.php's 143, payments.php's 97 and emails.php's 21 on Settings;
-    // team.php's 45 on the Team screen; calendar.php's 78 on the Calendar; shifts.php's 79 on two
+    // team.php's 45 on the Team screen; calendar.php's 79 on the Calendar; shifts.php's 79 on two
     // (the Calendar and the Shifts screen); billing.php's 88 on two (Settings and the Billing
-    // screen); and reports.php's 118 on the Reports screen: 5423.
-    expect($walked)->toBe(['rows' => 18, 'props' => 44, 'leaves' => 18 * 124 + 5 * 174 + 159 + 2 * 146 + 3 * 116 + 38 + 4 * 162 + 143 + 97 + 45 + 78 + 2 * 79 + 2 * 88 + 21 + 118]);
+    // screen); and reports.php's 118 on the Reports screen: 6378.
+    expect($walked)->toBe(['rows' => 18, 'props' => 48, 'leaves' => 18 * 137 + 9 * 174 + 159 + 2 * 146 + 3 * 116 + 38 + 4 * 168 + 143 + 97 + 45 + 79 + 2 * 79 + 2 * 88 + 21 + 118]);
 });
 
 it('reads the Calendar in Greek for a user at el under view=day, view=week and view=month, and for a Greek viewer who holds viewOwnCalendar without viewBookings, pinned to her own row', function () {
@@ -348,7 +349,7 @@ it('reads the shell in the tenant default on the door and the set-password page,
         $walked['leaves'] += count(Arr::dot($shell));
     }
 
-    // Six pages, each the shell's 124 leaves: the door and the set-password page at a default
+    // Six pages, each the shell's 137 leaves: the door and the set-password page at a default
     // of el and at one of en, and the 404 for the user at el and the colleague at en.
-    expect($walked)->toBe(['pages' => 6, 'leaves' => 6 * 124]);
+    expect($walked)->toBe(['pages' => 6, 'leaves' => 6 * 137]);
 });

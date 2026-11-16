@@ -13,6 +13,7 @@ use App\Domain\Enum\HoldClass;
 use App\Infrastructure\BookingTransitionFactory;
 use App\Infrastructure\Events\TransitionPublishers;
 use App\Infrastructure\ExpireHoldsFactory;
+use App\Jobs\SendRequestRejected;
 use App\Tenancy\Tenant;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Support\Facades\Artisan;
@@ -441,6 +442,32 @@ it('sends the answer its transition made true even where the booking has moved o
         ->and($text)->toContain('has been approved')
         ->and($text)->toContain('Bridal trial')
         ->and(LunaFixture::row($held['uuid'])['status'])->toBe('cancelled');
+});
+
+it('sends the customer the usual answer to a declined request from a job the queue took before the job carried a closure\'s cause, which a worker restores from a payload that does not name one', function () {
+    $held = answerRequested($this);
+
+    config(['queue.default' => 'database']);
+
+    answerReject($held['uuid'], null);
+
+    // The job is put back as the job's earlier code serialized it, before a job carried a
+    // closure's cause: the tenant and the booking, and no property for a cause at all. A job
+    // that waited on the queue, or failed and is retried, while the code under it changed is
+    // this row, and a worker restores it without running the constructor that would default
+    // the property.
+    seamQueuedAs(SendRequestRejected::class, 'O:28:"App\Jobs\SendRequestRejected":2:{s:8:"tenantId";i:'.LunaFixture::tenant()->id.';s:4:"uuid";s:36:"'.$held['uuid'].'";}');
+
+    expect(seamSent())->toBe([]);
+
+    Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 0, '--no-interaction' => true]);
+
+    // The usual words of a request declined, and nothing left behind to retry.
+    expect(seamAddresses())->toBe(['perpetua.vandersnoot@example.test'])
+        ->and(seamOnly()->getSubject())->toBe(customerMailLine('customer-mail.rejected.subject', ['business' => 'Luna Hair Studio']))
+        ->and((string) seamOnly()->getTextBody())->toContain(customerMailLine('customer-mail.rejected.declined', ['business' => 'Luna Hair Studio']))
+        ->and(DB::table('jobs')->count())->toBe(0)
+        ->and(DB::table('failed_jobs')->count())->toBe(0);
 });
 
 it('sends nothing at all for a booking that is no longer there, because a re-read that finds nothing has nothing to say', function () {

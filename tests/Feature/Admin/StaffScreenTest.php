@@ -4,6 +4,7 @@ use App\Application\Clock;
 use App\Billing\EntitlementResolver;
 use App\Billing\Entitlements;
 use App\Http\Controllers\Admin\BlackoutController;
+use App\Http\Controllers\Admin\BookingListController;
 use App\Http\Controllers\Admin\StaffColourController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\StaffPhotoController;
@@ -182,7 +183,8 @@ it('answers a member id too long to be a whole number at the router, never a ser
 
 it('carries the staff section beside the shell\'s on the three routes, the floor\'s included, with the photo\'s limit spelled', function () {
     $owner = staffOwner();
-    $strings = ['shell' => __('admin/shell', [], 'en'), StaffController::SECTION => __('admin/staff', [], 'en')];
+    // The bookings section rides along for the list of bookings a closure falls over and its Move form.
+    $strings = [BookingListController::SECTION => __('admin/bookings', [], 'en'), 'shell' => __('admin/shell', [], 'en'), StaffController::SECTION => __('admin/staff', [], 'en')];
     $limit = ['megabytes' => intdiv(StaffPhotoRequest::MAX_KILOBYTES, 1024), 'spelled' => (string) (new NumberFormatter('en', NumberFormatter::SPELLOUT))->format(intdiv(StaffPhotoRequest::MAX_KILOBYTES, 1024))];
 
     foreach (['/admin/staff', '/admin/staff/new', '/admin/staff/'.elena()] as $path) {

@@ -60,6 +60,7 @@ use App\Notifications\AnnounceNewBooking;
 use App\Notifications\ApproveToTheCustomer;
 use App\Notifications\AskTheBusinessToDecide;
 use App\Notifications\CancelToTheCustomer;
+use App\Notifications\ClosureCauses;
 use App\Notifications\ConfirmToTheCustomer;
 use App\Notifications\ExpireToTheCustomer;
 use App\Notifications\MailTheBookingsLink;
@@ -178,6 +179,10 @@ class AppServiceProvider extends ServiceProvider
         // And for the decision link a request presented: the guard verifies it in the
         // middleware and the page behind it reads what was verified, for one request only.
         $this->app->scoped(PresentedLink::class);
+
+        // And for the bookings a new closure is cancelling: the bulk cancel names each one's
+        // cause and the customer's listeners read it inside the same call, for one request only.
+        $this->app->scoped(ClosureCauses::class);
 
         // The one clock outside a test. A use case that needs the current instant takes the
         // port, and a test binds an instant of its own in its place.

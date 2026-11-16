@@ -24,9 +24,10 @@ use LogicException;
  * on that date. Never a row id, because the card shows dates and a server matching by id would
  * need an id the screen never showed.
  *
- * Nothing here touches the mask cache: the open mask is rebuilt from patterns and blackouts on
- * every read and only a hold bumps a revision, so a closure written here is what the very next
- * availability read sees.
+ * The closures are written elsewhere, by LockedClosures, one row per date, so a closure of
+ * several days is several rows, which upcoming() folds back into one line. Nothing here touches
+ * the mask cache: the open mask is rebuilt from patterns and blackouts on every read, so a
+ * closure added or removed is what the very next availability read sees.
  */
 final readonly class BlackoutRecords
 {
@@ -59,24 +60,6 @@ final readonly class BlackoutRecords
         }
 
         return $grouped;
-    }
-
-    /**
-     * Writes a closure on every date from $date to $until inclusive, one row each, in one
-     * transaction: closures stay one row per date, so a closure of several days is several rows,
-     * which upcoming() folds back into one line. A null $until is the one date.
-     */
-    public function add(Tenant $tenant, ?int $staffId, string $date, ?string $until, ?string $start, ?string $end, ?string $reason): void
-    {
-        $rows = array_map(fn (string $day): array => [
-            'staff_id' => $staffId,
-            'date' => $day,
-            'start_time' => $start,
-            'end_time' => $end,
-            'reason' => $reason,
-        ], self::dates($date, $until));
-
-        $this->db->connection()->transaction(fn () => $this->table($tenant)->insert($rows));
     }
 
     /**

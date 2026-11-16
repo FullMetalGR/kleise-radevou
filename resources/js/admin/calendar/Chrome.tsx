@@ -10,7 +10,7 @@ import type { Choice } from '@/bookings/model';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
 import { useDesktop } from '@/lib/viewport';
-import { BADGE_ORDER, BlockBadge, badgeMeaning } from './Badge';
+import { BADGE_ORDER, BlockBadge, badgeMeaning, InsideMark } from './Badge';
 import { Caret, Chevron, Tick } from '@/components/glyphs';
 import { Initials } from '@/components/initials';
 import { type CalendarFilters, type CalendarOptions, COLOUR_BY_CHOICES, type ColourBy, idsOf, type Member, type Swatch, type View, type Who, whoSummary } from './model';
@@ -302,7 +302,8 @@ const SWATCH = 'admin-calendar-legend__swatch inline-block size-3 shrink-0 round
 /**
  * The legend, as the grid card's foot: one swatch per member shown, per category or per status as
  * Colour by says, from the same hue functions the blocks use, then the two block badges each
- * beside what it marks and the gap's hatch; in Day's member columns then Closure and Outside the
+ * beside what it marks, the mark of a booking inside a closure as a narrow block draws it, beside
+ * its words, and the gap's hatch; in Day's member columns then Closure and Outside the
  * member's hours, each drawn as the columns draw it; and, where an empty slot starts a booking,
  * the line saying so at the end. The screen decides whether it is drawn.
  */
@@ -327,6 +328,10 @@ export function Legend({ by, swatches, day = false, hint = false }: { by: Colour
                         {badgeMeaning(badge, shell, words)}
                     </li>
                 ))}
+                <li className="admin-calendar-legend__inside flex items-center">
+                    <InsideMark />
+                    {words.text('badges.closure')}
+                </li>
                 <li className="admin-calendar-legend__gap flex items-center gap-1.5">
                     <span className={cn(SWATCH, 'admin-calendar-gap-swatch')} aria-hidden="true" />
                     {words.text('legend.gap')}

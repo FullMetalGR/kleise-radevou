@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
@@ -30,6 +30,10 @@ import { type StaffKey, type StaffWords, useStaff } from './words';
  * the pressed Delete reads Deleting, or Add reads Adding. Every other control is merely disabled
  * meanwhile, and one status sentence beside them says why.
  *
+ * Where the owner hands it a step to show in place of the form, the list of bookings a new closure
+ * would fall over, the card shows that instead, and the form comes back as it was typed once the
+ * step is gone.
+ *
  * Every word is a key of the staff section, read through the screen's words.
  */
 
@@ -57,6 +61,8 @@ type Props = {
     idPrefix?: string;
     /** Who on the Staff list; null on one scope's card. */
     who?: ClosureWho | null;
+    /** What the card shows in place of its form while the owner asks about the bookings inside a closure; null for the form. */
+    inside?: ReactNode;
 };
 
 const WAIT_REMOVING = 'closures.wait_removing' satisfies StaffKey;
@@ -109,7 +115,7 @@ function keyOf(blackout: Line): string {
     return `${blackout.staff_id ?? ''}:${blackout.date}:${blackout.until ?? ''}:${blackout.start ?? ''}:${blackout.end ?? ''}`;
 }
 
-export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity, inFlight, onAdd, onRemove, idPrefix = 'blackout', who = null }: Props) {
+export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity, inFlight, onAdd, onRemove, idPrefix = 'blackout', who = null, inside = null }: Props) {
     const [member, setMember] = useState(WHOLE);
     const [date, setDate] = useState('');
     const [until, setUntil] = useState('');
@@ -161,68 +167,72 @@ export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity,
                     {words.text(inFlight.action === 'add' ? WAIT_ADDING : WAIT_REMOVING)}
                 </p>
             )}
-            <form
-                className="admin-blackouts__form grid gap-3 border-t pt-3 desktop:grid-cols-2"
-                onSubmit={(event) => {
-                    event.preventDefault();
+            {inside !== null ? (
+                <div className="admin-blackouts__inside flex flex-col gap-3 border-t pt-3">{inside}</div>
+            ) : (
+                <form
+                    className="admin-blackouts__form grid gap-3 border-t pt-3 desktop:grid-cols-2"
+                    onSubmit={(event) => {
+                        event.preventDefault();
 
-                    if (date !== '' && !held) {
-                        onAdd({
-                            staff_id: who === null || member === WHOLE ? null : Number(member),
-                            date,
-                            until: until === '' ? null : until,
-                            start: allDay ? null : start,
-                            end: allDay ? null : end,
-                            reason: typedReason(reason),
-                        });
-                    }
-                }}
-            >
-                {who !== null && (
-                    <>
-                        <Field id={`${idPrefix}-who`} label={words.text('closures.who')}>
-                            {(control) => (
-                                <Select
-                                    {...control}
-                                    className="admin-blackouts__who-select"
-                                    options={[{ value: WHOLE, label: words.text(BUSINESS) }, ...who.offered.map((offered) => ({ value: String(offered.id), label: offered.name }))]}
-                                    value={member}
-                                    onChange={setMember}
-                                />
-                            )}
-                        </Field>
-                        <div className="max-desktop:hidden" />
-                    </>
-                )}
-                <Field id={`${idPrefix}-date`} label={words.text('closures.date')}>
-                    {(control) => <DateField {...control} className="admin-blackouts__date" value={date} onChange={setDate} clock={clock} weekStart={weekStart} />}
-                </Field>
-                <Field id={`${idPrefix}-until`} label={words.text('closures.until')} help={words.text('closures.until_help')}>
-                    {(control) => <DateField {...control} className="admin-blackouts__until" value={until} onChange={setUntil} clock={clock} weekStart={weekStart} />}
-                </Field>
-                <Field id={`${idPrefix}-reason`} label={words.text('closures.reason')} help={shell.text('shared.closure.reason_help')} className="desktop:col-span-2">
-                    {(control) => <TextInput {...control} className="admin-blackouts__reason-input" value={reason} onChange={(event) => setReason(event.target.value)} />}
-                </Field>
-                {!allDay && (
-                    <>
-                        <Field id={`${idPrefix}-start`} label={words.text('closures.start')}>
-                            {(control) => <TimeField {...control} className="admin-blackouts__start" value={start} onChange={setStart} clock={clock} granularity={granularity} />}
-                        </Field>
-                        <Field id={`${idPrefix}-end`} label={words.text('closures.end')}>
-                            {(control) => <TimeField {...control} className="admin-blackouts__end" value={end} onChange={setEnd} clock={clock} granularity={granularity} />}
-                        </Field>
-                    </>
-                )}
-                <div className="admin-blackouts__all-day flex items-center gap-2 text-sm">
-                    <input type="checkbox" id={`${idPrefix}-all-day`} className="admin-blackouts__all-day-tick size-4 accent-primary" checked={allDay} onChange={(event) => setAllDay(event.target.checked)} />
-                    <label htmlFor={`${idPrefix}-all-day`}>{words.text('closures.all_day')}</label>
-                </div>
-                <div className="flex justify-end">
-                    <Button type="submit" variant="primary" className="admin-blackouts__add" disabled={date === '' || held} busy={inFlight?.action === 'add'} busyLabel={words.text('closures.adding')}>
-                        {words.text('closures.add')}
-                    </Button>
-                </div>
-            </form>
+                        if (date !== '' && !held) {
+                            onAdd({
+                                staff_id: who === null || member === WHOLE ? null : Number(member),
+                                date,
+                                until: until === '' ? null : until,
+                                start: allDay ? null : start,
+                                end: allDay ? null : end,
+                                reason: typedReason(reason),
+                            });
+                        }
+                    }}
+                >
+                    {who !== null && (
+                        <>
+                            <Field id={`${idPrefix}-who`} label={words.text('closures.who')}>
+                                {(control) => (
+                                    <Select
+                                        {...control}
+                                        className="admin-blackouts__who-select"
+                                        options={[{ value: WHOLE, label: words.text(BUSINESS) }, ...who.offered.map((offered) => ({ value: String(offered.id), label: offered.name }))]}
+                                        value={member}
+                                        onChange={setMember}
+                                    />
+                                )}
+                            </Field>
+                            <div className="max-desktop:hidden" />
+                        </>
+                    )}
+                    <Field id={`${idPrefix}-date`} label={words.text('closures.date')}>
+                        {(control) => <DateField {...control} className="admin-blackouts__date" value={date} onChange={setDate} clock={clock} weekStart={weekStart} />}
+                    </Field>
+                    <Field id={`${idPrefix}-until`} label={words.text('closures.until')} help={words.text('closures.until_help')}>
+                        {(control) => <DateField {...control} className="admin-blackouts__until" value={until} onChange={setUntil} clock={clock} weekStart={weekStart} />}
+                    </Field>
+                    <Field id={`${idPrefix}-reason`} label={words.text('closures.reason')} help={shell.text('shared.closure.reason_help')} className="desktop:col-span-2">
+                        {(control) => <TextInput {...control} className="admin-blackouts__reason-input" value={reason} onChange={(event) => setReason(event.target.value)} />}
+                    </Field>
+                    {!allDay && (
+                        <>
+                            <Field id={`${idPrefix}-start`} label={words.text('closures.start')}>
+                                {(control) => <TimeField {...control} className="admin-blackouts__start" value={start} onChange={setStart} clock={clock} granularity={granularity} />}
+                            </Field>
+                            <Field id={`${idPrefix}-end`} label={words.text('closures.end')}>
+                                {(control) => <TimeField {...control} className="admin-blackouts__end" value={end} onChange={setEnd} clock={clock} granularity={granularity} />}
+                            </Field>
+                        </>
+                    )}
+                    <div className="admin-blackouts__all-day flex items-center gap-2 text-sm">
+                        <input type="checkbox" id={`${idPrefix}-all-day`} className="admin-blackouts__all-day-tick size-4 accent-primary" checked={allDay} onChange={(event) => setAllDay(event.target.checked)} />
+                        <label htmlFor={`${idPrefix}-all-day`}>{words.text('closures.all_day')}</label>
+                    </div>
+                    <div className="flex justify-end">
+                        <Button type="submit" variant="primary" className="admin-blackouts__add" disabled={date === '' || held} busy={inFlight?.action === 'add'} busyLabel={words.text('closures.adding')}>
+                            {words.text('closures.add')}
+                        </Button>
+                    </div>
+                </form>
+            )}
         </section>
     );
 }

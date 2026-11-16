@@ -15,6 +15,7 @@ use App\Jobs\SendRequestApproved;
 use App\Jobs\SendRequestExpired;
 use App\Jobs\SendRequestRejected;
 use App\Jobs\SendThankYou;
+use App\Notifications\ClosureCause;
 use App\Notifications\TenantClock;
 use App\Notifications\TenantTime;
 use App\Site\SiteLanguage;
@@ -85,6 +86,9 @@ afterEach(function () {
 
 /** The start a moved booking left, as SendMove carries it: the Monday at 11:00 in Athens. */
 const CML_MOVED_FROM = '2026-11-02 09:00:00.000000+00:00';
+
+/** The reason the business typed for the closure that cancelled a booking. */
+const CML_CLOSURE_REASON = 'Staff training';
 
 /**
  * What a walk by keys reads in a message: its subject, its text and, where it carries a calendar
@@ -202,6 +206,7 @@ function cmlForms(): array
         'the timeout' => [fn (int $tenant, string $uuid, string $token): object => new SendRequestExpired($tenant, $uuid), $mail('request_expired.timed_out.subject'), array_map($mail, ['greeting', 'request_expired.timed_out.expired', 'request_expired.timed_out.free_again', 'zone'])],
         'the unpaid lapse' => [fn (int $tenant, string $uuid, string $token): object => new SendRequestExpired($tenant, $uuid, true), $mail('request_expired.unpaid.subject'), array_map($mail, ['greeting', 'request_expired.unpaid.expired', 'request_expired.unpaid.free_again', 'zone'])],
         'the cancellation of the request by the business' => [fn (int $tenant, string $uuid, string $token): object => new SendCancellation($tenant, $uuid, true, false), $mail('cancelled.request.by_business.subject'), array_map($mail, ['greeting', 'cancelled.request.by_business.cancelled', 'cancelled.request.by_business.means', 'zone'])],
+        'the rejection by a closure' => [fn (int $tenant, string $uuid, string $token): object => new SendRequestRejected($tenant, $uuid, new ClosureCause(CML_CLOSURE_REASON)), $mail('closure.request.subject'), array_map($mail, ['greeting', 'closure.request.cancelled', 'closure.reason', 'closure.request.after', 'zone', 'closure.book'])],
         'the move of the request by the customer' => [fn (int $tenant, string $uuid, string $token): object => new SendMove($tenant, $uuid, true, true, CML_MOVED_FROM), $mail('moved.request.subject'), array_map($mail, ['greeting', 'moved.request.by_customer', 'moved.unchanged', 'zone'])],
         'the move of the request by the business' => [fn (int $tenant, string $uuid, string $token): object => new SendMove($tenant, $uuid, true, false, CML_MOVED_FROM), $mail('moved.request.subject'), array_map($mail, ['greeting', 'moved.request.by_business', 'moved.unchanged', 'moved.unexpected', 'zone'])],
         'the move of a booking awaiting its payment' => [function (int $tenant, string $uuid, string $token): object {
@@ -223,7 +228,9 @@ function cmlRequestKeysOn(): void
 
 /**
  * The values each line of a request's forms is filled with for luna's request: the start the
- * move left and the start it has as ICU spells them in the language given.
+ * move left and the start it has as ICU spells them in the language given, the closure's
+ * reason, and the link the closure's message ends on, the hosted page opened on the request's
+ * own service and member under the prefix of that language.
  *
  * @return array<string, string>
  */
@@ -234,8 +241,10 @@ function cmlValues(SiteLanguage $language): array
         'business' => LunaFixture::tenant()->name,
         'service' => 'Bridal trial',
         'zone' => FixtureDay::ZONE,
+        'reason' => CML_CLOSURE_REASON,
         'from' => lunaInstant(new DateTimeImmutable(CML_MOVED_FROM, new DateTimeZone('UTC')), $language),
         'to' => lunaInstant(LunaFixture::at(FixtureDay::START), $language),
+        'link' => app(TenantUrls::class)->bookingLink(Slug::of('luna'), ['service' => seamId('services', 'Bridal trial'), 'staff' => seamId('staff', 'Elena Papadaki')], $language),
     ];
 }
 
@@ -420,6 +429,7 @@ function cmlLaterForms(): array
         'the cancellation by the customer' => [fn (int $tenant, string $uuid): object => new SendCancellation($tenant, $uuid, false, true), $mail('cancelled.booking.by_customer.subject'), array_map($mail, ['greeting', 'cancelled.booking.by_customer.cancelled', 'cancelled.booking.by_customer.means', 'zone']), false, false],
         'the cancellation by the business' => [fn (int $tenant, string $uuid): object => new SendCancellation($tenant, $uuid, false, false), $mail('cancelled.booking.by_business.subject'), array_map($mail, ['greeting', 'cancelled.booking.by_business.cancelled', 'cancelled.booking.by_business.means', 'zone']), false, false],
         'the withdrawal of a request' => [fn (int $tenant, string $uuid): object => new SendCancellation($tenant, $uuid, true, true), $mail('cancelled.request.by_customer.subject'), array_map($mail, ['greeting', 'cancelled.request.by_customer.cancelled', 'cancelled.request.by_customer.means', 'zone']), false, false],
+        'the cancellation by a closure' => [fn (int $tenant, string $uuid): object => new SendCancellation($tenant, $uuid, false, false, new ClosureCause(CML_CLOSURE_REASON)), $mail('closure.booking.subject'), array_map($mail, ['greeting', 'closure.booking.cancelled', 'closure.reason', 'closure.booking.after', 'zone', 'closure.book']), false, false],
         'the move by the customer' => [fn (int $tenant, string $uuid): object => new SendMove($tenant, $uuid, false, true, CML_MOVED_FROM), $mail('moved.booking.subject'), array_map($mail, ['greeting', 'moved.booking.by_customer', 'moved.calendar', 'zone']), false, true],
         'the move by the business' => [fn (int $tenant, string $uuid): object => new SendMove($tenant, $uuid, false, false, CML_MOVED_FROM), $mail('moved.booking.subject'), array_map($mail, ['greeting', 'moved.booking.by_business', 'moved.calendar', 'moved.unexpected', 'zone']), false, true],
         'the reminder' => [fn (int $tenant, string $uuid): object => cmlReminder($tenant, $uuid), $mail('reminder.subject'), array_map($mail, ['greeting', 'reminder.reminder', 'reminder.earlier', 'zone']), true, false],
@@ -434,8 +444,9 @@ function cmlLaterForms(): array
 
 /**
  * A line of the confirmed booking's messages in a language, filled with luna's values for the
- * Haircut: the customer, the business, the zone, and the start the move left and the start it has
- * as ICU spells them in that language; and the link given for a line ending on one.
+ * Haircut: the customer, the business, the zone, the closure's reason, and the start the move left
+ * and the start it has as ICU spells them in that language; and the link given for a line ending
+ * on one.
  */
 function cmlLaterLine(string $key, SiteLanguage $language, string $link = ''): string
 {
@@ -444,6 +455,7 @@ function cmlLaterLine(string $key, SiteLanguage $language, string $link = ''): s
         'business' => LunaFixture::tenant()->name,
         'service' => 'Haircut',
         'zone' => FixtureDay::ZONE,
+        'reason' => CML_CLOSURE_REASON,
         'from' => lunaInstant(new DateTimeImmutable(CML_MOVED_FROM, new DateTimeZone('UTC')), $language),
         'to' => lunaInstant(LunaFixture::at(FixtureDay::START), $language),
         'link' => $link,
@@ -497,6 +509,10 @@ function cmlExpectLater(Email $mail, string $subject, array $keys, bool $again, 
 
     if ($again) {
         expect($text)->toContain(cmlLaterLine('customer-mail.book_again', $language, cmlAgain($language)));
+    }
+
+    if ($subject === 'customer-mail.closure.booking.subject') {
+        expect($text)->toContain(cmlLaterLine('customer-mail.closure.book', $language, cmlAgain($language)));
     }
 
     if ($subject === 'customer-mail.thank_you.subject') {
@@ -744,5 +760,5 @@ it('walks every key of customer-mail.php across the cases above, so no line of t
     sort($keys);
 
     expect(cmlKeysWalked())->toBe($keys)
-        ->and($keys)->toHaveCount(65);
+        ->and($keys)->toHaveCount(73);
 });

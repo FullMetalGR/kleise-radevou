@@ -13,8 +13,9 @@
  * their own are the templates' layout. A value's :word is filled by the translator: :customer the
  * name on the booking, :business the tenant, :service the booking's services as the message lists
  * them, :zone the clock's name, :from and :to the two starts of a move, each an instant as ICU
- * spells it, :link a link the line ends on, :count a number spelled out by ICU. Service names and
- * the business's name are the tenant's own and are never here. No line joins a date to a time: an
+ * spells it, :link a link the line ends on, :count a number spelled out by ICU, :reason the reason
+ * the business typed for a closure. Service names, the business's name and a closure's reason are
+ * the tenant's own and are never here. No line joins a date to a time: an
  * instant is ICU's own.
  */
 
@@ -118,6 +119,26 @@ return [
                 'means' => 'The appointment will not take place. If you did not expect this, get in touch with :business.',
             ],
         ],
+    ],
+
+    // A booking or a request the business cancelled because it added a closure over its time, in
+    // place of the cancellation or the rejection: its subject, the sentence saying what was done,
+    // before the booking's lines, and what follows from it, by what was cancelled; then the
+    // closure's reason when one was typed, and Book another time, the hosted page in the booking's
+    // language, the link set after the words.
+    'closure' => [
+        'booking' => [
+            'subject' => ':business had to cancel your booking',
+            'cancelled' => ':business had to cancel your booking:',
+            'after' => 'The appointment will not take place, and nothing more is needed from you. You are welcome to book another time.',
+        ],
+        'request' => [
+            'subject' => ':business had to cancel your request',
+            'cancelled' => ':business had to cancel your request:',
+            'after' => 'Nothing has been booked, and nothing more is needed from you. You are welcome to ask for another time.',
+        ],
+        'reason' => 'The reason given: :reason',
+        'book' => 'Book another time: :link',
     ],
 
     // The move of a request or a booking to another time: the subject by what moved, the opening

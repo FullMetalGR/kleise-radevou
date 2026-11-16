@@ -16,7 +16,10 @@
  * Three keys are read as choices, table.count by the rows shown, form.bio_count by the characters
  * written and form.photo_help by the megabytes, each keeping the English cases of one and more
  * than one, since the code asks for both; the figure's unit in form.photo_help is written MB,
- * which does not bend, so its two cases read alike.
+ * which does not bend, so its two cases read alike. Three more are read as choices on the server
+ * by the count of bookings, refusals.bookings_inside, flashes.closure_cancelled and
+ * flashes.closure_skipped, with the same two cases. validation.closure_choice names the three
+ * choices as the form sends them.
  */
 
 return [
@@ -191,12 +194,16 @@ return [
         'closure_until_date' => 'Το πεδίο «Έως» πρέπει να είναι ημερομηνία, π.χ. 2026-12-31, ή κενό για κλειστή περίοδο μίας ημέρας.',
         'closure_until_order' => 'Το πεδίο «Έως» πρέπει να είναι η ίδια ημέρα με την ημερομηνία της κλειστής περιόδου ή μεταγενέστερη.',
         'closure_until_span' => 'Μια κλειστή περίοδος διαρκεί έως :n ημέρες. Προσθέστε μια μεγαλύτερη σε τμήματα.',
+        'closure_choice' => 'Η επιλογή είναι keep, move ή cancel, ή καμία.',
+        'closure_seen' => 'Οι κρατήσεις που εμφανίστηκαν πρέπει να είναι λίστα, η καθεμία με το αναγνωριστικό και την κατάστασή της.',
         'colour' => 'Το χρώμα πρέπει να είναι «:automatic» ή ένα από τα :count χρώματα της παλέτας.',
     ],
     'refusals' => [
         'unknown_service' => 'Μία από τις υπηρεσίες που ορίστηκαν δεν υπάρχει στο μενού υπηρεσιών.',
         'referenced' => 'Αυτό το μέλος της ομάδας χρησιμοποιείται ακόμη από υπάρχουσες κρατήσεις και δεν μπορεί να διαγραφεί.',
         'implicit' => 'Αυτό το μέλος της ομάδας εκπροσωπεί την ίδια την επιχείρηση και δεν μπορεί να διαγραφεί.',
+        'bookings_inside' => '{1} :count κράτηση πέφτει μέσα σε αυτή την κλειστή περίοδο.|[2,*] :count κρατήσεις πέφτουν μέσα σε αυτή την κλειστή περίοδο.',
+        'bookings_changed' => 'Οι κρατήσεις μέσα σε αυτή την κλειστή περίοδο άλλαξαν στο μεταξύ. Εδώ φαίνονται όπως είναι τώρα.',
     ],
     'flashes' => [
         'created' => 'Το μέλος της ομάδας προστέθηκε.',
@@ -206,6 +213,8 @@ return [
         'deleted' => 'Το μέλος της ομάδας διαγράφηκε.',
         'closure_added' => 'Η κλειστή περίοδος προστέθηκε.',
         'closure_removed' => 'Η κλειστή περίοδος αφαιρέθηκε.',
+        'closure_cancelled' => '{1} Η κλειστή περίοδος προστέθηκε και ακυρώθηκε :count κράτηση μέσα σε αυτήν.|[2,*] Η κλειστή περίοδος προστέθηκε και ακυρώθηκαν :count κρατήσεις μέσα σε αυτήν.',
+        'closure_skipped' => '{1} :count κράτηση άλλαξε στο μεταξύ και έμεινε ως είχε: :bookings.|[2,*] :count κρατήσεις άλλαξαν στο μεταξύ και έμειναν ως είχαν: :bookings.',
         'colour_saved' => 'Το χρώμα αποθηκεύτηκε.',
         'photo_uploaded' => 'Η φωτογραφία μεταφορτώθηκε.',
         'photo_removed' => 'Η φωτογραφία αφαιρέθηκε.',

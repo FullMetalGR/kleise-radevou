@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application;
 
+use App\Application\Dto\BookingAsRead;
 use App\Application\Dto\LockedBooking;
 use App\Application\Dto\Transition;
 use App\Application\Dto\TransitionLanding;
@@ -32,6 +33,13 @@ use DateTimeImmutable;
  * Nothing the request carried reaches it: not the status the caller thought they were
  * cancelling, and not the windows a booking page rendered its buttons from.
  *
+ * One caller may hold a cancel to the booking as it read it, the one that cancels many bookings
+ * it listed a moment earlier, each in a write of its own. The booking found under the lock must
+ * then still be that one, in the same status and with every item on the same member over the
+ * same time, or the cancel is refused as not cancellable before the policy is asked. That can
+ * only refuse: the policy still decides what is allowed, from the re-read alone. A cancel handed
+ * no such reading, which is every button's, is the policy and nothing else.
+ *
  * A refund is not this transition's business: refunds are flagged and never automatic, and
  * nothing here reads or writes a payment reference. The flag is the published record's
  * consequence, after the commit: TellTheProvider queues FlagPayment on it. A cancel that moved
@@ -43,19 +51,22 @@ final readonly class CancelBooking
 
     /**
      * @param  Actor  $actor  who is cancelling: the guest through their magic link, or the signed-in user acting for the business
+     * @param  BookingAsRead|null  $asRead  the booking as the caller read it, to cancel it only while it is still so; null to ask the policy alone
      *
      * @throws BookingUnknown when no booking of this tenant carries the identifier
-     * @throws TransitionRefused when the status does not allow a cancel, or the customer is inside the window
+     * @throws TransitionRefused when the status does not allow a cancel, the customer is inside the window, or the booking is no longer as the caller read it
      * @throws WriteContended when the booking's items moved under the lock on every attempt
      */
-    public function cancel(string $uuid, Actor $actor): void
+    public function cancel(string $uuid, Actor $actor, ?BookingAsRead $asRead = null): void
     {
         $by = PolicyActor::behind($actor);
 
         $this->writes->apply(new Transition(
             $uuid,
             $actor,
-            fn (LockedBooking $booking, DateTimeImmutable $now): ?TransitionRefusal => $this->refusal($booking, $now, $by),
+            fn (LockedBooking $booking, DateTimeImmutable $now): ?TransitionRefusal => $asRead !== null && ! $asRead->stillHolds($booking)
+                ? TransitionRefusal::NotCancellable
+                : $this->refusal($booking, $now, $by),
             fn (): TransitionLanding => new TransitionLanding(BookingStatus::Cancelled, [
                 TransitionColumn::HoldClass->value => null,
                 TransitionColumn::HoldExpiresAt->value => null,

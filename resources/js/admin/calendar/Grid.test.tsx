@@ -41,7 +41,7 @@ const WEEK = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-0
 const CLOCK = { timezone: 'Europe/Athens', dateFormat: 'd/m/Y', timeFormat: 'H:i' };
 
 function block(overrides: Partial<Block>): Block {
-    return { id: 'b1:0', kind: 'booking', uuid: 'b1', staffId: 2, start: '2026-11-03T10:00:00', end: '2026-11-03T11:00:00', minutes: 60, title: 'Ada North, Haircut', badge: null, category: null, status: 'confirmed', segment: 0, movable: false, ...overrides };
+    return { id: 'b1:0', kind: 'booking', uuid: 'b1', staffId: 2, start: '2026-11-03T10:00:00', end: '2026-11-03T11:00:00', minutes: 60, title: 'Ada North, Haircut', badge: null, category: null, status: 'confirmed', segment: 0, movable: false, inside: false, ...overrides };
 }
 
 const ELENA = block({});
@@ -63,6 +63,11 @@ function show(node: ReactNode) {
 /** A palette hex as the DOM spells a colour it parsed. */
 function rgb(hex: string): string {
     return `rgb(${[1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16)).join(', ')})`;
+}
+
+/** What a screen reader reads of an element: its text without the parts kept from readers. */
+function heard(element: Element): string {
+    return [...element.childNodes].map((node) => (node instanceof Element ? (node.getAttribute('aria-hidden') === 'true' ? '' : heard(node)) : (node.textContent ?? ''))).join('');
 }
 
 function eventOf(id: string): HTMLElement {
@@ -150,6 +155,41 @@ describe('the grid', () => {
         expect(eventOf('b1:0').querySelector('.admin-calendar-block__time')?.textContent).toBe('10:00-11:00');
         expect(eventOf('b3:0').querySelector('.admin-calendar-block__time')?.textContent).toBe('14:00-14:45');
         expect(eventOf('b2:0').querySelector('.admin-calendar-block__time')).toBeNull();
+    });
+
+    it('marks a block a closure holds "Inside a closure" first on its line, before its badge and its title, the words read whichever drawing shows and the lone mark kept from a reader, and no other block', () => {
+        render({ blocks: [ELENA, { ...REQUEST, inside: true }, GAP] });
+
+        const title = eventOf('b3:0').querySelector('.admin-calendar-block__title');
+        const marker = eventOf('b3:0').querySelector('.admin-calendar-inside');
+        const mark = marker?.querySelector('.admin-calendar-inside__mark');
+
+        expect(marker?.textContent).toBe(`!${cal.text('badges.closure')}`);
+        expect(marker instanceof Element ? heard(marker) : null).toBe(cal.text('badges.closure'));
+        expect(marker?.getAttribute('title')).toBe(cal.text('badges.closure'));
+        expect([mark?.textContent, mark?.getAttribute('aria-hidden')]).toEqual(['!', 'true']);
+        expect([...(title?.children ?? [])].map((pill) => pill.classList.item(0))).toEqual(['admin-calendar-inside', 'admin-calendar-badge']);
+        expect(title?.lastChild?.textContent).toBe('Rita Request, Bridal trial');
+        expect(title instanceof Element ? heard(title) : null).toBe(`${cal.text('badges.closure')}${cal.text('badges.pending')}Rita Request, Bridal trial`);
+        expect(eventOf('b3:0').querySelector('.admin-calendar-block__body')?.classList.contains('@container')).toBe(true);
+        expect(eventOf('b3:0').classList.contains('admin-calendar-block--inside')).toBe(true);
+        expect(eventOf('b1:0').querySelector('.admin-calendar-inside')).toBeNull();
+        expect(eventOf('b1:0').classList.contains('admin-calendar-block--inside')).toBe(false);
+    });
+
+    it('draws the marker beside a badge by a width of its own, the lone mark coming sooner where two pills share the line, and cuts that line where it overflows instead of ellipsising a pill away', () => {
+        render({ blocks: [{ ...ELENA, inside: true }, { ...REQUEST, inside: true }, UNPAID] });
+
+        const drawn = (id: string) => eventOf(id).querySelector('.admin-calendar-inside__mark')?.className;
+        const line = (id: string) => eventOf(id).querySelector('.admin-calendar-block__title')?.className ?? '';
+
+        expect(drawn('b1:0')).toContain('admin-calendar-inside__mark');
+        expect(drawn('b3:0')).toContain('admin-calendar-inside__mark');
+        expect(drawn('b1:0')).not.toBe(drawn('b3:0'));
+        expect(line('b3:0')).toContain('text-clip');
+        expect(line('b1:0')).toContain('truncate');
+        expect(line('b1:0')).not.toContain('text-clip');
+        expect(line('b4:0')).not.toContain('text-clip');
     });
 
     it('steps the slots at the granularity, labels the axis on the hour alone in the tenant time format, lays the week from the tenant week start, and shows one column in Day', () => {
@@ -443,12 +483,25 @@ describe('Colour by on the grid', () => {
             expect(view.host.querySelectorAll('.admin-calendar-legend__badge')).toHaveLength(2);
         });
 
+        it('lists the mark of a booking inside a closure among the badges, the lone mark a narrow block draws beside its words, the mark kept from a reader who hears the words once', () => {
+            show(<Legend by="staff" swatches={swatchesOf(STAFF, members, [], name, cal)} />);
+
+            const entry = view.host.querySelector('.admin-calendar-legend__inside');
+            const mark = entry?.querySelector('.admin-calendar-legend__mark');
+
+            expect([mark?.textContent, mark?.getAttribute('aria-hidden')]).toEqual(['!', 'true']);
+            expect(entry?.textContent).toBe(`!${cal.text('badges.closure')}`);
+            expect(entry instanceof Element ? heard(entry) : null).toBe(cal.text('badges.closure'));
+            expect(entry?.closest('ul')?.getAttribute('aria-label')).toBe(cal.text('legend.badges'));
+            expect(entry?.querySelector('.admin-calendar-inside')).toBeNull();
+        });
+
         it('draws the gap\'s entry after the swatches, Closure and Outside the member\'s hours in Day, and the hint on an empty slot last where a slot starts a booking', () => {
             show(<Legend by="staff" swatches={swatchesOf(STAFF, members, [], name, cal)} day={true} hint={true} />);
 
             const entries = [...view.host.querySelectorAll<HTMLElement>('.admin-calendar-legend li')].map((item) => item.className.match(/admin-calendar-legend__[a-z]+/)?.[0]);
 
-            expect(entries).toEqual(['member', 'member', 'badge', 'badge', 'gap', 'closure', 'outside'].map((entry) => `admin-calendar-legend__${entry}`));
+            expect(entries).toEqual(['member', 'member', 'badge', 'badge', 'inside', 'gap', 'closure', 'outside'].map((entry) => `admin-calendar-legend__${entry}`));
             expect(view.host.querySelector('.admin-calendar-legend__gap')?.textContent).toBe(cal.text('legend.gap'));
             expect(view.host.querySelector('.admin-calendar-legend__gap .admin-calendar-gap-swatch')).not.toBeNull();
             expect(view.host.querySelector('.admin-calendar-legend')?.lastElementChild?.classList.contains('admin-calendar-legend__hint')).toBe(true);

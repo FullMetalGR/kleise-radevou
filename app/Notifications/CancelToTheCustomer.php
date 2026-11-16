@@ -24,14 +24,17 @@ use App\Jobs\SendCancellation;
  *
  * **What the words turn on is decided here and carried**, because the row has forgotten it:
  * whether the booking was still a request, which is the status it came from, and whether the
- * customer did it, which is the actor. Both are the record's and only the record's.
+ * customer did it, which is the actor. Both are the record's and only the record's. So is a
+ * third, read beside the record: whether the business cancelled it because it added a closure
+ * over it, which ClosureCauses names for the length of that cancel, and which the job tells in
+ * the closure's words in place of these.
  *
  * **It runs after the commit and it does not throw**, and the business's notice on the same
  * record runs whether this one worked or not. Both promises are QueuedMessages'.
  */
 final readonly class CancelToTheCustomer
 {
-    public function __construct(private QueuedMessages $messages) {}
+    public function __construct(private QueuedMessages $messages, private ClosureCauses $causes) {}
 
     public function handle(BookingCancelled $cancelled): void
     {
@@ -41,12 +44,13 @@ final readonly class CancelToTheCustomer
 
         $wasARequest = $cancelled->from !== null && $cancelled->from->awaitsADecision();
         $byTheCustomer = $cancelled->actor->isCustomer();
+        $closure = $this->causes->of($cancelled->uuid);
 
         $this->messages->hand(
             SendCancellation::class,
             $cancelled->uuid,
-            function (int $tenant) use ($cancelled, $wasARequest, $byTheCustomer): void {
-                SendCancellation::dispatch($tenant, $cancelled->uuid, $wasARequest, $byTheCustomer);
+            function (int $tenant) use ($cancelled, $wasARequest, $byTheCustomer, $closure): void {
+                SendCancellation::dispatch($tenant, $cancelled->uuid, $wasARequest, $byTheCustomer, $closure);
             },
         );
     }

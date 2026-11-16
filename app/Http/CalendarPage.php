@@ -95,6 +95,12 @@ final readonly class CalendarPage
      * bookings sit on it, one with the staff feature and no named member yet, sees them: `implicit`
      * names its id then, and is null under Me and a picked set.
      *
+     * `closures` carries, per row and per date, the closures of every row the screen draws a
+     * booking's block on that the hours leave out, the implicit row's above all, so that a block
+     * on such a row can be marked when a closure holds it; empty where the hours cover every row
+     * drawn. A row the screen does not draw is never among them: its closures, with their
+     * reasons, are no part of what this viewer was shown.
+     *
      * Each day of the hours carries what the Shifts day editor reads: its source and the windows
      * its pattern gives that date, for Edit this day's hours in Day. Each member with no window in
      * force on any date of the window has an entry in `next_working`: the first later date holding
@@ -111,6 +117,7 @@ final readonly class CalendarPage
      *     implicit: int|null,
      *     hours: array<int, array<string, array{windows: list<array{start: string, end: string}>, closures: list<array{start: string|null, end: string|null, reason: string|null, business: bool}>, source: string, pattern: list<array{start: string, end: string}>}>>,
      *     next_working: array<int, array{date: string, windows: list<array{start: string, end: string}>}|null>,
+     *     closures: array<int, array<string, list<array{start: string|null, end: string|null, reason: string|null, business: bool}>>>,
      *     bookings: list<array<string, mixed>>,
      * }
      */
@@ -132,6 +139,7 @@ final readonly class CalendarPage
         $idle = array_values(array_diff(array_column($members, 'id'), StaffHours::scheduled($hours)));
         $implicit = in_array($window->who, [CalendarWho::Scheduled, CalendarWho::All], true) ? $this->roster->implicitId($tenant) : null;
         $shown = [...array_column($members, 'id'), ...($implicit === null ? [] : [$implicit])];
+        $bookings = $this->bookings($tenant, $window->narrowedTo($shown), $viewer, $own['id'] ?? null);
 
         return [
             'from' => $window->from,
@@ -142,8 +150,41 @@ final readonly class CalendarPage
             'implicit' => $implicit,
             'hours' => $hours,
             'next_working' => $this->hours->nextWorking($tenant, $idle, $window->to),
-            'bookings' => $this->bookings($tenant, $window->narrowedTo($shown), $viewer, $own['id'] ?? null),
+            'closures' => $this->hours->closuresOf($tenant, self::uncovered($bookings, $hours, $window->narrows() ? $shown : null), $window),
+            'bookings' => $bookings,
         ];
+    }
+
+    /**
+     * The rows the screen draws an item of the bookings on that the hours do not cover, the
+     * implicit row's among them: the closures the window carries for these let a block on such a
+     * row tell whether a closure holds it. A booking of several services arrives with every one
+     * of them, a colleague's too, so the rows are cut to the ones drawn: every row under All
+     * staff, else the rows shown alone, which leaves the implicit row under Scheduled staff and
+     * none under Me or a picked set.
+     *
+     * @param  list<array<string, mixed>>  $bookings
+     * @param  array<int, mixed>  $hours
+     * @param  list<int>|null  $shown  the rows the screen draws, null where it draws every row
+     * @return list<int>
+     */
+    private static function uncovered(array $bookings, array $hours, ?array $shown): array
+    {
+        $rows = [];
+
+        foreach ($bookings as $booking) {
+            $items = $booking['items'] ?? null;
+
+            foreach (is_array($items) ? $items : [] as $item) {
+                $staff = is_array($item) ? ($item['staff_id'] ?? null) : null;
+
+                if (is_int($staff) && ! array_key_exists($staff, $hours)) {
+                    $rows[$staff] = $staff;
+                }
+            }
+        }
+
+        return array_values($shown === null ? $rows : array_intersect($rows, $shown));
     }
 
     /**

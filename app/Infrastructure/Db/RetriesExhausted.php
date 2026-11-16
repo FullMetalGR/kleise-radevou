@@ -11,13 +11,15 @@ use PDOException;
  * concurrent transaction again, and the runner wrote an info line per retry and its failure
  * line at the end. The pay hop's write and its on-site settlement answer it as a lost race, as
  * they answer a Busy; the hop's write does since it holds the staff-day lock across a session
- * the provider already opened. Every other route lets it reach the handler, which reports it,
- * the JSON routes included (ErrorEnvelope maps Busy, WriteContended and KeySetMoved to 503, not
- * this). Two callers catch it with every other failure. The hold sweep (SweepExpiredHolds),
- * which no route runs, writes its own error line and returns. A provider's notification
- * (PaymentWebhook, the service behind POST /webhooks/{provider}/{token}) logs it and rethrows
- * it as the previous of a NotificationUnhandled, which reaches the handler and is answered 500,
- * the event left unmarked, so the provider delivers the notification again.
+ * the provider already opened. One write raises it outside the runner: the admin's add of
+ * closed time (LockedClosures), which runs once, raises it after that one attempt with the same
+ * line on the log, and its route answers it busy. Every other route lets it reach the handler,
+ * which reports it, the JSON routes included (ErrorEnvelope maps Busy, WriteContended and
+ * KeySetMoved to 503, not this). Two callers catch it with every other failure. The hold sweep
+ * (SweepExpiredHolds), which no route runs, writes its own error line and returns. A provider's
+ * notification (PaymentWebhook, the service behind POST /webhooks/{provider}/{token}) logs it
+ * and rethrows it as the previous of a NotificationUnhandled, which reaches the handler and is
+ * answered 500, the event left unmarked, so the provider delivers the notification again.
  */
 final class RetriesExhausted extends TransactionFailure
 {

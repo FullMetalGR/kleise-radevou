@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application;
 
+use App\Application\Dto\BookingAsRead;
 use App\Application\Dto\LockedBooking;
 use App\Application\Dto\Transition;
 use App\Application\Dto\TransitionLanding;
@@ -27,6 +28,12 @@ use DateTimeImmutable;
  *
  * The slot goes back to the diary in the same transaction: rejected is a status the blocking
  * predicate never counts, so the items stop blocking on the way through.
+ *
+ * One caller may hold a rejection to the request as it read it, the one that rejects many
+ * requests it listed a moment earlier, each in a write of its own. The request found under the
+ * lock must then still be that one, in the same status and with every item on the same member
+ * over the same time, or the rejection is refused as not rejectable before the guard is asked.
+ * That can only refuse: the guard still decides what is allowed, from the re-read alone.
  */
 final readonly class RejectBooking
 {
@@ -45,17 +52,20 @@ final readonly class RejectBooking
      *
      * @param  Actor  $actor  who is deciding: the signed-in user pressing Reject, or their signed link
      * @param  string|null  $reason  the owner's note, or null where they gave none
+     * @param  BookingAsRead|null  $asRead  the request as the caller read it, to reject it only while it is still so; null to ask the guard alone
      *
      * @throws BookingUnknown when no booking of this tenant carries the identifier
-     * @throws TransitionRefused when the booking is not a request waiting on the owner, or its window has closed
+     * @throws TransitionRefused when the booking is not a request waiting on the owner, its window has closed, or it is no longer as the caller read it
      * @throws WriteContended when the booking's items moved under the lock on every attempt
      */
-    public function reject(string $uuid, Actor $actor, ?string $reason = null): void
+    public function reject(string $uuid, Actor $actor, ?string $reason = null, ?BookingAsRead $asRead = null): void
     {
         $this->writes->apply(new Transition(
             $uuid,
             $actor,
-            $this->guard(...),
+            fn (LockedBooking $booking, DateTimeImmutable $now): ?TransitionRefusal => $asRead !== null && ! $asRead->stillHolds($booking)
+                ? TransitionRefusal::NotRejectable
+                : $this->guard($booking, $now),
             fn (): TransitionLanding => new TransitionLanding(BookingStatus::Rejected, [
                 TransitionColumn::HoldClass->value => null,
                 TransitionColumn::HoldExpiresAt->value => null,

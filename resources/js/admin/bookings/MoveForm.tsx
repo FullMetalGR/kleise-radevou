@@ -9,7 +9,7 @@ import { formatInstant, formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
 import type { Crossing } from '@/lib/visits';
 import { sentenceFor } from './acting';
-import { type Booking, distinct, startOf } from './model';
+import { distinct, type Movable, startOf } from './model';
 import { MoveConfirm, type MoveChoice } from './MoveConfirm';
 import { type Candidate, memberChanges, type MoveDay, type MoveSegment, namedCrossings, type StaffMap, useMoveDay, useMoveWrite } from './moving';
 import { type BookingsKey, type BookingsWords, useBookings } from './words';
@@ -90,7 +90,7 @@ function choicesOf(segment: MoveSegment): MoveSegment['members'] {
 }
 
 /** The booking's day in the tenant's zone. */
-function dayOf(booking: Booking, clock: TenantClock): string {
+function dayOf(booking: Movable, clock: TenantClock): string {
     try {
         return wallClockOf(startOf(booking), clock.timezone).date;
     } catch {
@@ -98,7 +98,8 @@ function dayOf(booking: Booking, clock: TenantClock): string {
     }
 }
 
-type Input = { booking: Booking | null; clock: TenantClock };
+/** onMoved: told the booking's id once a move of it lands. */
+type Input = { booking: Movable | null; clock: TenantClock; onMoved?: (uuid: string) => void };
 
 export type MoveForm = {
     /** Whether the dialog shows the form in place of the detail. */
@@ -126,7 +127,7 @@ export type MoveForm = {
     confirm: (choice: MoveChoice) => void;
 };
 
-export function useMoveForm({ booking, clock }: Input): MoveForm {
+export function useMoveForm({ booking, clock, onMoved }: Input): MoveForm {
     const words = useBookings();
     const write = useMoveWrite();
     const [moving, setMoving] = useState(false);
@@ -193,6 +194,7 @@ export function useMoveForm({ booking, clock }: Input): MoveForm {
             moved: () => {
                 setConfirming(false);
                 setMoving(false);
+                onMoved?.(booking.uuid);
             },
             refused: (refusal) => {
                 setConfirming(false);
@@ -250,7 +252,7 @@ export function useMoveForm({ booking, clock }: Input): MoveForm {
     };
 }
 
-type Props = { form: MoveForm; booking: Booking; staffShown: boolean; clock: TenantClock; weekStart: number };
+type Props = { form: MoveForm; booking: Movable; staffShown: boolean; clock: TenantClock; weekStart: number };
 
 /** The form's body: the line, Date, the member selects, Time and its states, and the confirmation over it. */
 export function MoveFields({ form, booking, staffShown, clock, weekStart }: Props) {

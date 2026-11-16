@@ -107,7 +107,7 @@ function factsOf(crossing: Record<string, unknown>): CrossingFacts | null {
 }
 
 /** A value's fields where it is an object, else none. */
-function fieldsOf(value: unknown): Record<string, unknown> {
+export function fieldsOf(value: unknown): Record<string, unknown> {
     return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 }
 
@@ -137,10 +137,18 @@ function failureOf(event: Event, shell: ShellWords): Failure {
     };
 }
 
+/** What else the envelope of a failed visit carried beside its sentence, every field as sent; none for a transport failure. */
+function carriedOf(event: Event): Record<string, unknown> {
+    const response = responseOf(event);
+
+    return response === null ? {} : fieldsOf(fieldsOf(response.data).data);
+}
+
 /**
  * A visit whose failure the screen owns, read as the envelope it carried; the strings are the
- * screen's, which word the sentence where the envelope says none.
+ * screen's, which word the sentence where the envelope says none. The handler is handed the
+ * envelope's data as sent too, for a refusal that carries more than one screen reads.
  */
-export function owningFailure(onFailure: (failure: Failure) => void, shell: ShellWords): { onStart: () => void; onFinish: () => void } {
-    return owning((event) => onFailure(failureOf(event, shell)));
+export function owningFailure(onFailure: (failure: Failure, carried: Record<string, unknown>) => void, shell: ShellWords): { onStart: () => void; onFinish: () => void } {
+    return owning((event) => onFailure(failureOf(event, shell), carriedOf(event)));
 }

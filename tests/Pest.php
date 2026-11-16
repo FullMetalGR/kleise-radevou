@@ -1009,6 +1009,11 @@ function languageSharedValues(): array
         ':name, :weekday :date',
         ':customer, :service',
         ':staff, :date',
+        // admin/shell.php's shared.closure.row and shared.closure.row_staff: a listed booking's
+        // customer and services, and its members after them where the screen shows members,
+        // layouts of placeholders and commas alone, the same in both languages.
+        ':customer, :services',
+        ':customer, :services, :staff',
         // admin/billing.php's checkout.option: a plan's name and its price a month in the plan
         // choice's list, a layout of two placeholders and a comma, the same in both languages.
         ':plan, :price',
@@ -1553,6 +1558,37 @@ function seamAnnounceConfirmed(string $uuid, ?HoldClass $class, ?string $token =
     app(TransitionPublishers::class)
         ->for(Tenant::query()->where('slug', 'luna')->sole())
         ->publish(new BookingConfirmed($uuid, BookingStatus::AwaitingApproval, BookingStatus::Confirmed, $class, Actor::customer(), $token));
+}
+
+/**
+ * Puts the one job of a class the database queue holds back as an earlier version of that class
+ * serialized it. The row keeps the envelope the queue wrote and takes the command given in place
+ * of its own, so a worker restores the job from the earlier payload.
+ *
+ * @param  class-string  $job
+ */
+function seamQueuedAs(string $job, string $command): void
+{
+    $rewritten = [];
+
+    foreach (DB::table('jobs')->orderBy('id')->get() as $row) {
+        assert(is_int($row->id) && is_string($row->payload));
+
+        $payload = json_decode($row->payload, true, flags: JSON_THROW_ON_ERROR);
+        $data = is_array($payload) ? ($payload['data'] ?? null) : null;
+
+        assert(is_array($payload) && is_array($data));
+
+        if (($data['commandName'] ?? null) === $job) {
+            $rewritten[$row->id] = json_encode([...$payload, 'data' => [...$data, 'command' => $command]], JSON_THROW_ON_ERROR);
+        }
+    }
+
+    expect($rewritten)->toHaveCount(1);
+
+    foreach ($rewritten as $id => $payload) {
+        DB::table('jobs')->where('id', $id)->update(['payload' => $payload]);
+    }
 }
 
 /**

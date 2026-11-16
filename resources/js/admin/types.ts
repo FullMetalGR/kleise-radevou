@@ -114,7 +114,22 @@ export type ShellStrings = {
         sources: { hosted: string; embed: string; admin: string };
         channels: { instagram: string; facebook: string; google: string; qr: string; other: string };
         support: { actor: string; named: string };
-        closure: { reason_help: string };
+        closure: {
+            reason_help: string;
+            keep: string;
+            move: string;
+            cancel: string;
+            adding: string;
+            back: string;
+            row: string;
+            row_staff: string;
+            final: string;
+            reason_sent: string;
+            to_move: string;
+            move_one: string;
+            moved: string;
+            done: string;
+        };
     };
     validation: {
         login: { email_required: string; email_string: string; password_required: string; password_string: string };
@@ -355,7 +370,7 @@ export type CalendarStrings = {
         gap: string;
         hint: string;
     };
-    badges: { pending: string; payment: string };
+    badges: { pending: string; payment: string; closure: string };
     grid: {
         block: string;
         block_erased: string;
@@ -1011,11 +1026,15 @@ export type StaffStrings = {
         closure_until_order: string;
         closure_until_span: string;
         colour: string;
+        closure_choice: string;
+        closure_seen: string;
     };
     refusals: {
         unknown_service: string;
         referenced: string;
         implicit: string;
+        bookings_inside: string;
+        bookings_changed: string;
     };
     flashes: {
         created: string;
@@ -1028,6 +1047,8 @@ export type StaffStrings = {
         colour_saved: string;
         photo_uploaded: string;
         photo_removed: string;
+        closure_cancelled: string;
+        closure_skipped: string;
     };
 };
 

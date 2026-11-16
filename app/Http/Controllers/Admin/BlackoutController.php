@@ -6,13 +6,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Billing\Feature;
 use App\Http\AdminSession;
+use App\Http\ClosureOverBookings;
 use App\Http\FeatureGate;
 use App\Http\Requests\BlackoutRequest;
 use App\Http\Requests\StaffRequest;
 use App\Infrastructure\Db\BlackoutRecords;
 use App\Infrastructure\Db\StaffRecords;
 use App\Tenancy\CurrentTenant;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use LogicException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -26,11 +29,14 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * The per-member pair answers not-found without the staff feature, as the Staff screen's writes
  * do, and the tenant-wide pair stays on the floor: closing the business for a day is not a
  * feature.
+ *
+ * An add over time that already holds bookings is ClosureOverBookings': it may answer a refusal
+ * listing them in place of the redirect, and a flash of its own after a cancel.
  */
 final readonly class BlackoutController
 {
     /** The two flashes, keys of staff.php worded in the request's language. */
-    public const string ADDED = 'admin/staff.flashes.closure_added';
+    public const string ADDED = ClosureOverBookings::ADDED;
 
     public const string REMOVED = 'admin/staff.flashes.closure_removed';
 
@@ -39,9 +45,11 @@ final readonly class BlackoutController
         private BlackoutRecords $blackouts,
         private StaffRecords $staff,
         private FeatureGate $gate,
+        private AdminSession $session,
+        private ClosureOverBookings $closures,
     ) {}
 
-    public function store(BlackoutRequest $request): RedirectResponse
+    public function store(BlackoutRequest $request): RedirectResponse|JsonResponse
     {
         return $this->add($request, null);
     }
@@ -51,7 +59,7 @@ final readonly class BlackoutController
         return $this->remove($request, null);
     }
 
-    public function storeForMember(int $id): RedirectResponse
+    public function storeForMember(int $id): RedirectResponse|JsonResponse
     {
         $this->gate->require(Feature::Staff);
 
@@ -65,11 +73,16 @@ final readonly class BlackoutController
         return $this->remove(app(BlackoutRequest::class), $this->member($id));
     }
 
-    private function add(BlackoutRequest $request, ?int $staffId): RedirectResponse
+    private function add(BlackoutRequest $request, ?int $staffId): RedirectResponse|JsonResponse
     {
-        [$start, $end] = $request->window();
-        $this->blackouts->add($this->current->get(), $staffId, $request->day(), $request->until(), $start, $end, $request->reason());
-        $request->session()->flash('flash', ['kind' => 'success', 'message' => StaffRequest::line(self::ADDED)]);
+        $principal = $this->session->principal($request) ?? throw new LogicException('A closure was added without a principal; its route declares no permission.');
+        $answer = $this->closures->add($this->current->get(), $principal, $request, $staffId);
+
+        if ($answer instanceof JsonResponse) {
+            return $answer;
+        }
+
+        $request->session()->flash('flash', $answer);
 
         return redirect()->back(fallback: AdminSession::at($request, StaffController::list()));
     }

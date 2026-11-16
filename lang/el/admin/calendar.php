@@ -82,6 +82,7 @@ return [
     'badges' => [
         'pending' => 'Σε εκκρεμότητα',
         'payment' => 'Εγκρίθηκε, περιμένει την πληρωμή του πελάτη',
+        'closure' => 'Σε κλειστή περίοδο',
     ],
     'grid' => [
         'block' => ':customer, :service',

@@ -242,7 +242,7 @@ export default function Calendar() {
     // staff shows every item.
     const ids = useMemo(() => shownRows(props.window), [props.window]);
     const kept = useMemo(() => cut(props.window.bookings, filters), [props.window.bookings, filters]);
-    const blocks = blocksOf(kept, ids, timezone, words);
+    const blocks = blocksOf(kept, ids, timezone, words, props.window);
     const counts = useMemo(() => (calendar.view === 'month' ? countsOf(kept, ids, timezone) : undefined), [calendar.view, kept, ids, timezone]);
     const title = titleOf(calendar.view, calendar.date, props.settings.week_start, clock, words);
     const settles = props.permissions.includes('manageSettings');
@@ -340,6 +340,7 @@ export default function Calendar() {
                         weekStart={props.settings.week_start}
                         granularity={props.settings.granularity}
                         prefill={closing}
+                        staffShown={palette}
                     />
                 )}
                 <DropConfirm dropping={dropping} clock={clock} />

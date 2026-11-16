@@ -215,6 +215,7 @@ describe('the blocks one window answer draws', () => {
             status: 'confirmed',
             segment: 0,
             movable: false,
+            inside: false,
         });
     });
 
@@ -374,7 +375,7 @@ describe('colour', () => {
 });
 
 describe('the initial scroll', () => {
-    const at = (start: string, id = start) => ({ id, kind: 'booking' as const, uuid: 'u', staffId: 1, start, end: start, minutes: 30, title: '', badge: null, category: null, status: 'confirmed', segment: 0, movable: false });
+    const at = (start: string, id = start) => ({ id, kind: 'booking' as const, uuid: 'u', staffId: 1, start, end: start, minutes: 30, title: '', badge: null, category: null, status: 'confirmed', segment: 0, movable: false, inside: false });
 
     it('lands one hour before the earliest block of the day shown, and ignores other days', () => {
         expect(scrollTimeOf([at('2026-11-03T10:30:00'), at('2026-11-03T09:15:00'), at('2026-11-04T06:00:00')], '2026-11-03')).toBe('08:15:00');
@@ -464,7 +465,7 @@ describe('Day as member columns', () => {
     const NONE: DayHours = { windows: [], closures: [], source: 'none', pattern: [] };
 
     function at(staffId: number, start: string, end: string, id = `${staffId}:${start}`): Block {
-        return { id, kind: 'booking', uuid: id, staffId, start: `${DAY}T${start}:00`, end: `${DAY}T${end}:00`, minutes: 60, title: 'Ada North, Haircut', badge: null, category: null, status: 'confirmed', segment: 0, movable: false };
+        return { id, kind: 'booking', uuid: id, staffId, start: `${DAY}T${start}:00`, end: `${DAY}T${end}:00`, minutes: 60, title: 'Ada North, Haircut', badge: null, category: null, status: 'confirmed', segment: 0, movable: false, inside: false };
     }
 
     const window = {

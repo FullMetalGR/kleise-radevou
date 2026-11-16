@@ -776,6 +776,7 @@ it('reads the Calendar in Greek on Day with its columns, Who, a column\'s menu, 
         ->assertSeeIn($column($iris), adminLine('admin/calendar.day.not_working', [], SiteLanguage::Greek))
         ->assertSeeIn('.admin-calendar-filters', adminLine('admin/calendar.filters.colour_by', [], SiteLanguage::Greek))
         ->assertSeeIn('.admin-calendar-legend__closure', adminLine('admin/calendar.legend.closure', [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-calendar-legend__inside', adminLine('admin/calendar.badges.closure', [], SiteLanguage::Greek))
         ->assertScript($walk, $clean)
         ->assertScript($names, '');
 

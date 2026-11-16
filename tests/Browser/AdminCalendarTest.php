@@ -123,6 +123,7 @@ it('shows the week with a working day\'s bookings, one awaiting payment badged a
         ->assertSeeIn('.admin-calendar-legend', 'Nikos Georgiou')
         ->assertSeeIn('.admin-calendar-legend [data-badge="awaiting_approval"]', adminLine('admin/shell.kit.statuses.awaiting_approval'))
         ->assertSeeIn('.admin-calendar-legend [data-badge="awaiting_payment"]', adminLine('admin/calendar.badges.payment'))
+        ->assertSeeIn('.admin-calendar-legend__inside', adminLine('admin/calendar.badges.closure'))
         ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.week'));
 
     // Under Scheduled staff both boxes read ticked, the two shown; clearing Nikos's picks Elena.

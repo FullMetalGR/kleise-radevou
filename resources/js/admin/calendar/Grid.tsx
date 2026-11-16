@@ -11,7 +11,7 @@ import { formatDate, formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { weekdayName } from '@/lib/names';
 import { useShell } from '@/lib/strings';
 import type { Language } from '../../booking/language';
-import { BlockBadge } from './Badge';
+import { BlockBadge, InsideMarker } from './Badge';
 import { type Block, blockHueOf, businessHoursOf, type ClosureBlock, closureBlocksOf, type Colouring, type DayColumn, dayAxisOf, type Drop, fillOf, nextLineOf, scrollTimeOf, slotDurationOf, slotHeightOf, type StatusCount, TIMED_MINUTES, type View, wallOf } from './model';
 import { useCalendarWords, useClosureWords } from './words';
 
@@ -27,10 +27,14 @@ import { useCalendarWords, useClosureWords } from './words';
  * tone. Its fill is the hue mixed toward the surface, set on the element itself with a
  * full-saturation left border and the theme's text colour; a gap is hatch stripes in the hue over
  * nothing, inside a dashed border. The body is the title, bold and ellipsised, a badge before it
- * for a booking awaiting approval or awaiting payment alone, and the time range under it only when
- * the block is at least forty-five minutes long. The scroll on every view or date change is one
- * hour before the day's earliest block or the fixed morning hour, computed by the model and carried
- * on the wrapper as data-scroll-time.
+ * for a booking awaiting approval or awaiting payment alone, the marker for a booking a closure
+ * holds before both, and the time range under it only when the block is at least forty-five
+ * minutes long. The marker leads the line so that it is never the part a narrow column cuts off:
+ * where the line overflows, the title goes, then the badge's far end. The body is a container, so
+ * that the marker draws itself by the body's width, worded or a mark alone, sooner the mark where
+ * a badge shares the line, and leaves the title its room. The scroll on every view or date change
+ * is one hour before the day's earliest block or the fixed morning hour, computed by the model and
+ * carried on the wrapper as data-scroll-time.
  *
  * Month draws no block and offers no slot selection. It is six weeks always, from the week
  * holding the month's first day, the range the screen reads. Each day's cell is the press: one
@@ -134,7 +138,7 @@ function eventOf(block: Block, colouring: Colouring, draggable: boolean): EventI
         title: block.title,
         start: block.start,
         end: block.end,
-        classNames: [block.kind === 'gap' ? 'admin-calendar-gap' : 'admin-calendar-block', ...(block.badge === null ? [] : [`admin-calendar-block--${block.badge}`])],
+        classNames: [block.kind === 'gap' ? 'admin-calendar-gap' : 'admin-calendar-block', ...(block.badge === null ? [] : [`admin-calendar-block--${block.badge}`]), ...(block.inside ? ['admin-calendar-block--inside'] : [])],
         extendedProps: { block, hue: blockHueOf(block, colouring) },
     };
 }
@@ -182,7 +186,14 @@ function paint(arg: EventMountArg): void {
     }
 }
 
-/** A block's body: the badge and the title, the time range under it on a block long enough; a closure's words. */
+/**
+ * The title's line where the marker and a badge share it, in a body too narrow for the mark, the
+ * widest badge (some 130px, in Greek) and an ellipsis: the line cuts its overflow there. An
+ * ellipsis takes a pill it cannot fit away whole, and the cut takes the badge's far end alone.
+ */
+const TWO_PILLS = ' @max-[180px]:text-clip';
+
+/** A block's body: the marker, the badge and the title, the time range under it on a block long enough; a closure's words. */
 function bodyOf(clock: TenantClock) {
     return (arg: EventContentArg) => {
         const extended = extendedOf(arg);
@@ -192,10 +203,12 @@ function bodyOf(clock: TenantClock) {
         }
 
         const { block } = extended;
+        const pills = block.inside && block.badge !== null;
 
         return (
-            <div className={`admin-calendar-block__body overflow-hidden ${block.kind === 'gap' ? 'text-[11px] leading-[14px] text-muted-foreground' : 'text-xs'}`}>
-                <div className={`admin-calendar-block__title truncate ${block.kind === 'gap' ? '' : 'font-semibold'}`}>
+            <div className={`admin-calendar-block__body @container overflow-hidden ${block.kind === 'gap' ? 'text-[11px] leading-[14px] text-muted-foreground' : 'text-xs'}`}>
+                <div className={`admin-calendar-block__title truncate ${block.kind === 'gap' ? '' : 'font-semibold'}${pills ? TWO_PILLS : ''}`}>
+                    {block.inside && <InsideMarker beside={pills} />}
                     {block.badge !== null && <BlockBadge badge={block.badge} />}
                     {block.title}
                 </div>

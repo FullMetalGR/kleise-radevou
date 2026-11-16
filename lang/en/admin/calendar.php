@@ -26,7 +26,8 @@
  * list and Day's list of closures and hours with its two entries, the gap's entry and the hint at
  * the legend's end on starting a booking from an empty slot; badges is the block badge of a
  * request (its meaning the status's own word) and the meaning of the payment badge (its word the
- * status's own).
+ * status's own), and closure the marker on a booking's block whose time a closure of its member
+ * or of the whole business covers.
  *
  * grid is a block's title (:customer and :service, or the erased customer's case with :service
  * alone), a processing gap's, Week's notice below the admin's breakpoint and its control.
@@ -110,6 +111,7 @@ return [
     'badges' => [
         'pending' => 'Pending',
         'payment' => 'Approved, awaiting the customer\'s payment',
+        'closure' => 'Inside a closure',
     ],
     'grid' => [
         'block' => ':customer, :service',

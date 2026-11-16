@@ -27,7 +27,12 @@
  * :last its numbers) and the notice's. shared holds what two later screens read: the weekly
  * editor's words, the image slot's busy labels, a booking's sources and channels, support named
  * for a trail entry, and the help under a closure's reason, which the Calendar's closure dialog
- * and the Staff screen's closures card both show.
+ * and the Staff screen's closures card both show, with the step both show when a new closure falls
+ * over bookings: its three answers read as choices by the count (:count the figure), Back and the
+ * busy word, a listed booking's line, its customer and its services, and the one with its members
+ * after them where the screen shows members, the two lines under the list (the second only where
+ * a reason was typed), and the list of bookings to move with its row's button, a moved row's word
+ * and the button closing it.
  *
  * validation, refusals and flashes are the server's: the sign-in form's four lines, which the
  * console's door reads in English, the set-password form's two refusals with :floor and :ceiling,
@@ -193,7 +198,20 @@ return [
             'named' => 'Support (:operator)',
         ],
         'closure' => [
-            'reason_help' => 'A note for you. Customers never see it.',
+            'reason_help' => 'A note for you. A customer sees it only in the email sent when this closure cancels their booking.',
+            'keep' => '{1} Add and keep it|[2,*] Add and keep them',
+            'move' => '{1} Add and move it|[2,*] Add and move them',
+            'cancel' => '{1} Add and cancel :count booking|[2,*] Add and cancel :count bookings',
+            'adding' => 'Adding',
+            'back' => 'Back',
+            'row' => ':customer, :services',
+            'row_staff' => ':customer, :services, :staff',
+            'final' => 'Cancelling cannot be undone.',
+            'reason_sent' => 'The email to each customer includes the reason you typed.',
+            'to_move' => 'Bookings to move',
+            'move_one' => 'Move',
+            'moved' => 'Moved',
+            'done' => 'Done',
         ],
     ],
     'validation' => [

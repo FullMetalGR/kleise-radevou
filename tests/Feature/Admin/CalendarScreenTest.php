@@ -565,6 +565,55 @@ it('draws the implicit row\'s bookings under Scheduled staff and All staff thoug
         ->and($picked['bookings'])->toBe([]);
 });
 
+it('carries the closures of a row whose bookings are drawn without its hours, the business\'s and its own, and none for a row the hours cover', function () {
+    $owner = User::query()->findOrFail(addTenantUser('ana@luna.example', 'owner', staff: 'Nikos Georgiou'));
+    $implicit = DB::table('tenant_luna.staff')->where('is_implicit', true)->value('id');
+    assert(is_int($implicit));
+    $uuid = calendared([['Haircut', 'Elena Papadaki', '2026-11-03 10:00', 45]], 'Bea Business');
+    DB::table('tenant_luna.booking_items')->where('booking_id', DB::table('tenant_luna.bookings')->where('uuid', $uuid)->value('id'))->update(['staff_id' => $implicit]);
+    DB::table('tenant_luna.blackouts')->insert(['staff_id' => null, 'date' => '2026-11-03', 'start_time' => '10:00', 'end_time' => '11:00', 'reason' => 'Inspection']);
+    DB::table('tenant_luna.blackouts')->insert(['staff_id' => $implicit, 'date' => '2026-11-04', 'start_time' => null, 'end_time' => null, 'reason' => null]);
+    $closuresOf = fn (array $query): mixed => data_get($this->actingAs($owner)->get(tenantUrl('luna', '/admin/calendar?'.http_build_query($query)))->viewData('page'), 'props.window.closures');
+
+    $none = [];
+
+    // The implicit row alone, every date of the week, the business's closure on the Tuesday and
+    // its own on the Wednesday.
+    expect($closuresOf(['from' => '2026-11-02', 'to' => '2026-11-09']))->toBe([
+        $implicit => [
+            '2026-11-02' => $none,
+            '2026-11-03' => [['start' => '10:00', 'end' => '11:00', 'reason' => 'Inspection', 'business' => true]],
+            '2026-11-04' => [['start' => null, 'end' => null, 'reason' => null, 'business' => false]],
+            '2026-11-05' => $none,
+            '2026-11-06' => $none,
+            '2026-11-07' => $none,
+            '2026-11-08' => $none,
+        ],
+    ])
+        ->and($closuresOf(['from' => '2026-11-09', 'to' => '2026-11-16']))->toBe([]);
+});
+
+it('carries no closures of a row the screen does not draw: a colleague\'s service in a chain booking brings none of their closures or reasons to a pinned viewer, under a picked set or under Scheduled staff, and brings them under All staff', function () {
+    $pinned = User::query()->findOrFail(addTenantUser('elena@luna.example', 'staff', staff: 'Elena Papadaki'));
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $nikos = LunaFixture::id('staff', 'Nikos Georgiou');
+    // Monday: Elena works and Nikos does not, so Scheduled staff of that day shows her alone.
+    calendared([['Haircut', 'Elena Papadaki', '2026-11-02 10:00', 45], ['Colour', 'Nikos Georgiou', '2026-11-02 11:00', 60]], 'Flo Chain');
+    DB::table('tenant_luna.blackouts')->insert(['staff_id' => $nikos, 'date' => '2026-11-02', 'start_time' => '11:00', 'end_time' => '12:00', 'reason' => 'Dentist']);
+    $closuresOf = fn (User $viewer, array $query): mixed => data_get($this->actingAs($viewer)->get(tenantUrl('luna', '/admin/calendar?'.http_build_query(['from' => '2026-11-02', 'to' => '2026-11-03', ...$query])))->assertOk()->viewData('page'), 'props.window.closures');
+
+    expect($closuresOf($pinned, []))->toBe([])
+        ->and($closuresOf($pinned, ['who' => 'all']))->toBe([])
+        ->and($closuresOf(calendarOwner(), ['staff' => $elena]))->toBe([])
+        ->and($closuresOf(calendarOwner(), ['who' => 'scheduled']))->toBe([]);
+
+    // All staff draws every row, a member no longer active among them, whose hours it does not
+    // carry: theirs are the closures sent.
+    DB::table('tenant_luna.staff')->where('id', $nikos)->update(['status' => 'inactive']);
+
+    expect($closuresOf(calendarOwner(), ['who' => 'all']))->toBe([$nikos => ['2026-11-02' => [['start' => '11:00', 'end' => '12:00', 'reason' => 'Dentist', 'business' => false]]]]);
+});
+
 it('carries each shown member\'s hours per date of the window: the windows in force through the resolver seam and the closures that reach them, the business\'s and their own, with reasons', function () {
     $elena = LunaFixture::id('staff', 'Elena Papadaki');
     $nikos = LunaFixture::id('staff', 'Nikos Georgiou');

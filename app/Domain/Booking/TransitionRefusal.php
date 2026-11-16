@@ -41,7 +41,11 @@ enum TransitionRefusal: string
     /** The booking must be paid for first. Nothing answers this until a tenant can take money. */
     case PaymentRequired = 'payment_required';
 
-    /** The booking is in a state a cancel does not reach: it is over, or it is already off the books. */
+    /**
+     * The booking is in a state a cancel does not reach: it is over, or it is already off the
+     * books. A cancel held to the booking as its caller read it answers this too once the booking
+     * is no longer so, moved or settled since.
+     */
     case NotCancellable = 'not_cancellable';
 
     /** The booking is in a state a reschedule does not reach. */
@@ -90,7 +94,8 @@ enum TransitionRefusal: string
     /**
      * The booking is not a request waiting on the owner, so there is nothing to reject. A request
      * whose window has closed answers this too, as it answers NotApprovable: the sweeper settles
-     * it, and the owner is told it is no longer theirs to decide.
+     * it, and the owner is told it is no longer theirs to decide. So does a rejection held to the
+     * request as its caller read it, once the request is no longer so.
      */
     case NotRejectable = 'not_rejectable';
 

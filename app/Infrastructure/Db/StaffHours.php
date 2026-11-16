@@ -194,6 +194,27 @@ final readonly class StaffHours
     }
 
     /**
+     * The closures alone, per member and per date of the window, each reaching them as in of():
+     * for rows whose bookings are drawn without their hours.
+     *
+     * @param  list<int>  $staffIds
+     * @return array<int, array<string, list<array{start: string|null, end: string|null, reason: string|null, business: bool}>>>
+     */
+    public function closuresOf(Tenant $tenant, array $staffIds, CalendarWindow $window): array
+    {
+        if ($staffIds === []) {
+            return [];
+        }
+
+        $days = $window->days();
+
+        return array_map(
+            fn (array $dates): array => array_map(fn (array $day): array => $day['closures'], $dates),
+            self::assemble($days, $staffIds, [], $this->closures($tenant, $staffIds, $days, $window), $this->expander),
+        );
+    }
+
+    /**
      * The hours from rows already read and resolved, the pure half the unit test drives: for each
      * member and each date, the windows inForce answers over that date's resolved windows in their
      * order, and the closures of that date that reach the member, tenant-wide or their own, asked
