@@ -38,9 +38,10 @@ export type Crossing = { segment: number; staff_id: number; kind: string };
 
 /**
  * segment: the zero-based failing segment a chain conflict names, else null. crossings:
- * what a move's unaccepted warning names, empty for every other refusal.
+ * what a move's unaccepted warning names, empty for every other refusal. field: the body's field a
+ * refused admin write's sentence answers, else null.
  */
-export type Failure = { status: number | null; code: string | null; sentence: string | null; segment: number | null; crossings: Crossing[] };
+export type Failure = { status: number | null; code: string | null; sentence: string | null; segment: number | null; crossings: Crossing[]; field: string | null };
 
 type Envelope = { status?: unknown; data?: unknown };
 
@@ -80,7 +81,7 @@ function failureOf(event: Event, shell: ShellWords): Failure {
     const response = responseOf(event);
 
     if (response === null) {
-        return { status: null, code: null, sentence: null, segment: null, crossings: [] };
+        return { status: null, code: null, sentence: null, segment: null, crossings: [], field: null };
     }
 
     const envelope = fieldsOf(response.data);
@@ -92,6 +93,7 @@ function failureOf(event: Event, shell: ShellWords): Failure {
         sentence: sentenceOf(response.data, shell),
         segment: segmentOf(carried.segment),
         crossings: crossingsOf(carried.crossings),
+        field: typeof carried.field === 'string' ? carried.field : null,
     };
 }
 

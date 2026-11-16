@@ -173,16 +173,16 @@ describe('the credential form', () => {
 
 describe('a refusal', () => {
     it('is the envelope\'s sentence, the framework\'s 404 worded here, and the fallback where no answer came', () => {
-        expect(paymentFailureSentence({ status: 409, code: 'connection_contended', sentence: 'contended-token', segment: null, crossings: [] }, payments)).toBe('contended-token');
-        expect(paymentFailureSentence({ status: 404, code: null, sentence: KEYED_SHELL.toaster.fallback, segment: null, crossings: [] }, payments)).toBe(payments.text(GONE_SENTENCE));
-        expect(paymentFailureSentence({ status: null, code: null, sentence: null, segment: null, crossings: [] }, payments)).toBe(payments.text(PAYMENT_ERROR));
+        expect(paymentFailureSentence({ status: 409, code: 'connection_contended', sentence: 'contended-token', segment: null, crossings: [], field: null }, payments)).toBe('contended-token');
+        expect(paymentFailureSentence({ status: 404, code: null, sentence: KEYED_SHELL.toaster.fallback, segment: null, crossings: [], field: null }, payments)).toBe(payments.text(GONE_SENTENCE));
+        expect(paymentFailureSentence({ status: null, code: null, sentence: null, segment: null, crossings: [], field: null }, payments)).toBe(payments.text(PAYMENT_ERROR));
     });
 
     it('is the envelope\'s sentence for the live calls\' limit and for a resume the platform cannot serve, neither worded as a connection gone', () => {
         const limited = 'limited-token';
         const unavailable = payments.text('refusals.unavailable');
 
-        expect(paymentFailureSentence({ status: 429, code: 'rate_limited', sentence: limited, segment: null, crossings: [] }, payments)).toBe(limited);
-        expect(paymentFailureSentence({ status: 409, code: 'platform_unavailable', sentence: unavailable, segment: null, crossings: [] }, payments)).toBe(unavailable);
+        expect(paymentFailureSentence({ status: 429, code: 'rate_limited', sentence: limited, segment: null, crossings: [], field: null }, payments)).toBe(limited);
+        expect(paymentFailureSentence({ status: 409, code: 'platform_unavailable', sentence: unavailable, segment: null, crossings: [], field: null }, payments)).toBe(unavailable);
     });
 });

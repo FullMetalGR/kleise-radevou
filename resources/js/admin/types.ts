@@ -379,6 +379,8 @@ export type CalendarStrings = {
         who: string;
         whole_business: string;
         date: string;
+        until: string;
+        until_help: string;
         reason: string;
         all_day: string;
         start: string;

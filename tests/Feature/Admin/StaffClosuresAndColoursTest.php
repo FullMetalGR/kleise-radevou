@@ -89,12 +89,12 @@ it('writes a closure with Until as one row for each date from Date to Until, for
     expect(closureDates(null, 'Sixty-two'))->toHaveCount(62);
 });
 
-it('refuses an Until before its Date, an Until past 62 days and an Until not a date, each in its own sentence in the user\'s language, and writes nothing', function (SiteLanguage $language) {
+it('refuses an Until before its Date, an Until past 62 days and an Until not a date, each in its own sentence in the user\'s language and named as the Until field\'s, and writes nothing', function (SiteLanguage $language) {
     User::query()->where('email', 'owner@luna.example')->update(['locale' => $language->value]);
     $before = DB::table('tenant_luna.blackouts')->count();
 
-    closuresWrite($this, 'POST', '/blackouts', ['date' => '2027-01-06', 'until' => '2027-01-04'])->assertStatus(400)->assertJsonPath('data.detail', adminLine(BlackoutRequest::UNTIL_ORDER, [], $language));
-    closuresWrite($this, 'POST', '/blackouts', ['date' => '2027-03-01', 'until' => '2027-05-02'])->assertStatus(400)->assertJsonPath('data.detail', adminLine(BlackoutRequest::UNTIL_SPAN, ['n' => (string) BlackoutRequest::MOST_DAYS], $language));
+    closuresWrite($this, 'POST', '/blackouts', ['date' => '2027-01-06', 'until' => '2027-01-04'])->assertStatus(400)->assertJsonPath('data.detail', adminLine(BlackoutRequest::UNTIL_ORDER, [], $language))->assertJsonPath('data.field', 'until');
+    closuresWrite($this, 'POST', '/blackouts', ['date' => '2027-03-01', 'until' => '2027-05-02'])->assertStatus(400)->assertJsonPath('data.detail', adminLine(BlackoutRequest::UNTIL_SPAN, ['n' => (string) BlackoutRequest::MOST_DAYS], $language))->assertJsonPath('data.field', 'until');
     closuresWrite($this, 'POST', '/staff/'.closuresElena().'/blackouts', ['date' => '2027-03-01', 'until' => '2027-12-31'])->assertStatus(400)->assertJsonPath('data.detail', adminLine(BlackoutRequest::UNTIL_SPAN, ['n' => (string) BlackoutRequest::MOST_DAYS], $language));
     closuresWrite($this, 'POST', '/blackouts', ['date' => '2027-01-06', 'until' => 'Sunday'])->assertStatus(400)->assertJsonPath('data.detail', adminLine(BlackoutRequest::UNTIL_DATE, [], $language));
 

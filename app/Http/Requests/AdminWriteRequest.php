@@ -13,7 +13,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * An admin write's body, validated at the HTTP boundary, and refused the way the wire words a
  * refusal: a 400 envelope whose detail is the first field's own sentence, the same shape the
- * public API answers. The page shows that sentence as an error toast with its edits intact.
+ * public API answers. The page shows that sentence as an error toast with its edits intact, or,
+ * where a form has a place for it, next to the field the envelope's field key names: the field the
+ * sentence answers.
  *
  * The framework's own answer to a failed form request on a page is a redirect back with the
  * errors bag, which the admin does not read: a form here has one client gate, the name, and
@@ -31,6 +33,9 @@ abstract class AdminWriteRequest extends FormRequest
 
     protected function failedValidation(Validator $validator): never
     {
-        throw new HttpResponseException(ErrorEnvelope::for(new ValidationException($validator))->toResponse());
+        $envelope = ErrorEnvelope::for(new ValidationException($validator));
+        $field = array_key_first($validator->errors()->messages());
+
+        throw new HttpResponseException((new ErrorEnvelope($envelope->code, $envelope->status, $envelope->detail, [...$envelope->data, 'field' => $field], $envelope->headers))->toResponse());
     }
 }

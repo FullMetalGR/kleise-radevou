@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DateField } from '@/components/ui/date-field';
-import { Field } from '@/components/ui/field';
+import { Field, useFocusFirstFailing } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
@@ -17,19 +17,23 @@ import type { Member } from './model';
 import { type CalendarKey, useCalendarWords } from './words';
 
 /*
- * The Calendar's closure dialog: New closure, one date per closure, posted to the blackout routes
- * the Staff page's cards post to, with the route, the body and the defaults those cards use
- * (staff/BlackoutsCard). Who is the whole business, or a member of the window's members where the
- * tenant has the staff feature; a tenant without it closes the business alone. Closed all day is
- * ticked by default; unticked, Start and End.
+ * The Calendar's closure dialog: New closure, a date and an optional Until, the last day of a
+ * closure over several days, posted to the blackout routes the Staff page's cards post to, with
+ * the route, the body and the defaults those cards use (staff/BlackoutsCard). Blank Until is the
+ * one date; the server writes one closure for each day of a range and refuses an Until before the
+ * date or past its longest run. Who is the whole business, or a member of the window's members
+ * where the tenant has the staff feature; a tenant without it closes the business alone. Closed
+ * all day is ticked by default; unticked, Start and End, the same hours on every day of the range.
  *
  * Add shows busy while the write is in flight and nothing is optimistic: the server's flash
  * says it landed, the redirect back lands the page's props again and the Calendar re-reads the
  * window it wants, so the closure arrives in the members' hours, and the dialog closes. A refusal
- * is the envelope's sentence as an error toast, the dialog kept open with what was typed.
+ * is the envelope's sentence as an error toast, the dialog kept open with what was typed; a refusal
+ * of Until shows its sentence under Until instead, until Date or Until changes, and moves focus to
+ * Until, so its sentence is announced as the field takes focus.
  *
- * A prefill names the member and the date the dialog opens on, for the Day column's menu. Every
- * word is a key of the calendar section.
+ * A prefill names the member and the date the dialog opens on, for the Day column's menu; Until
+ * opens blank. Every word is a key of the calendar section.
  */
 
 /** What the dialog opens on: a member by id (null or absent, the whole business) and a date. */
@@ -54,6 +58,9 @@ const CLOSURE_NOT_ADDED: CalendarKey = 'closure.not_added';
 
 const BUSINESS = '';
 
+/** The body's field a refusal of Until names. */
+const UNTIL = 'until';
+
 export function ClosureDialog({ onClose, members, clock, weekStart, granularity, prefill }: Props) {
     const shell = useShell();
     const words = useCalendarWords();
@@ -62,19 +69,36 @@ export function ClosureDialog({ onClose, members, clock, weekStart, granularity,
     const offered = named !== null && members.some((member) => member.id === named) ? String(named) : BUSINESS;
     const [who, setWho] = useState(offered);
     const [date, setDate] = useState(prefill?.date ?? '');
+    const [until, setUntil] = useState('');
+    const [untilError, setUntilError] = useState<string | null>(null);
+    const [refusals, setRefusals] = useState(0);
+    const fields = useFocusFirstFailing<HTMLDivElement>(refusals);
     const [reason, setReason] = useState('');
     const [allDay, setAllDay] = useState(true);
     const [start, setStart] = useState(DEFAULT_WINDOW.start);
     const [end, setEnd] = useState(DEFAULT_WINDOW.end);
     const [busy, setBusy] = useState(false);
 
+    /** A change to Date or Until, which clears Until's refusal: the dates it answered are gone. */
+    const edit = (set: (value: string) => void, value: string) => {
+        set(value);
+        setUntilError(null);
+    };
+
     const add = () => {
         if (date === '' || busy) {
             return;
         }
 
-        const owned = owningFailure((failure) => toasts.push('error', failure.sentence ?? words.text(CLOSURE_NOT_ADDED)), shell);
-        const body = closureBody({ date, until: null, start: allDay ? null : start, end: allDay ? null : end, reason: typedReason(reason) });
+        const owned = owningFailure((failure) => {
+            if (failure.field === UNTIL && failure.sentence !== null) {
+                setUntilError(failure.sentence);
+                setRefusals((count) => count + 1);
+            } else {
+                toasts.push('error', failure.sentence ?? words.text(CLOSURE_NOT_ADDED));
+            }
+        }, shell);
+        const body = closureBody({ date, until: until === '' ? null : until, start: allDay ? null : start, end: allDay ? null : end, reason: typedReason(reason) });
 
         router.post(closurePath(who === BUSINESS ? null : Number(who)), body, {
             preserveState: true,
@@ -104,7 +128,7 @@ export function ClosureDialog({ onClose, members, clock, weekStart, granularity,
 
     return (
         <Modal open title={words.text(CLOSURE_TITLE)} onClose={onClose} footer={footer} className="admin-closure max-w-lg">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div ref={fields} className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                     <Field id="closure-who" label={words.text('closure.who')}>
                         {(control) => (
@@ -119,9 +143,12 @@ export function ClosureDialog({ onClose, members, clock, weekStart, granularity,
                     </Field>
                 </div>
                 <Field id="closure-date" label={words.text('closure.date')}>
-                    {(control) => <DateField {...control} className="admin-closure__date" value={date} onChange={setDate} clock={clock} weekStart={weekStart} />}
+                    {(control) => <DateField {...control} className="admin-closure__date" value={date} onChange={(next) => edit(setDate, next)} clock={clock} weekStart={weekStart} />}
                 </Field>
-                <Field id="closure-reason" label={words.text('closure.reason')} help={shell.text('shared.closure.reason_help')}>
+                <Field id="closure-until" label={words.text('closure.until')} help={words.text('closure.until_help')} error={untilError}>
+                    {(control) => <DateField {...control} className="admin-closure__until" value={until} onChange={(next) => edit(setUntil, next)} clock={clock} weekStart={weekStart} />}
+                </Field>
+                <Field id="closure-reason" label={words.text('closure.reason')} help={shell.text('shared.closure.reason_help')} className="sm:col-span-2">
                     {(control) => <TextInput {...control} className="admin-closure__reason" value={reason} onChange={(event) => setReason(event.target.value)} />}
                 </Field>
                 <div className="flex items-center gap-2 sm:col-span-2">

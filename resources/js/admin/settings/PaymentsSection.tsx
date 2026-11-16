@@ -259,9 +259,8 @@ type FormProps = {
  * The own-mode credential form, built from the descriptor's fields with their labels and help; a
  * secret field is a password input that starts empty and never holds a stored value. A save is
  * the whole set: the form's own checks refuse a missing or overlong field in the server's words,
- * marking the fields and moving focus to the first failing one, and send nothing. The server's
- * refusals carry one sentence and no field map, so they mark no field and read as the section's
- * notice.
+ * marking the fields and moving focus to the first failing one, and send nothing. The form marks
+ * fields from its own checks alone; a refusal from the server reads as the section's notice.
  */
 function CredentialForm({ provider, replacing, control, onSave, onCancel }: FormProps) {
     const [values, setValues] = useState<Record<string, string>>({});

@@ -36,8 +36,9 @@
  * tenant's format, :hours its windows), the column menu's title (:staff and :date) and its four
  * items. Each reads on any date shown, never "today".
  *
- * closure is the closure dialog: its title, Who with the whole business, the date, the reason
- * (its help the shell's shared closure.reason_help), Closed all day, Start and End, Cancel and Add
+ * closure is the closure dialog: its title, Who with the whole business, the date, Until (optional)
+ * with its help, the last day of a closure over several days, the reason (its help the shell's
+ * shared closure.reason_help), Closed all day, Start and End, Cancel and Add
  * with its busy word, and the toast where the write failed and the server worded nothing.
  *
  * validation is the server's: ColourByRequest's refusal of a word Colour by does not offer, which a
@@ -133,6 +134,8 @@ return [
         'who' => 'Who',
         'whole_business' => 'The whole business',
         'date' => 'Date',
+        'until' => 'Until (optional)',
+        'until_help' => 'The last day of a closure running more than one day. Leave it blank for one day.',
         'reason' => 'Reason (optional)',
         'all_day' => 'Closed all day',
         'start' => 'Start',

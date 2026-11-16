@@ -29,7 +29,9 @@ use Tests\Support\LunaFixture;
  * scheduled member under one axis, their rows aligned and each hatched outside their hours, opens a
  * column's menu, starts a booking on that member with the wizard's staff pinned, and edits the
  * hours of the day shown from another column's menu, through its entry for that day's hours, the
- * hatch moving as the window is read again.
+ * hatch moving as the window is read again. From a column's Closure here, its date prefilled, the
+ * owner picks an Until two days on, unticks Closed all day and adds the run, and finds it drawn on
+ * that member's column on each of the three days.
  *
  * The bookings are written straight to luna's rows on the tenant's today in Athens, or a
  * number of days after it, so the week the calendar opens on holds them whatever day the suite
@@ -426,4 +428,51 @@ it('opens Day as a column per scheduled member under one axis, each hatched outs
     $windows = DB::table('tenant_luna.shift_overrides')->where('staff_id', $elena)->where('date', $wednesday)->value('windows');
 
     expect(is_string($windows) ? json_decode($windows, true) : null)->toEqual([['start' => '09:00', 'end' => '13:00']]);
+});
+
+it('adds a closure of three days from a Day column\'s Closure here, its date prefilled and Until picked, the same hours on each, and draws it on all three days', function () {
+    $days = calendarNextWednesday();
+    $wednesday = calendarDay($days);
+    $friday = calendarDay($days + 2);
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $closure = calendarColumn($elena).' .admin-calendar-closure';
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day&date='.$wednesday))
+        ->waitForText('Elena Papadaki');
+
+    $page->click(calendarColumn($elena).' .admin-calendar-head__menu')
+        ->click('.admin-calendar-column__close')
+        ->waitForText(adminLine('admin/calendar.closure.title'))
+        ->assertValue('#closure-who', (string) $elena)
+        ->assertSeeIn('.admin-closure', adminLine('admin/calendar.closure.until'))
+        ->assertSeeIn('.admin-closure', adminLine('admin/calendar.closure.until_help'))
+        ->click('.admin-closure__until');
+
+    // Until's picker opens on the tenant's month; Friday may sit in the next one.
+    if (substr($friday, 0, 7) !== substr(calendarToday(), 0, 7)) {
+        $page->click(sprintf('.admin-date-field__popover button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next')));
+    }
+
+    $page->click(sprintf('button[data-date="%s"]', $friday))
+        ->click('#closure-all-day')
+        ->type('#closure-reason', 'Holiday')
+        ->click('.admin-closure__add')
+        ->waitForText(adminLine(BlackoutController::ADDED))
+        ->assertMissing('.admin-closure')
+        ->assertSeeIn($closure, 'Holiday');
+
+    foreach ([calendarDay($days + 1), $friday] as $date) {
+        $page->click('.admin-calendar-next')
+            ->assertPresent(calendarColumn($elena).' .fc-timegrid-col[data-date="'.$date.'"]')
+            ->assertSeeIn($closure, 'Holiday');
+    }
+
+    $page->assertNoJavaScriptErrors();
+
+    $rows = DB::table('tenant_luna.blackouts')->where('staff_id', $elena)->where('reason', 'Holiday')->orderBy('date');
+
+    expect((clone $rows)->pluck('date')->all())->toBe([$wednesday, calendarDay($days + 1), $friday])
+        ->and((clone $rows)->pluck('start_time')->all())->toBe(['09:00:00', '09:00:00', '09:00:00'])
+        ->and((clone $rows)->pluck('end_time')->all())->toBe(['17:00:00', '17:00:00', '17:00:00']);
 });

@@ -1093,6 +1093,16 @@ describe('the Add menu', () => {
         return today?.getAttribute('data-date') ?? null;
     }
 
+    /** Picks the first or the last day the given date field's month shows, and answers its date. */
+    function pickEdge(field: string, edge: 'first' | 'last'): string | null {
+        press(document.querySelector(field));
+        const days = [...document.querySelectorAll('button[data-date]')];
+        const day = edge === 'first' ? days.at(0) : days.at(-1);
+        press(day ?? null);
+
+        return day?.getAttribute('data-date') ?? null;
+    }
+
     function lastPost(): [string, Record<string, unknown>, Visit] {
         const call = inertia.post.mock.calls.at(-1) as [string, Record<string, unknown>, Visit] | undefined;
 
@@ -1218,6 +1228,62 @@ describe('the Add menu', () => {
         const [url, body] = lastPost();
         expect(url).toBe(`/admin/staff/${NIKOS}/blackouts`);
         expect(body).toEqual({ date, until: null, start_time: '09:00', end_time: '17:00', reason: 'Training' });
+    });
+
+    it('offers Until under Date with its help line, blank by default, and posts a run from Date to Until for the chosen member with the same hours each day', async () => {
+        inertia.props = propsWith({ permissions: ['viewBookings', 'manageSettings'], catalog: null });
+        view.render(<Page />);
+        await openClosure();
+
+        const field = document.querySelector('.admin-closure__until')?.closest('.admin-field');
+        expect(field?.textContent).toContain(cal.text('closure.until'));
+        expect(field?.textContent).toContain(cal.text('closure.until_help'));
+
+        const who = document.querySelector<HTMLSelectElement>('.admin-closure__who');
+        act(() => {
+            if (who !== null) {
+                who.value = String(ELENA);
+                who.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+        const date = pickEdge('.admin-closure__date', 'first');
+        const until = pickEdge('.admin-closure__until', 'last');
+        expect(date !== null && until !== null && date < until).toBe(true);
+        press(document.querySelector('.admin-closure__all-day'));
+        press(document.querySelector('.admin-closure__add'));
+
+        const [url, body] = lastPost();
+        expect(url).toBe(`/admin/staff/${ELENA}/blackouts`);
+        expect(body).toEqual({ date, until, start_time: '09:00', end_time: '17:00', reason: null });
+    });
+
+    it('shows a refusal of Until under Until, not as a toast, moves focus to Until, keeps the dialog open with what was typed, and clears it once Until changes', async () => {
+        inertia.props = propsWith({ permissions: ['viewBookings', 'manageSettings'], catalog: null });
+        view.render(<Page />);
+        await openClosure();
+        const date = pickEdge('.admin-closure__date', 'last');
+        const until = pickEdge('.admin-closure__until', 'first');
+        press(document.querySelector('.admin-closure__add'));
+
+        const [, body, visit] = lastPost();
+        expect(body).toEqual({ date, until, start_time: null, end_time: null, reason: null });
+        const event = new CustomEvent('invalid', { cancelable: true, detail: { response: { status: 400, data: { code: 'invalid_request', data: { detail: 'until-refusal-token', field: 'until' } } } } });
+        act(() => visit.onStart?.());
+        act(() => inertia.listeners.get('invalid')?.(event));
+        act(() => visit.onFinish?.());
+
+        expect(document.querySelector('.admin-closure')).not.toBeNull();
+        expect(document.querySelector('.admin-toast')).toBeNull();
+        const field = document.querySelector('.admin-closure__until')?.closest('.admin-field');
+        expect(field?.querySelector('.admin-field__error')?.textContent).toBe('until-refusal-token');
+        expect(document.querySelector('.admin-closure__until')?.getAttribute('aria-invalid')).toBe('true');
+        expect(document.activeElement).toBe(document.querySelector('.admin-closure__until'));
+
+        press(document.querySelector('.admin-closure__add'));
+        expect(lastPost()[1]).toEqual(body);
+
+        pickEdge('.admin-closure__until', 'last');
+        expect(field?.querySelector('.admin-field__error')).toBeNull();
     });
 
     it('offers the whole business alone on a tenant without the staff feature', async () => {
