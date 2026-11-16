@@ -1,9 +1,13 @@
 <?php
 
+use Amp\CancelledException;
+use Amp\TimeoutCancellation;
 use App\Tenancy\Slug;
 use App\Tenancy\TenantUrls;
 use Database\Seeders\DemoTenantsSeeder;
 use Tests\Browser\Support\ForeignSite;
+
+use function Amp\Socket\connect;
 
 /*
  * The embed shell mounts on a page that is not ours. A static site on a second loopback
@@ -78,6 +82,35 @@ function foreignPage(string $name, string $body): string
         </body>
         </html>
         HTML);
+}
+
+/**
+ * Every byte the application's server writes back to one request sent to a tenant's host, read
+ * off a socket of our own until the server closes it or has been quiet for half a second. The
+ * server runs on this process's event loop, so the socket is the loop's own non-blocking one: a
+ * blocking read would wait on a server that cannot run while it waits.
+ */
+function bytesAnsweredTo(string $slug, string $request): string
+{
+    $host = (string) parse_url(tenantOrigin($slug), PHP_URL_HOST);
+    $port = (int) parse_url(tenantOrigin($slug), PHP_URL_PORT);
+
+    $socket = connect(sprintf('127.0.0.1:%d', $port));
+    $socket->write(sprintf("%s\r\nHost: %s:%d\r\n\r\n", $request, $host, $port));
+
+    $answer = '';
+
+    try {
+        while (($bytes = $socket->read(new TimeoutCancellation(0.5))) !== null) {
+            $answer .= $bytes;
+        }
+    } catch (CancelledException) {
+        // Kept open and quiet: whatever was coming has come.
+    } finally {
+        $socket->close();
+    }
+
+    return $answer;
 }
 
 beforeAll(fn () => ForeignSite::start());
@@ -162,3 +195,20 @@ it('mounts once on the hosted page off the inlined config, with no config reques
         ->assertScript(CONFIG_REQUESTS, 0)
         ->assertScript(EMBED_PRIMARY, 'rgb(37, 99, 235)');
 });
+
+/*
+ * A browser takes an answer whose status says it has no body as finished at the head's blank
+ * line, and is free to send its next request down the same connection at once. A byte the server
+ * wrote after that line would be read as the start of the next answer, so there must be none:
+ * no framing of a body in the head, and nothing behind it.
+ */
+it('answers a request that gets no body with a head and not one byte after it', function (string $status, string $request) {
+    $parts = explode("\r\n\r\n", bytesAnsweredTo('luna', $request), 2);
+
+    expect($parts[0])->toStartWith('HTTP/1.1 '.$status.' ')
+        ->and(strtolower($parts[0]))->not->toContain("\r\ntransfer-encoding:")
+        ->and($parts[1] ?? null)->toBe('');
+})->with([
+    'the question a foreign page asks before a POST' => ['204', "OPTIONS /api/v1/holds HTTP/1.1\r\nOrigin: https://somebody-else.example\r\nAccess-Control-Request-Method: POST\r\nAccess-Control-Request-Headers: content-type"],
+    'a browser asking whether its copy of the script still stands' => ['304', "GET /embed.js HTTP/1.1\r\nIf-Modified-Since: Fri, 01 Jan 2100 00:00:00 GMT"],
+]);

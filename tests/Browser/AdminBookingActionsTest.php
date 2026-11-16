@@ -55,6 +55,56 @@ function actionBooking(string $customer, string $status, DateTimeImmutable $star
     ]);
 }
 
+/**
+ * Escape closes the layer on top and no other, because the library that draws the dialogs keeps
+ * one listener for the key on the document and hands it to the top layer. The hand-over comes a
+ * moment after a layer opens over another, later than anything the page shows of the new layer,
+ * and a press in that moment goes to the layer under it, which closes with all that is on it.
+ *
+ * The library settles in one pass which layer takes the pointer and which holds the key: the
+ * first it writes on the layer's own element at once, the second it acts on afterwards. So this
+ * notes, each time the document is given such a listener, the layer whose element reads as
+ * taking the pointer just then, which is the layer the listener belongs to.
+ */
+const ESCAPE_WATCH = <<<'JS'
+    (() => {
+        const listen = document.addEventListener;
+        document.addEventListener = function (type, listener, options) {
+            listen.call(this, type, listener, options);
+            if (type === 'keydown' && (options === true || options?.capture === true)) {
+                window.escapeHolder = Array.from(document.querySelectorAll('[role="dialog"]')).filter((layer) => layer.style.pointerEvents === 'auto').pop() ?? null;
+            }
+        };
+        return true;
+    })()
+    JS;
+
+/**
+ * Resolves true once the layer around the element given holds Escape, by the note the watch
+ * above keeps; false after five seconds, which is a failure worth reading.
+ */
+function escapeHeldAround(string $selector): string
+{
+    $selector = json_encode($selector, JSON_THROW_ON_ERROR);
+
+    return <<<JS
+        new Promise((resolve) => {
+            const started = Date.now();
+            const check = () => {
+                const layer = document.querySelector({$selector})?.closest('[role="dialog"]') ?? null;
+                if (layer !== null && window.escapeHolder === layer) {
+                    resolve(true);
+                } else if (Date.now() - started > 5000) {
+                    resolve(false);
+                } else {
+                    setTimeout(check, 25);
+                }
+            };
+            check();
+        })
+        JS;
+}
+
 it('approves a request, rejects another with a reason, cancels a confirmed booking and completes a past one, all from the dialog', function () {
     actionBooking('Rita Request', 'awaiting_approval', athensDaysOn(61));
     actionBooking('Rhea Refused', 'awaiting_approval', athensDaysOn(62));
@@ -126,13 +176,18 @@ it('peels the reject overlay with one Escape and leaves the dialog under it', fu
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
     $page->click(navLabel('bookings'))->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']));
 
-    $page->click('Rita Request')
-        ->waitForText(adminLine('admin/bookings.dialog.items.title'))
-        ->click('.admin-booking-action--reject')
+    $page->click('Rita Request')->waitForText(adminLine('admin/bookings.dialog.items.title'));
+    $page->script(ESCAPE_WATCH);
+
+    // Each press waits for the key to be the layer's it is meant for: the overlay's once it is
+    // up, the dialog's again once the overlay is gone.
+    $page->click('.admin-booking-action--reject')
         ->waitForText(adminLine('admin/bookings.reject.title'))
+        ->assertScript(escapeHeldAround('#reject-reason'), true)
         ->keys('#reject-reason', 'Escape')
         ->assertCount('.admin-reject-prompt', 0)
         ->assertCount('.admin-booking-dialog', 1)
+        ->assertScript(escapeHeldAround('.admin-booking-close'), true)
         ->keys('.admin-booking-close', 'Escape')
         ->wait(1)
         ->assertPathIs('/admin/bookings')

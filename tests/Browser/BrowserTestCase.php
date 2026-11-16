@@ -3,13 +3,16 @@
 namespace Tests\Browser;
 
 use App\Tenancy\TenantUrls;
+use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use LogicException;
 use Pest\Browser\Browsable;
 use Pest\Browser\Drivers\LaravelHttpServer;
 use Pest\Browser\ServerManager;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 /**
@@ -57,5 +60,19 @@ abstract class BrowserTestCase extends TestCase
         // driver phpunit.xml sets does not give. The central sessions table does, and the
         // truncation between tests empties it with everything else.
         config(['session.driver' => 'database']);
+
+        // The plugin's server keeps a connection open and, for an answer that names no length,
+        // writes the head and then, in a second write, the mark that ends a body. An answer whose
+        // status says it has no body is whole to a browser at the head's blank line, so the browser
+        // may send its next request down the same connection before that mark lands, and then
+        // reads the mark as the start of the next answer and fails the request. Asked to close
+        // the connection, the server writes the head alone and ends there, and the browser opens
+        // a new connection for what follows. It is asked on the status and not on the method,
+        // because the application answers this way itself and not only to a preflight.
+        Event::listen(RequestHandled::class, function (RequestHandled $handled): void {
+            if (in_array($handled->response->getStatusCode(), [Response::HTTP_NO_CONTENT, Response::HTTP_RESET_CONTENT, Response::HTTP_NOT_MODIFIED], true)) {
+                $handled->response->headers->set('Connection', 'close');
+            }
+        });
     }
 }
