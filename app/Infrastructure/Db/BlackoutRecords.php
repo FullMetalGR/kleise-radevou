@@ -131,6 +131,50 @@ final readonly class BlackoutRecords
     }
 
     /**
+     * The closures that reach any date from $from to $to, the business's and these members',
+     * each folded into its whole run as upcoming() folds them: consecutive dates with the same
+     * member, window and reason, read in one statement so a run is named from its first date to
+     * its last however far either lies from the dates asked. Soonest first, the business's before
+     * a member's, all-day before a window.
+     *
+     * @param  list<int>  $staffIds
+     * @return list<array{staff_id: int|null, date: string, until: string|null, start: string|null, end: string|null, reason: string|null}>
+     */
+    public function runsReaching(Tenant $tenant, array $staffIds, string $from, string $to): array
+    {
+        // A run is an island of consecutive dates: the date less its rank among its own scope's
+        // dates is the same for every date of one run and differs between two runs.
+        $sql = sprintf(
+            'select staff_id, start_time, end_time, reason, min(date)::text as first, max(date)::text as last'
+            .' from (select staff_id, date, start_time, end_time, reason,'
+            .' date - (dense_rank() over (partition by staff_id, start_time, end_time, reason order by date))::int as island'
+            .' from %s.blackouts where staff_id is null or staff_id = any(?::bigint[])) dated'
+            .' group by staff_id, start_time, end_time, reason, island'
+            .' having min(date) <= ?::date and max(date) >= ?::date'
+            .' order by min(date), staff_id nulls first, start_time nulls first, end_time, reason',
+            $tenant->schema_name,
+        );
+        $shape = RowShape::of('blackouts', $tenant);
+        $runs = [];
+
+        foreach ($this->db->connection()->select($sql, [SqlText::bigintArray($staffIds), $to, $from]) as $row) {
+            $row = $shape->row($row);
+            $first = self::string($row->first ?? null);
+            $last = self::string($row->last ?? null);
+            $runs[] = [
+                'staff_id' => $row->staff_id === null ? null : self::int($row->staff_id),
+                'date' => $first,
+                'until' => $last === $first ? null : $last,
+                'start' => self::time($row->start_time ?? null),
+                'end' => self::time($row->end_time ?? null),
+                'reason' => is_string($row->reason ?? null) ? $row->reason : null,
+            ];
+        }
+
+        return $runs;
+    }
+
+    /**
      * Whether a closure's row runs on from a line: the same member, window and reason, on the
      * day after the line's last date.
      *

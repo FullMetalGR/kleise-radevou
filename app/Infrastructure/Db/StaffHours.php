@@ -30,6 +30,10 @@ use Illuminate\Database\Query\Builder;
  * source (the date's override, else the pattern, else none) and the windows its pattern gives
  * that date; and each member's next working day after a window, scanned through the same seam up
  * to eight weeks ahead, for the Calendar's Day column of a member with no hours.
+ *
+ * And the days as a warning about a move outside working hours reads them (explained): the
+ * windows in force with what tells one empty date from another, an override on the date and the
+ * member's usual hours that weekday.
  */
 final readonly class StaffHours
 {
@@ -94,6 +98,45 @@ final readonly class StaffHours
         }
 
         return $editable;
+    }
+
+    /**
+     * The days as a warning about a move outside working hours reads them: per member per date
+     * the windows in force, as of() reads them, whether an override covers the date, and the
+     * member's usual hours that weekday, what their pattern gives the date's weekday whatever
+     * its cadence: none for a weekday the pattern never works, null where no pattern holds the
+     * date. So a date with no window says why: the override took it, the member never works
+     * that weekday, or the pattern skips the week or does not reach the date. One read of the
+     * patterns and one of the overrides (MasksFromRows::editableOf); the closures are not read.
+     *
+     * @param  list<int>  $staffIds
+     * @return array<int, array<string, array{windows: list<array{start: string, end: string}>, overridden: bool, usual: list<array{start: string, end: string}>|null}>>
+     */
+    public function explained(Tenant $tenant, array $staffIds, CalendarWindow $window): array
+    {
+        if ($staffIds === []) {
+            return [];
+        }
+
+        $days = $window->days();
+        $read = MasksFromRows::forSchema($this->db->connection(), $tenant->schema_name)->editableOf($staffIds, $days);
+        $explained = [];
+
+        foreach (self::assemble($days, $staffIds, $read['windows'], [], $this->expander) as $staffId => $dates) {
+            foreach ($dates as $date => $day) {
+                $usual = $read['usual'][$staffId][$date] ?? null;
+                $explained[$staffId][$date] = [
+                    'windows' => $day['windows'],
+                    'overridden' => isset($read['overridden'][$staffId][$date]),
+                    'usual' => $usual === null ? null : array_map(
+                        fn (AvailabilityRule $rule): array => ['start' => self::reading($rule->start->format()), 'end' => self::reading($rule->end->format())],
+                        $usual,
+                    ),
+                ];
+            }
+        }
+
+        return $explained;
     }
 
     /**

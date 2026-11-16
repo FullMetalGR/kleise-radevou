@@ -481,7 +481,6 @@ export type BookingsStrings = {
             from_to: string;
             member: string;
             member_unnamed: string;
-            warning: string;
             hours: string;
             closure: string;
             hours_unnamed: string;
@@ -491,6 +490,34 @@ export type BookingsStrings = {
             move: string;
             busy: string;
             pending: string;
+            closed_title: string;
+            booking: string;
+            sure: string;
+            move_anyway: string;
+            cancel: string;
+            business_closed: string;
+            business_closed_reason: string;
+            staff_closed: string;
+            staff_closed_reason: string;
+            outside_hours: string;
+            off_weekday: string;
+            business_weekday: string;
+            off_date: string;
+            day: string;
+            on_day: string;
+            on_day_window: string;
+            run: string;
+            run_window: string;
+            window: string;
+            weekdays: {
+                monday: string;
+                tuesday: string;
+                wednesday: string;
+                thursday: string;
+                friday: string;
+                saturday: string;
+                sunday: string;
+            };
         };
     };
     dialog: {

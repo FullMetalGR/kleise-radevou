@@ -33,8 +33,22 @@ export function owning(onFailure: (event: Event) => void): { onStart: () => void
  */
 export const NOT_DONE = 'toaster.not_done';
 
-/** One crossing an unaccepted warning names: the segment, its member and whether hours or a closure. */
-export type Crossing = { segment: number; staff_id: number; kind: string };
+/** A closure in a crossing's way: the business's or the member's, its run of dates (until null for one), its window (null for the whole day) and its reason. */
+export type CrossingClosure = { business: boolean; date: string; until: string | null; start: string | null; end: string | null; reason: string | null };
+
+/**
+ * What is in a crossing's way, as the server read it: the date its service starts on, the member's
+ * working windows that date (HH:MM), why there are none (day_off: the date taken off, the business
+ * closed that weekday, or the member's own weekday off; null where there are windows), and the
+ * closures.
+ */
+export type CrossingFacts = { date: string; hours: { start: string; end: string }[]; day_off: string | null; closures: CrossingClosure[] };
+
+/**
+ * One crossing an unaccepted warning names: the segment, its member, whether hours or a closure,
+ * and its facts, null where the answer carried none.
+ */
+export type Crossing = { segment: number; staff_id: number; kind: string; facts: CrossingFacts | null };
 
 /**
  * segment: the zero-based failing segment a chain conflict names, else null. crossings:
@@ -53,17 +67,43 @@ function responseOf(event: Event): Envelope | null {
     return typeof response === 'object' && response !== null ? (response as Envelope) : null;
 }
 
-/** The crossings a value lists, each a segment, a member and a kind; anything else in it left out. */
+/** The crossings a value lists, each a segment, a member, a kind and its facts where it carries them; anything else in it left out. */
 export function crossingsOf(value: unknown): Crossing[] {
     if (!Array.isArray(value)) {
         return [];
     }
 
-    return value.filter((item): item is Crossing => {
+    return value.flatMap((item): Crossing[] => {
         const crossing = fieldsOf(item);
 
-        return typeof crossing.segment === 'number' && typeof crossing.staff_id === 'number' && typeof crossing.kind === 'string';
+        if (typeof crossing.segment !== 'number' || typeof crossing.staff_id !== 'number' || typeof crossing.kind !== 'string') {
+            return [];
+        }
+
+        return [{ segment: crossing.segment, staff_id: crossing.staff_id, kind: crossing.kind, facts: factsOf(crossing) }];
     });
+}
+
+/** A crossing's facts where it names its date, each list read item by item; null where it names none. */
+function factsOf(crossing: Record<string, unknown>): CrossingFacts | null {
+    if (typeof crossing.date !== 'string') {
+        return null;
+    }
+
+    const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+    const hours = (Array.isArray(crossing.hours) ? crossing.hours : []).map(fieldsOf).flatMap((window) => {
+        const start = text(window.start);
+        const end = text(window.end);
+
+        return start === null || end === null ? [] : [{ start, end }];
+    });
+    const closures = (Array.isArray(crossing.closures) ? crossing.closures : []).map(fieldsOf).flatMap((closure): CrossingClosure[] => {
+        const date = text(closure.date);
+
+        return date === null ? [] : [{ business: closure.business === true, date, until: text(closure.until), start: text(closure.start), end: text(closure.end), reason: text(closure.reason) }];
+    });
+
+    return { date: crossing.date, hours, day_off: text(crossing.day_off), closures };
 }
 
 /** A value's fields where it is an object, else none. */

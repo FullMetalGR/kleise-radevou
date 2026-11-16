@@ -183,7 +183,7 @@ final readonly class PlacedChain
             }
 
             foreach ($kinds as $kind) {
-                $crossings[$segment.':'.$kind->value] = new MaskCrossing($segment, $this->items[$segment]->staffId, $kind);
+                $crossings[$segment.':'.$kind->value] = new MaskCrossing($segment, $this->items[$segment]->staffId, $kind, $this->items[$segment]->start, $this->items[$segment]->end);
             }
         }
 
@@ -211,7 +211,7 @@ final readonly class PlacedChain
             }
 
             foreach ($kinds as $kind) {
-                $crossings[$segment.':'.$kind->value] = new MaskCrossing($segment, $this->items[$segment]->staffId, $kind);
+                $crossings[$segment.':'.$kind->value] = new MaskCrossing($segment, $this->items[$segment]->staffId, $kind, $this->items[$segment]->start, $this->items[$segment]->end);
             }
         }
 

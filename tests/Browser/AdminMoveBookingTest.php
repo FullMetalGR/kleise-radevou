@@ -15,14 +15,17 @@ use Tests\Support\LunaFixture;
  * The Move form in a real browser: an owner opens a movable booking on the Calendar's Day,
  * presses Move, picks another time from the day's free times, saves, confirms and reads the
  * booking at its new time with the move on its trail; and picks a time outside the member's
- * working hours, reads the confirmation's warning naming it, and the move lands once confirmed
- * with the warning accepted.
+ * working hours, reads the closed-time warning naming the booking and the member's hours that
+ * day, and the move lands on Move anyway with the warning accepted.
  *
  * Dragging, with the real mouse: on Day a block dragged to another time in its column and onto
  * Nikos's column, each confirmed and then drawn once, where the server put it, with the move on
  * its trail; dragged onto another of Elena's bookings, refused before any confirmation with the
  * server's sentence and the block back; Keep it leaving everything as it was; and on Week
- * dragged to the next day at the same hour.
+ * dragged to the next day at the same hour. Onto closed time the same drags open the warning
+ * first: on Day onto a closure of the business, named with its window and reason, where Cancel
+ * puts the block back and writes nothing, then onto Nikos's column over his own closure, moved on
+ * Move anyway; and on Week onto Saturday, Elena's day off, cancelled once and then moved.
  *
  * The booking is written straight to luna's rows on the next Wednesday in Athens, a day Elena
  * works 09:00-13:00 and 14:00-18:00, whole days from today, since the browser and the
@@ -87,6 +90,48 @@ function moveStartOf(string $uuid): string
     return (new DateTimeImmutable($start, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/Athens'))->format('H:i');
 }
 
+/** The booking's start as the database holds it, in Athens, with its date. */
+function moveWhenOf(string $uuid): string
+{
+    $start = DB::table('tenant_luna.booking_items')
+        ->join('tenant_luna.bookings', 'bookings.id', '=', 'booking_items.booking_id')
+        ->where('bookings.uuid', $uuid)->value('start_utc');
+    assert(is_string($start));
+
+    return (new DateTimeImmutable($start, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/Athens'))->format('Y-m-d H:i');
+}
+
+/** A closure of luna's on the day from start to end with its reason: the member's, or the business's with none named. */
+function moveClosure(?string $staff, string $day, string $start, string $end, string $reason): void
+{
+    DB::table('tenant_luna.blackouts')->insert([
+        'staff_id' => $staff === null ? null : LunaFixture::id('staff', $staff),
+        'date' => $day, 'start_time' => $start, 'end_time' => $end, 'reason' => $reason,
+    ]);
+}
+
+/** The warning's words for a window on a day: the weekday, the date as luna writes it, and the times. */
+function moveOn(string $day, string $start, string $end): string
+{
+    $date = new DateTimeImmutable($day, new DateTimeZone('Europe/Athens'));
+    $named = adminLine('admin/bookings.move.confirm.day', ['weekday' => $date->format('l'), 'date' => $date->format('d/m/Y')]);
+
+    return adminLine('admin/bookings.move.confirm.on_day_window', ['day' => $named, 'start' => $start, 'end' => $end]);
+}
+
+/**
+ * The warning's words for a member's two windows of a day, as English lists two.
+ *
+ * @param  array{string, string}  $first
+ * @param  array{string, string}  $second
+ */
+function moveWindows(array $first, array $second): string
+{
+    $window = fn (string $start, string $end): string => adminLine('admin/bookings.move.confirm.window', ['start' => $start, 'end' => $end]);
+
+    return $window(...$first).' and '.$window(...$second);
+}
+
 /**
  * Opens the booking's block on the day into the dialog and presses Move.
  *
@@ -134,8 +179,11 @@ it('warns where the chosen time is outside the member\'s working hours, and the 
     $page = moveOpen($this, $uuid, $day);
     $page->select('#move-time', moveStart($day, '13:00'))
         ->click('.admin-move__save')
-        ->waitForText(adminLine('admin/bookings.move.confirm.title'))
-        ->assertSeeIn('.admin-move-confirm__warning', adminLine('admin/bookings.move.confirm.hours', ['service' => 'Haircut', 'staff' => 'Elena Papadaki']))
+        ->waitForText(adminLine('admin/bookings.move.confirm.closed_title'))
+        ->assertSeeIn('.admin-move-confirm__booking', adminLine('admin/bookings.move.confirm.booking', ['customer' => 'Cora Cut', 'services' => 'Haircut']))
+        ->assertSeeIn('.admin-move-confirm__warning', adminLine('admin/bookings.move.confirm.outside_hours', ['staff' => 'Elena Papadaki', 'hours' => moveWindows(['09:00', '13:00'], ['14:00', '18:00'])]))
+        ->assertSeeIn('.admin-move-confirm__confirm', adminLine('admin/bookings.move.confirm.move_anyway'))
+        ->assertSeeIn('.admin-move-confirm__keep', adminLine('admin/bookings.move.confirm.cancel'))
         ->click('.admin-move-confirm__confirm')
         ->waitForText(adminLine('admin/bookings.flashes.moved'))
         ->waitForText(adminLine('admin/bookings.dialog.items.title'))
@@ -314,4 +362,64 @@ it('moves a booking to the next day at the same hour by dragging its block on We
     $start = DB::table('tenant_luna.booking_items')->join('tenant_luna.bookings', 'bookings.id', '=', 'booking_items.booking_id')->where('bookings.uuid', $uuid)->value('start_utc');
     assert(is_string($start));
     expect((new DateTimeImmutable($start, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/Athens'))->format('Y-m-d H:i'))->toBe($next.' 10:00');
+});
+
+it('warns before a drag onto a closure on Day, puts the block back on Cancel, and moves it onto another member\'s closure on Move anyway', function () {
+    $day = moveWednesday();
+    $uuid = moveBooking('Cora Cut', $day, '10:00');
+    moveClosure(null, $day, '11:00', '12:00', 'Holiday');
+    moveClosure('Nikos Georgiou', $day, '15:00', '16:00', 'Dentist');
+
+    $page = moveDay($this, $day);
+    moveDrag($page, $uuid, '10:00', moveColumn('Elena Papadaki', $day), '11:00');
+    $page->waitForText(adminLine('admin/bookings.move.confirm.closed_title'))
+        ->assertSeeIn('.admin-move-confirm__booking', adminLine('admin/bookings.move.confirm.booking', ['customer' => 'Cora Cut', 'services' => 'Haircut']))
+        ->assertSeeIn('.admin-move-confirm__warning', adminLine('admin/bookings.move.confirm.business_closed_reason', ['when' => moveOn($day, '11:00', '12:00'), 'reason' => 'Holiday']))
+        ->assertSeeIn('.admin-move-confirm__keep', adminLine('admin/bookings.move.confirm.cancel'))
+        ->click('.admin-move-confirm__keep')
+        ->assertNotPresent('.admin-move-confirm');
+    moveDrawn($page, $uuid, moveColumn('Elena Papadaki', $day), '10:00');
+
+    expect(moveStartOf($uuid))->toBe('10:00');
+
+    moveDrag($page, $uuid, '10:00', moveColumn('Nikos Georgiou', $day), '15:00');
+    $page->waitForText(adminLine('admin/bookings.move.confirm.closed_title'))
+        ->assertSeeIn('.admin-move-confirm__change', adminLine('admin/bookings.move.confirm.member', ['service' => 'Haircut', 'from' => 'Elena Papadaki', 'to' => 'Nikos Georgiou']))
+        ->assertSeeIn('.admin-move-confirm__warning', adminLine('admin/bookings.move.confirm.staff_closed_reason', ['staff' => 'Nikos Georgiou', 'when' => moveOn($day, '15:00', '16:00'), 'reason' => 'Dentist']))
+        ->assertSeeIn('.admin-move-confirm__confirm', adminLine('admin/bookings.move.confirm.move_anyway'))
+        ->click('.admin-move-confirm__confirm')
+        ->waitForText(adminLine('admin/bookings.flashes.moved'));
+    moveDrawn($page, $uuid, moveColumn('Nikos Georgiou', $day), '15:00')->assertNoJavaScriptErrors();
+
+    expect(moveStartOf($uuid))->toBe('15:00')
+        ->and(moveStaffOf($uuid))->toBe('Nikos Georgiou');
+});
+
+it('warns before a drag onto the member\'s day off on Week, puts the block back on Cancel, and moves it there on Move anyway', function () {
+    $day = moveWednesday();
+    $saturday = (new DateTimeImmutable($day, new DateTimeZone('Europe/Athens')))->add(new DateInterval('P3D'))->format('Y-m-d');
+    $uuid = moveBooking('Cora Cut', $day, '10:00');
+    $wednesdays = '.fc-timegrid-col[data-date="'.$day.'"]';
+    $saturdays = '.fc-timegrid-col[data-date="'.$saturday.'"]';
+    $off = adminLine('admin/bookings.move.confirm.off_weekday', ['staff' => 'Elena Papadaki', 'weekdays' => adminLine('admin/bookings.move.confirm.weekdays.saturday')]);
+
+    $page = moveDay($this, $day, 'week');
+    moveDrag($page, $uuid, '10:00', $saturdays, '10:00');
+    $page->waitForText(adminLine('admin/bookings.move.confirm.closed_title'))
+        ->assertSeeIn('.admin-move-confirm__from-to', (new DateTimeImmutable($saturday, new DateTimeZone('Europe/Athens')))->format('d/m/Y').' 10:00')
+        ->assertSeeIn('.admin-move-confirm__warning', $off)
+        ->click('.admin-move-confirm__keep')
+        ->assertNotPresent('.admin-move-confirm');
+    moveDrawn($page, $uuid, $wednesdays, '10:00');
+
+    expect(moveWhenOf($uuid))->toBe($day.' 10:00');
+
+    moveDrag($page, $uuid, '10:00', $saturdays, '10:00');
+    $page->waitForText(adminLine('admin/bookings.move.confirm.closed_title'))
+        ->assertSeeIn('.admin-move-confirm__warning', $off)
+        ->click('.admin-move-confirm__confirm')
+        ->waitForText(adminLine('admin/bookings.flashes.moved'));
+    moveDrawn($page, $uuid, $saturdays, '10:00')->assertNoJavaScriptErrors();
+
+    expect(moveWhenOf($uuid))->toBe($saturday.' 10:00');
 });

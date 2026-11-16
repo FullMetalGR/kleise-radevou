@@ -378,18 +378,21 @@ final readonly class MasksFromRows
      * the overrides left out, what a date edited alone goes back to, and the dates each member's
      * override covers: what an editor of a day shows, read through ShiftResolver as windowsOf
      * reads it, so the cadence keeps its one spelling, in one read of the patterns and one of the
-     * overrides. Every member and date asked for has an entry in both lists of windows.
+     * overrides. With them what each member's pattern says of the date's weekday whatever the
+     * cadence (ShiftResolver::usualOn), null where no pattern holds the date: what tells a
+     * weekday never worked from a date the pattern skips. Every member and date asked for has
+     * an entry in all three.
      *
      * @param  list<int>  $staffIds
      * @param  list<string>  $days  YYYY-MM-DD in order
-     * @return array{windows: array<int, array<string, list<AvailabilityRule>>>, pattern: array<int, array<string, list<AvailabilityRule>>>, overridden: array<int, array<string, true>>}
+     * @return array{windows: array<int, array<string, list<AvailabilityRule>>>, pattern: array<int, array<string, list<AvailabilityRule>>>, usual: array<int, array<string, list<AvailabilityRule>|null>>, overridden: array<int, array<string, true>>}
      */
     public function editableOf(array $staffIds, array $days): array
     {
         $staffIds = $staffIds === [] ? [] : self::staffIds($staffIds);
 
         if ($staffIds === [] || $days === []) {
-            return ['windows' => [], 'pattern' => [], 'overridden' => []];
+            return ['windows' => [], 'pattern' => [], 'usual' => [], 'overridden' => []];
         }
 
         $ids = SqlText::bigintArray($staffIds);
@@ -397,12 +400,14 @@ final readonly class MasksFromRows
         $overrides = $this->overrides($ids, $days[0], $days[count($days) - 1]);
         $windows = [];
         $pattern = [];
+        $usual = [];
         $overridden = [];
 
         foreach ($staffIds as $staffId) {
             foreach ($days as $day) {
                 $windows[$staffId][$day] = $this->shifts->windowsOn($patterns[$staffId] ?? null, $overrides[$staffId] ?? [], $startOfWeek, $day);
                 $pattern[$staffId][$day] = $this->shifts->windowsOn($patterns[$staffId] ?? null, [], $startOfWeek, $day);
+                $usual[$staffId][$day] = $this->shifts->usualOn($patterns[$staffId] ?? null, $day);
 
                 if (isset($overrides[$staffId][$day])) {
                     $overridden[$staffId][$day] = true;
@@ -410,7 +415,7 @@ final readonly class MasksFromRows
             }
         }
 
-        return ['windows' => $windows, 'pattern' => $pattern, 'overridden' => $overridden];
+        return ['windows' => $windows, 'pattern' => $pattern, 'usual' => $usual, 'overridden' => $overridden];
     }
 
     /**

@@ -17,6 +17,7 @@ use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\FixedClock;
 use Tests\Support\LunaFixture;
+use Tests\Support\WeeklyHours;
 use Tests\TestCase;
 
 /*
@@ -172,6 +173,20 @@ function adminMoveCandidates(TestResponse $response): array
     return $out;
 }
 
+/**
+ * A crossing of segment 0 as the wire spells it, every fact empty but those given.
+ *
+ * @param  array<string, mixed>  $facts
+ * @return array<string, mixed>
+ */
+function adminMoveCrossing(int $staff, string $kind, string $date, array $facts = []): array
+{
+    return ['segment' => 0, 'staff_id' => $staff, 'kind' => $kind, 'date' => $date, 'hours' => [], 'day_off' => null, 'closures' => [], ...$facts];
+}
+
+/** Elena's Tuesday, split around lunch. */
+const ADMIN_MOVE_ELENAS_TUESDAY = [['start' => '09:00', 'end' => '13:00'], ['start' => '14:00', 'end' => '18:00']];
+
 it('moves a booking to a new time, answering as cancel answers: back to the page that asked with a success flash in words', function () {
     $uuid = adminMoveConfirmed();
 
@@ -227,7 +242,7 @@ it('refuses a move over the member\'s hours naming the segment, the member and h
         ->assertStatus(409)
         ->assertJsonPath('code', 'unaccepted_warning')
         ->assertJsonPath('data.detail', apiSentence('api.envelope.unaccepted_warning'))
-        ->assertJsonPath('data.crossings', [['segment' => 0, 'staff_id' => $elena, 'kind' => 'hours']])
+        ->assertJsonPath('data.crossings', [adminMoveCrossing($elena, 'hours', '2026-11-03', ['hours' => ADMIN_MOVE_ELENAS_TUESDAY])])
         ->assertSessionMissing('flash');
 
     expect(adminMoveItems($uuid))->toBe(['Elena Papadaki Haircut 10:00-10:45']);
@@ -432,6 +447,79 @@ it('marks a closure as a closure and reads the day for another member with the o
         ->and($nikoss['09:00'])->toBe(['hours']);
 });
 
+it('names what is in the way of each crossing: a closure\'s whole run, its window and reason, the hours that day, or why there are none', function () {
+    $uuid = adminMoveConfirmed();
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $owner = adminMoveOwner();
+    $closure = fn (?int $staff, string $date, ?string $start, ?string $end, ?string $reason): array => ['staff_id' => $staff, 'date' => $date, 'start_time' => $start, 'end_time' => $end, 'reason' => $reason];
+    DB::table('tenant_luna.blackouts')->insert([
+        $closure(null, '2026-11-04', null, null, 'Holiday'),
+        $closure(null, '2026-11-05', null, null, 'Holiday'),
+        $closure(null, '2026-11-06', null, null, 'Holiday'),
+        $closure($elena, '2026-11-03', '15:00', '16:00', null),
+        $closure($elena, '2026-11-03', '17:00', '17:30', 'Training'),
+    ]);
+    DB::table('tenant_luna.shift_overrides')->insert(['staff_id' => $elena, 'date' => '2026-11-10', 'windows' => '[]']);
+    $crossings = fn (string $start): mixed => adminMoveRead($this, $owner, $uuid, ['start' => adminMoveAt($start)])->assertOk()->json('verdict.crossings');
+    $holiday = ['business' => true, 'date' => '2026-11-04', 'until' => '2026-11-06', 'start' => null, 'end' => null, 'reason' => 'Holiday'];
+
+    // The window of Elena's that 15:30 to 16:15 meets is named, and not her later one that day.
+    expect($crossings('2026-11-05 11:00'))->toBe([adminMoveCrossing($elena, 'closure', '2026-11-05', ['closures' => [$holiday]])])
+        ->and($crossings('2026-11-03 15:30'))->toBe([adminMoveCrossing($elena, 'closure', '2026-11-03', ['closures' => [['business' => false, 'date' => '2026-11-03', 'until' => null, 'start' => '15:00', 'end' => '16:00', 'reason' => null]]])])
+        ->and($crossings('2026-11-03 17:45'))->toBe([adminMoveCrossing($elena, 'hours', '2026-11-03', ['hours' => ADMIN_MOVE_ELENAS_TUESDAY])])
+        ->and($crossings('2026-11-07 11:00'))->toBe([adminMoveCrossing($elena, 'hours', '2026-11-07', ['day_off' => 'weekday'])])
+        ->and($crossings('2026-11-08 11:00'))->toBe([adminMoveCrossing($elena, 'hours', '2026-11-08', ['day_off' => 'business'])])
+        ->and($crossings('2026-11-10 11:00'))->toBe([adminMoveCrossing($elena, 'hours', '2026-11-10', ['day_off' => 'date'])])
+        ->and(adminMoveRead($this, $owner, $uuid, ['date' => '2026-11-05'])->assertOk()->collect('starts')->firstWhere('start', adminMoveAt('2026-11-05 11:00')))
+        ->toBe(['start' => adminMoveAt('2026-11-05 11:00'), 'crossings' => [adminMoveCrossing($elena, 'closure', '2026-11-05', ['closures' => [$holiday]])]]);
+});
+
+it('says the date is off, and never the weekday, where the member\'s week holds that weekday: a week the pattern skips or a date past its end, whether or not anybody else works then', function () {
+    $uuid = adminMoveConfirmed();
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $owner = adminMoveOwner();
+    $dayOff = fn (string $start): mixed => adminMoveRead($this, $owner, $uuid, ['start' => adminMoveAt($start)])->assertOk()->json('verdict.crossings.0.day_off');
+    // Elena's Monday to Friday every second week from Monday 2 November until Friday the 20th:
+    // the week of the 9th is skipped, the week of the 23rd is past the end.
+    WeeklyHours::pattern('tenant_luna', $elena, '2026-11-02', 2, '2026-11-20', array_map(fn (int $weekday): array => [$weekday, '09:00', '18:00'], [1, 2, 3, 4, 5]));
+
+    // Nikos works Tuesday to Saturday, so a Wednesday has him in and a Monday has nobody.
+    expect($dayOff('2026-11-11 11:00'))->toBe('date')
+        ->and($dayOff('2026-11-09 11:00'))->toBe('date')
+        ->and($dayOff('2026-11-25 11:00'))->toBe('date')
+        ->and($dayOff('2026-11-23 11:00'))->toBe('date')
+        // A weekday her week never holds stays her weekday off, and the business's where nobody's does, skipped week or not.
+        ->and($dayOff('2026-11-14 11:00'))->toBe('weekday')
+        ->and($dayOff('2026-11-15 11:00'))->toBe('business')
+        ->and(adminMoveRead($this, $owner, $uuid, ['start' => adminMoveAt('2026-11-11 11:00')])->assertOk()->json('verdict.crossings'))->toBe([adminMoveCrossing($elena, 'hours', '2026-11-11', ['day_off' => 'date'])]);
+});
+
+it('lands a move onto a closure once the warning naming it is accepted, and tells the customer with the usual move email and nothing else', function () {
+    $uuid = adminMoveConfirmed();
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    DB::table('tenant_luna.blackouts')->insert(['staff_id' => null, 'date' => '2026-11-06', 'start_time' => null, 'end_time' => null, 'reason' => 'Holiday']);
+    seamTransport()->flush();
+
+    adminMovePress($this, adminMoveOwner(), $uuid, ['start' => adminMoveAt('2026-11-06 11:00')])
+        ->assertStatus(409)
+        ->assertJsonPath('code', 'unaccepted_warning')
+        ->assertJsonPath('data.crossings', [adminMoveCrossing($elena, 'closure', '2026-11-06', ['closures' => [['business' => true, 'date' => '2026-11-06', 'until' => null, 'start' => null, 'end' => null, 'reason' => 'Holiday']]])]);
+
+    expect(adminMoveItems($uuid))->toBe(['Elena Papadaki Haircut 10:00-10:45'])
+        ->and(seamAddresses())->toBe([]);
+
+    adminMovePress($this, adminMoveOwner(), $uuid, ['start' => adminMoveAt('2026-11-06 11:00'), 'warning_accepted' => true])
+        ->assertRedirect()
+        ->assertSessionHas('flash.kind', 'success');
+
+    $words = ['business' => 'Luna Hair Studio', 'from' => lunaInstant(LunaFixture::at('2026-11-03 10:00')), 'to' => lunaInstant(LunaFixture::at('2026-11-06 11:00'))];
+
+    expect(adminMoveItems($uuid))->toBe(['Elena Papadaki Haircut 11:00-11:45'])
+        ->and(adminMoveFacts()['overridden'] ?? null)->toEqual([['segment' => 0, 'kind' => 'closure']])
+        ->and(array_count_values(seamAddresses())[LunaFixture::CUSTOMER_EMAIL] ?? 0)->toBe(1)
+        ->and(seamTextAt(LunaFixture::CUSTOMER_EMAIL))->toContain(customerMailLine('customer-mail.moved.booking.by_business', $words));
+});
+
 it('lists per segment the service, the member it is with and the members it may be given to', function () {
     $uuid = LunaFixture::hold(['Haircut', 'Bridal trial'], '2026-11-04 10:00');
     $elena = LunaFixture::id('staff', 'Elena Papadaki');
@@ -479,8 +567,8 @@ it('answers the verdict on one start with the code the write gives for the same 
     adminMoveRead($this, $owner, $uuid, ['start' => adminMoveAt('2026-11-03 13:00')])
         ->assertOk()
         ->assertJsonPath('start', LunaFixture::at('2026-11-03 13:00')->setTimezone(new DateTimeZone('UTC'))->format(DateTimeInterface::RFC3339))
-        ->assertJsonPath('verdict', ['placeable' => true, 'crossings' => [['segment' => 0, 'staff_id' => $elena, 'kind' => 'hours']]]);
-    adminMovePress($this, $owner, $uuid, ['start' => adminMoveAt('2026-11-03 13:00')])->assertStatus(409)->assertJsonPath('data.crossings', [['segment' => 0, 'staff_id' => $elena, 'kind' => 'hours']]);
+        ->assertJsonPath('verdict', ['placeable' => true, 'crossings' => [adminMoveCrossing($elena, 'hours', '2026-11-03', ['hours' => ADMIN_MOVE_ELENAS_TUESDAY])]]);
+    adminMovePress($this, $owner, $uuid, ['start' => adminMoveAt('2026-11-03 13:00')])->assertStatus(409)->assertJsonPath('data.crossings', [adminMoveCrossing($elena, 'hours', '2026-11-03', ['hours' => ADMIN_MOVE_ELENAS_TUESDAY])]);
 
     adminMoveRead($this, $owner, $uuid, ['start' => adminMoveAt('2026-11-03 11:00')])->assertJsonPath('verdict', ['placeable' => true, 'crossings' => []]);
     adminMovePress($this, $owner, $uuid, ['start' => adminMoveAt('2026-11-03 11:00')])->assertRedirect();

@@ -231,7 +231,7 @@ it('refuses a move outside the member\'s working hours naming the segment, the m
     // 13:00 is Elena's lunch: no booking there, she simply does not work it.
     $refused = businessRefusal(UnacceptedWarning::class, fn () => businessMoves()->reschedule($uuid, $user, LunaFixture::at('2026-11-03 13:00')));
 
-    expect($refused->crossings)->toEqual([new MaskCrossing(0, $elena, Overridable::Hours)])
+    expect($refused->crossings)->toEqual([new MaskCrossing(0, $elena, Overridable::Hours, LunaFixture::at('2026-11-03 13:00'), LunaFixture::at('2026-11-03 13:45'))])
         ->and(businessItems($uuid))->toBe(['Elena Papadaki Haircut 11-03 10:00-11-03 10:45']);
 
     businessMoves()->reschedule($uuid, $user, LunaFixture::at('2026-11-03 13:00'), new MoveChoices(warningAccepted: true));
@@ -253,8 +253,11 @@ it('refuses a move onto a closure naming it a closure, the business\'s closed da
     businessClosure('Nikos Georgiou', '2026-11-05', '15:30', '17:00');
     $ownWindow = businessRefusal(UnacceptedWarning::class, fn () => businessMoves()->reschedule($uuid, $user, LunaFixture::at('2026-11-05 15:00'), new MoveChoices(staff: [1 => $nikos])));
 
-    expect($closedDay->crossings)->toEqual([new MaskCrossing(0, $elena, Overridable::Closure), new MaskCrossing(1, $elena, Overridable::Closure)])
-        ->and($ownWindow->crossings)->toEqual([new MaskCrossing(1, $nikos, Overridable::Closure)])
+    expect($closedDay->crossings)->toEqual([
+        new MaskCrossing(0, $elena, Overridable::Closure, LunaFixture::at('2026-11-04 15:00'), LunaFixture::at('2026-11-04 15:45')),
+        new MaskCrossing(1, $elena, Overridable::Closure, LunaFixture::at('2026-11-04 15:45'), LunaFixture::at('2026-11-04 16:45')),
+    ])
+        ->and($ownWindow->crossings)->toEqual([new MaskCrossing(1, $nikos, Overridable::Closure, LunaFixture::at('2026-11-05 15:45'), LunaFixture::at('2026-11-05 16:45'))])
         ->and(businessItems($uuid))->toBe(['Elena Papadaki Haircut 11-03 10:00-11-03 10:45', 'Elena Papadaki Colour 11-03 10:45-11-03 11:45']);
 
     businessMoves()->reschedule($uuid, $user, LunaFixture::at('2026-11-05 15:00'), new MoveChoices(staff: [1 => $nikos], warningAccepted: true));

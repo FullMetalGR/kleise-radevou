@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type Mounted, press, settle } from '@/components/ui/harness';
-import { listOf } from '@/lib/names';
+import { listOf, weekdayName } from '@/lib/names';
 import { keyedBookings, keyedShell, WithBookings } from '@/testing/keyed';
 import { BookingDialog } from './BookingDialog';
 import type { Booking } from './model';
@@ -424,6 +424,25 @@ describe('the Move form', () => {
         press(one('.admin-move-confirm__confirm'));
         expect(inertia.post).toHaveBeenCalledTimes(2);
         expect(lastPost().body).toEqual({ start: FREE, warning_accepted: true, tell_customer: true });
+    });
+
+    it('words the closed time the read names as the drop does, under the warning\'s own title with Cancel to back out', async () => {
+        const holiday = { business: true, date: '2026-11-04', until: null, start: null, end: null, reason: 'Holiday' };
+        answer = () => day([{ start: AFTER_HOURS, crossings: [{ segment: 0, staff_id: 2, kind: 'closure', date: '2026-11-04', hours: [], day_off: null, closures: [holiday] }] }]);
+        await openMove();
+        await toConfirmation(AFTER_HOURS);
+
+        const wednesday = words.text('move.confirm.day', { weekday: weekdayName(3, 'long', 'en'), date: '04/11/2026' });
+
+        expect(one('.admin-move-confirm .admin-modal__title')?.textContent).toBe(words.text('move.confirm.closed_title'));
+        expect([...document.body.querySelectorAll('.admin-move-confirm__crossing')].map((line) => line.textContent)).toEqual([
+            words.text('move.confirm.business_closed_reason', { when: words.text('move.confirm.on_day', { day: wednesday }), reason: 'Holiday' }),
+        ]);
+        expect(one('.admin-move-confirm__keep')?.textContent).toBe(words.text('move.confirm.cancel'));
+
+        press(one('.admin-move-confirm__keep'));
+        expect(one('.admin-move-confirm')).toBeNull();
+        expect(inertia.post).not.toHaveBeenCalled();
     });
 
     it.each(['overlap', 'unavailable'])('closes the confirmation on %s, shows the server sentence in the form and reads the times again', async (code) => {

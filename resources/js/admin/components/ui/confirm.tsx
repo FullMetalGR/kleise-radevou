@@ -15,7 +15,8 @@ import { Modal } from './modal';
  * end; Keep it is disabled and says why in text beside it, as every disabled control does, and the
  * confirm shows its busy state. The confirm is destructive unless the overlay says otherwise:
  * undoing a suspension is no destructive act. Keep it is the kit's, from the strings the confirm
- * is given; every other word is the overlay's.
+ * is given, unless the overlay names its own way out (keepLabel); every other word is the
+ * overlay's.
  */
 
 type Props = {
@@ -24,6 +25,8 @@ type Props = {
     /** The overlay's class, and the stem of its parts' classes. */
     name: string;
     confirmLabel: string;
+    /** The dismissing button's word where the overlay has its own, else the kit's Keep it. */
+    keepLabel?: string;
     busyLabel: string;
     /** Why Keep it is disabled while the confirm is in flight, in words. */
     pending: string;
@@ -37,7 +40,7 @@ type Props = {
 
 function nothing(): void {}
 
-export function Confirm({ open, title, name, confirmLabel, busyLabel, pending, busy, destructive = true, onConfirm, onDismiss, children }: Props) {
+export function Confirm({ open, title, name, confirmLabel, keepLabel, busyLabel, pending, busy, destructive = true, onConfirm, onDismiss, children }: Props) {
     const shell = useShell();
     const pendingId = `${name}__pending`;
 
@@ -55,7 +58,7 @@ export function Confirm({ open, title, name, confirmLabel, busyLabel, pending, b
                         </p>
                     )}
                     <Button className={`${name}__keep`} disabled={busy} aria-describedby={busy ? pendingId : undefined} onClick={onDismiss}>
-                        {shell.text('kit.confirm.keep')}
+                        {keepLabel ?? shell.text('kit.confirm.keep')}
                     </Button>
                     <Button variant="primary" destructive={destructive} className={`${name}__confirm`} busy={busy} busyLabel={busyLabel} onClick={onConfirm}>
                         {confirmLabel}

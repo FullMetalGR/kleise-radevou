@@ -28,10 +28,17 @@
  * move is the Move form inside the dialog: its button, the line naming what moves and where it
  * sits now (:services and :staff each ICU's list in the language, :when), the fields, the time
  * list's choices marked where a time crosses the hours or a closure (:time), its states, Save with
- * why it waits, Back, and the confirmation over it: from and to, each member change, the warning
- * per service, each with a whole line for a member or a service the move cannot name
+ * why it waits, Back, and the confirmation over it: from and to, each member change, the line
+ * per service crossing the hours or a closure where the move reads no more of it, each with a
+ * whole line for a member or a service the move cannot name
  * (member_unnamed, hours_unnamed, closure_unnamed), the tick box with its help, the button, its
- * busy word and the line while the server answers.
+ * busy word and the line while the server answers. A move onto closed time reads its own title
+ * (closed_title), names the booking (:customer, :services), says each reason in a sentence and
+ * asks before Move anyway and Cancel: a closure of the business or of a member (:when, with its
+ * :reason where it has one), a member's hours that day (:hours, each a window, ICU's list), a
+ * member off that weekday or the business closed on it (:weekdays, the weekday's plural with its
+ * preposition), or the date taken off; :when is one of the day and run phrases, :day a weekday
+ * and a date in the tenant's format, :start and :end times of day in its format.
  *
  * dialog is the booking dialog: its title before the booking is read, the loading name, the load
  * error, the missing booking with Back to the list, Close, the facts' labels, What was booked with
@@ -135,7 +142,6 @@ return [
             'from_to' => 'From :from to :to.',
             'member' => ':service: :from to :to.',
             'member_unnamed' => ':service: :from to another staff member.',
-            'warning' => 'This time is outside what is open:',
             'hours' => ':service with :staff is outside working hours.',
             'closure' => ':service with :staff is on a closure.',
             'hours_unnamed' => 'A service of this booking is outside working hours.',
@@ -145,6 +151,34 @@ return [
             'move' => 'Move booking',
             'busy' => 'Moving',
             'pending' => 'The move has been sent. This closes once the server answers.',
+            'closed_title' => 'This time is closed',
+            'booking' => 'Booking: :customer, :services.',
+            'sure' => 'Are you sure you want to move the booking?',
+            'move_anyway' => 'Move anyway',
+            'cancel' => 'Cancel',
+            'business_closed' => 'The business is closed :when.',
+            'business_closed_reason' => 'The business is closed :when (:reason).',
+            'staff_closed' => ':staff takes no bookings :when.',
+            'staff_closed_reason' => ':staff takes no bookings :when (:reason).',
+            'outside_hours' => ':staff does not work at this time. Their hours that day are :hours.',
+            'off_weekday' => ':staff is off :weekdays.',
+            'business_weekday' => 'The business is closed :weekdays.',
+            'off_date' => ':staff is not working :when.',
+            'day' => ':weekday :date',
+            'on_day' => 'on :day',
+            'on_day_window' => 'on :day from :start to :end',
+            'run' => 'from :day to :until',
+            'run_window' => 'from :day to :until, :start to :end each day',
+            'window' => ':start to :end',
+            'weekdays' => [
+                'monday' => 'on Mondays',
+                'tuesday' => 'on Tuesdays',
+                'wednesday' => 'on Wednesdays',
+                'thursday' => 'on Thursdays',
+                'friday' => 'on Fridays',
+                'saturday' => 'on Saturdays',
+                'sunday' => 'on Sundays',
+            ],
         ],
     ],
     'dialog' => [

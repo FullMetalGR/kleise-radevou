@@ -1,15 +1,23 @@
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type Mounted, press } from '@/components/ui/harness';
+import { listOf, weekdayName } from '@/lib/names';
+import { stringsOf } from '@/lib/strings';
 import { keyedBookings, keyedShell, WithBookings } from '@/testing/keyed';
+import type { CrossingClosure, CrossingFacts } from '@/lib/visits';
+import { ADMIN_LINES_EN } from '@/lines.generated';
+import type { BookingsStrings } from '@/types';
 import type { Booking } from './model';
 import { MoveConfirm, type MoveChoice } from './MoveConfirm';
 import type { MemberChange, NamedCrossing } from './moving';
+import { BookingsProvider } from './words';
 
 /*
  * The confirmation a move opens, from the Move form and from a drop alike: what moves from
- * where to where in the tenant's time, each member change, the warning naming per service
- * whether it is outside working hours or on a closure, and the "Tell the customer" tick box
- * ticked by default, left out where the customer was erased.
+ * where to where in the tenant's time, each member change, and the "Tell the customer" tick box
+ * ticked by default, left out where the customer was erased. Where the start crosses closed time
+ * it is the warning: its own title, the booking named, each reason in a sentence from the facts
+ * the server read, and Move anyway beside Cancel.
  */
 
 const words = keyedBookings();
@@ -36,9 +44,11 @@ beforeEach(() => {
 
 afterEach(() => view.unmount());
 
-function show(options: { booking?: Booking; changes?: MemberChange[]; crossings?: NamedCrossing[]; open?: boolean } = {}) {
+function show(options: { booking?: Booking; changes?: MemberChange[]; crossings?: NamedCrossing[]; open?: boolean; within?: (children: ReactNode) => ReactNode } = {}) {
+    const within = options.within ?? ((children: ReactNode) => <WithBookings>{children}</WithBookings>);
+
     view.render(
-        <WithBookings>
+        within(
             <MoveConfirm
                 open={options.open ?? true}
                 booking={options.booking ?? BOOKING}
@@ -49,12 +59,29 @@ function show(options: { booking?: Booking; changes?: MemberChange[]; crossings?
                 busy={false}
                 onConfirm={(choice) => choices.push(choice)}
                 onDismiss={() => {}}
-            />
-        </WithBookings>,
+            />,
+        ),
     );
 }
 
 const one = (selector: string) => document.body.querySelector(selector);
+
+/** The reasons the warning lists, in order. */
+const lines = () => [...document.body.querySelectorAll('.admin-move-confirm__crossing')].map((line) => line.textContent);
+
+/** Friday 20 November and Sunday 22 November 2026 as a reason names a day. */
+const FRIDAY = words.text('move.confirm.day', { weekday: weekdayName(5, 'long', 'en'), date: '20/11/2026' });
+const SUNDAY = words.text('move.confirm.day', { weekday: weekdayName(7, 'long', 'en'), date: '22/11/2026' });
+
+/** Elena's Haircut crossing one closure. */
+function closure(closed: CrossingClosure): NamedCrossing {
+    return { service: 'Haircut', staff: 'Elena Papadaki', kind: 'closure', facts: { date: closed.date, hours: [], day_off: null, closures: [closed] } };
+}
+
+/** Elena's Haircut crossing her working hours on a date, with the facts given. */
+function hours(date: string, facts: Partial<CrossingFacts>): NamedCrossing {
+    return { service: 'Haircut', staff: 'Elena Papadaki', kind: 'hours', facts: { date, hours: [], day_off: null, closures: [], ...facts } };
+}
 
 describe('the move confirmation', () => {
     it('says from where to where in the tenant time, each member change, no warning where nothing crosses, and the tick box ticked', () => {
@@ -105,7 +132,7 @@ describe('the move confirmation', () => {
         expect([...document.body.querySelectorAll('.admin-move-confirm__crossing')].map((line) => line.textContent)).toEqual([words.text('move.confirm.hours_unnamed'), words.text('move.confirm.closure_unnamed')]);
     });
 
-    it('warns per service whether it is outside working hours or on a closure, and confirms with the warning accepted and the tick as left', () => {
+    it('opens as a warning where the start crosses closed time: its own title, the booking named, a line per service with no more read of it, the question, Move anyway and Cancel, confirming with the warning accepted and the tick as left', () => {
         show({
             crossings: [
                 { service: 'Haircut', staff: 'Elena Papadaki', kind: 'hours' },
@@ -113,16 +140,118 @@ describe('the move confirmation', () => {
             ],
         });
 
+        expect(one('.admin-move-confirm .admin-modal__title')?.textContent).toBe(words.text('move.confirm.closed_title'));
+        expect(one('.admin-move-confirm__booking')?.textContent).toBe(words.text('move.confirm.booking', { customer: 'Ada North', services: 'Haircut' }));
+        expect(one('.admin-move-confirm__from-to')?.textContent).toBe(words.text('move.confirm.from_to', { from: '03/11/2026 10:00', to: '04/11/2026 11:30' }));
         expect(one('.admin-move-confirm__warning')?.getAttribute('role')).toBe('status');
-        expect(one('.admin-move-confirm__warning')?.textContent).toContain(words.text('move.confirm.warning'));
-        expect([...document.body.querySelectorAll('.admin-move-confirm__crossing')].map((line) => line.textContent)).toEqual([
-            words.text('move.confirm.hours', { service: 'Haircut', staff: 'Elena Papadaki' }),
-            words.text('move.confirm.closure', { service: 'Colour', staff: 'Nikos Georgiou' }),
-        ]);
+        expect(lines()).toEqual([words.text('move.confirm.hours', { service: 'Haircut', staff: 'Elena Papadaki' }), words.text('move.confirm.closure', { service: 'Colour', staff: 'Nikos Georgiou' })]);
+        expect(one('.admin-move-confirm__sure')?.textContent).toBe(words.text('move.confirm.sure'));
+        expect(one('.admin-move-confirm__confirm')?.textContent).toBe(words.text('move.confirm.move_anyway'));
+        expect(one('.admin-move-confirm__keep')?.textContent).toBe(words.text('move.confirm.cancel'));
 
         press(one('#move-tell'));
         press(one('.admin-move-confirm__confirm'));
         expect(choices).toEqual([{ warningAccepted: true, tellCustomer: false }]);
+    });
+
+    it('names the booking of an erased customer by the word for one, and every service once', () => {
+        const second = { ...BOOKING.items[0]!, sort: 1, service_name: 'Colour' };
+        show({ booking: { ...BOOKING, customer_name: null, items: [BOOKING.items[0]!, second, { ...second, sort: 2, service_name: 'Haircut' }] }, crossings: [hours('2026-11-21', { day_off: 'weekday' })] });
+
+        expect(one('.admin-move-confirm__booking')?.textContent).toBe(words.text('move.confirm.booking', { customer: words.text('customer_erased'), services: listOf(['Haircut', 'Colour'], 'en') }));
+    });
+
+    it('names a closure of the business by its day and its reason, or by its run of days, the window each day where it has one', () => {
+        show({
+            crossings: [
+                closure({ business: true, date: '2026-11-20', until: null, start: null, end: null, reason: 'Holiday' }),
+                closure({ business: true, date: '2026-11-20', until: '2026-11-22', start: null, end: null, reason: null }),
+                closure({ business: true, date: '2026-11-20', until: null, start: '15:00', end: '16:30', reason: null }),
+                closure({ business: true, date: '2026-11-20', until: '2026-11-22', start: '09:00', end: '10:00', reason: 'Stocktake' }),
+            ],
+        });
+
+        expect(lines()).toEqual([
+            words.text('move.confirm.business_closed_reason', { when: words.text('move.confirm.on_day', { day: FRIDAY }), reason: 'Holiday' }),
+            words.text('move.confirm.business_closed', { when: words.text('move.confirm.run', { day: FRIDAY, until: SUNDAY }) }),
+            words.text('move.confirm.business_closed', { when: words.text('move.confirm.on_day_window', { day: FRIDAY, start: '15:00', end: '16:30' }) }),
+            words.text('move.confirm.business_closed_reason', { when: words.text('move.confirm.run_window', { day: FRIDAY, until: SUNDAY, start: '09:00', end: '10:00' }), reason: 'Stocktake' }),
+        ]);
+    });
+
+    it('names a closure of the member by name, with its window and reason, and a whole line where the member cannot be named', () => {
+        show({
+            crossings: [
+                closure({ business: false, date: '2026-11-20', until: null, start: '15:00', end: '16:00', reason: null }),
+                closure({ business: false, date: '2026-11-20', until: '2026-11-22', start: null, end: null, reason: 'Leave' }),
+                { ...closure({ business: false, date: '2026-11-20', until: null, start: null, end: null, reason: null }), service: 'Colour', staff: null },
+            ],
+        });
+
+        expect(lines()).toEqual([
+            words.text('move.confirm.staff_closed', { staff: 'Elena Papadaki', when: words.text('move.confirm.on_day_window', { day: FRIDAY, start: '15:00', end: '16:00' }) }),
+            words.text('move.confirm.staff_closed_reason', { staff: 'Elena Papadaki', when: words.text('move.confirm.run', { day: FRIDAY, until: SUNDAY }), reason: 'Leave' }),
+            words.text('move.confirm.closure_unnamed'),
+        ]);
+    });
+
+    it('names the member\'s hours that day, their weekday off, the business closed that weekday, or the date taken off', () => {
+        show({
+            crossings: [
+                hours('2026-11-20', { hours: [{ start: '09:00', end: '13:00' }, { start: '14:00', end: '18:00' }] }),
+                hours('2026-11-21', { day_off: 'weekday' }),
+                hours('2026-11-22', { day_off: 'business' }),
+                hours('2026-11-24', { day_off: 'date' }),
+            ],
+        });
+
+        const windows = [words.text('move.confirm.window', { start: '09:00', end: '13:00' }), words.text('move.confirm.window', { start: '14:00', end: '18:00' })];
+
+        expect(lines()).toEqual([
+            words.text('move.confirm.outside_hours', { staff: 'Elena Papadaki', hours: listOf(windows, 'en') }),
+            words.text('move.confirm.off_weekday', { staff: 'Elena Papadaki', weekdays: words.text('move.confirm.weekdays.saturday') }),
+            words.text('move.confirm.business_weekday', { weekdays: words.text('move.confirm.weekdays.sunday') }),
+            words.text('move.confirm.off_date', { staff: 'Elena Papadaki', when: words.text('move.confirm.on_day', { day: words.text('move.confirm.day', { weekday: weekdayName(2, 'long', 'en'), date: '24/11/2026' }) }) }),
+        ]);
+    });
+
+    it('says the plain line where a day has no hours and no reason it knows: none given, or one this page has no words for', () => {
+        show({ crossings: [hours('2026-11-21', {}), { ...hours('2026-11-21', { day_off: 'season' }), service: 'Colour' }, { ...hours('2026-11-21', { day_off: 'season' }), staff: null }] });
+
+        expect(lines()).toEqual([
+            words.text('move.confirm.hours', { service: 'Haircut', staff: 'Elena Papadaki' }),
+            words.text('move.confirm.hours', { service: 'Colour', staff: 'Elena Papadaki' }),
+            words.text('move.confirm.hours_unnamed'),
+        ]);
+    });
+
+    it('says a reason once where two services meet the same closure', () => {
+        const holiday: CrossingClosure = { business: true, date: '2026-11-20', until: null, start: null, end: null, reason: 'Holiday' };
+        show({ crossings: [closure(holiday), { ...closure(holiday), service: 'Colour' }] });
+
+        expect(lines()).toEqual([words.text('move.confirm.business_closed_reason', { when: words.text('move.confirm.on_day', { day: FRIDAY }), reason: 'Holiday' })]);
+    });
+
+    it('reads in English as a person would say it, the day in the tenant\'s date format', () => {
+        const english = stringsOf<BookingsStrings>(ADMIN_LINES_EN.bookings, 'en');
+        show({
+            crossings: [closure({ business: true, date: '2026-11-20', until: null, start: null, end: null, reason: 'Holiday' }), hours('2026-11-20', { hours: [{ start: '10:00', end: '18:00' }] }), hours('2026-11-21', { day_off: 'weekday' })],
+            within: (children) => <BookingsProvider words={english}>{children}</BookingsProvider>,
+        });
+
+        expect(one('.admin-move-confirm .admin-modal__title')?.textContent).toBe('This time is closed');
+        expect(lines()).toEqual(['The business is closed on Friday 20/11/2026 (Holiday).', 'Elena Papadaki does not work at this time. Their hours that day are 10:00 to 18:00.', 'Elena Papadaki is off on Saturdays.']);
+        expect(one('.admin-move-confirm__confirm')?.textContent).toBe('Move anyway');
+        expect(one('.admin-move-confirm__keep')?.textContent).toBe('Cancel');
+    });
+
+    it('names the weekday in the viewer\'s language', () => {
+        show({ crossings: [hours('2026-11-24', { day_off: 'date' })], within: (children) => <WithBookings language="el">{children}</WithBookings> });
+
+        expect(lines()).toEqual([
+            keyedBookings('el').text('move.confirm.off_date', { staff: 'Elena Papadaki', when: keyedBookings('el').text('move.confirm.on_day', { day: keyedBookings('el').text('move.confirm.day', { weekday: weekdayName(2, 'long', 'el'), date: '24/11/2026' }) }) }),
+        ]);
+        expect(weekdayName(2, 'long', 'el')).not.toBe(weekdayName(2, 'long', 'en'));
     });
 
     it('leaves the tick box out where the customer was erased, and tells nobody', () => {

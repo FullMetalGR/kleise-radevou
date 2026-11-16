@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { sentenceOf } from '@/lib/sentence';
 import { type ShellWords, useShell } from '@/lib/strings';
-import { type Crossing, crossingsOf, type Failure, owningFailure } from '@/lib/visits';
+import { type Crossing, type CrossingFacts, crossingsOf, type Failure, owningFailure } from '@/lib/visits';
 import type { MoveChoice } from './MoveConfirm';
 
 /*
@@ -43,9 +43,10 @@ export type MemberChange = { segment: number; service: string; from: string; to:
 
 /**
  * A crossing the confirmation names: the service, its member and whether hours or a closure; null
- * for a name the move cannot read.
+ * for a name the move cannot read. facts is what is in the way where the server said, which the
+ * confirmation words in plain sentences; absent or null, it names the crossing alone.
  */
-export type NamedCrossing = { service: string | null; staff: string | null; kind: string };
+export type NamedCrossing = { service: string | null; staff: string | null; kind: string; facts?: CrossingFacts | null };
 
 const IDLE: MoveDay = { kind: 'idle' };
 
@@ -161,12 +162,12 @@ function memberName(segment: MoveSegment | undefined, id: number): string | null
     return segment !== undefined && segment.staff_id === id ? segment.staff_name : null;
 }
 
-/** The crossings in the confirmation's words: each segment's service and member by name. */
+/** The crossings in the confirmation's words: each segment's service and member by name, with what is in the way. */
 export function namedCrossings(crossings: readonly Crossing[], segments: readonly MoveSegment[]): NamedCrossing[] {
     return crossings.map((crossing) => {
         const segment = segments.find((candidate) => candidate.segment === crossing.segment);
 
-        return { service: segment?.service_name ?? null, staff: memberName(segment, crossing.staff_id), kind: crossing.kind };
+        return { service: segment?.service_name ?? null, staff: memberName(segment, crossing.staff_id), kind: crossing.kind, facts: crossing.facts };
     });
 }
 

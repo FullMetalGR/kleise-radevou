@@ -158,3 +158,19 @@ it('refuses a pattern window carrying validity dates, which a pattern\'s own dat
     expect(fn () => new ShiftPattern('2026-11-02', 1, null, [new AvailabilityRule(1, WallClockTime::of('09:00'), WallClockTime::of('17:00'), '2026-11-01')]))
         ->toThrow(InvalidShiftPattern::class, 'A shift pattern\'s window carries no validity dates; the pattern\'s own dates bound it.');
 });
+
+it('reads what the pattern says of a weekday with the cadence left aside: its windows on a week the cadence skips, none on a weekday it never works, and null outside its dates or with no pattern', function () {
+    $pattern = resolverPattern('2026-11-04', 2, '2026-11-20');
+    $usual = fn (?ShiftPattern $pattern, string $date): ?array => ($rules = (new ShiftResolver)->usualOn($pattern, $date)) === null ? null : resolverReadings($rules);
+
+    expect(shiftResolved($pattern, '2026-11-11'))->toBe([])
+        ->and($usual($pattern, '2026-11-11'))->toBe([[3, '10:00:00', '14:00:00'], [3, '15:00:00', '19:00:00']])
+        ->and($usual($pattern, '2026-11-18'))->toBe([[3, '10:00:00', '14:00:00'], [3, '15:00:00', '19:00:00']])
+        ->and($usual($pattern, '2026-11-10'))->toBe([])
+        ->and($usual($pattern, '2026-11-17'))->toBe([])
+        ->and($usual($pattern, '2026-11-02'))->toBeNull()
+        ->and($usual($pattern, '2026-11-04'))->not->toBeNull()
+        ->and($usual($pattern, '2026-11-20'))->toBe([])
+        ->and($usual($pattern, '2026-11-25'))->toBeNull()
+        ->and($usual(null, '2026-11-11'))->toBeNull();
+});

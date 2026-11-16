@@ -17,6 +17,7 @@ use App\Domain\Booking\CancellationPolicy;
 use App\Domain\Booking\SegmentConflict;
 use App\Http\BookingPayload;
 use App\Http\Controllers\Controller;
+use App\Http\CrossingReasons;
 use App\Http\ErrorEnvelope;
 use App\Http\MoveRefusal;
 use App\Http\Requests\MoveReadRequest;
@@ -50,7 +51,8 @@ use Illuminate\Http\JsonResponse;
  * that moment, its code, status and sentence, the write's own envelope (MoveRefusal), asked in
  * the write's order: the booking, the plan, the status rule, another booking, the crossings. A
  * placeable verdict with crossings is one the write refuses as unaccepted_warning until the
- * warning is accepted. Both read QueryBusinessMove, the write's planner and findings.
+ * warning is accepted. Both read QueryBusinessMove, the write's planner and findings, and each
+ * crossing carries what is in the way, the hours or the closures, as CrossingReasons reads them.
  *
  * Beside either, what the form offers per segment: the service, the member it is with now, and
  * the members it may be given to, the active members who perform the service, the implicit row
@@ -71,6 +73,7 @@ final class MoveReadController extends Controller
         BookingRecords $records,
         CalendarRoster $roster,
         HoldBookingFactory $holds,
+        CrossingReasons $reasons,
     ): JsonResponse {
         $tenant = $current->get();
         $record = $records->one($tenant, $uuid);
@@ -99,10 +102,10 @@ final class MoveReadController extends Controller
             return self::noStore(new JsonResponse([
                 'date' => $day,
                 'segments' => $segments,
-                'starts' => array_map(fn (MoveCandidate $candidate): array => [
+                'starts' => array_map(fn (MoveCandidate $candidate, array $crossings): array => [
                     'start' => BookingPayload::instant($candidate->start),
-                    'crossings' => ErrorEnvelope::crossingsOf($candidate->crossings),
-                ], $candidates),
+                    'crossings' => $crossings,
+                ], $candidates, $reasons->ofEach($tenant, array_map(fn (MoveCandidate $candidate): array => $candidate->crossings, $candidates))),
             ]));
         }
 
@@ -116,7 +119,7 @@ final class MoveReadController extends Controller
         };
 
         try {
-            $verdict = ['placeable' => true, 'crossings' => ErrorEnvelope::crossingsOf($query->verdict($uuid, $start, $staff, $guard))];
+            $verdict = ['placeable' => true, 'crossings' => $reasons->of($tenant, $query->verdict($uuid, $start, $staff, $guard))];
         } catch (BookingUnknown|ChainUnavailable|StaffNotEligible|NoSuchSegment|TransitionRefused|SegmentConflict $refused) {
             $envelope = MoveRefusal::for($refused);
             $verdict = ['placeable' => false, 'code' => $envelope->code, 'status' => $envelope->status, 'detail' => $envelope->detail, ...$envelope->data];

@@ -15,6 +15,7 @@ use App\Domain\Booking\SegmentConflict;
 use App\Domain\Enum\BookingOutcome;
 use App\Http\AdminSession;
 use App\Http\ApproverScope;
+use App\Http\CrossingReasons;
 use App\Http\ErrorEnvelope;
 use App\Http\MoveRefusal;
 use App\Http\Principal;
@@ -117,15 +118,22 @@ final readonly class BookingActionController
 
     /**
      * Moves the booking to the start given, the members given by segment position, as the
-     * principal: the redirect back with the success flash, or the refusal's envelope.
+     * principal: the redirect back with the success flash, or the refusal's envelope. A warning
+     * not yet accepted names each crossing with what is in the way, as the move's read does, so
+     * the confirmation it reopens says the same.
      */
-    public function move(MoveRequest $request, string $uuid): RedirectResponse|JsonResponse
+    public function move(MoveRequest $request, string $uuid, CrossingReasons $reasons): RedirectResponse|JsonResponse
     {
         $principal = $this->signedIn($request);
+        $tenant = $this->current->get();
 
         try {
-            $this->transitions->reschedule($this->current->get())->reschedule($uuid, $principal->actor(), $request->start(), $request->choices());
-        } catch (BookingUnknown|ChainUnavailable|StaffNotEligible|NoSuchSegment|SegmentConflict|UnacceptedWarning|TransitionRefused|WriteContended|Busy $refused) {
+            $this->transitions->reschedule($tenant)->reschedule($uuid, $principal->actor(), $request->start(), $request->choices());
+        } catch (UnacceptedWarning $warned) {
+            $envelope = MoveRefusal::for($warned);
+
+            return (new ErrorEnvelope($envelope->code, $envelope->status, $envelope->detail, [...$envelope->data, 'crossings' => $reasons->of($tenant, $warned->crossings)], $envelope->headers))->toResponse();
+        } catch (BookingUnknown|ChainUnavailable|StaffNotEligible|NoSuchSegment|SegmentConflict|TransitionRefused|WriteContended|Busy $refused) {
             return MoveRefusal::for($refused)->toResponse();
         }
 
