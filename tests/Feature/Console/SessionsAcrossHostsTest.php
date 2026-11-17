@@ -43,6 +43,7 @@ function crossHostSample(string $parameter): string
         'kind' => 'service',
         'path' => 'nothing-here',
         'language' => 'en',
+        'step' => 'team',
         default => '1',
     };
 }
@@ -140,8 +141,15 @@ it('refuses an operator\'s console session on every admin route of a tenant host
     $calls = crossHostAdminCalls();
     $signIn = tenantUrl('acme', '/admin/login');
 
-    // ApiSurfaceTest's admin surface, verb by path, less the door's three rows.
-    expect($calls)->toHaveCount(85);
+    // ApiSurfaceTest's admin surface, verb by path, less the door's three rows; the setup steps'
+    // own writes counted apart, one step to a line.
+    $steps = 0
+        + 1 // Business profile
+        + 1 // Services
+        + 1 // Team
+        + 1 // Opening hours
+        + 3; // Online payments
+    expect($calls)->toHaveCount(88 + $steps);
 
     // Each call reaches the route it names, never the 404 page's catch-all standing in for it.
     foreach ($calls as $row => $call) {

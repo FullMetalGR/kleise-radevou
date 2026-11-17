@@ -14,15 +14,13 @@ use App\Http\HomeActivity;
 use App\Http\HomePayload;
 use App\Http\HomeRangeFigures;
 use App\Http\Requests\HomeRequest;
+use App\Http\Setup\SetupWizard;
 use App\Infrastructure\Db\BookingRecords;
 use App\Infrastructure\Db\CalendarRoster;
 use App\Infrastructure\Db\RangeFigureRecords;
 use App\Infrastructure\Db\SettingsReader;
-use App\Infrastructure\Db\SetupChecklist;
 use App\Tenancy\CurrentTenant;
 use App\Tenancy\Permission;
-use App\Tenancy\Slug;
-use App\Tenancy\TenantUrls;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -37,9 +35,19 @@ use Inertia\Response;
  * the date the ranges and the seven days count from, is read once off the Clock port's now in the
  * tenant's zone, never the machine's date, and the page receives no copy of it. Every prop is a
  * closure computed when the page renders: `days`, the confirmed and the awaiting counts per day
- * over the seven days from today (BookingRecords::perDay); and, for a manageSettings holder alone,
- * `setup`, the checklist's four facts and the hosted page's address. Nothing is stored and nothing
- * is remembered.
+ * over the seven days from today (BookingRecords::perDay). Nothing is stored and nothing is
+ * remembered.
+ *
+ * `setup`: for an owner in setup (SetupWizard::progress) with a step still open, the steps that
+ * apply with their facts, whether the wizard has come up by itself, the step it opens on by
+ * itself, and each step's own data; the wizard's word sections are asked for beside Home's only
+ * then. Whether it is offered is read on every answer, partial reloads included, since the words
+ * it needs are named before the page renders; anyone else is sent no part of it.
+ * `setup_finished`: true on the one answer that finds every step closed and records setup as
+ * finished, which carries no `setup`, and absent from every other, so the page says setup is
+ * complete once, as it happens. The record is written as the prop is resolved, so only by an
+ * answer that carries it: a partial reload asking for other props records nothing, and the whole
+ * answer after it is the one that says so.
  *
  * The three feeds: `next_up`, the next five live bookings from the same now by first start;
  * `awaiting`, the requests on a live hold, pendingCount's rows, the soonest to end first, up to
@@ -78,8 +86,7 @@ final readonly class HomeController
         private AdminSession $session,
         private SettingsReader $settings,
         private BookingRecords $bookings,
-        private SetupChecklist $setup,
-        private TenantUrls $urls,
+        private SetupWizard $setup,
         private Clock $clock,
         private BookingTrail $trail,
         private CalendarPage $page,
@@ -127,8 +134,18 @@ final readonly class HomeController
             'detail' => fn (): ?array => $this->page->detail($tenant, $request->booking(), $viewer, $this->roster->ownRow($tenant, $viewer->ownStaffUserId())['id'] ?? null, null),
         ];
 
-        if ($viewer->holds(Permission::ManageSettings)) {
-            $props['setup'] = fn (): array => [...$this->setup->facts($tenant), 'hosted_url' => $this->urls->hostedPage(Slug::of($tenant->slug))];
+        $progress = $this->setup->progress($tenant, $viewer);
+
+        if ($progress?->complete() === true) {
+            // Resolved only for an answer that carries it, so the record is never written unsaid.
+            $props['setup_finished'] = function () use ($tenant): bool {
+                $this->setup->finish($tenant);
+
+                return true;
+            };
+        } elseif ($progress !== null) {
+            AdminStrings::need(request(), ...$this->setup->sections($progress));
+            $props['setup'] = fn (): array => $this->setup->payload($tenant, $progress, $request);
         }
 
         return Inertia::render('Home', $props);

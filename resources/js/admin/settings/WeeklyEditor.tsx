@@ -19,7 +19,8 @@ import { DEFAULT_WINDOW, type WeeklyWindow } from '@/shifts/model';
  * are its rules in that order.
  *
  * Its words are the shell's shared ones, since two screens read them, and each day is named by ICU
- * in the page's language.
+ * in the page's language. A refusal naming one window, by its place in the rules, is shown under
+ * that window's Start.
  */
 
 type Props = {
@@ -28,9 +29,11 @@ type Props = {
     clock: TenantClock;
     granularity: number;
     idPrefix?: string;
+    /** A refusal's sentence by the place in the rules of the window it names; none where absent. */
+    refusals?: Readonly<Record<number, string>>;
 };
 
-export function WeeklyEditor({ rules, onChange, clock, granularity, idPrefix = 'weekly' }: Props) {
+export function WeeklyEditor({ rules, onChange, clock, granularity, idPrefix = 'weekly', refusals = {} }: Props) {
     const replace = (index: number, rule: WeeklyWindow) => onChange(rules.map((current, at) => (at === index ? rule : current)));
     const remove = (index: number) => onChange(rules.filter((_, at) => at !== index));
     const add = (weekday: number) => onChange([...rules, { weekday, ...DEFAULT_WINDOW }]);
@@ -49,7 +52,7 @@ export function WeeklyEditor({ rules, onChange, clock, granularity, idPrefix = '
                         {rows.length === 0 && <p className="admin-weekly__closed text-sm text-muted-foreground">{shell.text('shared.weekly.closed')}</p>}
                         {rows.map(({ rule, index }, position) => (
                             <div key={index} className="admin-weekly__window mb-2 flex flex-wrap items-end gap-2">
-                                <Field id={`${idPrefix}-${weekday}-${position}-start`} label={shell.text('shared.weekly.start')}>
+                                <Field id={`${idPrefix}-${weekday}-${position}-start`} label={shell.text('shared.weekly.start')} error={refusals[index] ?? null}>
                                     {(control) => <TimeField {...control} className="admin-weekly__start" value={rule.start} onChange={(start) => replace(index, { ...rule, start })} clock={clock} granularity={granularity} />}
                                 </Field>
                                 <Field id={`${idPrefix}-${weekday}-${position}-end`} label={shell.text('shared.weekly.end')}>

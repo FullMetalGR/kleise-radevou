@@ -15,11 +15,11 @@ use RuntimeException;
  * tabs side by side show two brands from one application. Each is provisioned through the
  * tenant:provision command, the one way a tenant is made, luna with the staff feature its three
  * members need and pier on the floor, both with no subscription since the command bypasses
- * billing, and then given its theme in its own settings row, luna violet and pier blue; the
- * catalog seeder then fills both with staff and services and the hours seeder gives luna's staff
+ * billing, and then given its theme in its own settings row, luna violet and pier blue, and its
+ * setup recorded as finished, since both stand for established businesses; the catalog seeder then fills both with staff and services and the hours seeder gives luna's staff
  * their weeks and blackouts. Running it twice changes nothing: the command finds the active row,
  * the theme is written only where it differs, and the catalog and the hours are inserted only
- * where absent.
+ * where absent, and the setup stamp only where unset.
  *
  * Runs under db:seed, from the console or from a test's seed(), which is what hands it the
  * command it prints through.
@@ -39,6 +39,7 @@ final class DemoTenantsSeeder extends Seeder
         foreach (self::TENANTS as $demo) {
             $this->provision($demo);
             $this->brand($demo['slug'], $demo['theme']);
+            $this->settled($demo['slug']);
         }
 
         $this->call(DemoCatalogSeeder::class);
@@ -80,6 +81,22 @@ final class DemoTenantsSeeder extends Seeder
         $this->say($changed === 0
             ? sprintf('Theme of "%s" is already %s; nothing changed.', $slug, $theme)
             : sprintf('Theme of "%s" set to %s.', $slug, $theme));
+    }
+
+    /**
+     * Records the tenant's setup as finished, written once: both are established businesses, so
+     * their owners land on Home with no setup wizard and no banner.
+     */
+    private function settled(string $slug): void
+    {
+        $changed = DB::table(Slug::of($slug)->schemaName().'.settings')
+            ->where('id', 1)
+            ->whereNull('setup_finished_at')
+            ->update(['setup_finished_at' => DB::raw('now()')]);
+
+        $this->say($changed === 0
+            ? sprintf('Setup of "%s" is already finished; nothing changed.', $slug)
+            : sprintf('Setup of "%s" recorded as finished.', $slug));
     }
 
     private function say(string $line): void

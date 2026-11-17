@@ -16,7 +16,8 @@ use Illuminate\Database\Query\Builder;
 /**
  * The writes of the Settings screen: the whole patch, which is the tenant row's currency beside
  * the settings row's own columns, landing in one transaction so a refused currency cannot leave
- * the holds half-written; the image columns, the logo's path, the cover's and the gallery's, each
+ * the holds half-written, and the setup wizard's profile save, some of the profile's columns
+ * alone; the image columns, the logo's path, the cover's and the gallery's, each
  * written on its own by its upload and its removal, each answering what its caller needs to delete
  * the file the row let go or never took; the map's columns, which the patch writes where an
  * address column changes, deleting the file of a map it drops itself once it has committed, which
@@ -56,28 +57,60 @@ final readonly class SettingsRecords
      */
     public function update(Tenant $tenant, string $currency, array $columns, bool $mapping): bool
     {
+        return $this->write($tenant, $currency, [
+            'theme' => $columns['theme'],
+            ...($columns['language'] === null ? [] : ['language' => $columns['language']]),
+            'checkout_ttl_min' => $columns['checkout_ttl_min'],
+            'approval_ttl_hours' => $columns['approval_ttl_hours'],
+            'payment_ttl_hours' => $columns['payment_ttl_hours'],
+            'reminder_lead_hours' => $columns['reminder_lead_hours'],
+            'start_interval_min' => $columns['start_interval_min'],
+            'emails_off' => TextArray::encode($columns['emails_off']),
+        ], $columns['profile'], $mapping);
+    }
+
+    /**
+     * Some of the profile's columns and nothing else, the setup wizard's Business profile save:
+     * the address moves the map as the whole patch's does, and every other column, the tenant
+     * row's currency included, is left as it stands. The answer is whether a map is owed, as
+     * update's is.
+     *
+     * @param  array<string, string|null>  $profile
+     * @param  bool  $mapping  whether the map's key is set
+     */
+    public function updateProfile(Tenant $tenant, array $profile, bool $mapping): bool
+    {
+        return $this->write($tenant, null, [], $profile, $mapping);
+    }
+
+    /**
+     * The settings row's columns given and the profile's beside them, with the map's state where
+     * an address column changes, in one transaction; the tenant row's currency too where one is
+     * given. The dropped map's file is deleted once it has committed.
+     *
+     * @param  array<string, mixed>  $columns
+     * @param  array<string, string|null>  $profile
+     */
+    private function write(Tenant $tenant, ?string $currency, array $columns, array $profile, bool $mapping): bool
+    {
         $connection = $this->db->connection();
 
-        [$owed, $dropped] = $connection->transaction(function () use ($connection, $tenant, $currency, $columns, $mapping): array {
+        [$owed, $dropped] = $connection->transaction(function () use ($connection, $tenant, $currency, $columns, $profile, $mapping): array {
             ['address' => $address, 'path' => $path] = $this->lockedMap($tenant);
-            $written = [...$address, ...array_intersect_key($columns['profile'], $address)];
+            $written = [...$address, ...array_intersect_key($profile, $address)];
             $state = null;
 
             if ($written !== $address) {
                 $state = $mapping && Profile::of($written)->addressLines() !== [] ? MapState::Pending : MapState::None;
             }
 
-            $connection->table('tenants')->where('id', $tenant->id)->update(['currency' => $currency, 'updated_at' => $connection->raw('now()')]);
+            if ($currency !== null) {
+                $connection->table('tenants')->where('id', $tenant->id)->update(['currency' => $currency, 'updated_at' => $connection->raw('now()')]);
+            }
+
             $this->settings($tenant)->update([
-                'theme' => $columns['theme'],
-                ...($columns['language'] === null ? [] : ['language' => $columns['language']]),
-                'checkout_ttl_min' => $columns['checkout_ttl_min'],
-                'approval_ttl_hours' => $columns['approval_ttl_hours'],
-                'payment_ttl_hours' => $columns['payment_ttl_hours'],
-                'reminder_lead_hours' => $columns['reminder_lead_hours'],
-                'start_interval_min' => $columns['start_interval_min'],
-                'emails_off' => TextArray::encode($columns['emails_off']),
-                ...$columns['profile'],
+                ...$columns,
+                ...$profile,
                 ...match ($state) {
                     null => [],
                     MapState::None => ['map_state' => $state->value, ...self::NO_MAP],

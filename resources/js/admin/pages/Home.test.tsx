@@ -9,14 +9,14 @@ import { formatAmount, formatCount, formatPercent } from '@/lib/format';
 import { listOf, unitFigure } from '@/lib/names';
 import { ShellProvider } from '@/lib/strings';
 import { NOT_DONE } from '@/lib/visits';
-import { KEYED_BOOKINGS, KEYED_HOME, keyedHome, keyedShell } from '@/testing/keyed';
+import type { Setup } from '@/setup/model';
+import { KEYED_BOOKINGS, KEYED_HOME, KEYED_SETUP, keyedHome, keyedSetup, keyedShell } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
 import Home, { dayLink, type HomeDay } from './Home';
 
 /*
- * Home's wiring: the title, the setup checklist with its book action opening the wizard with no
- * prefill, the range card choosing today, yesterday, this week or this month by a visit that reads
- * the range's figures alone, the six tiles each compared with the period before in one sentence per
+ * Home's wiring: the title, the range card choosing today, yesterday, this week or this month by
+ * a visit that reads the range's figures alone, the six tiles each compared with the period before in one sentence per
  * kind of range, the footnote, the two Top tables, and the seven days as bars each linking to the
  * Calendar's Day on its date, the confirmed part in the theme colour and the awaiting share stacked
  * in amber, summed in the header strip. Rendered with the keyed home section, so every expectation
@@ -27,15 +27,23 @@ import Home, { dayLink, type HomeDay } from './Home';
  * reload of the detail alone, an approval posting as every screen's does and the redirect's page
  * followed by one more read of the detail for the booking still open. The framework is stood in for
  * by a router that records each visit.
+ *
+ * Setup on Home, for an owner the answer carries it to: the banner above the title with its count
+ * and Continue; the wizard coming up by itself on the step the answer Home is first drawn with
+ * names, that step then spent in the page the browser keeps, and the record that it came up, made
+ * once and made again where it did not land; Continue opening it on the first open step; the close
+ * handing focus to Continue; and, once an answer comes back with no setup while the wizard is up,
+ * the wizard closing, with the toast only where that answer says setup was finished just now.
  */
 
 const home = keyedHome();
 
-const inertia = vi.hoisted(() => ({ props: {} as Record<string, unknown>, get: vi.fn(), post: vi.fn(), listeners: new Map<string, (event: Event) => void>() }));
+const inertia = vi.hoisted(() => ({ props: {} as Record<string, unknown>, get: vi.fn(), post: vi.fn(), replace: vi.fn(), listeners: new Map<string, (event: Event) => void>() }));
 
-type Visit = { only?: string[]; preserveUrl?: boolean; preserveState?: boolean; replace?: boolean; onStart?: () => void; onFinish?: () => void };
+type Visit = { only?: string[]; preserveUrl?: boolean; preserveState?: boolean; replace?: boolean; onStart?: () => void; onSuccess?: () => void; onFinish?: () => void };
 
-const wizard = vi.hoisted(() => ({ open: vi.fn() }));
+/** A visit that rewrites the kept page in place, its props made from the page's own. */
+type Rewrite = { preserveState?: boolean; preserveScroll?: boolean; props: (props: Record<string, unknown>) => Record<string, unknown> };
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
@@ -48,6 +56,7 @@ vi.mock('@inertiajs/react', () => ({
     router: {
         get: inertia.get,
         post: inertia.post,
+        replace: inertia.replace,
         on: (name: string, listener: (event: Event) => void) => {
             inertia.listeners.set(name, listener);
 
@@ -56,13 +65,7 @@ vi.mock('@inertiajs/react', () => ({
     },
 }));
 
-vi.mock('@/wizard/NewBooking', () => ({ useNewBooking: () => wizard }));
-
 const HOSTED = 'http://luna.localhost/';
-
-const READY = { service: true, hours: true, link: true, booking: true, hosted_url: HOSTED };
-
-type Fact = 'service' | 'hours' | 'link' | 'booking';
 
 /** The demo's week: a rise, a fall, no change and a rise from nought. */
 const FIGURES: RangeFigures = {
@@ -104,7 +107,7 @@ function propsWith(overrides: Record<string, unknown> = {}): Record<string, unkn
         flash: null,
         errors: {},
         language: 'en',
-        strings: { home: KEYED_HOME, bookings: KEYED_BOOKINGS },
+        strings: { home: KEYED_HOME, bookings: KEYED_BOOKINGS, setup: KEYED_SETUP },
         permissions: ['viewBookings', 'manageBookings', 'manageSettings'],
         entitlements: ['staff'],
         subscription: { state: 'active' },
@@ -123,11 +126,22 @@ function propsWith(overrides: Record<string, unknown> = {}): Record<string, unkn
     };
 }
 
-/** Each item of the setup card by its fact, as done or open, with the address its link leads to. */
-function setupItems(): Record<string, { done: string | undefined; href: string | null }> {
-    return Object.fromEntries(
-        [...view.host.querySelectorAll<HTMLElement>('.admin-setup__item')].map((item) => [item.dataset['fact'] ?? '', { done: item.dataset['done'], href: item.querySelector('a')?.getAttribute('href') ?? null }]),
-    );
+/** Setup open with the staff feature, Services done and Team skipped, the wizard already up once. */
+function setupOf(patch: Partial<Setup> = {}): Setup {
+    return {
+        steps: [
+            { key: 'profile', done: false, skipped: false },
+            { key: 'services', done: true, skipped: false },
+            { key: 'team', done: false, skipped: true },
+            { key: 'hours', done: false, skipped: false },
+            { key: 'payments', done: false, skipped: false },
+            { key: 'link', done: false, skipped: false },
+        ],
+        opened: true,
+        opens: null,
+        data: { link: { hosted_url: HOSTED } },
+        ...patch,
+    };
 }
 
 /** A tile's lines in order: its value, then its comparison, then its notes. */
@@ -148,10 +162,10 @@ function topRows(id: string): string[][] {
 let view: Mounted;
 
 beforeEach(() => {
-    wizard.open.mockReset();
     inertia.listeners.clear();
     inertia.get.mockReset();
     inertia.post.mockReset();
+    inertia.replace.mockReset();
     inertia.props = propsWith();
     view = mount();
 });
@@ -161,13 +175,14 @@ afterEach(() => {
 });
 
 describe('Home', () => {
-    it('is titled Home, then the card, To mark, the range, the tiles, the footnote, the feeds, the Top tables, the activity and the days in that order', () => {
-        inertia.props = propsWith({ setup: { ...READY, booking: false } });
+    it('is titled Home under the setup banner, then To mark, the range, the tiles, the footnote, the feeds, the Top tables, the activity and the days in that order', () => {
+        inertia.props = propsWith({ setup: setupOf() });
         renderHome();
 
         expect(view.host.querySelector('h1')?.textContent).toBe(home.text('title'));
+        expect(view.host.querySelector('.admin-setup-banner')?.compareDocumentPosition(view.host.querySelector('h1') as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
-        const order = ['.admin-setup', '.admin-home-to-mark', '.admin-home-range', '.admin-home-figures', '.admin-home-footnote', '.admin-home-next', '.admin-home-awaiting', '.admin-home-top--services', '.admin-home-top--staff', '.admin-home-activity', '.admin-home-days'];
+        const order = ['.admin-setup-banner', '.admin-home-to-mark', '.admin-home-range', '.admin-home-figures', '.admin-home-footnote', '.admin-home-next', '.admin-home-awaiting', '.admin-home-top--services', '.admin-home-top--staff', '.admin-home-activity', '.admin-home-days'];
         const parts = order.map((selector) => view.host.querySelector(selector));
         expect(parts.map((part, index) => (part === null ? order[index] : null)).filter((missing) => missing !== null)).toEqual([]);
         parts.slice(1).forEach((part, index) => expect(parts[index]?.compareDocumentPosition(part as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING));
@@ -456,58 +471,182 @@ describe('Home', () => {
         expect(el[4]).not.toBe(en[4]);
     });
 
-    it('shows the setup card while any fact is false, a tick or an open circle per fact, each fact open alone in turn', () => {
-        for (const fact of ['service', 'hours', 'link', 'booking'] satisfies Fact[]) {
-            inertia.props = propsWith({ setup: { ...READY, [fact]: false } });
-            renderHome();
+    it('says in the banner how many of the steps that apply are done or skipped, with Continue, the wizard not up', () => {
+        const words = keyedSetup();
+        inertia.props = propsWith({ setup: setupOf() });
+        renderHome();
 
-            expect(view.host.querySelector('#setup-title')?.textContent).toBe(home.text('setup.title'));
-            expect(Object.fromEntries(Object.entries(setupItems()).map(([key, item]) => [key, item.done]))).toEqual({ service: 'true', hours: 'true', link: 'true', booking: 'true', [fact]: 'false' });
-            expect(view.host.querySelectorAll('.admin-setup__mark--done')).toHaveLength(3);
-            expect(view.host.querySelectorAll('.admin-setup__mark--open')).toHaveLength(1);
-            expect(view.host.querySelector('.admin-setup__mark--open')?.textContent).toBe(home.text('setup.open'));
+        expect(view.host.querySelector('.admin-setup-banner')?.getAttribute('aria-label')).toBe(words.text('title'));
+        expect(view.host.querySelector('.admin-setup-banner__progress')?.textContent).toBe(words.text('banner.progress', { done: formatCount(2, words.locale), total: formatCount(6, words.locale) }));
+        expect(view.host.querySelector('.admin-setup-banner__continue')?.textContent).toBe(words.text('banner.continue'));
+        expect(q('.admin-setup')).toBeNull();
+
+        inertia.props = propsWith({ setup: setupOf({ steps: setupOf().steps.filter((fact) => fact.key !== 'team') }) });
+        renderHome();
+        expect(view.host.querySelector('.admin-setup-banner__progress')?.textContent).toBe(words.text('banner.progress', { done: formatCount(1, words.locale), total: formatCount(5, words.locale) }));
+    });
+
+    it('opens the wizard from Continue on the first step still open, recording nothing where it has come up before', () => {
+        const words = keyedSetup();
+        inertia.props = propsWith({ setup: setupOf({ steps: setupOf().steps.map((fact) => (fact.key === 'profile' ? { ...fact, done: true } : fact)) }) });
+        renderHome();
+
+        press(view.host.querySelector('.admin-setup-banner__continue'));
+
+        expect(q('.admin-setup')).not.toBeNull();
+        expect(q('.admin-setup__name')?.textContent).toBe(words.text('steps.hours.name'));
+        expect(q('.admin-setup__step[aria-current="step"]')?.getAttribute('data-step')).toBe('hours');
+        expect(inertia.post).not.toHaveBeenCalled();
+    });
+
+    it('comes up by itself on the step the answer names and records once that it came up, by a post that keeps the page and runs beside any other visit', () => {
+        const words = keyedSetup();
+        inertia.props = propsWith({ setup: setupOf({ opened: false, opens: 'profile' }) });
+        renderHome();
+
+        expect(q('.admin-setup__name')?.textContent).toBe(words.text('steps.profile.name'));
+        expect(inertia.post).toHaveBeenCalledTimes(1);
+        const [url, body, visit] = lastPost();
+        expect([url, body]).toEqual(['/admin/setup/opened', {}]);
+        expect(visit).toMatchObject({ async: true, preserveState: true, preserveScroll: true });
+
+        renderHome();
+        expect(inertia.post).toHaveBeenCalledTimes(1);
+    });
+
+    it('takes the step to open on from the answer it is first drawn with alone, a later answer naming one neither moving the wizard nor bringing it up', () => {
+        const current = () => q('.admin-setup__step[aria-current="step"]')?.getAttribute('data-step');
+        inertia.props = propsWith({ setup: setupOf({ opens: 'profile' }) });
+        renderHome();
+
+        press(q('.admin-setup__step[data-step="hours"]'));
+        expect(current()).toBe('hours');
+
+        inertia.props = propsWith({ setup: setupOf({ opens: 'link' }) });
+        renderHome();
+        expect(current()).toBe('hours');
+
+        press(q('.admin-setup__close'));
+        expect(q('.admin-setup')).toBeNull();
+
+        inertia.props = propsWith({ setup: setupOf({ opens: 'profile' }) });
+        renderHome();
+        expect(q('.admin-setup')).toBeNull();
+    });
+
+    it('spends the step to open on in the page the browser keeps, every other prop left the object it was, so that page restored does not bring the wizard up again', () => {
+        inertia.props = propsWith({ setup: setupOf({ opens: 'profile' }) });
+        renderHome();
+
+        expect(inertia.replace).toHaveBeenCalledTimes(1);
+        const [rewrite] = inertia.replace.mock.lastCall as [Rewrite];
+        expect(rewrite).toMatchObject({ preserveState: true, preserveScroll: true });
+
+        const before = inertia.props;
+        const after = rewrite.props(before);
+        expect(after.setup).toEqual({ ...(before.setup as Setup), opens: null });
+        expect(Object.keys(after)).toEqual(Object.keys(before));
+        for (const name of Object.keys(before).filter((each) => each !== 'setup')) {
+            expect([name, after[name] === before[name]]).toEqual([name, true]);
         }
+
+        const bare = propsWith();
+        expect(rewrite.props(bare)).toBe(bare);
+
+        inertia.replace.mockClear();
+        inertia.props = propsWith({ setup: setupOf() });
+        renderHome();
+        expect(inertia.replace).not.toHaveBeenCalled();
     });
 
-    it('links each fact to where it is done: New service, the Shifts screen while the staff feature holds the hours, the Booking page section, and the wizard opened on press with no prefill beside the hosted page', () => {
-        inertia.props = propsWith({ setup: { service: false, hours: false, link: false, booking: false, hosted_url: HOSTED } });
+    it('records that it came up again at the next step where the record did not land, and no more once one has', () => {
+        inertia.props = propsWith({ setup: setupOf({ opened: false, opens: 'profile' }) });
         renderHome();
+        expect(inertia.post).toHaveBeenCalledTimes(1);
 
-        expect(Object.fromEntries(Object.entries(setupItems()).map(([key, item]) => [key, item.href]))).toEqual({
-            service: '/admin/services/new',
-            hours: '/admin/shifts',
-            link: '/admin/settings#section-booking-page',
-            booking: HOSTED,
+        act(() => lastPost()[2].onFinish?.());
+        expect(inertia.post).toHaveBeenCalledTimes(1);
+
+        press(q('.admin-setup__step[data-step="hours"]'));
+        expect(inertia.post).toHaveBeenCalledTimes(2);
+        expect(lastPost()[0]).toBe('/admin/setup/opened');
+
+        act(() => {
+            lastPost()[2].onSuccess?.();
+            lastPost()[2].onFinish?.();
         });
-        expect([...view.host.querySelectorAll('.admin-setup__link')].map((el) => el.textContent)).toEqual([home.text('setup.service'), home.text('setup.hours'), home.text('setup.link')]);
-        expect(view.host.querySelector('.admin-setup__item[data-fact="booking"] a')?.getAttribute('target')).toBe('_blank');
-        expect(view.host.querySelector('.admin-setup__hosted')?.textContent).toBe(home.text('setup.hosted'));
-
-        press(view.host.querySelector('.admin-setup__book'));
-        expect(wizard.open).toHaveBeenCalledTimes(1);
-        expect(wizard.open).toHaveBeenLastCalledWith();
+        press(q('.admin-setup__step[data-step="link"]'));
+        expect(inertia.post).toHaveBeenCalledTimes(2);
     });
 
-    it('links the hours to Settings without the staff feature, and offers the hosted page alone to a viewer without the wizard', () => {
-        inertia.props = propsWith({ entitlements: [], catalog: null, setup: { ...READY, hours: false, booking: false } });
+    it('closes the wizard by its close button and hands the focus to Continue, the banner left in place', async () => {
+        inertia.props = propsWith({ setup: setupOf({ opened: false, opens: 'profile' }) });
         renderHome();
 
-        expect(setupItems()['hours']?.href).toBe('/admin/settings#section-opening-hours');
-        expect(setupItems()['booking']?.href).toBe(HOSTED);
-        expect(view.host.querySelector('.admin-setup__book')).toBeNull();
-        expect(view.host.querySelector('.admin-setup__hosted')?.textContent).toBe(home.text('setup.booking'));
+        press(q('.admin-setup__close'));
+        await settle();
+
+        expect(q('.admin-setup')).toBeNull();
+        expect(document.activeElement).toBe(view.host.querySelector('.admin-setup-banner__continue'));
     });
 
-    it('renders no setup card once all four facts are true, and none when the props carry no setup, the tiles and the days still drawn', () => {
-        inertia.props = propsWith({ setup: READY });
+    it('closes the wizard and says setup is complete in a toast, once, when the answer that says setup was finished just now comes back with no setup while it is up', () => {
+        const words = keyedSetup();
+        const said = () => [...document.body.querySelectorAll('.admin-toast[data-kind="success"] p')].map((line) => line.textContent);
+        inertia.props = propsWith({ setup: setupOf({ opens: 'link' }) });
         renderHome();
-        expect(view.host.querySelector('.admin-setup')).toBeNull();
-        expect(view.host.querySelector('.admin-home-figures')).not.toBeNull();
+        expect(q('.admin-setup')).not.toBeNull();
+
+        inertia.props = propsWith({ setup_finished: true });
+        renderHome();
+
+        expect(q('.admin-setup')).toBeNull();
+        expect(view.host.querySelector('.admin-setup-banner')).toBeNull();
+        expect(said()).toEqual([words.text('complete')]);
 
         inertia.props = propsWith();
         renderHome();
-        expect(view.host.querySelector('.admin-setup')).toBeNull();
+        expect(said()).toEqual([words.text('complete')]);
+    });
+
+    it('closes the wizard and says nothing when an answer comes back with no setup and no word that it was finished just now', () => {
+        inertia.props = propsWith({ setup: setupOf({ opens: 'link' }) });
+        renderHome();
+        expect(q('.admin-setup')).not.toBeNull();
+
+        inertia.props = propsWith();
+        renderHome();
+
+        expect(q('.admin-setup')).toBeNull();
+        expect(view.host.querySelector('.admin-setup-banner')).toBeNull();
+        expect(document.body.querySelector('.admin-toast')).toBeNull();
+    });
+
+    it('says nothing where setup was finished with the wizard not up, in front of the banner alone or of a page first drawn with no setup', () => {
+        inertia.props = propsWith({ setup: setupOf() });
+        renderHome();
+        expect(q('.admin-setup')).toBeNull();
+
+        inertia.props = propsWith({ setup_finished: true });
+        renderHome();
+        expect(view.host.querySelector('.admin-setup-banner')).toBeNull();
+        expect(document.body.querySelector('.admin-toast')).toBeNull();
+
+        view.render(<p />);
+        renderHome();
+        expect(document.body.querySelector('.admin-toast')).toBeNull();
+    });
+
+    it('draws neither banner nor wizard and says nothing when the answer carries no setup, the tiles and the days still drawn', () => {
+        inertia.props = propsWith();
+        renderHome();
+
+        expect(view.host.querySelector('.admin-setup-banner')).toBeNull();
+        expect(q('.admin-setup')).toBeNull();
+        expect(document.body.querySelector('.admin-toast')).toBeNull();
+        expect(view.host.querySelector('.admin-home-figures')).not.toBeNull();
         expect(view.host.querySelectorAll('.admin-home-day')).toHaveLength(7);
+        expect(inertia.post).not.toHaveBeenCalled();
     });
 });
 
@@ -759,7 +898,7 @@ describe('Home\'s To mark', () => {
         expect(view.host.querySelector('.admin-home-to-mark__showing')).toBeNull();
     });
 
-    it('sits under the title and above the range card, with no setup card on the page', () => {
+    it('sits under the title and above the range card', () => {
         inertia.props = propsWith({ to_mark: toMark() });
         renderHome();
 

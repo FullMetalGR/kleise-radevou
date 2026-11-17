@@ -29,23 +29,27 @@ import { cn } from '@/lib/utils';
  */
 
 /*
- * Three shapes, every one the same dialog with the same layers and closes. The centred frame is
+ * Four shapes, every one the same dialog with the same layers and closes. The centred frame is
  * the default, bounded to the viewport at every width. Filling is that frame at or above the
  * admin's breakpoint and the whole viewport below it, the footer still pinned and the body still
- * the one scroller: the booking dialog and the wizard on a phone. The drawer is pinned to the
- * start edge at the viewport's full height: the rail behind the top bar's control.
+ * the one scroller: the booking dialog and the wizard on a phone. Full is the whole viewport at
+ * every width, the footer pinned and the body the one scroller: the setup wizard, which is a
+ * screen of its own while it is up. The drawer is pinned to the start edge at the viewport's full
+ * height: the rail behind the top bar's control.
  */
-type ModalVariant = 'centred' | 'filling' | 'drawer';
+type ModalVariant = 'centred' | 'filling' | 'full' | 'drawer';
 
 const BACKDROP: Record<ModalVariant, string> = {
     centred: 'items-center justify-center p-4',
     filling: 'items-center justify-center p-4 max-desktop:p-0',
+    full: 'items-stretch justify-stretch',
     drawer: 'items-stretch justify-start',
 };
 
 const FRAME: Record<ModalVariant, string> = {
     centred: 'max-h-[85vh] max-w-lg rounded-xl',
     filling: 'admin-modal__frame--filling max-h-[85vh] max-w-lg rounded-xl max-desktop:h-full max-desktop:max-h-none max-desktop:max-w-none max-desktop:rounded-none max-desktop:border-0',
+    full: 'admin-modal__frame--full h-full max-h-none max-w-none rounded-none border-0',
     drawer: 'admin-modal__frame--drawer h-full max-w-72 rounded-none border-y-0 border-l-0',
 };
 
@@ -80,13 +84,29 @@ type Props = {
     title: string;
     onClose: () => void;
     footer?: ReactNode;
+    /** Set beside the title at the end of its row, such as a close button; nothing unless given. */
+    aside?: ReactNode;
     /** The frame's shape; the centred frame unless told. */
     variant?: ModalVariant;
     className?: string;
     children: ReactNode;
 };
 
-export function Modal({ open, title, onClose, footer, variant = 'centred', className, children }: Props) {
+/** The title on its own row, or with the aside after it on a shared one. */
+function Heading({ title, aside }: { title: string; aside: ReactNode }) {
+    if (aside === undefined) {
+        return <DialogPrimitive.Title className="admin-modal__title shrink-0 border-b px-5 py-3 text-lg font-semibold">{title}</DialogPrimitive.Title>;
+    }
+
+    return (
+        <div className="admin-modal__head flex shrink-0 items-center gap-2 border-b py-1.5 pr-3">
+            <DialogPrimitive.Title className="admin-modal__title min-w-0 flex-1 px-5 py-1.5 text-lg font-semibold">{title}</DialogPrimitive.Title>
+            {aside}
+        </div>
+    );
+}
+
+export function Modal({ open, title, onClose, footer, aside, variant = 'centred', className, children }: Props) {
     const nested = useRef(0);
     const opener = useRef<Element | null>(null);
     const downOnBackdrop = useRef(false);
@@ -144,7 +164,7 @@ export function Modal({ open, title, onClose, footer, variant = 'centred', class
                             onEscapeKeyDown={escape}
                             onInteractOutside={(event) => event.preventDefault()}
                         >
-                            <DialogPrimitive.Title className="admin-modal__title shrink-0 border-b px-5 py-3 text-lg font-semibold">{title}</DialogPrimitive.Title>
+                            <Heading title={title} aside={aside} />
                             <div className="admin-modal__body min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
                             {footer !== undefined && <div className="admin-modal__footer flex shrink-0 justify-end gap-2 border-t px-5 py-3">{footer}</div>}
                         </DialogPrimitive.Content>

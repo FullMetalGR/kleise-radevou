@@ -123,6 +123,7 @@ it('creates the schema named from the slug and runs every tenant migration insid
             '0001_01_01_000035_create_customer_profiles_and_notes' => 1,
             '0001_01_01_000040_drop_brand_accent_from_settings' => 1,
             '0001_01_01_000041_add_created_at_index_to_audit_log' => 1,
+            '0001_01_01_000042_add_setup_progress_to_settings' => 1,
         ])
         ->and(DB::table('migrations')->where('migration', 'like', '%settings%')->exists())->toBeFalse();
 });
@@ -140,11 +141,12 @@ it('stores a new tenant\'s start interval as 15, the column default, and reads t
     expect(app(SettingsReader::class)->read($tenant)->startIntervalMin)->toBe(30);
 });
 
-it('leaves both setup markers unset on a new tenant, the default week seeded by direct insert and stamping nothing', function () {
+it('leaves both setup markers and every setup fact unset on a new tenant, the default week seeded by direct insert and stamping nothing', function () {
     $tenant = provisionTenant('acme')->tenant;
     $settings = app(SettingsReader::class)->read($tenant);
+    $columns = ['hours_confirmed_at', 'link_copied_at', 'setup_opened_at', 'setup_finished_at', 'setup_profile_saved_at', 'setup_team_skipped_at', 'setup_payments_skipped_at', 'setup_link_finished_at'];
 
-    expect(DB::table('tenant_acme.settings')->where('id', 1)->first(['hours_confirmed_at', 'link_copied_at']))->toEqual((object) ['hours_confirmed_at' => null, 'link_copied_at' => null])
+    expect(DB::table('tenant_acme.settings')->where('id', 1)->first($columns))->toEqual((object) array_fill_keys($columns, null))
         ->and([$settings->hoursConfirmed, $settings->linkCopied])->toBe([false, false]);
 });
 
@@ -287,7 +289,7 @@ it('finishes a tenant a failed run left in provisioning', function () {
         ->and($retried->created)->toBeFalse()
         ->and($retried->tenant->status)->toBe(TenantStatus::Active)
         ->and(schemaExists('tenant_acme'))->toBeTrue()
-        ->and(DB::table('tenant_acme.migrations')->count())->toBe(38)
+        ->and(DB::table('tenant_acme.migrations')->count())->toBe(39)
         ->and(DB::table('tenant_acme.staff')->count())->toBe(1)
         ->and(implicitWeek('tenant_acme')[3] ?? null)->toHaveCount(5)
         ->and(DB::table('tenant_acme.settings')->count())->toBe(1)
@@ -362,7 +364,7 @@ it('gives two tenants in one database separate schemas that see only their own r
     expect(tenantSchemas())->toBe(['tenant_acme', 'tenant_bravo'])
         ->and(DB::table('tenant_acme.staff')->pluck('name')->all())->toBe(['Acme Salon'])
         ->and(DB::table('tenant_bravo.staff')->pluck('name')->all())->toBe(['Bravo Studio'])
-        ->and(DB::table('tenant_bravo.migrations')->count())->toBe(38)
+        ->and(DB::table('tenant_bravo.migrations')->count())->toBe(39)
         ->and(DB::table('users')->count())->toBe(2)
         ->and(DB::table('pg_tables')->where('schemaname', 'public')->whereIn('tablename', ['settings', 'staff', 'staff_days', 'bookings', 'booking_items'])->exists())->toBeFalse();
 });

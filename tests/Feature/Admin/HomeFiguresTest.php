@@ -285,7 +285,7 @@ it('keeps every prop Home had but the old week\'s figures, which the range figur
     $this->actingAs(figuresOwner())->get(tenantUrl('luna', '/admin?range=month'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Home')
-            ->missing('figures')->has('days', 7)->has('next_up')->has('awaiting')->has('activity')->has('members')->has('setup')->has('range_figures'));
+            ->missing('figures')->has('days', 7)->has('next_up')->has('awaiting')->has('activity')->has('members')->has('range_figures'));
 
     $staff = User::query()->findOrFail(addTenantUser('elena@luna.example', 'staff', staff: 'Elena Papadaki'));
     $this->actingAs($staff)->get(tenantUrl('luna', '/admin?range=month'))->assertRedirect(tenantUrl('luna', '/admin/calendar'));

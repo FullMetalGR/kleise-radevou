@@ -23,7 +23,7 @@ use LogicException;
  * languages, App\Tenancy\Languages.
  *
  * The two setup markers are selected as booleans, whether each instant is set, so the read
- * parses no instant at all: the checklist asks whether, never when, Settings.
+ * parses no instant at all: setup asks whether, never when, Settings.
  *
  * The profile's text columns, Profile, come back as written, each null where the owner left it
  * empty, for the hosted page, the config's Important info and the settings screen.

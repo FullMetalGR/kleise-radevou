@@ -55,8 +55,10 @@ beforeEach(function () {
  * with the section it holds, and true where the tenant is read with no entitlement, the staff
  * feature off. The wizard opens over any screen, so its group rides on a page that is not the
  * Customers screen as the shared prop wizard. The Home screen carries the bookings section for
- * the booking dialog a row opens; both users hold manageSettings, so its setup checklist rides
- * too, and the Shifts screen, which asks it, answers both. The Calendar carries the calendar
+ * the booking dialog a row opens; luna's setup is finished, so it is read once so and once again
+ * with setup opened for two owners, the only viewers it is offered to, when the setup section
+ * rides too, and with it the sections its steps borrow their forms' words from: the settings,
+ * services, staff and payments sections. The Shifts screen, which asks manageSettings, answers both users. The Calendar carries the calendar
  * section, the bookings section for the booking dialog and the shifts section for the closures a
  * Day column draws and the day editor it opens, the three CalendarController names. The Staff list
  * renders the floor's closures alone without the staff feature, so it is walked in both states.
@@ -75,6 +77,7 @@ function aslRoutes(): array
 {
     return [
         'the Home screen' => ['/admin', ['strings.home' => 'home', 'strings.bookings' => 'bookings']],
+        'the Home screen with setup open' => ['/admin', ['strings.home' => 'home', 'strings.bookings' => 'bookings', 'strings.setup' => 'setup', 'strings.settings' => 'settings', 'strings.services' => 'services', 'strings.staff' => 'staff', 'strings.payments' => 'payments'], false, true],
         'the Bookings list' => ['/admin/bookings', ['strings.bookings' => 'bookings']],
         'a booking opened by its own address' => ['/admin/bookings/{booking}', ['strings.bookings' => 'bookings']],
         'the Customers list' => ['/admin/customers', ['strings.customers' => 'customers']],
@@ -218,6 +221,11 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
         $props = aslProps($props);
         $url = tenantUrl('luna', aslPath($path));
         $english = ($row[3] ?? false) ? $owner : $manager;
+
+        if (array_key_exists('strings.setup', $props)) {
+            settingsOf('luna')->update(['setup_finished_at' => null, 'setup_profile_saved_at' => null]);
+        }
+
         $inGreek = $this->actingAs($greek)->get($url)->assertOk();
         $inEnglish = $this->actingAs($english)->get($url)->assertOk();
 
@@ -225,10 +233,10 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
             ->and(aslRootLang($inEnglish))->toBe('en', $name);
 
         if (array_key_exists('strings.home', $props)) {
-            // The checklist's words are the home section's; its facts ride for a manageSettings
-            // holder, so the walk reads the section with the checklist on the page.
-            $inGreek->assertInertia(fn (Assert $page) => $page->has('setup'));
-            $inEnglish->assertInertia(fn (Assert $page) => $page->has('setup'));
+            // Setup's words ride only with setup itself, so each Home row is read in its state.
+            $inSetup = array_key_exists('strings.setup', $props);
+            $inGreek->assertInertia(fn (Assert $page) => $inSetup ? $page->has('setup') : $page->missing('setup'));
+            $inEnglish->assertInertia(fn (Assert $page) => $inSetup ? $page->has('setup') : $page->missing('setup'));
         }
 
         // The row read without the staff feature is read so, and the Staff list with it is not,
@@ -256,18 +264,29 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
         $walked['rows']++;
     }
 
-    // Eighteen rows and forty-eight props: shell.php's 137 leaves on every row, its kit's nine
-    // counted lines among them; bookings.php's 174 on nine (the Home screen, the Bookings list, a
+    // Nineteen rows and fifty-six props: shell.php's 137 leaves on every row, its kit's nine
+    // counted lines among them; bookings.php's 174 on ten (the two Home rows, the Bookings list, a
     // booking opened by its address, a customer's page, the Calendar and the four Staff rows, whose
-    // closures card lists bookings and opens the Move form); home.php's 189 on the
-    // Home screen; customers.php's 146 on two; services.php's 116 on three (the list, a service's
-    // form and the new service's form); the wizard's group's 38 over the Calendar; staff.php's 168
-    // on four (the Staff list with the staff feature and without it, a new member's form and a
-    // member's page); settings.php's 143, payments.php's 97 and emails.php's 21 on Settings;
-    // team.php's 45 on the Team screen; calendar.php's 85 on the Calendar; shifts.php's 79 on two
-    // (the Calendar and the Shifts screen); billing.php's 88 on two (Settings and the Billing
-    // screen); and reports.php's 118 on the Reports screen: 6414.
-    expect($walked)->toBe(['rows' => 18, 'props' => 48, 'leaves' => 18 * 137 + 9 * 174 + 189 + 2 * 146 + 3 * 116 + 38 + 4 * 168 + 143 + 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
+    // closures card lists bookings and opens the Move form); home.php's 181 on the two Home rows;
+    // setup.php's on Home with setup open, counted below by its parts; customers.php's 146 on
+    // two; services.php's 116 on four (the list, a service's form, the new service's form and
+    // Home with setup open, for its Services step); the wizard's group's 38 over the Calendar;
+    // staff.php's 168 on five (the Staff list with the staff feature and without it, a new
+    // member's form, a member's page and Home with setup open, for its Team step); settings.php's
+    // 143 and payments.php's 97 on two each (Settings, and Home with setup open for its Business
+    // profile and Online payments steps); emails.php's 21 on Settings; team.php's 45 on the Team screen;
+    // calendar.php's 85 on the Calendar; shifts.php's 79 on two (the Calendar and the Shifts
+    // screen); billing.php's 88 on two (Settings and the Billing screen); and reports.php's 118
+    // on the Reports screen. setup.php by its parts: the setup wizard's and the banner's own
+    // sixteen, then each step's group, its name and its own words, one step to a line.
+    $setup = 16
+        + 6 // Business profile
+        + 10 // Services
+        + 10 // Team
+        + 8 // Opening hours
+        + 2 // Online payments
+        + 5; // Booking link
+    expect($walked)->toBe(['rows' => 19, 'props' => 56, 'leaves' => 19 * 137 + 10 * 174 + 2 * 181 + $setup + 2 * 146 + 4 * 116 + 38 + 5 * 168 + 2 * 143 + 2 * 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
 });
 
 it('reads the Calendar in Greek for a user at el under view=day, view=week and view=month, and for a Greek viewer who holds viewOwnCalendar without viewBookings, pinned to her own row', function () {

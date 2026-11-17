@@ -374,8 +374,8 @@ final readonly class StaffRecords
      * The route names no member, so the row is found by its flag inside the same transaction that
      * writes it. A week holding a window stamps the hours marker in the same transaction: every
      * write of a week with hours confirms the opening hours, each time and never cleared. An
-     * empty week stamps nothing, so the setup checklist's hours item stays open until a week with
-     * hours is saved (P9F-L29-b). The instant is the database's own now(). The overrides are left
+     * empty week stamps nothing, so setup's Opening hours step stays open until a week with hours
+     * is saved. The instant is the database's own now(). The overrides are left
      * as they are.
      *
      * @param  list<array{weekday: int, start: string, end: string}>  $windows

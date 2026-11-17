@@ -79,8 +79,8 @@ final readonly class WeeklyPattern
 
     /**
      * Stamps the settings row's hours_confirmed_at with the database's now() where the write
-     * holds a window, and does nothing otherwise, so the setup checklist's hours item stays open
-     * until a week with hours is saved. Every write of a member's hours, the opening hours' week,
+     * holds a window, and does nothing otherwise, so setup's Opening hours step stays open until
+     * a week with hours is saved. Every write of a member's hours, the opening hours' week,
      * a pattern and one date's override, stamps through here.
      */
     public static function confirmHours(Connection $connection, string $prefix, bool $holdsAWindow): void

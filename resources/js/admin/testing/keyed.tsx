@@ -10,6 +10,7 @@ import type { ReportsWords } from '@/reports/words';
 import type { ServicesWords } from '@/services/words';
 import type { BillingWords, EmailsWords, PaymentsWords, SettingsWords } from '@/settings/words';
 import type { ShiftWords } from '@/shifts/words';
+import type { SetupStrings, SetupWords } from '@/setup/words';
 import { StaffProvider, type StaffWords } from '@/staff/words';
 import type { BillingStrings, BookingsStrings, CalendarStrings, CustomersStrings, EmailsStrings, HomeStrings, PaymentsStrings, ReportsStrings, ServicesStrings, SettingsStrings, ShellStrings, ShiftsStrings, StaffStrings, TeamStrings, WizardStrings } from '@/types';
 
@@ -165,6 +166,14 @@ export const KEYED_SHIFTS: ShiftsStrings = keyedTable<ShiftsStrings>(ADMIN_LINES
 /** The keyed shifts section's words. */
 export function keyedShifts(language: Language = 'en'): ShiftWords {
     return stringsOf<ShiftsStrings>(KEYED_SHIFTS, language);
+}
+
+/** Setup's section, keyed: the wizard's own words and each step's group under steps. */
+export const KEYED_SETUP: SetupStrings = keyedTable<SetupStrings>(ADMIN_LINES_EN.setup);
+
+/** The keyed setup section's words. */
+export function keyedSetup(language: Language = 'en'): SetupWords {
+    return stringsOf<SetupStrings>(KEYED_SETUP, language);
 }
 
 /** A tree inside the keyed bookings section, as a screen opening the dialog provides it. */

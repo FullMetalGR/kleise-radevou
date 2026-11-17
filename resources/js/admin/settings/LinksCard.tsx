@@ -9,8 +9,8 @@ import { type SettingsKey, useSettings } from './words';
  * The Links card of the Booking page section: the booking page's own link, the embed
  * snippet, and one row per service and per member the public catalogue offers, each with its
  * link, a copy button and its QR code to download. Every link and every code's path is the
- * server's, so nothing here builds a URL. A copy records the press for the setup checklist,
- * since each copies the booking link.
+ * server's, so nothing here builds a URL. A copy records the press for setup's Booking link
+ * step, since each copies the booking link.
  */
 
 /*

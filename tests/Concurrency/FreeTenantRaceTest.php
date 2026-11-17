@@ -95,7 +95,7 @@ it('ends two creates whose claims both judged the slug free with one tenant, the
             'tenants' => [['slug' => 'acme', 'status' => 'active']],
             'users' => ['first@acme.example'],
             'audit' => ['tenant_created'],
-            'migrations' => 38,
+            'migrations' => 39,
         ]);
 });
 
@@ -123,6 +123,6 @@ it('leaves the first create\'s row unbuilt and refuses it as taken when the seco
             'tenants' => [['slug' => 'acme', 'status' => 'active']],
             'users' => ['first@acme.example'],
             'audit' => ['tenant_created'],
-            'migrations' => 38,
+            'migrations' => 39,
         ]);
 });

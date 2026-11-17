@@ -110,11 +110,11 @@ it('builds the row once when two clicks of one link come at once, the second wai
 
     expect($waiting['wait_event'])->toBeIn(['transactionid', 'tuple'])
         ->and($secondFinishedWhileFirstBuilt)->toBeFalse()
-        ->and(returnedArray($outcomes['first']))->toBe(['location' => centralUrl('/signup/luna/pending'), 'migrated' => 38])
+        ->and(returnedArray($outcomes['first']))->toBe(['location' => centralUrl('/signup/luna/pending'), 'migrated' => 39])
         ->and(returnedArray($outcomes['second']))->toBe(['location' => tenantUrl('luna', '/admin/login'), 'migrated' => 0])
         ->and(DB::table('tenants')->where('slug', 'luna')->value('status'))->toBe('active')
         ->and(DB::table('tenants')->where('slug', 'luna')->value('subscription_state'))->toBe('trial')
-        ->and(DB::table('tenant_luna.migrations')->count())->toBe(38)
+        ->and(DB::table('tenant_luna.migrations')->count())->toBe(39)
         ->and(DB::table('tenant_luna.staff')->where('is_implicit', true)->count())->toBe(1)
         ->and(DB::table('users')->where('tenant_id', $tenant->id)->whereNotNull('email_verified_at')->count())->toBe(1)
         ->and(DB::table('users')->where('tenant_id', $tenant->id)->value('verification_token_hash'))->toBe(hash('sha256', $token));
@@ -143,7 +143,7 @@ it('makes a release wait behind a click building the row, then answer false with
     expect($waiting['wait_event'])->toBeIn(['transactionid', 'tuple'])
         ->and($releasedWhileBuilt)->toBeFalse()
         ->and($outcomes['release']->returned())->toBeFalse()
-        ->and(returnedArray($outcomes['click']))->toBe(['location' => centralUrl('/signup/luna/pending'), 'migrated' => 38])
+        ->and(returnedArray($outcomes['click']))->toBe(['location' => centralUrl('/signup/luna/pending'), 'migrated' => 39])
         ->and(DB::table('tenants')->where('slug', 'luna')->value('status'))->toBe('active')
         ->and(DB::table('users')->where('tenant_id', $tenant->id)->count())->toBe(1);
 });

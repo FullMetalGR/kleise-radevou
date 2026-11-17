@@ -20,7 +20,8 @@ pest()->use(RefreshDatabase::class);
  * Home: the landing at /admin for a viewBookings holder, a viewer without it sent on to the
  * Calendar; its props by permission, the range's figures read alone on a partial reload (their
  * counting is HomeFiguresTest's), and the seven days' counts by first start in the tenant's
- * zone.
+ * zone. Setup is recorded as finished by the answer that says so and by no other: a partial
+ * reload that leaves the word out records nothing.
  *
  * The bookings are written straight to the rows at literal dates, so the clock is pinned first:
  * FixtureDay's clock stands on Monday 2026-11-02 at 08:00 in Athens, so this week, from luna's
@@ -130,6 +131,8 @@ it('answers Home at /admin to a viewBookings holder with the home section beside
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Home')
             ->missing('today')
+            ->missing('setup')
+            ->missing('strings.setup')
             ->where('strings.home', __('admin/home', [], 'en'))
             ->where('strings.bookings', __('admin/bookings', [], 'en'))
             ->where('nav.0', ['label' => navLabel('home'), 'url' => '/admin', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true])
@@ -143,30 +146,6 @@ it('sends a viewer without viewBookings asking for /admin to the Calendar, which
     $this->actingAs($staff)->get(tenantUrl('luna', '/admin/calendar'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Calendar')->where('pinned', true)->missing('setup'));
-});
-
-it('carries the setup checklist to a manageSettings holder: whether a service exists, both markers, whether a booking exists in any status, and the hosted page, each read from its own rows', function () {
-    $setup = fn (User $viewer): mixed => data_get($this->actingAs($viewer)->get(tenantUrl('luna', '/admin'))->assertOk()->viewData('page'), 'props.setup');
-    $manager = User::query()->findOrFail(addTenantUser('mira@luna.example', 'manager'));
-
-    // A catalogue emptied inside a savepoint answers no service, then comes back for the bookings
-    // below.
-    DB::beginTransaction();
-    DB::table('tenant_luna.services')->delete();
-    expect($setup(homeOwner()))->toBe(['service' => false, 'hours' => false, 'link' => false, 'booking' => false, 'hosted_url' => hostedPage('luna')]);
-    DB::rollBack();
-
-    expect($setup(homeOwner()))->toBe(['service' => true, 'hours' => false, 'link' => false, 'booking' => false, 'hosted_url' => hostedPage('luna')]);
-
-    settingsOf('luna')->update(['hours_confirmed_at' => DB::raw('now()')]);
-    expect($setup(homeOwner()))->toMatchArray(['hours' => true, 'link' => false]);
-
-    settingsOf('luna')->update(['link_copied_at' => DB::raw('now()')]);
-    expect($setup(homeOwner()))->toMatchArray(['hours' => true, 'link' => true, 'booking' => false]);
-
-    homeBooking('cancelled', '2026-10-20 10:00');
-    expect($setup(homeOwner()))->toBe(['service' => true, 'hours' => true, 'link' => true, 'booking' => true, 'hosted_url' => hostedPage('luna')])
-        ->and($setup($manager))->toBe(['service' => true, 'hours' => true, 'link' => true, 'booking' => true, 'hosted_url' => hostedPage('luna')]);
 });
 
 it('reads an empty seven days as nought a day', function () {
@@ -688,4 +667,28 @@ it('reads the dialog\'s detail on Home for the booking a partial reload names, w
     ])->assertOk()->assertJsonPath('props.detail.state', 'missing');
 
     $this->actingAs(homeOwner())->get(tenantUrl('luna', '/admin'))->assertInertia(fn (Assert $page) => $page->where('detail', null));
+});
+
+it('records setup as finished on the answer that says so alone, a partial reload that leaves the word out recording nothing', function () {
+    // Every step of luna's setup closed, the record of it not yet written.
+    DB::table('tenant_luna.settings')->where('id', 1)->update([
+        'setup_opened_at' => null, 'setup_finished_at' => null, 'setup_profile_saved_at' => null, 'setup_team_skipped_at' => null, 'link_copied_at' => null,
+        'about' => 'Haircuts since 1998.', 'hours_confirmed_at' => DB::raw('now()'), 'setup_payments_skipped_at' => DB::raw('now()'), 'setup_link_finished_at' => DB::raw('now()'),
+    ]);
+    $finished = fn (): bool => DB::table('tenant_luna.settings')->where('id', 1)->value('setup_finished_at') !== null;
+
+    $this->actingAs(homeOwner())->get(tenantUrl('luna', '/admin?booking='.Str::uuid()), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+        'X-Inertia-Partial-Component' => 'Home',
+        'X-Inertia-Partial-Data' => 'detail',
+    ])->assertOk()->assertJsonPath('props.detail.state', 'missing')->assertJsonMissingPath('props.setup_finished')->assertJsonMissingPath('props.setup');
+
+    expect($finished())->toBeFalse();
+
+    $this->actingAs(homeOwner())->get(tenantUrl('luna', '/admin'))->assertInertia(fn (Assert $page) => $page->where('setup_finished', true)->missing('setup'));
+
+    expect($finished())->toBeTrue();
+
+    $this->actingAs(homeOwner())->get(tenantUrl('luna', '/admin'))->assertInertia(fn (Assert $page) => $page->missing('setup_finished')->missing('setup'));
 });

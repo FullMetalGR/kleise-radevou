@@ -112,9 +112,19 @@ final readonly class PaymentsController
      */
     public function connect(PlatformConnectRequest $request): Response
     {
+        return $this->connectReturningTo($request, SettingsController::path());
+    }
+
+    /**
+     * The same, the provider sending the owner back to the admin path given on this tenant's
+     * host, one of the fixed places a caller names, never one the request carries: Settings for
+     * the section, the setup wizard's return for its Online payments step.
+     */
+    public function connectReturningTo(PlatformConnectRequest $request, string $path): Response
+    {
         $adapter = $request->adapter();
         try {
-            $url = $this->platform->connect($this->connections(), $adapter, AdminSession::at($request, SettingsController::path()));
+            $url = $this->platform->connect($this->connections(), $adapter, AdminSession::at($request, $path));
         } catch (ConnectionModeTaken $taken) {
             return self::taken($taken);
         } catch (UniqueConstraintViolationException) {
@@ -134,8 +144,16 @@ final readonly class PaymentsController
      */
     public function resume(Request $request): Response
     {
+        return $this->resumeReturningTo($request, SettingsController::path());
+    }
+
+    /**
+     * The same, back to the admin path given, as connectReturningTo.
+     */
+    public function resumeReturningTo(Request $request, string $path): Response
+    {
         try {
-            $url = $this->platform->resume($this->connections(), AdminSession::at($request, SettingsController::path()));
+            $url = $this->platform->resume($this->connections(), AdminSession::at($request, $path));
         } catch (PlatformUnavailable) {
             return (new ErrorEnvelope(PlatformUnavailable::CODE, 409, PaymentCredentialsRequest::line(PlatformUnavailable::DETAIL)))->toResponse();
         } catch (Throwable $failure) {

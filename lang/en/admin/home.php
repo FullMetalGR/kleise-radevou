@@ -1,9 +1,8 @@
 <?php
 
 /*
- * Home: the landing's title, the setup checklist moved from the Calendar, the range card, the
- * six tiles each compared with the period before, one whole sentence per kind of range so a
- * language can inflect the period, the footnote, the two Top tables, the three feeds and the
+ * Home: the landing's title, the range card, the six tiles each compared with the period before,
+ * one whole sentence per kind of range so a language can inflect the period, the footnote, the two Top tables, the three feeds and the
  * next seven days, whose summary is one whole sentence per case the strip shows: the bookings
  * alone, or the bookings with the one or the several awaiting approval, each chosen by the
  * bookings' count. Recent activity is one whole sentence per action and shape of actor
@@ -20,16 +19,6 @@
 return [
     'page_title' => 'Home',
     'title' => 'Home',
-    'setup' => [
-        'title' => 'Get ready for your first booking',
-        'service' => 'Add a service',
-        'hours' => 'Set your opening hours',
-        'link' => 'Copy your booking link',
-        'booking' => 'Take your first booking',
-        'hosted' => 'Open your booking page',
-        'done' => 'Done',
-        'open' => 'Not done yet',
-    ],
     'range' => [
         'label' => 'Range',
         'today' => 'Today',

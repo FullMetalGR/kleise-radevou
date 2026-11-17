@@ -36,7 +36,7 @@ use LogicException;
  * the dialog answers missing for a booking with no item on it; with no row linked the window is
  * empty and no detail is read. The `pinned` prop says so, and the screen shows Who read-only.
  *
- * The setup checklist moved to Home, so no viewer receives a setup prop here.
+ * Setup is Home's alone, so no viewer receives a setup prop here.
  *
  * The page carries its own calendar section of the admin's words, the bookings section, since the
  * screen opens the booking dialog, and the shifts section, since Day's column menu mounts the

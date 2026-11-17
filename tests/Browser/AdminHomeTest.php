@@ -10,8 +10,9 @@ use Tests\Browser\Support\Admin;
 use Tests\Support\LunaFixture;
 
 /*
- * Home in a real browser: luna's owner signs in and lands on Home at /admin, sees the setup card
- * and this week's tiles, and presses a day of the next seven, landing on the Calendar's Day of
+ * Home in a real browser: luna's owner signs in and lands on Home at /admin, sees this week's
+ * tiles and neither the setup wizard nor its banner, luna's setup being finished, and presses a
+ * day of the next seven, landing on the Calendar's Day of
  * that date from the URL, the query then leaving the address so a reload opens on Day and today.
  * On the system clock, so the booking is dated relative to today: early today, inside this week
  * and the seven days whatever weekday the suite runs on.
@@ -67,18 +68,19 @@ function homeWalkBooking(string $customer, DateTimeImmutable $start, string $sta
     return $id;
 }
 
-it('lands the owner on Home with the card and the tiles, and opens the Calendar\'s Day on a day pressed', function () {
+it('lands the owner on Home with the tiles and no setup, and opens the Calendar\'s Day on a day pressed', function () {
     $today = athensDaysOn(0, 0, 30);
     $date = $today->format('Y-m-d');
     homeWalkBooking('Cora Cut', $today);
-    DB::table('tenant_luna.settings')->where('id', 1)->update(['hours_confirmed_at' => null]);
 
+    // Home drawn is the proof the page has settled: the wizard and its banner are drawn with it
+    // where they show at all.
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
         ->assertPathIs('/admin')
         ->assertVisible(Admin::HOME)
         ->assertSeeIn(Admin::HOME.' h1', adminLine('admin/home.title'))
-        ->assertSeeIn('.admin-setup', adminLine('admin/home.setup.title'))
-        ->assertAttribute('.admin-setup__item[data-fact="hours"]', 'data-done', 'false')
+        ->assertMissing('.admin-setup')
+        ->assertMissing('.admin-setup-banner')
         ->assertSeeIn('.admin-figure-tile--bookings .admin-figure-tile__value', '1')
         ->assertSeeIn('.admin-figure-tile--cancelled .admin-figure-tile__value', '0')
         ->assertCount('.admin-home-day', 7)

@@ -10,10 +10,13 @@ use App\Domain\Availability\ShiftMinutes;
 use App\Tenancy\Tenant;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
+use stdClass;
 
 /**
  * The Shifts screen's rows: a week's hours per member as the screen reads them, and the three
- * writes, a member's pattern and one date's override, each replace-all for its row. storedStart()
+ * writes, a member's pattern and one date's override, each replace-all for its row, beside the
+ * Opening hours step's one week for every listed member (replaceEveryWeek). storedStart()
  * names the start the pattern write stores, for the request judging the pattern's end.
  *
  * The windows of a date are StaffHours', so the screen's day is the one the availability engine
@@ -26,8 +29,8 @@ use Illuminate\Database\Query\Builder;
  *
  * A member's week is their pattern alone. A write holding a window stamps
  * settings.hours_confirmed_at through WeeklyPattern::confirmHours, as StaffRecords::replaceWeek
- * does; a write leaving the row with no window, and the override's removal, stamp nothing, so the
- * checklist's hours item stays a week with hours a user saved.
+ * does; a write leaving the row with no window, and the override's removal, stamp nothing, so
+ * setup counts its Opening hours step done only once a user has saved a week that holds hours.
  */
 final readonly class ShiftRecords
 {
@@ -43,15 +46,72 @@ final readonly class ShiftRecords
      */
     public function members(Tenant $tenant): array
     {
-        $rows = $this->table($tenant, 'staff')->where('status', 'active')->orderBy('sort')->orderBy('id')->get(['id', 'name', 'is_implicit']);
-        $named = $rows->filter(fn (object $row): bool => ! (bool) $row->is_implicit);
-        $listed = $named->isEmpty() ? $rows : $named;
-
-        return array_values($listed->map(fn (object $row): array => [
+        return array_values($this->listed($tenant, false)->map(fn (stdClass $row): array => [
             'id' => BlackoutRecords::int($row->id),
             'name' => (bool) $row->is_implicit ? $tenant->name : BlackoutRecords::string($row->name),
             'is_implicit' => (bool) $row->is_implicit,
         ])->all());
+    }
+
+    /**
+     * The one week the members given share as plain weekly patterns, each every week with no
+     * end: its windows, the empty list where none of them holds a pattern, and null where they
+     * differ, one holding a pattern another lacks or one of another cadence or with an end.
+     *
+     * @param  list<int>  $staffIds
+     * @return list<array{weekday: int, start: string, end: string}>|null
+     */
+    public function sharedWeek(Tenant $tenant, array $staffIds): ?array
+    {
+        $stored = WeeklyPattern::stored($this->db->connection(), $tenant->schema_name.'.', $staffIds);
+
+        if ($stored === []) {
+            return [];
+        }
+
+        $weeks = array_map(fn (array $pattern): ?array => $pattern['cadence_weeks'] === 1 && $pattern['ends_on'] === null ? WeeklyPattern::windows($pattern['windows']) : null, $stored);
+        $first = reset($weeks);
+
+        return count($stored) === count($staffIds) && $first !== null && array_filter($weeks, fn (?array $week): bool => $week !== $first) === [] ? $first : null;
+    }
+
+    /**
+     * Whether a row for one date is held, of any date, past or coming, a day off among them: by
+     * any of the members given, or by the implicit member where none is named, the one whose week
+     * Opening hours edits. A member given their hours by the day holds hours set by hand as one
+     * with a pattern does, which a read of the patterns alone does not see.
+     *
+     * @param  list<int>|null  $staffIds
+     */
+    public function holdsDays(Tenant $tenant, ?array $staffIds = null): bool
+    {
+        return $this->table($tenant, 'shift_overrides')
+            ->whereIn('staff_id', $staffIds ?? $this->table($tenant, 'staff')->where('is_implicit', true)->select('id'))
+            ->exists();
+    }
+
+    /**
+     * Gives every member the screen lists the one week given, as Opening hours gives the implicit
+     * member theirs: a weekly pattern of those windows from the one start, or none for an empty
+     * week (WeeklyPattern::replace), each member's dated overrides left as they are. One
+     * transaction for the lot: the listed members are read with the lock lockMember takes, so
+     * none is deleted under the write, and a failure on any one leaves every member's week as it
+     * was. A week holding a window stamps the hours marker once.
+     *
+     * @param  list<array{weekday: int, start: string, end: string}>  $windows
+     */
+    public function replaceEveryWeek(Tenant $tenant, array $windows): void
+    {
+        $this->db->connection()->transaction(function () use ($tenant, $windows): void {
+            $connection = $this->db->connection();
+            $prefix = $tenant->schema_name.'.';
+
+            foreach ($this->listed($tenant, true) as $row) {
+                WeeklyPattern::replace($connection, $prefix, BlackoutRecords::int($row->id), $windows);
+            }
+
+            WeeklyPattern::confirmHours($connection, $prefix, $windows !== []);
+        });
     }
 
     /**
@@ -244,6 +304,26 @@ final readonly class ShiftRecords
     private function lockMember(Tenant $tenant, int $staffId): bool
     {
         return $this->table($tenant, 'staff')->where('id', $staffId)->lock('for no key update')->value('id') !== null;
+    }
+
+    /**
+     * The rows of the members the screen lists, in the roster's order (members()), locked as
+     * lockMember locks one where asked.
+     *
+     * @return Collection<int, stdClass>
+     */
+    private function listed(Tenant $tenant, bool $lock): Collection
+    {
+        $query = $this->table($tenant, 'staff')->where('status', 'active')->orderBy('sort')->orderBy('id');
+
+        if ($lock) {
+            $query->lock('for no key update');
+        }
+
+        $rows = $query->get(['id', 'name', 'is_implicit']);
+        $named = $rows->filter(fn (stdClass $row): bool => ! (bool) $row->is_implicit);
+
+        return $named->isEmpty() ? $rows : $named;
     }
 
     /**

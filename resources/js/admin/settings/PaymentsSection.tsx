@@ -100,6 +100,10 @@ type Props = {
     /** The sentence for the write in flight on the page, or null. */
     wait: string | null;
     visit: PageVisit;
+    /** Where Connect through us posts, its Continue onboarding under it: Settings' own unless a screen showing the section sends the owner back to itself. */
+    onboarding?: string;
+    /** Told whether a credentials form is open, as one opens or closes, for a screen that asks before text typed into it is left. */
+    onForm?: (open: boolean) => void;
 };
 
 /** A control's busy and held state: busy while its own write is in flight, disabled while another is. */
@@ -107,13 +111,19 @@ type Control = { busy: boolean; disabled: boolean };
 
 function nothing(): void {}
 
-export function PaymentsSection({ payments, clock, inFlight, wait, visit: page }: Props) {
+export function PaymentsSection({ payments, clock, inFlight, wait, visit: page, onboarding = `${PATH}/platform`, onForm }: Props) {
     const [open, setOpen] = useState<string | null>(null);
     const [pressed, setPressed] = useState<string | null>(null);
     const [refusal, setRefusal] = useState<string | null>(null);
     const words = usePayments();
     const control = (action: PaymentAction): Control => ({ busy: inFlight === action, disabled: inFlight !== null && inFlight !== action });
     const { connection, providers } = payments;
+
+    // Opens the credentials form of the provider named, or closes the one open for null.
+    const show = (slug: string | null) => {
+        setOpen(slug);
+        onForm?.(slug !== null);
+    };
     const platform = (provider: PaymentProvider): Control => ({ busy: inFlight === 'platform' && pressed === provider.slug, disabled: inFlight !== null && !(inFlight === 'platform' && pressed === provider.slug) });
 
     // A 4xx is a worded answer and presents politely: a warning notice with role status, never
@@ -134,7 +144,7 @@ export function PaymentsSection({ payments, clock, inFlight, wait, visit: page }
 
     const connectPlatform = (provider: PaymentProvider) => {
         setPressed(provider.slug);
-        visit('platform', nothing, (options) => router.post(`${PATH}/platform`, { provider: provider.slug }, options));
+        visit('platform', nothing, (options) => router.post(onboarding, { provider: provider.slug }, options));
     };
 
     const form = (provider: PaymentProvider, replacing: boolean): ReactNode =>
@@ -143,8 +153,8 @@ export function PaymentsSection({ payments, clock, inFlight, wait, visit: page }
                 provider={provider}
                 replacing={replacing}
                 control={control('connect')}
-                onSave={(values) => visit('connect', () => setOpen(null), (options) => router.post(PATH, credentialsBody(provider, values), options))}
-                onCancel={() => setOpen(null)}
+                onSave={(values) => visit('connect', () => show(null), (options) => router.post(PATH, credentialsBody(provider, values), options))}
+                onCancel={() => show(null)}
             />
         ) : null;
 
@@ -156,9 +166,9 @@ export function PaymentsSection({ payments, clock, inFlight, wait, visit: page }
                 </Notice>
             )}
             {connection === null ? (
-                <ProviderList providers={providers} held={inFlight !== null} open={open} onOpen={setOpen} platform={platform} onPlatform={connectPlatform} form={(provider) => form(provider, false)} />
+                <ProviderList providers={providers} held={inFlight !== null} open={open} onOpen={show} platform={platform} onPlatform={connectPlatform} form={(provider) => form(provider, false)} />
             ) : (
-                <ConnectionView connection={connection} provider={providers.find((candidate) => candidate.slug === connection.provider)} clock={clock} control={control} visit={visit} open={open} onOpen={setOpen} form={(provider) => form(provider, true)} refusal={refusal} />
+                <ConnectionView connection={connection} provider={providers.find((candidate) => candidate.slug === connection.provider)} clock={clock} control={control} visit={visit} open={open} onOpen={show} form={(provider) => form(provider, true)} refusal={refusal} onboarding={onboarding} />
             )}
             {wait !== null && (
                 <HelpLine className="admin-payments__wait" role="status">
@@ -339,6 +349,8 @@ type ConnectionProps = {
     form: (provider: PaymentProvider) => ReactNode;
     /** The section's worded refusal, repeated inside a confirmation it left open. */
     refusal: string | null;
+    /** Where Connect through us posts; Continue onboarding posts under it. */
+    onboarding: string;
 };
 
 /**
@@ -352,7 +364,7 @@ type ConnectionProps = {
  * list, linking the provider's page through the same onboarding wherever this build still
  * registers the provider.
  */
-function ConnectionView({ connection, provider, clock, control, visit, open, onOpen, form, refusal }: ConnectionProps) {
+function ConnectionView({ connection, provider, clock, control, visit, open, onOpen, form, refusal, onboarding }: ConnectionProps) {
     const own = connection.mode === 'own';
     const words = usePayments();
     const post = (action: PaymentAction, path: string) => () => visit(action, nothing, (options) => router.post(path, {}, options));
@@ -364,11 +376,11 @@ function ConnectionView({ connection, provider, clock, control, visit, open, onO
                 <HelpLine className="admin-payments-connection__mode">{modeLine(connection.mode, words)}</HelpLine>
                 {connection.fee !== null && <FeeInForce cost={feeInForceOf(connection.fee, connection.name, words)} rateUrl={provider?.rate_url} />}
             </div>
-            <Standing connection={connection} registered={provider !== undefined} control={control('resume')} onResume={post('resume', `${PATH}/platform/resume`)} />
+            <Standing connection={connection} registered={provider !== undefined} control={control('resume')} onResume={post('resume', `${onboarding}/resume`)} />
             <p className="admin-payments-checked text-sm">{own ? checkedSentence(connection, clock, words) : standingSentence(connection, clock, words)}</p>
             <StoredSecrets labels={storedSecretLabels(provider, connection.stored_secrets)} />
             {own && connection.webhook_url !== null && <WebhookUrl url={connection.webhook_url} name={connection.name} control={control('rotate')} visit={visit} refusal={refusal} />}
-            <ConnectionControls connection={connection} provider={provider} control={control} visit={visit} post={post} open={open} onOpen={onOpen} refusal={refusal} />
+            <ConnectionControls connection={connection} provider={provider} control={control} visit={visit} post={post} open={open} onOpen={onOpen} refusal={refusal} onboarding={onboarding} />
             {provider !== undefined && form(provider)}
         </div>
     );
@@ -406,10 +418,10 @@ function Standing({ connection, registered, control, onResume }: StandingProps) 
     );
 }
 
-type ControlsProps = Pick<ConnectionProps, 'connection' | 'provider' | 'control' | 'visit' | 'open' | 'onOpen' | 'refusal'> & { post: (action: PaymentAction, path: string) => () => void };
+type ControlsProps = Pick<ConnectionProps, 'connection' | 'provider' | 'control' | 'visit' | 'open' | 'onOpen' | 'refusal' | 'onboarding'> & { post: (action: PaymentAction, path: string) => () => void };
 
 /** The controls the state and the mode offer: resume while unfinished or wanting, the test and Replace in own mode, the switch, and Disconnect. */
-function ConnectionControls({ connection, provider, control, visit, post, open, onOpen, refusal }: ControlsProps) {
+function ConnectionControls({ connection, provider, control, visit, post, open, onOpen, refusal, onboarding }: ControlsProps) {
     const own = connection.mode === 'own';
     const resumable = !own && (connection.state === 'pending' || connection.state === 'restricted');
     const words = usePayments();
@@ -418,7 +430,7 @@ function ConnectionControls({ connection, provider, control, visit, post, open, 
     return (
         <div className="admin-payments-controls flex flex-wrap items-center gap-3">
             {resumable && (
-                <Button variant="primary" className="admin-payments-resume" {...control('resume')} busyLabel={words.text('buttons.opening')} onClick={post('resume', `${PATH}/platform/resume`)}>
+                <Button variant="primary" className="admin-payments-resume" {...control('resume')} busyLabel={words.text('buttons.opening')} onClick={post('resume', `${onboarding}/resume`)}>
                     {words.text('buttons.resume')}
                 </Button>
             )}

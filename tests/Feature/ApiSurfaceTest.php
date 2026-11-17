@@ -56,6 +56,7 @@ use App\Http\Requests\RescheduleRequest;
 use App\Http\Requests\ServiceRequest;
 use App\Http\Requests\SetPasswordRequest;
 use App\Http\Requests\SettingsRequest;
+use App\Http\Requests\SetupProfileRequest;
 use App\Http\Requests\ShiftDayRequest;
 use App\Http\Requests\ShiftPatternRequest;
 use App\Http\Requests\SignupRequest;
@@ -282,6 +283,16 @@ it('names the public surface, the routes behind the manage token and the pages b
         'admin.settings.gallery.store' => ['permission:manageSettings'],
         'admin.settings.gallery.destroy' => ['permission:manageSettings'],
         'admin.settings.link-copied' => ['permission:manageSettings'],
+        'admin.setup.opened' => ['permission:manageBilling'],
+        'admin.setup.skip' => ['permission:manageBilling'],
+        'admin.setup.finish' => ['permission:manageBilling'],
+        'admin.setup.profile' => ['permission:manageBilling'],
+        'admin.setup.services' => ['permission:manageBilling'],
+        'admin.setup.team' => ['permission:manageBilling'],
+        'admin.setup.hours' => ['permission:manageBilling'],
+        'admin.setup.payments.platform' => ['permission:manageBilling'],
+        'admin.setup.payments.platform.resume' => ['permission:manageBilling'],
+        'admin.setup.payments.back' => ['permission:viewBookings,viewOwnCalendar'],
         'admin.settings.links.page' => ['permission:manageSettings'],
         'admin.settings.links.show' => ['permission:manageSettings'],
         'admin.settings.payments.store' => ['permission:manageSettings'],
@@ -404,6 +415,8 @@ it('gates every configuration write of the catalog by the subscription, each und
         'admin.settings.cover.store' => ['POST'], 'admin.settings.cover.destroy' => ['DELETE'], 'admin.settings.gallery.store' => ['POST'], 'admin.settings.gallery.destroy' => ['DELETE'],
         'admin.settings.payments.store' => ['POST'], 'admin.settings.payments.platform' => ['POST'], 'admin.settings.payments.platform.resume' => ['POST'], 'admin.settings.payments.test' => ['POST'], 'admin.settings.payments.rotate' => ['POST'],
         'admin.settings.payments.disable' => ['POST'], 'admin.settings.payments.enable' => ['POST'], 'admin.settings.payments.destroy' => ['DELETE'],
+        'admin.setup.profile' => ['PUT'], 'admin.setup.services' => ['POST'], 'admin.setup.team' => ['POST'],
+        'admin.setup.hours' => ['PUT'], 'admin.setup.payments.platform' => ['POST'], 'admin.setup.payments.platform.resume' => ['POST'],
     ];
 
     foreach ($writes as $name => $methods) {
@@ -586,9 +599,25 @@ it('spells the admin surface under the prefix, verb by path: the door, the set-p
         'DELETE /admin/settings/cover' => $configures,
         'POST /admin/settings/gallery' => $configures,
         'DELETE /admin/settings/gallery/{file}' => $configures,
-        // The press of a copy button, recorded for the setup checklist: it configures nothing,
-        // so it is not behind the gate.
+        // The press of a copy button, recorded for setup's Booking link step: it configures
+        // nothing, so it is not behind the gate.
         'POST /admin/settings/link-copied' => adminAccess('permission:manageSettings'),
+        // The setup wizard's own writes, the owner's alone, each only recording a fact, so none
+        // is behind the gate.
+        'POST /admin/setup/opened' => adminAccess('permission:manageBilling'),
+        'POST /admin/setup/{step}/skip' => adminAccess('permission:manageBilling'),
+        'POST /admin/setup/finish' => adminAccess('permission:manageBilling'),
+        // The Business profile's save and the Services and Team steps' adds configure, so each is
+        // behind the gate.
+        'PUT /admin/setup/profile' => adminAccess('permission:manageBilling', gated: true),
+        'POST /admin/setup/services' => adminAccess('permission:manageBilling', gated: true),
+        'POST /admin/setup/team' => adminAccess('permission:manageBilling', gated: true),
+        // Opening hours' save and Online payments' two onboarding writes configure, so each is
+        // behind the gate; the provider's way back is a read landing on Home, under Home's access.
+        'PUT /admin/setup/hours' => adminAccess('permission:manageBilling', gated: true),
+        'POST /admin/setup/payments/platform' => adminAccess('permission:manageBilling', gated: true),
+        'POST /admin/setup/payments/platform/resume' => adminAccess('permission:manageBilling', gated: true),
+        'GET /admin/setup/payments/back' => adminAccess('permission:viewBookings,viewOwnCalendar'),
         // The Links card's QR codes: reads, so never behind the gate.
         'GET /admin/settings/links/page.svg' => adminAccess('permission:manageSettings'),
         'GET /admin/settings/links/{kind}/{id}.svg' => adminAccess('permission:manageSettings'),
@@ -774,6 +803,16 @@ it('counts every API route under a limit and counts one page alone, the My booki
         'admin.settings.gallery.store' => [],
         'admin.settings.gallery.destroy' => [],
         'admin.settings.link-copied' => [],
+        'admin.setup.opened' => [],
+        'admin.setup.skip' => [],
+        'admin.setup.finish' => [],
+        'admin.setup.profile' => [],
+        'admin.setup.services' => [],
+        'admin.setup.team' => [],
+        'admin.setup.hours' => [],
+        'admin.setup.payments.platform' => [],
+        'admin.setup.payments.platform.resume' => [],
+        'admin.setup.payments.back' => [],
         'admin.settings.links.page' => [],
         'admin.settings.links.show' => [],
         'admin.settings.payments.store' => ['throttle:payment-checks'],
@@ -885,6 +924,11 @@ it('takes every admin write\'s form request from the house\'s admin write reques
             'admin.settings.logo.store' => [LogoRequest::class],
             'admin.settings.cover.store' => [CoverRequest::class],
             'admin.settings.gallery.store' => [GalleryPhotoRequest::class],
+            'admin.setup.profile' => [SetupProfileRequest::class],
+            'admin.setup.services' => [ServiceRequest::class],
+            'admin.setup.team' => [StaffRequest::class],
+            'admin.setup.hours' => [OpeningHoursRequest::class],
+            'admin.setup.payments.platform' => [PlatformConnectRequest::class],
             'admin.settings.payments.store' => [PaymentCredentialsRequest::class],
             'admin.settings.payments.platform' => [PlatformConnectRequest::class],
             'admin.billing.plan' => [ChangePlanRequest::class],

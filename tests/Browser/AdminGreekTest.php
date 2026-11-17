@@ -23,7 +23,8 @@ use Tests\Support\WeeklyHours;
  * The admin in Greek in a real browser (a walk by keys): with luna's owner at el, a customer's page
  * read through to its erasure prompt, a service opened in its form, the door at a tenant whose
  * default is el and the shell a sign-in lands in, the Bookings list with a booking opened in its
- * dialog and its Move form, Home with every part shown, read on this week, this month and today, a
+ * dialog and its Move form, Home with every part shown, read on this week, this month and today,
+ * the setup wizard through its six steps from the list, its one line on a phone and the banner, a
  * member's page with its closures card's date picker open and the Staff list searched for nobody,
  * the Settings page with a provider's credentials open, the Settings page whole on Solo with
  * Opening hours' weekly editor, a refused save and a landed one, the Team screen with a removal
@@ -58,7 +59,7 @@ beforeEach(function () {
 afterEach(fn () => dropDemoSchemas());
 
 /** The files the walk reads, by their path under lang/{en,el}. */
-const ADMIN_GREEK_FILES = ['admin/customers', 'admin/services', 'admin/shell', 'admin/bookings', 'admin/home', 'admin/staff', 'admin/payments', 'admin/settings', 'admin/team', 'admin/billing', 'admin/emails', 'admin/shifts', 'admin/calendar', 'admin/reports'];
+const ADMIN_GREEK_FILES = ['admin/customers', 'admin/services', 'admin/shell', 'admin/bookings', 'admin/home', 'admin/staff', 'admin/payments', 'admin/settings', 'admin/team', 'admin/billing', 'admin/emails', 'admin/shifts', 'admin/calendar', 'admin/reports', 'admin/setup'];
 
 /** The page's language. */
 const ADMIN_GREEK_LANG = "document.documentElement.getAttribute('lang')";
@@ -428,7 +429,7 @@ function adminGreekTextScript(string $selector): string
 
 it('reads Home in Greek with every part shown, on this week, this month and today, no English value of the walked files and no English month or weekday name left, the revenue in Greek number forms', function () {
     DB::table('tenants')->where('slug', 'luna')->update(['locale' => SiteLanguage::Greek->value]);
-    DB::table('tenant_luna.settings')->where('id', 1)->update(['language' => null, 'hours_confirmed_at' => null]);
+    DB::table('tenant_luna.settings')->where('id', 1)->update(['language' => null]);
     DB::table('tenant_luna.audit_log')->delete();
     $owner = DB::table('users')->where('email', Admin::owner('luna'))->value('id');
     assert(is_int($owner));
@@ -509,8 +510,6 @@ it('reads Home in Greek with every part shown, on this week, this month and toda
         ->assertVisible(Admin::HOME)
         ->assertScript(ADMIN_GREEK_LANG, 'el')
         ->assertSeeIn(Admin::HOME.' h1', adminLine('admin/home.title', [], SiteLanguage::Greek))
-        ->assertSeeIn('.admin-setup', adminLine('admin/home.setup.title', [], SiteLanguage::Greek))
-        ->assertAttribute('.admin-setup__item[data-fact="hours"]', 'data-done', 'false')
         ->assertSeeIn('.admin-home-range', $line($on(FigureRange::WEEK)))
         ->assertCount('.admin-home-next__row', $ahead)
         ->assertCount('.admin-home-activity__row', 5)
@@ -536,6 +535,61 @@ it('reads Home in Greek with every part shown, on this week, this month and toda
         ->assertCount('.admin-home-top__row', 2)
         ->assertScript($walk, $clean)
         ->assertScript($names, '')
+        ->assertNoJavaScriptErrors();
+});
+
+it('reads the setup wizard in Greek through its six steps from the list, its one line on a phone, and the banner with its count, no English value of the walked files and no English month or weekday name left', function () {
+    // luna's setup opened again with three of its six steps done: the profile saved, and the
+    // services and the members the seed wrote; the hours, the payments and the link open, with no
+    // payment connection made. The wizard has never come up, so the sign-in brings it up by itself
+    // on the first open step.
+    DB::table('tenant_luna.settings')->where('id', 1)->update([
+        'setup_opened_at' => null, 'setup_finished_at' => null, 'setup_profile_saved_at' => DB::raw('now()'), 'hours_confirmed_at' => null,
+        'link_copied_at' => null, 'setup_link_finished_at' => null, 'setup_team_skipped_at' => null, 'setup_payments_skipped_at' => null,
+    ]);
+    expect(DB::table('tenant_luna.payment_connections')->count())->toBe(0);
+
+    $walk = adminGreekScript();
+    $clean = count(adminGreekPatterns()).':';
+    $names = adminGreekNamesScript();
+    $setup = fn (string $key): string => adminLine('admin/setup.'.$key, [], SiteLanguage::Greek);
+    $steps = ['profile', 'services', 'team', 'hours', 'payments', 'link'];
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
+        ->assertPathIs('/admin')
+        ->assertScript(ADMIN_GREEK_LANG, 'el')
+        ->assertSeeIn('.admin-setup .admin-modal__title', $setup('title'))
+        ->assertVisible('.admin-setup__step[data-step="hours"][aria-current="step"]')
+        ->assertSeeIn('.admin-setup__close', $setup('close'));
+
+    foreach ($steps as $step) {
+        $page->assertSeeIn(sprintf('.admin-setup__step[data-step="%s"]', $step), $setup('steps.'.$step.'.name'));
+    }
+
+    foreach (['profile', 'services', 'team'] as $step) {
+        $page->assertSeeIn(sprintf('.admin-setup__step[data-step="%s"]', $step), $setup('done'));
+    }
+
+    // Each step opened from the list, its panel read whole; no step holds an edit, so none asks
+    // before it is left.
+    foreach ($steps as $step) {
+        $page->click(sprintf('.admin-setup__step[data-step="%s"]', $step))
+            ->assertVisible(sprintf('.admin-setup__step[data-step="%s"][aria-current="step"]', $step))
+            ->assertSeeIn('h2.admin-setup__name', $setup('steps.'.$step.'.name'))
+            ->assertScript($walk, $clean)
+            ->assertScript($names, '');
+    }
+
+    $page->resize(390, 844)
+        ->assertSeeIn('.admin-setup__position', adminLine('admin/setup.position', ['number' => '6', 'total' => '6'], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-setup__position .admin-setup__name', $setup('steps.link.name'))
+        ->assertScript($walk, $clean)
+        ->click('.admin-setup__close')
+        ->assertMissing('.admin-setup')
+        ->assertScript(Admin::focusIsOn('.admin-setup-banner__continue'), true)
+        ->assertSeeIn('.admin-setup-banner__progress', adminLine('admin/setup.banner.progress', ['done' => '3', 'total' => '6'], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-setup-banner__continue', $setup('banner.continue'))
+        ->assertScript($walk, $clean)
         ->assertNoJavaScriptErrors();
 });
 

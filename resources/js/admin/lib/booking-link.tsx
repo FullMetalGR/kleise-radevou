@@ -3,8 +3,8 @@ import { COPY_BOOKING_LINK, CopyLink } from './copy';
 
 /*
  * The Copy booking link button of a service's and a member's detail page: the row's link as the
- * server spelled it, BookingLinks, copied, and the press recorded for the setup checklist where
- * the viewer may record it, manageSettings. A row the server handed no link for, the implicit
+ * server spelled it, BookingLinks, copied, and the press recorded for setup's Booking link step
+ * where the viewer may record it, manageSettings. A row the server handed no link for, the implicit
  * member, gets no button.
  */
 

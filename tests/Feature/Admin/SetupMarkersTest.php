@@ -1,7 +1,7 @@
 <?php
 
 use App\Infrastructure\Db\SettingsReader;
-use App\Infrastructure\Db\SetupChecklist;
+use App\Infrastructure\Db\SetupRecords;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +16,7 @@ pest()->use(RefreshDatabase::class);
  * The two setup markers on the settings row: when the opening hours were last confirmed
  * and when the booking link was last copied. Each is an instant the database writes as its
  * own now() on the write that marks it and nothing ever clears, and each is read as a
- * boolean, since the checklist asks whether, never when.
+ * boolean, since setup's steps ask whether, never when.
  */
 
 beforeEach(function () {
@@ -74,7 +74,7 @@ it('reads both markers as false on a tenant that has marked neither, and each as
     expect([$reader->read(LunaFixture::tenant())->hoursConfirmed, $reader->read(LunaFixture::tenant())->linkCopied])->toBe([true, true]);
 });
 
-it('stamps the hours marker on a landed PUT /admin/opening-hours holding a window, never on an empty week, which leaves the checklist\'s hours item open, and never on a refused one', function () {
+it('stamps the hours marker on a landed PUT /admin/opening-hours holding a window, never on an empty week, which leaves setup\'s hours step open, and never on a refused one', function () {
     $owner = markersOwner();
 
     markersWrite($this, $owner, 'PUT', '/opening-hours', ['rules' => 'Monday'])->assertStatus(400);
@@ -83,11 +83,11 @@ it('stamps the hours marker on a landed PUT /admin/opening-hours holding a windo
     markersWrite($this, $owner, 'PUT', '/opening-hours', ['rules' => []])->assertRedirect(tenantUrl('luna', '/admin/settings'));
     expect(hoursMarker())->toBeNull()
         ->and(DB::table('tenant_luna.shift_patterns')->where('staff_id', implicitStaffId('tenant_luna'))->exists())->toBeFalse()
-        ->and(app(SetupChecklist::class)->facts(LunaFixture::tenant())['hours'])->toBeFalse();
+        ->and(app(SetupRecords::class)->progress(LunaFixture::tenant(), staff: true)->done['hours'])->toBeFalse();
 
     markersWrite($this, $owner, 'PUT', '/opening-hours', ['rules' => [['weekday' => 1, 'start' => '09:00', 'end' => '17:00']]])->assertRedirect(tenantUrl('luna', '/admin/settings'));
     expect(hoursMarkerIsNow())->toBeTrue()
-        ->and(app(SetupChecklist::class)->facts(LunaFixture::tenant())['hours'])->toBeTrue();
+        ->and(app(SetupRecords::class)->progress(LunaFixture::tenant(), staff: true)->done['hours'])->toBeTrue();
 
     hoursMarkerMovedBack();
     $before = hoursMarker();

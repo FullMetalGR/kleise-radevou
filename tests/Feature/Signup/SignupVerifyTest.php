@@ -172,7 +172,7 @@ it('builds the schema as a trial on the click inside 24 hours, stamps the owner 
         'hash' => hash('sha256', $token),
         'schemas' => 1,
     ])
-        ->and(DB::table('tenant_luna.migrations')->count())->toBe(38)
+        ->and(DB::table('tenant_luna.migrations')->count())->toBe(39)
         ->and(DB::table('tenant_luna.settings')->count())->toBe(1)
         ->and(DB::table('tenant_luna.staff')->where('is_implicit', true)->count())->toBe(1)
         ->and(DB::table('subscriptions')->count())->toBe(0)
@@ -314,7 +314,7 @@ it('sends every later click on a built row\'s link to the sign-in page, a week o
 
     $this->get(centralUrl('/signup/verify/'.$token))->assertRedirect(tenantUrl('luna', '/admin/login'));
 
-    expect(DB::table('tenant_luna.migrations')->count())->toBe(38)
+    expect(DB::table('tenant_luna.migrations')->count())->toBe(39)
         ->and(verifyRow())->toMatchArray(['status' => 'active', 'verified_at' => '2026-10-09 09:00:00', 'hash' => hash('sha256', $token)])
         ->and(array_map(fn ($message): PlatformMessageKind => $message->kind, $seam->sent))->toBe([PlatformMessageKind::Verification, PlatformMessageKind::Welcome]);
 })->with(['at once' => '2026-10-09 09:00:00', 'a week on' => '2026-10-16 09:00:00']);

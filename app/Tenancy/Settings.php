@@ -41,8 +41,8 @@ use InvalidArgumentException;
  * reading of the list, so the seam, the notice that says whether the customer heard and the
  * Emails section all meet it once.
  *
- * The two setup markers are read as whether and never when: the setup checklist asks whether the
- * opening hours were ever confirmed and whether the booking link was ever copied, so the
+ * The two setup markers are read as whether and never when: setup asks whether the opening
+ * hours were ever confirmed and whether the booking link was ever copied, so the
  * instants stay in the row and no instant is parsed to answer it. Neither is ever cleared, so
  * neither turns false again.
  *

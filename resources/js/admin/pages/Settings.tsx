@@ -11,7 +11,8 @@ import { useOneWrite } from '@/lib/one-write';
 import type { Failure } from '@/lib/visits';
 import { type Close, DangerZone } from '@/settings/DangerZone';
 import { GalleryPhotos } from '@/settings/GalleryPhotos';
-import { ImageSlot, type ImageSlotWords } from '@/settings/ImageSlot';
+import { COVER_ERROR, COVER_HELP, COVER_PREVIEW, COVER_URL, COVER_WORDS, LOGO_ERROR, LOGO_HELP, LOGO_PREVIEW, LOGO_URL, LOGO_WORDS, slotWords } from '@/settings/images';
+import { ImageSlot } from '@/settings/ImageSlot';
 import { LinksCard } from '@/settings/LinksCard';
 import { audienceTag, type BusinessMap, firstProblem, hoursBranch, isOn, type Limits, type Links, LOCKED_SENTENCE, type Logo, problemsOf, type RosterMember, saveable, seedForm, type SettingsForm, type StoredImage, startIntervalOptions, switched, upperCurrency, type Urls, type Values, wholePatchOf } from '@/settings/model';
 import { OpeningHours } from '@/settings/OpeningHours';
@@ -76,10 +77,6 @@ const PATH = '/admin/settings';
 
 const HOURS = '/admin/opening-hours';
 
-const LOGO = '/admin/settings/logo';
-
-const COVER = '/admin/settings/cover';
-
 const GALLERY = '/admin/settings/gallery';
 
 /*
@@ -92,27 +89,14 @@ const SAVE_ERROR = 'errors.save' satisfies SettingsKey;
 
 const HOURS_ERROR = 'errors.hours' satisfies SettingsKey;
 
-const LOGO_ERROR = 'errors.logo' satisfies SettingsKey;
-
-const COVER_ERROR = 'errors.cover' satisfies SettingsKey;
-
 const GALLERY_ERROR = 'errors.gallery' satisfies SettingsKey;
 
 const COPY_FAILED = 'errors.copy_failed' satisfies SettingsKey;
 
 const START_INTERVAL_HELP = 'booking_rules.start_interval_help' satisfies SettingsKey;
 
-/** The three image helps, each chosen by its largest file's megabytes, the figure spelled as :n. */
-const LOGO_HELP = 'booking_page.logo_help' satisfies SettingsKey;
-
-const COVER_HELP = 'booking_page.cover_help' satisfies SettingsKey;
-
+/** The gallery's help, chosen by its largest file's megabytes, the figure spelled as :n. */
 const GALLERY_HELP = 'booking_page.gallery_help' satisfies SettingsKey;
-
-/** The logo's and the cover's ImageSlot words, by key. */
-const LOGO_WORDS: Record<keyof ImageSlotWords, SettingsKey> = { none: 'booking_page.logo_none', upload: 'booking_page.logo_upload', replace: 'booking_page.logo_replace', remove: 'booking_page.logo_remove' };
-
-const COVER_WORDS: Record<keyof ImageSlotWords, SettingsKey> = { none: 'booking_page.cover_none', upload: 'booking_page.cover_upload', replace: 'booking_page.cover_replace', remove: 'booking_page.cover_remove' };
 
 const WAIT: Record<Exclude<Action, PaymentAction>, SettingsKey> = {
     settings: 'waits.settings',
@@ -124,11 +108,6 @@ const WAIT: Record<Exclude<Action, PaymentAction>, SettingsKey> = {
     'photo-add': 'waits.photo_add',
     'photo-remove': 'waits.photo_remove',
 };
-
-/** An ImageSlot's words, read by key. */
-function slotWords(keys: Record<keyof ImageSlotWords, SettingsKey>, words: SettingsWords): ImageSlotWords {
-    return { none: words.text(keys.none), upload: words.text(keys.upload), replace: words.text(keys.replace), remove: words.text(keys.remove) };
-}
 
 /** A table of keys by action read through its section, each action keeping its own line. */
 function readEach<A extends string, K>(table: Record<A, K>, read: (key: K) => string): Record<A, string> {
@@ -196,7 +175,7 @@ export default function Settings() {
             'upload',
             plainly(words.text(LOGO_ERROR)),
             () => setUploads((count) => count + 1),
-            (options) => router.post(LOGO, { logo: file }, { ...options, forceFormData: true }),
+            (options) => router.post(LOGO_URL, { logo: file }, { ...options, forceFormData: true }),
         );
 
     const remove = () =>
@@ -204,7 +183,7 @@ export default function Settings() {
             'remove',
             plainly(words.text(LOGO_ERROR)),
             () => undefined,
-            (options) => router.delete(LOGO, options),
+            (options) => router.delete(LOGO_URL, options),
         );
 
     const uploadCover = (file: File) =>
@@ -212,7 +191,7 @@ export default function Settings() {
             'cover-upload',
             plainly(words.text(COVER_ERROR)),
             () => setCoverUploads((count) => count + 1),
-            (options) => router.post(COVER, { cover: file }, { ...options, forceFormData: true }),
+            (options) => router.post(COVER_URL, { cover: file }, { ...options, forceFormData: true }),
         );
 
     const removeCover = () =>
@@ -220,7 +199,7 @@ export default function Settings() {
             'cover-remove',
             plainly(words.text(COVER_ERROR)),
             () => undefined,
-            (options) => router.delete(COVER, options),
+            (options) => router.delete(COVER_URL, options),
         );
 
     const addPhoto = (file: File) =>
@@ -258,11 +237,11 @@ export default function Settings() {
                         wait={waitFor('settings')}
                         onSave={save}
                         logo={(control) => (
-                            <ImageSlot key={uploads} block="admin-settings-logo" words={slotWords(LOGO_WORDS, words)} preview="max-h-12 max-w-48" control={control} image={props.logo} uploading={inFlight === 'upload'} removing={inFlight === 'remove'} wait={pending} onUpload={upload} onRemove={remove} />
+                            <ImageSlot key={uploads} block="admin-settings-logo" words={slotWords(LOGO_WORDS, words)} preview={LOGO_PREVIEW} control={control} image={props.logo} uploading={inFlight === 'upload'} removing={inFlight === 'remove'} wait={pending} onUpload={upload} onRemove={remove} />
                         )}
                         map={props.map}
                         cover={(control) => (
-                            <ImageSlot key={coverUploads} block="admin-settings-cover" words={slotWords(COVER_WORDS, words)} preview="aspect-[8/3] max-h-40 w-full max-w-md rounded-md object-cover" control={control} image={props.cover} uploading={inFlight === 'cover-upload'} removing={inFlight === 'cover-remove'} wait={pending} onUpload={uploadCover} onRemove={removeCover} />
+                            <ImageSlot key={coverUploads} block="admin-settings-cover" words={slotWords(COVER_WORDS, words)} preview={COVER_PREVIEW} control={control} image={props.cover} uploading={inFlight === 'cover-upload'} removing={inFlight === 'cover-remove'} wait={pending} onUpload={uploadCover} onRemove={removeCover} />
                         )}
                         gallery={(control) => <GalleryPhotos key={photoAdds} control={control} gallery={props.gallery} capacity={props.limits.capacity} adding={inFlight === 'photo-add'} removing={inFlight === 'photo-remove'} wait={pending} onAdd={addPhoto} onRemove={removePhoto} />}
                         hours={

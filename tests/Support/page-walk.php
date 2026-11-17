@@ -2,6 +2,7 @@
 
 use App\Domain\Enum\Decision;
 use App\Http\Middleware\ResolveTenant;
+use App\Setup\SetupProgress;
 use App\Site\SiteLanguage;
 use App\Tenancy\DecisionLinks;
 use App\Tenancy\TenantPages;
@@ -46,6 +47,7 @@ function tenantRouteSample(string $parameter): string
         'token' => str_repeat('a', 64),
         'email' => 'someone@example.com',
         'language' => SiteLanguage::English->value,
+        'step' => SetupProgress::SKIPPABLE[0],
         default => '1',
     };
 }

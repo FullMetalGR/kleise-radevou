@@ -69,9 +69,12 @@ final readonly class TenantExport
     /** Every table's two stamps. */
     private const array STAMPS = ['created_at', 'updated_at'];
 
+    /** The setup wizard's own facts on the settings row, each an instant. */
+    private const array SETUP = ['setup_opened_at', 'setup_finished_at', 'setup_profile_saved_at', 'setup_team_skipped_at', 'setup_payments_skipped_at', 'setup_link_finished_at'];
+
     /** The keys of each file holding an instant, the two stamps beside them where a table has both. */
     private const array INSTANTS = [
-        'settings' => ['hours_confirmed_at', 'link_copied_at', ...self::STAMPS],
+        'settings' => ['hours_confirmed_at', 'link_copied_at', ...self::SETUP, ...self::STAMPS],
         'payment_connections' => ['last_checked_at'],
         'services' => self::STAMPS,
         'staff' => self::STAMPS,
@@ -167,6 +170,7 @@ final readonly class TenantExport
                 ...self::same(['brand_logo_path', 'about', 'address_line1', 'address_line2', 'city', 'postal_code', 'country', 'phone', 'public_email', 'website', 'instagram', 'facebook', 'google_reviews_url', 'important_info']),
                 ...self::same(['cover_path', 'gallery_paths', 'lat', 'lng', 'map_path', 'map_state', 'language', 'colour_by', 'theme']),
                 'hours_confirmed_at' => self::instant('r.hours_confirmed_at'), 'link_copied_at' => self::instant('r.link_copied_at'),
+                ...array_combine(self::SETUP, array_map(fn (string $column): string => self::instant('r.'.$column), self::SETUP)),
                 ...self::stamps('r'),
             ]).' from '.$schema.'.settings r)',
             'payment_connections' => self::list(

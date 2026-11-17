@@ -5,14 +5,14 @@ import { type ShellKey, useShell } from '@/lib/strings';
 
 /*
  * Copying a booking link or the snippet to the clipboard: the button says in a line beside it
- * what happened, and where the copy carried the booking link it records the press for the setup
- * checklist, once the clipboard write has landed and never when it failed. The record is an async
+ * what happened, and where the copy carried the booking link it records the press for setup's
+ * Booking link step, once the clipboard write has landed and never when it failed. The record is an async
  * visit that keeps the page, so a settings save in flight is not cancelled, and it says nothing
  * of its own: the line already did. The lines and the buttons' labels are keys of the shell's
  * section, read in the page's language.
  */
 
-/** The press recorded for the setup checklist, POST /admin/settings/link-copied. */
+/** The press recorded for setup's Booking link step, POST /admin/settings/link-copied. */
 export const LINK_COPIED = '/admin/settings/link-copied';
 
 export const COPIED = 'copy.copied';

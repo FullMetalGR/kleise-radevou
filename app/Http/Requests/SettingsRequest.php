@@ -164,8 +164,48 @@ final class SettingsRequest extends AdminWriteRequest
             'start_interval_min' => ['required', 'integer', 'in:'.self::START_INTERVALS, 'multiple_of:'.$this->settings->granularityMin],
             'emails_off' => ['present', 'array'],
             'emails_off.*' => ['string', 'regex:'.self::KEY_PATTERN],
-            ...array_map(fn (array $rule): array => ['present', 'nullable', 'string', ...$rule], self::profileRules()),
+            ...self::profileRulesOf(Profile::FIELDS),
         ];
+    }
+
+    /**
+     * The rules of the profile fields named, each present, null or a string, and its own rule
+     * beyond: the setup wizard's Business profile step holds its fewer fields to these too.
+     *
+     * @param  list<string>  $fields
+     * @return array<string, list<string>>
+     */
+    public static function profileRulesOf(array $fields): array
+    {
+        return array_map(fn (array $rule): array => ['present', 'nullable', 'string', ...$rule], array_intersect_key(self::profileRules(), array_flip($fields)));
+    }
+
+    /**
+     * The refusals of the profile fields named, each read in the request's language.
+     *
+     * @param  list<string>  $fields
+     * @return array<string, string>
+     */
+    public static function profileRefusalsOf(array $fields): array
+    {
+        return array_map(fn (string $key): string => self::line($key, self::valuesOf($key)), self::profileMessages($fields));
+    }
+
+    /**
+     * The profile fields named off a validated body, under their column names, trimmed, a blank
+     * one as null.
+     *
+     * @param  array<array-key, mixed>  $validated
+     * @param  list<string>  $fields
+     * @return array<string, string|null>
+     */
+    public static function profileOf(array $validated, array $fields): array
+    {
+        return array_combine($fields, array_map(function (string $field) use ($validated): ?string {
+            $value = $validated[$field] ?? null;
+
+            return is_string($value) && trim($value) !== '' ? trim($value) : null;
+        }, $fields));
     }
 
     /**
@@ -210,7 +250,7 @@ final class SettingsRequest extends AdminWriteRequest
             'emails_off.array' => self::EMAILS,
             'emails_off.*.string' => self::EMAIL_KEY,
             'emails_off.*.regex' => self::EMAIL_KEY,
-            ...self::profileMessages(),
+            ...self::profileMessages(Profile::FIELDS),
         ]);
     }
 
@@ -297,11 +337,12 @@ final class SettingsRequest extends AdminWriteRequest
     }
 
     /**
-     * Every refusal of a profile field, each by that field's one sentence's key.
+     * Every refusal of the profile fields named, each by that field's one sentence's key.
      *
+     * @param  list<string>  $fields
      * @return array<string, string>
      */
-    private static function profileMessages(): array
+    private static function profileMessages(array $fields): array
     {
         $sentences = [
             'about' => self::ABOUT, 'address_line1' => self::ADDRESS_LINE, 'address_line2' => self::ADDRESS_LINE, 'city' => self::CITY, 'postal_code' => self::POSTAL_CODE,
@@ -310,7 +351,7 @@ final class SettingsRequest extends AdminWriteRequest
         ];
         $messages = [];
 
-        foreach (self::profileRules() as $field => $rules) {
+        foreach (array_intersect_key(self::profileRules(), array_flip($fields)) as $field => $rules) {
             foreach (['present', 'string', ...array_map(fn (string $rule): string => explode(':', $rule)[0], $rules)] as $rule) {
                 $messages[$field.'.'.$rule] = $sentences[$field];
             }
@@ -350,11 +391,7 @@ final class SettingsRequest extends AdminWriteRequest
             'reminder_lead_hours' => self::whole($validated['reminder_lead_hours'] ?? null),
             'start_interval_min' => self::whole($validated['start_interval_min'] ?? null),
             'emails_off' => $this->settings()->storable(array_values(array_filter($keys, is_string(...)))),
-            'profile' => array_combine(Profile::FIELDS, array_map(function (string $field) use ($validated): ?string {
-                $value = $validated[$field] ?? null;
-
-                return is_string($value) && trim($value) !== '' ? trim($value) : null;
-            }, Profile::FIELDS)),
+            'profile' => self::profileOf($validated, Profile::FIELDS),
         ];
     }
 

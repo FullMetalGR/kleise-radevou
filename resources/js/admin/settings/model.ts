@@ -31,8 +31,16 @@ const PROFILE_FIELDS = ['about', 'address_line1', 'address_line2', 'city', 'post
 export type ProfileField = (typeof PROFILE_FIELDS)[number];
 
 /**
+ * The profile fields the setup wizard's Business profile step asks for, in the section's order:
+ * About, the address and Phone.
+ */
+export const BASIC_FIELDS = ['about', 'address_line1', 'address_line2', 'city', 'postal_code', 'country', 'phone'] as const satisfies readonly ProfileField[];
+
+export type BasicField = (typeof BASIC_FIELDS)[number];
+
+/**
  * A record of the thirteen profile fields, each the value the function gives it: the one loop over
- * PROFILE_FIELDS that builds one, which the seed, the patch and the tests read. Object.fromEntries
+ * PROFILE_FIELDS that builds one, which the patch and the tests read. Object.fromEntries
  * types its record by string keys alone; its entries are PROFILE_FIELDS' own, every one, so the
  * record is whole, and this is the one place that says so.
  */
@@ -212,12 +220,19 @@ export function seedForm(values: Values): SettingsForm {
         reminder_lead_hours: String(values.reminder_lead_hours),
         start_interval_min: String(values.start_interval_min),
         emails_off: [...values.emails_off],
-        ...seedProfile(values),
+        ...seedProfileOf(values, PROFILE_FIELDS),
     };
 }
 
-function seedProfile(values: Values): Record<ProfileField, string> {
-    return { ...profileRecord((field) => values[field] ?? ''), country: values.country ?? DEFAULT_COUNTRY };
+/**
+ * The given profile fields as a person edits them, from their stored values: a blank one as the
+ * empty string, the country on GR where none is stored.
+ */
+export function seedProfileOf<F extends ProfileField>(values: Readonly<Record<F, string | null>>, fields: readonly F[]): Record<F, string> {
+    const seeded = Object.fromEntries(fields.map((field) => [field, values[field] ?? (field === 'country' ? DEFAULT_COUNTRY : '')]));
+
+    // The entries are the given fields', every one, so the record is whole.
+    return seeded as Record<F, string>;
 }
 
 /** The currency as every keystroke leaves it: uppercased, so what is typed is what is checked. */
@@ -257,7 +272,14 @@ export function problemsOf(form: SettingsForm, granularity: number, words: Setti
         problems.start_interval_min = startIntervalSentence(granularity, words);
     }
 
-    for (const field of PROFILE_FIELDS) {
+    return { ...problems, ...profileProblems(form, PROFILE_FIELDS, words) };
+}
+
+/** Every one of the given profile fields that fails its rule, by field, in its sentence. */
+export function profileProblems<F extends ProfileField>(form: Readonly<Record<F, string>>, fields: readonly F[], words: SettingsWords): Partial<Record<F, string>> {
+    const problems: Partial<Record<F, string>> = {};
+
+    for (const field of fields) {
         const typed = form[field].trim();
         const rule = PROFILE_RULES[field];
 

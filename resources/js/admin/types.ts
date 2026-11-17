@@ -168,14 +168,13 @@ export type AdminStrings = { shell: ShellStrings };
 type HomeChange = { by: string; same: string; from_zero: string };
 
 /**
- * Home's section, lang/en/admin/home.php, which HomeController names: the title, the setup
- * checklist, the range card, the six tiles and their comparisons, the footnote, the two Top
- * tables, the three feeds and the next seven days.
+ * Home's section, lang/en/admin/home.php, which HomeController names: the title, the range card,
+ * the six tiles and their comparisons, the footnote, the two Top tables, the three feeds and the
+ * next seven days.
  */
 export type HomeStrings = {
     page_title: string;
     title: string;
-    setup: { title: string; service: string; hours: string; link: string; booking: string; hosted: string; done: string; open: string };
     range: { label: string; today: string; yesterday: string; week: string; month: string; line: { today: string; yesterday: string; week: string; month: string }; error: string };
     tiles: { bookings: string; revenue: string; occupancy: string; new_customers: string; cancelled: string; no_shows: string; filled: string; duration: string; no_hours: string; returning: string };
     change: { day: HomeChange; week: HomeChange; month: HomeChange };

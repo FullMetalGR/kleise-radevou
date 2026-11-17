@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\RetiredMyCalendarController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SetPasswordController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SetupController;
 use App\Http\Controllers\Admin\ShiftsController;
 use App\Http\Controllers\Admin\StaffColourController;
 use App\Http\Controllers\Admin\StaffController;
@@ -68,9 +69,11 @@ use App\Http\Middleware\RequiresPayLink;
 use App\Http\Middleware\RequiresPermission;
 use App\Http\Middleware\RequiresSignIn;
 use App\Http\Requests\TolerantQuery;
+use App\Http\Setup\SetupWizard;
 use App\Infrastructure\Storage\TenantImages;
 use App\Platform\PasswordLinks;
 use App\Platform\SupportSessions;
+use App\Setup\SetupProgress;
 use App\Site\SiteLanguage;
 use App\Tenancy\DecisionLinks;
 use App\Tenancy\PayLinks;
@@ -433,9 +436,19 @@ Route::prefix('admin')->name('admin.')->middleware(HandleInertiaRequests::class)
     Route::post('/settings/gallery', [GalleryController::class, 'store'])->middleware([RequiresPermission::of(Permission::ManageSettings), RequiresActiveSubscription::NAME])->name('settings.gallery.store');
     Route::delete('/settings/gallery/{file}', [GalleryController::class, 'destroy'])->where('file', TenantImages::FILE_NAME)->middleware([RequiresPermission::of(Permission::ManageSettings), RequiresActiveSubscription::NAME])->name('settings.gallery.destroy');
 
-    // The press of a copy button that copies the booking link, recorded for the setup checklist:
-    // body-less, under manageSettings and never the subscription gate, since it configures nothing.
+    // The press of a copy button that copies the booking link, recorded for setup's Booking link
+    // step: body-less, under manageSettings and never the subscription gate, since it configures
+    // nothing.
     Route::post('/settings/link-copied', [SettingsController::class, 'linkCopied'])->middleware(RequiresPermission::of(Permission::ManageSettings))->name('settings.link-copied');
+
+    // The setup wizard's own writes, each body-less and only recording a fact of the business: the
+    // wizard came up by itself, Team or Online payments skipped, Finish on the Booking link step.
+    // The owner's alone, manageBilling, and never the subscription gate, since none configures
+    // anything. Each step's own writes follow, registered by the step's class.
+    Route::post('/setup/opened', [SetupController::class, 'opened'])->middleware(RequiresPermission::of(Permission::ManageBilling))->name('setup.opened');
+    Route::post('/setup/{step}/skip', [SetupController::class, 'skip'])->whereIn('step', SetupProgress::SKIPPABLE)->middleware(RequiresPermission::of(Permission::ManageBilling))->name('setup.skip');
+    Route::post('/setup/finish', [SetupController::class, 'finish'])->middleware(RequiresPermission::of(Permission::ManageBilling))->name('setup.finish');
+    SetupWizard::stepRoutes();
 
     // The Links card's QR codes: an SVG of the booking page's link and of each service's and
     // member's, under manageSettings and never the subscription gate, since drawing a code is a

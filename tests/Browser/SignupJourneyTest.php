@@ -17,7 +17,8 @@ use Tests\Support\RecordingPlatformMessages;
  * went to, its Resend control pressed and answering its one sentence with a new link replacing
  * the first, that link opened as the owner's mail would open it, the schema built as a trial, the
  * pending page sending on to the subdomain's sign-in page, and the owner signed in to the full
- * rail the trial carries. The currency is typed in lower case and the control upper-cases it, so
+ * rail the trial carries, the setup wizard come up by itself over Home on its first step, the
+ * business holding nothing yet. The currency is typed in lower case and the control upper-cases it, so
  * the row stores USD. The platform's seam is the container's instance, so the application the
  * browser talks to hands this test the link it sent; the session lives across the browser's
  * requests in the database, as BrowserTestCase sets it.
@@ -107,6 +108,8 @@ it('walks a verified signup from the form through a resent link to the owner sig
         ->assertPathIs(AdminSession::PREFIX)
         ->assertSeeIn('.admin-business', 'Luna Hair Studio')
         ->assertSeeIn('.admin-rail', navLabel('staff'))
+        ->assertSeeIn('.admin-setup .admin-modal__title', adminLine('admin/setup.title'))
+        ->assertVisible('.admin-setup__step[data-step="profile"][aria-current="step"]')
         ->assertNoJavaScriptErrors();
 
     expect(billingColumns())->toMatchArray(['entitlements' => '{staff}', 'subscription_state' => 'trial']);

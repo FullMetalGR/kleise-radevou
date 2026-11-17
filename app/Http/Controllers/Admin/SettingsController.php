@@ -12,6 +12,7 @@ use App\Http\AdminProps;
 use App\Http\AdminSession;
 use App\Http\AdminStrings;
 use App\Http\BookingLinks;
+use App\Http\BusinessImages;
 use App\Http\CountryNames;
 use App\Http\PaymentsSection;
 use App\Http\Requests\ColourByRequest;
@@ -25,13 +26,11 @@ use App\Infrastructure\Db\SettingsReader;
 use App\Infrastructure\Db\SettingsRecords;
 use App\Infrastructure\Db\StaffRecords;
 use App\Infrastructure\Map\GoogleMapsKey;
-use App\Infrastructure\Storage\TenantImages;
 use App\Jobs\PrepareMap;
 use App\Platform\ClosingWindow;
 use App\Platform\TenantPlan;
 use App\Site\SiteLanguage;
 use App\Tenancy\CurrentTenant;
-use App\Tenancy\MapState;
 use App\Tenancy\Settings;
 use App\Tenancy\Slug;
 use App\Tenancy\Tenant;
@@ -138,6 +137,7 @@ final readonly class SettingsController
         private Clock $clock,
         private Translator $translator,
         private CountryNames $countries,
+        private BusinessImages $images,
         #[Config('site.contact_address')] private string $support,
     ) {}
 
@@ -147,7 +147,6 @@ final readonly class SettingsController
         $tenant = $this->current->get();
         $settings = $this->reader->read($tenant);
         $slug = Slug::of($tenant->slug);
-        $logo = $settings->brandLogoPath;
         $theme = $this->reader->theme($tenant);
 
         return Inertia::render(self::PAGE, [
@@ -166,10 +165,10 @@ final readonly class SettingsController
                 ...$settings->profile->toArray(),
             ],
             'languages' => app(AdminProps::class)->languageLabels(),
-            'logo' => $logo === null ? null : ['name' => TenantImages::fileOf($logo), 'url' => $this->urls->logo($slug, TenantImages::fileOf($logo))],
-            'cover' => $settings->coverPath === null ? null : $this->image($slug, $settings->coverPath),
-            'gallery' => array_map(fn (string $path): array => $this->image($slug, $path), $settings->galleryPaths),
-            'map' => $this->map($slug, $settings),
+            'logo' => $this->images->logo($slug, $settings),
+            'cover' => $this->images->cover($slug, $settings),
+            'gallery' => array_map(fn (string $path): array => $this->images->image($slug, $path), $settings->galleryPaths),
+            'map' => $this->images->map($slug, $settings),
             'urls' => [
                 'hosted' => $this->urls->hostedPage($slug),
                 'snippet' => $this->urls->embedSnippet($slug, $theme),
@@ -192,7 +191,7 @@ final readonly class SettingsController
      *
      * @return array{logo: array{megabytes: int, spelled: string}, cover: array{megabytes: int, spelled: string}, gallery: array{megabytes: int, spelled: string}, capacity: array{count: int, spelled: string}}
      */
-    private static function limits(): array
+    public static function limits(): array
     {
         $size = function (string $help, int $kilobytes): array {
             $megabytes = ImageUploadRequest::megabytesOf($kilobytes);
@@ -256,37 +255,6 @@ final readonly class SettingsController
         $spelled = $formatter->format($days);
 
         return is_string($spelled) ? $spelled : (string) $days;
-    }
-
-    /**
-     * The map as the screen's type has it: ready with its stored image, or any other state with
-     * none. A ready row naming no path, which only a hand's write leaves, reads as none, so a ready
-     * state never crosses with a null image.
-     *
-     * @return array{state: string, image: array{name: string, url: string}|null}
-     */
-    private function map(Slug $slug, Settings $settings): array
-    {
-        if ($settings->mapState === MapState::Ready) {
-            return $settings->mapPath === null
-                ? ['state' => MapState::None->value, 'image' => null]
-                : ['state' => MapState::Ready->value, 'image' => $this->image($slug, $settings->mapPath)];
-        }
-
-        return ['state' => $settings->mapState->value, 'image' => null];
-    }
-
-    /**
-     * One stored image as the screen shows it: the file name the removal route names and the URL
-     * the page loads it from.
-     *
-     * @return array{name: string, url: string}
-     */
-    private function image(Slug $slug, string $path): array
-    {
-        $file = TenantImages::fileOf($path);
-
-        return ['name' => $file, 'url' => $this->urls->image($slug, $file)];
     }
 
     public function update(SettingsRequest $request): RedirectResponse

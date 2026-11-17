@@ -377,7 +377,7 @@ it('answers the dialog\'s detail for the booking named in the query and missing 
         ->assertInertia(fn (Assert $page) => $page->where('detail', ['state' => 'missing', 'uuid' => 'nope']));
 });
 
-it('carries no setup checklist, which moved to Home, to any viewer', function () {
+it('carries no setup, which Home alone offers, to any viewer', function () {
     $manager = User::query()->findOrFail(addTenantUser('mira@luna.example', 'manager'));
 
     foreach ([calendarOwner(), $manager] as $viewer) {

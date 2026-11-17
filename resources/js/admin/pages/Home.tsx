@@ -7,7 +7,6 @@ import { BookingsProvider, bookingsWordsOf } from '@/bookings/words';
 import { Strip } from '@/figures/kit';
 import { Activity, Awaiting, type HomeActivityRow, type HomeBooking, NextUp } from '@/home/feeds';
 import { RangeCard, type RangeFigures, Tiles, TopTables } from '@/home/figures';
-import { type Setup, SetupCard } from '@/home/SetupCard';
 import { ToMark, type ToMarkList } from '@/home/ToMark';
 import { type HomeWords, homeWordsOf } from '@/home/words';
 import { isoWeekday } from '@/lib/day';
@@ -17,17 +16,19 @@ import { useShell } from '@/lib/strings';
 import { usePartialRead } from '@/lib/partial-read';
 import { owning } from '@/lib/visits';
 import { CALENDAR_PATH } from '@/pages/Calendar';
+import type { Setup } from '@/setup/model';
+import { SetupOnHome } from '@/setup/SetupOnHome';
+import type { SetupStrings } from '@/setup/words';
 import type { BookingsStrings, HomeStrings, SharedProps } from '@/types';
-import { useNewBooking } from '@/wizard/NewBooking';
 
 /*
- * Home, the landing of every viewer holding viewBookings. The title reads Home; then, in order,
- * the setup checklist while the setup prop carries a fact still false, its booking item opening
- * the wizard with no prefill; To mark, the confirmed bookings whose time is over, marked from the
- * card one at a time or in bulk by a viewer holding manageBookings; the range card, a choice of range being a visit to Home with the
- * range in the address (none for this week) that keeps the scroll and reads range_figures alone,
- * the card busy while it reads and a failed read said in Home's own sentence; the six tiles and
- * the footnote; Next up beside Awaiting approval; Top services beside Top staff; Recent activity
+ * Home, the landing of every viewer holding viewBookings. Above it all, for an owner Home's
+ * answer carries setup to, the setup banner and the setup wizard over the page. The title reads
+ * Home; then, in order, To mark, the confirmed bookings whose time is over, marked from the card
+ * one at a time or in bulk by a viewer holding manageBookings; the range card, a choice of range
+ * being a visit to Home with the range in the address (none for this week) that keeps the scroll
+ * and reads range_figures alone, the card busy while it reads and a failed read said in Home's
+ * own sentence; the six tiles and the footnote; Next up beside Awaiting approval; Top services beside Top staff; Recent activity
  * beside the next seven days, one bar per day from the tenant's today, the confirmed part in the
  * theme colour and the awaiting share in amber, each a link opening the Calendar's Day on its
  * date. Every figure is the server's and every word is a key of the home section.
@@ -48,7 +49,7 @@ import { useNewBooking } from '@/wizard/NewBooking';
 export type HomeDay = { date: string; confirmed: number; awaiting: number };
 
 type Props = SharedProps & {
-    strings: SharedProps['strings'] & { home?: HomeStrings; bookings?: BookingsStrings };
+    strings: SharedProps['strings'] & { home?: HomeStrings; bookings?: BookingsStrings; setup?: SetupStrings };
     range_figures: RangeFigures;
     days: HomeDay[];
     to_mark: ToMarkList;
@@ -58,7 +59,10 @@ type Props = SharedProps & {
     /** How many staff rows the tenant has, the rows half of the one-value rule. */
     members: number;
     detail: Detail | null;
+    /** Setup while it is open, to an owner it is offered to; absent for everybody else. */
     setup?: Setup;
+    /** On the one answer that recorded setup as finished, and on no other. */
+    setup_finished?: true;
 };
 
 /** What a choice of range reads again: the range's figures alone. */
@@ -140,7 +144,6 @@ export default function Home() {
     const language = useShell().language;
     const words = homeWordsOf(props.strings, language);
     const bookingsWords = bookingsWordsOf(props.strings, language);
-    const { open: openWizard } = useNewBooking();
     const shown = staffShown(props.entitlements, props.members, null);
     const opening = useOpenedDetail(props.detail, bookingsWords);
     const { opened, stale, failed, acts } = opening;
@@ -159,8 +162,8 @@ export default function Home() {
         <BookingsProvider words={bookingsWords}>
             <Head title={words.text('page_title')} />
             <div className="admin-home-screen flex flex-col gap-4">
+                <SetupOnHome setup={props.setup} strings={props.strings.setup} finished={props.setup_finished === true} />
                 <h1 className="text-2xl font-semibold">{words.text('title')}</h1>
-                <SetupCard setup={props.setup} entitlements={props.entitlements} bookable={Boolean(props.catalog)} onBook={() => openWizard()} words={words} />
                 <ToMark list={props.to_mark} manage={props.permissions.includes('manageBookings')} clock={clock} words={words} staffShown={shown} onOpen={opening.open} />
                 <RangeCard range={props.range_figures.range} clock={clock} words={words} busy={ranging.loading} failed={ranging.error} onChoose={(word) => ranging.read(PATH, word === 'week' ? {} : { range: word })} />
                 <Tiles figures={props.range_figures} words={words} />

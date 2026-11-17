@@ -263,17 +263,18 @@ describe('the document listener', () => {
  * The modal's shapes. jsdom lays nothing out, so the classes are what is read here and the
  * geometry is proven at 390 pixels in the browser suite: the default is the centred frame;
  * filling is that frame at or above the breakpoint and the whole viewport below it, the footer
- * still pinned and the body still the one scroller; the drawer is pinned to the start edge at the
- * viewport's full height, and closes as any modal does.
+ * still pinned and the body still the one scroller; full is the whole viewport at every width,
+ * the footer pinned and the body the one scroller; the drawer is pinned to the start edge at the
+ * viewport's full height, and closes as any modal does. Beside the title, an aside shares its row.
  */
 describe('the shapes', () => {
     const classesOf = (element: Element | null) => [...(element?.classList ?? [])];
 
-    function Shaped({ variant }: { variant: 'filling' | 'drawer' }) {
+    function Shaped({ variant }: { variant: 'filling' | 'full' | 'drawer' }) {
         const [open, setOpen] = useState(true);
 
         return (
-            <Modal open={open} title="Shaped" variant={variant} onClose={() => setOpen(false)} footer={variant === 'filling' ? <Button className="close">Close</Button> : undefined}>
+            <Modal open={open} title="Shaped" variant={variant} onClose={() => setOpen(false)} footer={variant === 'drawer' ? undefined : <Button className="close">Close</Button>}>
                 <p className="long">A long audit trail.</p>
             </Modal>
         );
@@ -308,6 +309,36 @@ describe('the shapes', () => {
         expect(classesOf(frame())).toContain('max-w-2xl');
         expect(classesOf(frame())).not.toContain('max-w-lg');
         expect(classesOf(frame())).toContain('max-desktop:max-w-none');
+    });
+
+    it('fills the viewport at every width when full, no breakpoint variant on it, the footer pinned outside the scrolling body', () => {
+        view.render(<Shaped variant="full" />);
+
+        expect(classesOf(frame())).toEqual(expect.arrayContaining(['admin-modal__frame--full', 'h-full', 'max-h-none', 'max-w-none', 'rounded-none', 'border-0']));
+        expect(classesOf(frame()).some((name) => name.startsWith('max-desktop:') || name.startsWith('desktop:'))).toBe(false);
+        expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['items-stretch', 'justify-stretch']));
+        expect(classesOf(backdrop())).not.toContain('p-4');
+        expect(document.querySelector('.admin-modal__body')?.contains(document.querySelector('.long'))).toBe(true);
+        expect(document.querySelector('.admin-modal__footer')?.contains(document.querySelector('.close'))).toBe(true);
+    });
+
+    it('sets an aside on the title\'s row after it, the title still what labels the dialog, and keeps the title on its own row without one', () => {
+        view.render(
+            <Modal open title="With aside" onClose={() => {}} aside={<button type="button" className="aside">Close</button>}>
+                <p />
+            </Modal>,
+        );
+
+        const head = document.querySelector('.admin-modal__head');
+        const title = document.getElementById(dialogs()[0]?.getAttribute('aria-labelledby') ?? '');
+        expect(title?.textContent).toBe('With aside');
+        expect(head?.contains(title)).toBe(true);
+        expect(title?.compareDocumentPosition(document.querySelector('.aside') as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(head?.contains(document.querySelector('.aside'))).toBe(true);
+
+        view.render(<Shaped key="plain" variant="drawer" />);
+        expect(document.querySelector('.admin-modal__head')).toBeNull();
+        expect(document.querySelector('.admin-modal__title')?.parentElement).toBe(frame());
     });
 
     it('opens as a drawer pinned to the start edge at the viewport\'s full height, a dialog titled as any modal is', () => {
