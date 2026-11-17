@@ -8,8 +8,13 @@
  * alone, or the bookings with the one or the several awaiting approval, each chosen by the
  * bookings' count. Recent activity is one whole sentence per action and shape of actor
  * (HomeActivity), never a phrase spliced into another, and an erased customer's row one whole
- * sentence of its own under erased, no stand-in in the customer's place. Its Greek twin is
- * lang/el/admin/home.php.
+ * sentence of its own under erased, no stand-in in the customer's place.
+ *
+ * To mark lists the confirmed bookings whose time is over, each day under Today or its weekday and
+ * date, with the booking dialog's own Completed and No-show (admin/bookings.php's actions) on each
+ * row; its counted lines, the header's count, the selection's, the confirm's titles and the bulk
+ * mark's flash, keep the choice syntax, and the flash's reasons are each a counted phrase the
+ * server joins after the left sentence's colon. Its Greek twin is lang/el/admin/home.php.
  */
 
 return [
@@ -245,5 +250,43 @@ return [
         'day' => ':weekday :day',
         'link' => '{0} :day, no bookings|{1} :day, one booking|[2,*] :day, :count bookings',
         'footnote' => 'Confirmed in the theme colour, awaiting approval in amber. A day opens the Calendar on it.',
+    ],
+    'to_mark' => [
+        'title' => 'To mark',
+        'count' => '{1} :count booking to mark|[2,*] :count bookings to mark',
+        'empty' => 'Nothing to mark',
+        'today' => 'Today',
+        'day' => ':weekday :date',
+        'select_day' => 'Select the day',
+        'select_booking' => 'Select the booking of :customer at :time',
+        'select_erased' => 'Select the erased customer\'s booking at :time',
+        'selected' => '{1} :count selected|[2,*] :count selected',
+        'mark_completed' => 'Mark selected as completed',
+        'mark_no_show' => 'Mark selected as no-show',
+        'mark_rest' => 'Mark the rest as completed',
+        'showing' => 'Showing :listed of :count. Mark these to see the rest.',
+        'confirm' => [
+            'completed' => '{1} Mark :count booking as completed?|[2,*] Mark :count bookings as completed?',
+            'no_show' => '{1} Mark :count booking as a no-show?|[2,*] Mark :count bookings as no-shows?',
+            'undone' => 'This cannot be undone.',
+            'thanks' => '{1} The customer gets the thank-you email.|[2,*] Each customer gets the thank-you email.',
+            'mark_completed' => 'Mark as completed',
+            'mark_no_show' => 'Mark as no-show',
+            'back' => 'Back',
+            'pending' => 'The marks have been sent. This closes once the server answers.',
+        ],
+        'flashes' => [
+            'completed' => '{1} :count booking marked completed.|[2,*] :count bookings marked completed.',
+            'no_show' => '{1} :count booking marked as a no-show.|[2,*] :count bookings marked as no-shows.',
+            'none' => 'No booking was marked.',
+            'left' => '{1} :count was not marked: :reasons.|[2,*] :count were not marked: :reasons.',
+            'changed' => '{1} :count changed meanwhile|[2,*] :count changed meanwhile',
+            'busy' => '{1} :count busy, try again|[2,*] :count busy, try again',
+            'failed' => '{1} :count could not be marked|[2,*] :count could not be marked',
+        ],
+        'validation' => [
+            'outcome' => 'Choose Completed or No-show.',
+            'bookings' => 'Choose the bookings to mark again.',
+        ],
     ],
 ];

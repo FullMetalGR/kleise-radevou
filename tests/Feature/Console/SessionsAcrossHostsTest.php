@@ -141,7 +141,7 @@ it('refuses an operator\'s console session on every admin route of a tenant host
     $signIn = tenantUrl('acme', '/admin/login');
 
     // ApiSurfaceTest's admin surface, verb by path, less the door's three rows.
-    expect($calls)->toHaveCount(84);
+    expect($calls)->toHaveCount(85);
 
     // Each call reaches the route it names, never the 404 page's catch-all standing in for it.
     foreach ($calls as $row => $call) {

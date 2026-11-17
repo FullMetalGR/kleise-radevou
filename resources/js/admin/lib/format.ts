@@ -118,6 +118,16 @@ export function formatInstantDay(wire: string, clock: TenantClock): string {
     return at === null ? wire : (spell(clock.dateFormat, DATE_TOKENS, at) ?? wire);
 }
 
+/**
+ * The time of a wire timestamp in the tenant's zone, spelled in the tenant's time format with no
+ * date: a row under a heading that already names its day, or a time offered on a day chosen.
+ */
+export function formatInstantTime(wire: string, clock: TenantClock): string {
+    const at = wallDigitsOf(wire, clock);
+
+    return at === null ? wire : (spell(clock.timeFormat, TIME_TOKENS, at) ?? wire);
+}
+
 export function formatDate(value: string, clock: TenantClock): string {
     let at: Digits;
 

@@ -27,6 +27,9 @@ use Tests\Support\LunaFixture;
  * Then the bottom half: Recent activity lists five rows of seven, the request's row chipped, All
  * bookings opening the Bookings list; the seven days sum the week with its awaiting share, and
  * the day of the request opens the Calendar's Day on that date.
+ *
+ * Then To mark: yesterday's two ended bookings selected by their day's checkbox and marked
+ * completed after one confirm, the day leaving the card and the day before it staying.
  */
 
 beforeEach(function () {
@@ -197,4 +200,39 @@ it('lists five activity rows with All bookings, sums the seven days, and opens t
         ->click('.admin-home-activity__all')
         ->assertPathIs('/admin/bookings')
         ->assertNoJavaScriptErrors();
+});
+
+it('marks a day in bulk from To mark: the day selected by its checkbox, marked completed after one confirm, its rows gone and the older day left', function () {
+    $yesterday = athensDaysOn(-1, 10);
+    $first = homeWalkBooking('Ada Ended', $yesterday);
+    $second = homeWalkBooking('Bo Ended', athensDaysOn(-1, 11));
+    $older = homeWalkBooking('Cy Older', athensDaysOn(-2, 10));
+    $day = '.admin-home-to-mark__day[data-date="'.$yesterday->format('Y-m-d').'"]';
+    $before = '.admin-home-to-mark__day[data-date="'.athensDaysOn(-2, 10)->format('Y-m-d').'"]';
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
+        ->assertPathIs('/admin')
+        ->assertSeeIn('#home-to-mark-title', adminLine('admin/home.to_mark.title'))
+        ->assertSeeIn($day.' .admin-home-to-mark__heading', adminLine('admin/home.to_mark.day', ['weekday' => $yesterday->format('l'), 'date' => $yesterday->format('d/m/Y')]))
+        ->assertCount($day.' .admin-home-to-mark__row', 2)
+        ->assertSeeIn($before, 'Cy Older')
+        ->assertMissing('.admin-home-to-mark__mark-completed');
+
+    $page->click($day.' .admin-home-to-mark__day-tick')
+        ->assertSeeIn('.admin-home-to-mark__selected', adminChoice('admin/home.to_mark.selected', 2))
+        ->click('.admin-home-to-mark__mark-completed')
+        ->assertSeeIn('.admin-modal__title', adminChoice('admin/home.to_mark.confirm.completed', 2))
+        ->assertSeeIn('.admin-home-to-mark-confirm__undone', adminLine('admin/home.to_mark.confirm.undone'))
+        ->assertSeeIn('.admin-home-to-mark-confirm__thanks', adminChoice('admin/home.to_mark.confirm.thanks', 2))
+        ->click('.admin-home-to-mark-confirm__confirm')
+        ->waitForText(adminChoice('admin/home.to_mark.flashes.completed', 2))
+        ->assertMissing($day)
+        ->assertMissing('.admin-home-to-mark-confirm')
+        ->assertMissing('.admin-home-to-mark__selected')
+        ->assertSeeIn($before, 'Cy Older')
+        ->assertNoJavaScriptErrors();
+
+    $statuses = DB::table('tenant_luna.bookings')->whereIn('id', [$first, $second, $older])->orderBy('id')->pluck('status')->all();
+
+    expect($statuses)->toBe(['completed', 'completed', 'confirmed']);
 });

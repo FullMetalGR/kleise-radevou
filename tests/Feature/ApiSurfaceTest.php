@@ -38,6 +38,7 @@ use App\Http\Requests\GalleryPhotoRequest;
 use App\Http\Requests\HomeRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\LogoRequest;
+use App\Http\Requests\MarkOutcomesRequest;
 use App\Http\Requests\MoveAvailabilityRequest;
 use App\Http\Requests\MoveRequest;
 use App\Http\Requests\MyBookingsLinkRequest;
@@ -224,6 +225,7 @@ it('names the public surface, the routes behind the manage token and the pages b
         'admin.bookings.cancel' => ['permission:manageBookings'],
         'admin.bookings.no-show' => ['permission:manageBookings'],
         'admin.bookings.complete' => ['permission:manageBookings'],
+        'admin.bookings.mark' => ['permission:manageBookings'],
         'admin.bookings.move' => ['permission:manageBookings'],
         'admin.api.bookings.move' => ['permission:manageBookings'],
         'admin.services' => ['permission:viewBookings'],
@@ -413,7 +415,7 @@ it('gates every configuration write of the catalog by the subscription, each und
 
 it('gates none of the booking lifecycle by the subscription, and posts each action under its own name', function () {
     $routes = adminRoutes();
-    $lifecycle = ['admin.bookings.store', 'admin.bookings.approve', 'admin.bookings.reject', 'admin.bookings.cancel', 'admin.bookings.no-show', 'admin.bookings.complete', 'admin.bookings.move'];
+    $lifecycle = ['admin.bookings.store', 'admin.bookings.approve', 'admin.bookings.reject', 'admin.bookings.cancel', 'admin.bookings.no-show', 'admin.bookings.complete', 'admin.bookings.mark', 'admin.bookings.move'];
 
     foreach ($lifecycle as $name) {
         expect($routes)->toHaveKey($name)
@@ -507,6 +509,8 @@ it('spells the admin surface under the prefix, verb by path: the door, the set-p
         'POST /admin/bookings/{uuid}/cancel' => $manageBookings,
         'POST /admin/bookings/{uuid}/no-show' => $manageBookings,
         'POST /admin/bookings/{uuid}/complete' => $manageBookings,
+        // Home's To mark, the same two outcomes for a selection at once.
+        'POST /admin/bookings/mark' => $manageBookings,
         // The business's move and its read: whoever may cancel may move, never behind the gate,
         // as cancel is not.
         'POST /admin/bookings/{uuid}/move' => $manageBookings,
@@ -713,6 +717,7 @@ it('counts every API route under a limit and counts one page alone, the My booki
         'admin.bookings.cancel' => [],
         'admin.bookings.no-show' => [],
         'admin.bookings.complete' => [],
+        'admin.bookings.mark' => [],
         'admin.bookings.move' => [],
         'admin.api.bookings.move' => [],
         'admin.services' => [],
@@ -854,6 +859,7 @@ it('takes every admin write\'s form request from the house\'s admin write reques
             'admin.set-password.store' => [SetPasswordRequest::class],
             'admin.bookings.store' => [NewBookingRequest::class],
             'admin.bookings.reject' => [RejectRequest::class],
+            'admin.bookings.mark' => [MarkOutcomesRequest::class],
             'admin.bookings.move' => [MoveRequest::class],
             'admin.services.store' => [ServiceRequest::class],
             'admin.services.update' => [ServiceRequest::class],

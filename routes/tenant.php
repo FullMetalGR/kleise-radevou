@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\LinkQrController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\LogoController;
 use App\Http\Controllers\Admin\LogoutController;
+use App\Http\Controllers\Admin\MarkOutcomesController;
 use App\Http\Controllers\Admin\MoveReadController;
 use App\Http\Controllers\Admin\NewBookingController;
 use App\Http\Controllers\Admin\NotFoundController;
@@ -321,6 +322,9 @@ Route::prefix('admin')->name('admin.')->middleware(HandleInertiaRequests::class)
     Route::post('/bookings/{uuid}/cancel', [BookingActionController::class, 'cancel'])->whereUuid('uuid')->middleware(RequiresPermission::of(Permission::ManageBookings))->name('bookings.cancel');
     Route::post('/bookings/{uuid}/no-show', [BookingActionController::class, 'noShow'])->whereUuid('uuid')->middleware(RequiresPermission::of(Permission::ManageBookings))->name('bookings.no-show');
     Route::post('/bookings/{uuid}/complete', [BookingActionController::class, 'complete'])->whereUuid('uuid')->middleware(RequiresPermission::of(Permission::ManageBookings))->name('bookings.complete');
+    // Home's To mark: a selection of bookings marked completed or a no-show at once, under the
+    // same permission as the dialog's two buttons and ungated as they are.
+    Route::post('/bookings/mark', MarkOutcomesController::class)->middleware(RequiresPermission::of(Permission::ManageBookings))->name('bookings.mark');
     // The business's move: whoever may cancel may move, ungated as cancel is, and the read the
     // Move form and the drag ask first, under the same permission; a second JSON route under
     // /admin/api, the move's own.

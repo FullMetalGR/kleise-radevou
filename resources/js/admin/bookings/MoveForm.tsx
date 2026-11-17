@@ -5,7 +5,7 @@ import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { Select } from '@/components/ui/select';
-import { formatInstant, formatTimeOfDay, type TenantClock } from '@/lib/format';
+import { formatInstant, formatInstantTime, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
 import type { Crossing } from '@/lib/visits';
 import { sentenceFor } from './acting';
@@ -39,20 +39,9 @@ import { type BookingsKey, type BookingsWords, useBookings } from './words';
 /** The refusals the form answers by reading the times again. */
 const REREAD = new Set(['overlap', 'unavailable']);
 
-/** The time of a start in the tenant's clock, spelled in the tenant's time format. */
-function timeOf(start: string, clock: TenantClock): string {
-    try {
-        const at = wallClockOf(start, clock.timezone);
-
-        return formatTimeOfDay(`${String(at.hour).padStart(2, '0')}:${String(at.minute).padStart(2, '0')}`, clock);
-    } catch {
-        return start;
-    }
-}
-
 /** A candidate's line in the Time list: its time, marked by what it crosses. */
 function labelOf(candidate: Candidate, clock: TenantClock, words: BookingsWords): string {
-    const time = timeOf(candidate.start, clock);
+    const time = formatInstantTime(candidate.start, clock);
     const kinds = new Set(candidate.crossings.map((crossing) => crossing.kind));
     const hours = kinds.has('hours');
     const closure = kinds.has('closure');

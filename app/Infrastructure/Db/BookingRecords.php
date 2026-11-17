@@ -39,8 +39,9 @@ use stdClass;
  * bookings, so a page costs the same however long its chains are.
  *
  * Beside the list, Home's reads: the next seven days (perDay), one statement counting the
- * bookings still ahead by the date their first start falls on in the tenant's zone, and the two
- * feeds, Next up (nextUp) and Awaiting approval (awaiting).
+ * bookings still ahead by the date their first start falls on in the tenant's zone, the two
+ * feeds, Next up (nextUp) and Awaiting approval (awaiting), and To mark (toMark, toMarkCount), the
+ * confirmed bookings whose last segment has ended and which nobody has marked yet.
  */
 final readonly class BookingRecords
 {
@@ -223,6 +224,39 @@ final readonly class BookingRecords
     }
 
     /**
+     * Home's To mark: the confirmed bookings whose last segment ended at or before the instant
+     * given, a booking that ends that very instant included, by the date its first start falls on
+     * in the tenant's zone, the latest date first, and inside a date by first start, earliest
+     * first, then by id, up to the limit. Nothing ended can start after now, so the latest date is
+     * today at most.
+     *
+     * @param  positive-int  $limit
+     * @return list<BookingRecord>
+     */
+    public function toMark(Tenant $tenant, DateTimeImmutable $now, int $limit): array
+    {
+        $rows = $this->ended($tenant, $now)
+            ->joinSub(SqlText::firstStarts($tenant->schema_name), 'first', 'first.booking_id', '=', 'booking.id')
+            ->selectRaw(self::columns())
+            ->orderByRaw('(first.starts_at at time zone ?)::date desc', [$tenant->zone()->getName()])
+            ->orderBy('first.starts_at')
+            ->orderBy('booking.id')
+            ->limit($limit)
+            ->get()
+            ->all();
+
+        return $this->records($tenant, array_values($rows));
+    }
+
+    /**
+     * Every booking To mark would list were there no limit: the count its header shows.
+     */
+    public function toMarkCount(Tenant $tenant, DateTimeImmutable $now): int
+    {
+        return $this->ended($tenant, $now)->count();
+    }
+
+    /**
      * The bookings still ahead of the business: the statuses Next up lists and the next seven days
      * count.
      */
@@ -274,6 +308,17 @@ final readonly class BookingRecords
         }
 
         return array_map(fn (string $date): array => ['date' => $date, ...($counts[$date] ?? ['confirmed' => 0, 'awaiting' => 0])], $dates);
+    }
+
+    /**
+     * The confirmed bookings whose last segment's end is at or before the instant given.
+     */
+    private function ended(Tenant $tenant, DateTimeImmutable $now): Builder
+    {
+        return $this->db->connection()->table($tenant->schema_name.'.bookings', 'booking')
+            ->joinSub(SqlText::lastEnds($tenant->schema_name), 'ended', 'ended.booking_id', '=', 'booking.id')
+            ->where('booking.status', BookingStatus::Confirmed->value)
+            ->whereRaw('ended.ends_at <= ?::timestamptz', [SqlText::instant($now)]);
     }
 
     /**

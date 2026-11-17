@@ -1,5 +1,6 @@
 <?php
 
+use App\Application\Notification\MessageKey;
 use App\Http\HomeActivity;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\User;
@@ -253,6 +254,108 @@ it('lists Awaiting approval: the requests on a live hold, the soonest to end fir
 it('answers empty feeds where nothing is ahead, waiting or recorded', function () {
     DB::table('tenant_luna.audit_log')->delete();
     expect(homeFeed($this, 'next_up'))->toBe([])->and(homeFeed($this, 'awaiting'))->toBe([])->and(homeFeed($this, 'activity'))->toBe([]);
+});
+
+/**
+ * To mark's card as the owner reads it: the count, whether the thank-you goes, and the days.
+ *
+ * @return array{count: int, thank_you: bool, days: list<array{date: string, today: bool, bookings: list<array<string, mixed>>}>}
+ */
+function homeToMark(TestCase $test): array
+{
+    $card = data_get($test->actingAs(homeOwner())->get(tenantUrl('luna', '/admin'))->assertOk()->viewData('page'), 'props.to_mark');
+    assert(is_array($card) && is_int($card['count'] ?? null) && is_bool($card['thank_you'] ?? null) && is_array($card['days'] ?? null));
+
+    /** @var array{count: int, thank_you: bool, days: list<array{date: string, today: bool, bookings: list<array<string, mixed>>}>} $card */
+    return $card;
+}
+
+/**
+ * Each of To mark's days as its date, whether it is today, and its rows' customers in order.
+ *
+ * @param  array{days: list<array{date: string, today: bool, bookings: list<array<string, mixed>>}>}  $card
+ * @return list<array{string, bool, list<mixed>}>
+ */
+function homeToMarkDays(array $card): array
+{
+    return array_map(fn (array $day): array => [$day['date'], $day['today'], array_column($day['bookings'], 'customer')], $card['days']);
+}
+
+it('lists To mark: the confirmed bookings whose last service has ended by now, by the date the first start falls on in the tenant\'s zone, today first, then older dates latest first, each day by first start and then by id', function () {
+    // The clock stands at 08:00 in Athens on Monday the 2nd. The booking at 07:15 ends at 08:00,
+    // this very instant, so it has ended; the one at 07:30 is still running.
+    $endsNow = homeBooking('confirmed', '2026-11-02 07:15', customer: 'Ends Now');
+    homeBooking('confirmed', '2026-11-02 07:30', customer: 'Still Running');
+    homeBooking('confirmed', '2026-11-02 06:00', customer: 'Dawn');
+    // 00:30 in Athens on the 2nd is still the 1st in UTC: the tenant's zone puts it on today.
+    homeBooking('confirmed', '2026-11-02 00:30', customer: 'After Midnight');
+    homeBooking('confirmed', '2026-10-31 10:00', customer: 'Saturday One');
+    homeBooking('confirmed', '2026-10-31 09:00', customer: 'Saturday Early');
+    homeBooking('confirmed', '2026-10-31 10:00', customer: 'Saturday Tie');
+    homeBooking('confirmed', '2026-10-28 18:00', customer: 'Wednesday');
+    homeBooking('confirmed', '2026-11-03 10:00', customer: 'Tomorrow');
+    // Its first service ended long ago, its last ends at 08:30: not over yet.
+    $chain = homeBooking('confirmed', '2026-11-02 05:00', customer: 'Second Service Running');
+    $from = LunaFixture::at('2026-11-02 07:45');
+    DB::table('tenant_luna.booking_items')->insert([
+        'booking_id' => $chain['id'], 'sort' => 1,
+        'service_id' => LunaFixture::id('services', 'Haircut'), 'staff_id' => LunaFixture::id('staff', 'Elena Papadaki'),
+        'start_utc' => LunaFixture::instant($from), 'end_utc' => LunaFixture::instant($from->add(new DateInterval('PT45M'))),
+        'block_start_utc' => LunaFixture::instant($from), 'block_end_utc' => LunaFixture::instant($from->add(new DateInterval('PT45M'))),
+        'price_minor' => 3500, 'blocks' => false,
+    ]);
+    // Listed by none: every other status, however long ago it ended.
+    foreach (['pending', 'awaiting_payment', 'awaiting_approval', 'completed', 'no_show', 'cancelled', 'rejected', 'expired'] as $status) {
+        homeBooking($status, '2026-10-30 10:00', customer: 'Not Listed');
+    }
+
+    $card = homeToMark($this);
+
+    expect(homeToMarkDays($card))->toBe([
+        ['2026-11-02', true, ['After Midnight', 'Dawn', 'Ends Now']],
+        ['2026-10-31', false, ['Saturday Early', 'Saturday One', 'Saturday Tie']],
+        ['2026-10-28', false, ['Wednesday']],
+    ])
+        ->and($card['count'])->toBe(7)
+        ->and($card['thank_you'])->toBeTrue()
+        ->and($card['days'][0]['bookings'][2])->toBe([
+            'uuid' => $endsNow['uuid'],
+            'status' => 'confirmed',
+            'customer' => 'Ends Now',
+            'services' => ['Haircut'],
+            'staff' => ['Elena Papadaki'],
+            'starts_at' => '2026-11-02T05:15:00+00:00',
+            'hold_expires_at' => null,
+        ]);
+});
+
+it('lists at most a hundred To mark rows, the first in its order, while the count says every one', function () {
+    $today = homeBooking('confirmed', '2026-11-02 07:00', customer: 'Today');
+    $older = [];
+
+    for ($row = 0; $row < 100; $row++) {
+        $older[] = homeBooking('confirmed', '2026-10-30 10:00', customer: 'Older '.$row)['uuid'];
+    }
+
+    $card = homeToMark($this);
+    $listed = array_merge(...array_map(fn (array $day): array => array_column($day['bookings'], 'uuid'), $card['days']));
+
+    expect($card['count'])->toBe(101)
+        ->and($listed)->toBe([$today['uuid'], ...array_slice($older, 0, 99)])
+        ->and(array_column($card['days'], 'date'))->toBe(['2026-11-02', '2026-10-30']);
+});
+
+it('answers an empty To mark where nothing has ended unmarked, and says the thank-you goes only while the tenant sends it', function () {
+    homeBooking('confirmed', '2026-11-02 09:00', customer: 'Later Today');
+
+    expect(homeToMark($this))->toBe(['count' => 0, 'thank_you' => true, 'days' => []]);
+
+    seamSwitchOff([MessageKey::ThankYou->value]);
+    expect(homeToMark($this))->toBe(['count' => 0, 'thank_you' => false, 'days' => []]);
+
+    // Another message switched off leaves the thank-you on.
+    seamSwitchOff([MessageKey::Reminder->value]);
+    expect(homeToMark($this)['thank_you'])->toBeTrue();
 });
 
 it('lists the last five trail rows newest first, each joined to its booking for the uuid, the customer, the first start, the status, the services and the named members', function () {
@@ -515,7 +618,7 @@ it('shows a user at el each shape of actor\'s row and an erased customer\'s in G
     expect($shown)->toBe(array_map(fn (array $case): array => [$case[4], $case[5], $case[6]], $cases));
 });
 
-it('reaches each form of Home\'s four counted lines in Greek at the bounds the English has, the figure agreeing with its noun', function () {
+it('reaches each form of Home\'s counted lines in Greek at the bounds the English has, the figure agreeing with its noun', function () {
     // Each case: the key, the count, the form of the Greek value it reads, and what else it
     // fills. days.link at one says the figure in words, so its form names no :count.
     $cases = [
@@ -531,6 +634,14 @@ it('reaches each form of Home\'s four counted lines in Greek at the bounds the E
         ['days.link', 1, 1, ['day' => 'day-token']],
         ['days.link', 2, 2, ['day' => 'day-token']],
     ];
+
+    // To mark's lines, each with a form for one and a form for more.
+    foreach (['count', 'selected', 'confirm.completed', 'confirm.no_show', 'confirm.thanks', 'flashes.completed', 'flashes.no_show', 'flashes.changed', 'flashes.busy', 'flashes.failed', 'flashes.left'] as $line) {
+        $replace = $line === 'flashes.left' ? ['reasons' => 'reasons-token'] : [];
+        $cases[] = ['to_mark.'.$line, 1, 0, $replace];
+        $cases[] = ['to_mark.'.$line, 2, 1, $replace];
+        $cases[] = ['to_mark.'.$line, 12, 1, $replace];
+    }
 
     foreach ($cases as [$key, $count, $form, $replace]) {
         $forms = explode('|', adminLine('admin/home.'.$key, [], SiteLanguage::Greek));

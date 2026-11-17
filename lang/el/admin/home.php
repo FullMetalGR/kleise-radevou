@@ -26,6 +26,12 @@
  * days.day the day's figure after it and in days.link that whole line; :filled and :offered are
  * durations in ICU's units; :services and :staff are ICU lists; :booking and :start fill the
  * layout of a row's second line.
+ *
+ * To mark says a mark as admin/bookings.php's flashes say it, a booking recorded ("καταγράφηκε")
+ * as completed or as a no-show, and its buttons are that file's actions; its counted lines keep
+ * the choice syntax with Greek's forms. There :time is a time of day, :date a date in digits
+ * after the long weekday, :listed a figure, and :reasons the counted phrases the server joins
+ * after the colon.
  */
 
 return [
@@ -261,5 +267,43 @@ return [
         'day' => ':weekday :day',
         'link' => '{0} :day, καμία κράτηση|{1} :day, μία κράτηση|[2,*] :day, :count κρατήσεις',
         'footnote' => 'Οι επιβεβαιωμένες κρατήσεις φαίνονται στο χρώμα του θέματος και όσες περιμένουν έγκριση σε πορτοκαλί. Πατήστε μια ημέρα για να ανοίξει το Ημερολόγιο σε αυτήν.',
+    ],
+    'to_mark' => [
+        'title' => 'Προς καταγραφή',
+        'count' => '{1} :count κράτηση προς καταγραφή|[2,*] :count κρατήσεις προς καταγραφή',
+        'empty' => 'Τίποτα προς καταγραφή',
+        'today' => 'Σήμερα',
+        'day' => ':weekday :date',
+        'select_day' => 'Επιλογή της ημέρας',
+        'select_booking' => 'Επιλογή της κράτησης του πελάτη :customer στις :time',
+        'select_erased' => 'Επιλογή της κράτησης διαγραμμένου πελάτη στις :time',
+        'selected' => '{1} :count επιλεγμένη|[2,*] :count επιλεγμένες',
+        'mark_completed' => 'Καταγραφή επιλεγμένων ως ολοκληρωμένες',
+        'mark_no_show' => 'Καταγραφή επιλεγμένων ως μη εμφάνιση',
+        'mark_rest' => 'Καταγραφή των υπόλοιπων ως ολοκληρωμένες',
+        'showing' => 'Εμφανίζονται :listed από :count. Καταγράψτε αυτές για να δείτε τις υπόλοιπες.',
+        'confirm' => [
+            'completed' => '{1} Να καταγραφεί :count κράτηση ως ολοκληρωμένη;|[2,*] Να καταγραφούν :count κρατήσεις ως ολοκληρωμένες;',
+            'no_show' => '{1} Να καταγραφεί :count κράτηση ως μη εμφάνιση;|[2,*] Να καταγραφούν :count κρατήσεις ως μη εμφανίσεις;',
+            'undone' => 'Αυτή η ενέργεια δεν αναιρείται.',
+            'thanks' => '{1} Ο πελάτης λαμβάνει το email ευχαριστίας.|[2,*] Κάθε πελάτης λαμβάνει το email ευχαριστίας.',
+            'mark_completed' => 'Καταγραφή ολοκλήρωσης',
+            'mark_no_show' => 'Καταγραφή μη εμφάνισης',
+            'back' => 'Πίσω',
+            'pending' => 'Η καταγραφή στάλθηκε. Το παράθυρο θα κλείσει μόλις απαντήσει ο διακομιστής.',
+        ],
+        'flashes' => [
+            'completed' => '{1} :count κράτηση καταγράφηκε ως ολοκληρωμένη.|[2,*] :count κρατήσεις καταγράφηκαν ως ολοκληρωμένες.',
+            'no_show' => '{1} :count κράτηση καταγράφηκε ως μη εμφάνιση.|[2,*] :count κρατήσεις καταγράφηκαν ως μη εμφανίσεις.',
+            'none' => 'Δεν καταγράφηκε καμία κράτηση.',
+            'left' => '{1} :count δεν καταγράφηκε: :reasons.|[2,*] :count δεν καταγράφηκαν: :reasons.',
+            'changed' => '{1} :count άλλαξε στο μεταξύ|[2,*] :count άλλαξαν στο μεταξύ',
+            'busy' => '{1} :count ήταν απασχολημένη, δοκιμάστε ξανά|[2,*] :count ήταν απασχολημένες, δοκιμάστε ξανά',
+            'failed' => '{1} :count δεν ήταν δυνατό να καταγραφεί|[2,*] :count δεν ήταν δυνατό να καταγραφούν',
+        ],
+        'validation' => [
+            'outcome' => 'Επιλέξτε Ολοκλήρωση ή Μη εμφάνιση.',
+            'bookings' => 'Επιλέξτε ξανά τις κρατήσεις προς καταγραφή.',
+        ],
     ],
 ];

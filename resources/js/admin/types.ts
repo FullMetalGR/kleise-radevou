@@ -220,6 +220,24 @@ export type HomeStrings = {
         };
     };
     days: { title: string; bookings: string; summary: { one_awaiting: string; many_awaiting: string }; day: string; link: string; footnote: string };
+    to_mark: {
+        title: string;
+        count: string;
+        empty: string;
+        today: string;
+        day: string;
+        select_day: string;
+        select_booking: string;
+        select_erased: string;
+        selected: string;
+        mark_completed: string;
+        mark_no_show: string;
+        mark_rest: string;
+        showing: string;
+        confirm: { completed: string; no_show: string; undone: string; thanks: string; mark_completed: string; mark_no_show: string; back: string; pending: string };
+        flashes: { completed: string; no_show: string; none: string; left: string; changed: string; busy: string; failed: string };
+        validation: { outcome: string; bookings: string };
+    };
 };
 
 /** One activity sentence per shape a user or the platform's support acts in. */

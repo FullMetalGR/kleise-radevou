@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clockOf, formatAmount, formatCount, formatDate, formatDayMonth, formatInstant, formatInstantDay, formatPercent, formatTimeOfDay, type TenantClock } from './format';
+import { clockOf, formatAmount, formatCount, formatDate, formatDayMonth, formatInstant, formatInstantDay, formatInstantTime, formatPercent, formatTimeOfDay, type TenantClock } from './format';
 
 /*
  * Formatting. A wire timestamp converts to the tenant's zone and spells as date then time joined
@@ -42,6 +42,16 @@ describe('the day of an instant', () => {
         expect(formatInstantDay('2026-01-15T22:30:00Z', { ...ATHENS, dateFormat: 'Y-m-d' })).toBe('2026-01-16');
         expect(formatInstantDay('soon', ATHENS)).toBe('soon');
         expect(formatInstantDay('2026-01-15T08:05:00Z', { ...ATHENS, dateFormat: 'D d' })).toBe('2026-01-15T08:05:00Z');
+    });
+});
+
+describe('the time of an instant', () => {
+    it('converts to the tenant zone and spells the time alone in the tenant time format, an unreadable value verbatim', () => {
+        expect(formatInstantTime('2026-01-15T08:05:00Z', ATHENS)).toBe('10:05');
+        expect(formatInstantTime('2026-01-15T22:30:00Z', ATHENS)).toBe('00:30');
+        expect(formatInstantTime('2026-01-15T13:05:00Z', { ...ATHENS, timeFormat: 'g:i a' })).toBe('3:05 pm');
+        expect(formatInstantTime('soon', ATHENS)).toBe('soon');
+        expect(formatInstantTime('2026-01-15T08:05:00Z', { ...ATHENS, timeFormat: 'H:i:s' })).toBe('2026-01-15T08:05:00Z');
     });
 });
 

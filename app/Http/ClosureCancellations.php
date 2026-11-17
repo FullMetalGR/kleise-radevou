@@ -4,20 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http;
 
-use App\Application\BookingUnknown;
 use App\Application\Checkpoint;
 use App\Application\Dto\BookingAsRead;
 use App\Application\Dto\BookingRecord;
-use App\Application\TransitionRefused;
-use App\Application\WriteContended;
 use App\Domain\Enum\BookingStatus;
 use App\Infrastructure\BookingTransitionFactory;
-use App\Infrastructure\Db\Busy;
 use App\Notifications\ClosureCause;
 use App\Notifications\ClosureCauses;
 use App\Tenancy\Tenant;
-use Illuminate\Contracts\Debug\ExceptionHandler;
-use Throwable;
 
 /**
  * The cancel of every booking inside a closure just added, one at a time, each through the same
@@ -34,8 +28,8 @@ use Throwable;
  * when it is no longer there, and when its locks could not be had.
  *
  * It is left as well when its write fails in any other way, and that failure is handed to the
- * exception handler: one booking's broken write must not leave the rest untouched under a
- * closure already written, with nobody told which bookings went.
+ * exception handler (EachWrite): one booking's broken write must not leave the rest untouched
+ * under a closure already written, with nobody told which bookings went.
  *
  * Around each transition the closure is named as the cause, so the customer is told in the
  * closure's words in place of the usual ones.
@@ -48,7 +42,7 @@ final readonly class ClosureCancellations
     public function __construct(
         private BookingTransitionFactory $transitions,
         private ClosureCauses $causes,
-        private ExceptionHandler $handler,
+        private EachWrite $each,
     ) {}
 
     /**
@@ -68,20 +62,17 @@ final readonly class ClosureCancellations
         foreach ($bookings as $booking) {
             $uuid = $booking->snapshot->uuid;
 
-            try {
-                $this->causes->during($uuid, $cause, function () use ($tenant, $booking, $uuid, $actor, $reason): void {
-                    $asRead = BookingAsRead::of($booking);
+            $left = $this->each->attempt(fn () => $this->causes->during($uuid, $cause, function () use ($tenant, $booking, $uuid, $actor, $reason): void {
+                $asRead = BookingAsRead::of($booking);
 
-                    if ($booking->snapshot->status === BookingStatus::AwaitingApproval) {
-                        $this->transitions->reject($tenant)->reject($uuid, $actor, $reason, $asRead);
-                    } else {
-                        $this->transitions->cancel($tenant)->cancel($uuid, $actor, $asRead);
-                    }
-                });
-            } catch (TransitionRefused|BookingUnknown|WriteContended|Busy) {
-                $skipped[] = $booking;
-            } catch (Throwable $failure) {
-                $this->handler->report($failure);
+                if ($booking->snapshot->status === BookingStatus::AwaitingApproval) {
+                    $this->transitions->reject($tenant)->reject($uuid, $actor, $reason, $asRead);
+                } else {
+                    $this->transitions->cancel($tenant)->cancel($uuid, $actor, $asRead);
+                }
+            }));
+
+            if ($left !== null) {
                 $skipped[] = $booking;
             }
         }

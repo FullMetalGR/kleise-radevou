@@ -1,12 +1,14 @@
 import { act, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Booking, Detail } from '@/bookings/model';
-import { mount, type Mounted, press } from '@/components/ui/harness';
+import { mount, type Mounted, press, settle } from '@/components/ui/harness';
 import { type ActivitySentence, APPROVAL_INBOX, type HomeActivityRow, type HomeBooking } from '@/home/feeds';
 import type { RangeFigures } from '@/home/figures';
+import type { ToMarkList } from '@/home/ToMark';
 import { formatAmount, formatCount, formatPercent } from '@/lib/format';
 import { listOf, unitFigure } from '@/lib/names';
 import { ShellProvider } from '@/lib/strings';
+import { NOT_DONE } from '@/lib/visits';
 import { KEYED_BOOKINGS, KEYED_HOME, keyedHome, keyedShell } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
 import Home, { dayLink, type HomeDay } from './Home';
@@ -114,6 +116,7 @@ function propsWith(overrides: Record<string, unknown> = {}): Record<string, unkn
         next_up: [],
         awaiting: [],
         activity: [],
+        to_mark: { count: 0, thank_you: true, days: [] },
         members: 3,
         detail: null,
         ...overrides,
@@ -158,26 +161,26 @@ afterEach(() => {
 });
 
 describe('Home', () => {
-    it('is titled Home, then the card, the range, the tiles, the footnote, the feeds, the Top tables, the activity and the days in that order', () => {
+    it('is titled Home, then the card, To mark, the range, the tiles, the footnote, the feeds, the Top tables, the activity and the days in that order', () => {
         inertia.props = propsWith({ setup: { ...READY, booking: false } });
-        view.render(<Home />);
+        renderHome();
 
         expect(view.host.querySelector('h1')?.textContent).toBe(home.text('title'));
 
-        const order = ['.admin-setup', '.admin-home-range', '.admin-home-figures', '.admin-home-footnote', '.admin-home-next', '.admin-home-awaiting', '.admin-home-top--services', '.admin-home-top--staff', '.admin-home-activity', '.admin-home-days'];
+        const order = ['.admin-setup', '.admin-home-to-mark', '.admin-home-range', '.admin-home-figures', '.admin-home-footnote', '.admin-home-next', '.admin-home-awaiting', '.admin-home-top--services', '.admin-home-top--staff', '.admin-home-activity', '.admin-home-days'];
         const parts = order.map((selector) => view.host.querySelector(selector));
         expect(parts.map((part, index) => (part === null ? order[index] : null)).filter((missing) => missing !== null)).toEqual([]);
         parts.slice(1).forEach((part, index) => expect(parts[index]?.compareDocumentPosition(part as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING));
 
         // Side by side in pairs: each pair in one grid of its own.
-        expect(parts[4]?.parentElement).toBe(parts[5]?.parentElement);
-        expect(parts[6]?.parentElement).toBe(parts[7]?.parentElement);
-        expect(parts[8]?.parentElement).toBe(parts[9]?.parentElement);
+        expect(parts[5]?.parentElement).toBe(parts[6]?.parentElement);
+        expect(parts[7]?.parentElement).toBe(parts[8]?.parentElement);
+        expect(parts[9]?.parentElement).toBe(parts[10]?.parentElement);
         expect(view.host.querySelector('.admin-home-footnote')?.textContent).toBe(home.text('footnote'));
     });
 
     it('offers the four ranges in one group, the server\'s range pressed, its line beneath with its two dates or its one day', () => {
-        view.render(<Home />);
+        renderHome();
 
         const group = view.host.querySelector('.admin-home-range [role="group"]');
         expect(group?.getAttribute('aria-label')).toBe(home.text('range.label'));
@@ -187,21 +190,21 @@ describe('Home', () => {
         expect(view.host.querySelector('.admin-home-range__line')?.textContent).toBe(home.text('range.line.week', { from: '02/11/2026', to: '08/11/2026' }));
 
         inertia.props = propsWith({ range_figures: rangeFigures('today', '2026-11-02', '2026-11-02') });
-        view.render(<Home />);
+        renderHome();
         expect([...view.host.querySelectorAll('.admin-home-range button')].map((option) => option.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
         expect(view.host.querySelector('.admin-home-range__line')?.textContent).toBe(home.text('range.line.today', { date: '02/11/2026' }));
 
         inertia.props = propsWith({ range_figures: rangeFigures('yesterday', '2026-11-01', '2026-11-01') });
-        view.render(<Home />);
+        renderHome();
         expect(view.host.querySelector('.admin-home-range__line')?.textContent).toBe(home.text('range.line.yesterday', { date: '01/11/2026' }));
 
         inertia.props = propsWith({ range_figures: rangeFigures('month', '2026-11-01', '2026-11-30') });
-        view.render(<Home />);
+        renderHome();
         expect(view.host.querySelector('.admin-home-range__line')?.textContent).toBe(home.text('range.line.month', { from: '01/11/2026', to: '30/11/2026' }));
     });
 
     it('chooses a range by a visit to Home that names it in the address, this week by none, keeping the scroll and reading the range\'s figures alone', () => {
-        view.render(<Home />);
+        renderHome();
 
         press(view.host.querySelectorAll('.admin-home-range button')[3] ?? null);
         expect(inertia.get).toHaveBeenCalledTimes(1);
@@ -214,7 +217,7 @@ describe('Home', () => {
         expect(lastGet()[1]).toEqual({ range: 'today' });
 
         inertia.props = propsWith({ range_figures: rangeFigures('month', '2026-11-01', '2026-11-30') });
-        view.render(<Home />);
+        renderHome();
         press(view.host.querySelectorAll('.admin-home-range button')[2] ?? null);
         expect(lastGet()[0]).toBe('/admin');
         expect(lastGet()[1]).toEqual({});
@@ -225,7 +228,7 @@ describe('Home', () => {
     });
 
     it('marks the range card busy while a range reads and owns a failed read, saying so on Home in its own sentence', () => {
-        view.render(<Home />);
+        renderHome();
         const card = () => view.host.querySelector('.admin-home-range');
 
         press(view.host.querySelectorAll('.admin-home-range button')[3] ?? null);
@@ -243,7 +246,7 @@ describe('Home', () => {
     });
 
     it('draws the six tiles, each value with its comparison to the week before: a rise, a fall, no change and a rise from nought, and the two notes', () => {
-        view.render(<Home />);
+        renderHome();
 
         expect([...view.host.querySelectorAll('.admin-figure-tile h2')].map((el) => el.textContent)).toEqual([
             home.text('tiles.bookings'),
@@ -271,7 +274,7 @@ describe('Home', () => {
 
         for (const [word, kind] of [['today', 'day'], ['yesterday', 'day'], ['month', 'month']] as const) {
             inertia.props = propsWith({ range_figures: rangeFigures(word, '2026-11-01', '2026-11-01', fallen) });
-            view.render(<Home />);
+            renderHome();
 
             expect(tile('bookings')[1]).toBe(home.text(`change.${kind}.by`, { change: signed(15) }));
             expect(tile('new_customers')[1]).toBe(home.text(`change.${kind}.same`));
@@ -290,18 +293,18 @@ describe('Home', () => {
                 occupancy: { value: null, previous: 40, change: none, filled_minutes: 45, offered_minutes: 0 },
             }),
         });
-        view.render(<Home />);
+        renderHome();
 
         expect(tile('bookings')).toEqual(['0', home.text('change.week.same')]);
         expect(tile('revenue')).toEqual([formatAmount(0, 'EUR', home.locale), home.text('change.week.same'), formatAmount(1000, 'USD', home.locale)]);
         expect(tile('occupancy')).toEqual([home.text('tiles.no_hours')]);
 
         inertia.props = propsWith({ range_figures: rangeFigures('week', '2026-11-02', '2026-11-08', { occupancy: { value: 0, previous: 0, change: none, filled_minutes: 0, offered_minutes: 600 } }) });
-        view.render(<Home />);
+        renderHome();
         expect(tile('occupancy')).toEqual([formatPercent(0, home.locale), home.text('change.week.same'), home.text('tiles.filled', { filled: unitFigure(0, 'hour', 'en'), offered: unitFigure(10, 'hour', 'en') })]);
 
         inertia.props = propsWith({ range_figures: rangeFigures('today', '2026-11-02', '2026-11-02', { occupancy: { value: 112.5, previous: null, change: none, filled_minutes: 135, offered_minutes: 120 } }) });
-        view.render(<Home />);
+        renderHome();
         expect(tile('occupancy')).toEqual([
             formatPercent(112.5, home.locale),
             home.text('tiles.filled', { filled: home.text('tiles.duration', { hours: unitFigure(2, 'hour', 'en'), minutes: unitFigure(15, 'minute', 'en') }), offered: unitFigure(2, 'hour', 'en') }),
@@ -309,7 +312,7 @@ describe('Home', () => {
     });
 
     it('lists Top services and Top staff by name, bookings and revenue, the business\'s own row by the name it is given, and says so in place of a table where nothing was counted', () => {
-        view.render(<Home />);
+        renderHome();
 
         expect(view.host.querySelector('#home-top-services-title')?.textContent).toBe(home.text('top.services'));
         expect(view.host.querySelector('#home-top-staff-title')?.textContent).toBe(home.text('top.staff'));
@@ -325,20 +328,20 @@ describe('Home', () => {
         expect(view.host.querySelectorAll('.admin-home-top .admin-table-scroll')).toHaveLength(2);
 
         inertia.props = propsWith({ range_figures: { ...FIGURES, top_services: [], top_staff: [] } });
-        view.render(<Home />);
+        renderHome();
         expect(view.host.querySelectorAll('.admin-home-top table')).toHaveLength(0);
         expect(texts('.admin-home-top__empty')).toEqual([home.text('top.empty'), home.text('top.empty')]);
     });
 
     it('carries no link to Reports and none of the old week\'s tiles', () => {
-        view.render(<Home />);
+        renderHome();
 
         expect(view.host.querySelector('.admin-home-reports')).toBeNull();
         expect(view.host.querySelectorAll('.admin-figure-tile')).toHaveLength(6);
     });
 
     it('draws a bar per day, each linking to the Calendar Day on its date, named by the short weekday and the day of the month with its count above', () => {
-        view.render(<Home />);
+        renderHome();
 
         const days = [...view.host.querySelectorAll<HTMLElement>('.admin-home-day')];
         expect(days.map((day) => [day.dataset['date'], day.dataset['confirmed'], day.dataset['awaiting']])).toEqual(DAYS.map((day) => [day.date, String(day.confirmed), String(day.awaiting)]));
@@ -353,7 +356,7 @@ describe('Home', () => {
     });
 
     it('stacks the awaiting share in amber on the confirmed part in the theme colour, the tallest day the full bar, an empty day a line at nought', () => {
-        view.render(<Home />);
+        renderHome();
 
         const days = [...view.host.querySelectorAll<HTMLElement>('.admin-home-day')];
         const part = (index: number, which: 'confirmed' | 'awaiting') => days[index]?.querySelector<HTMLElement>(`.admin-home-day__${which}`) ?? null;
@@ -372,7 +375,7 @@ describe('Home', () => {
     });
 
     it('sums the week in its header strip, the awaiting share named where there is one, and says what the colours mean', () => {
-        view.render(<Home />);
+        renderHome();
 
         // One whole sentence per case the strip shows: several awaiting, one plain sentence read as
         // text, the week then holding two bookings or more.
@@ -383,19 +386,19 @@ describe('Home', () => {
 
         // One awaiting, among several bookings and as the week's one booking.
         inertia.props = propsWith({ days: DAYS.map((day, index) => ({ ...day, awaiting: index === 4 ? 1 : 0 })) });
-        view.render(<Home />);
+        renderHome();
         expect(texts('.admin-home-days__summary')).toEqual([home.choice('days.summary.one_awaiting', 7, { count: formatCount(7, home.locale), awaiting: formatCount(1, home.locale) })]);
 
         inertia.props = propsWith({ days: DAYS.map((day, index) => ({ ...day, confirmed: 0, awaiting: index === 4 ? 1 : 0 })) });
-        view.render(<Home />);
+        renderHome();
         expect(texts('.admin-home-days__summary')).toEqual([home.choice('days.summary.one_awaiting', 1, { count: formatCount(1, home.locale), awaiting: formatCount(1, home.locale) })]);
 
         inertia.props = propsWith({ days: DAYS.map((day) => ({ ...day, awaiting: 0 })) });
-        view.render(<Home />);
+        renderHome();
         expect(texts('.admin-home-days__summary')).toEqual([home.choice('days.bookings', 6, { count: formatCount(6, home.locale) })]);
 
         inertia.props = propsWith({ days: DAYS.map((day) => ({ ...day, confirmed: 0, awaiting: 0 })) });
-        view.render(<Home />);
+        renderHome();
         expect(texts('.admin-home-days__summary')).toEqual([home.choice('days.bookings', 0, { count: formatCount(0, home.locale) })]);
         expect(view.host.querySelectorAll('.admin-home-day__bar')).toHaveLength(0);
         expect(view.host.querySelectorAll('.admin-home-day__none')).toHaveLength(7);
@@ -436,13 +439,15 @@ describe('Home', () => {
         inertia.props = propsWith({ range_figures: figures, days });
         view.render(
             <ShellProvider strings={null} language="el">
-                <Home />
+                <ToastProvider>
+                    <Home />
+                </ToastProvider>
             </ShellProvider>,
         );
         const el = read();
         expect(el).toEqual(shown(greek.locale));
 
-        view.render(<Home />);
+        renderHome();
         const en = read();
         expect(en).toEqual(shown(home.locale));
         expect(el[0]).not.toBe(en[0]);
@@ -454,7 +459,7 @@ describe('Home', () => {
     it('shows the setup card while any fact is false, a tick or an open circle per fact, each fact open alone in turn', () => {
         for (const fact of ['service', 'hours', 'link', 'booking'] satisfies Fact[]) {
             inertia.props = propsWith({ setup: { ...READY, [fact]: false } });
-            view.render(<Home />);
+            renderHome();
 
             expect(view.host.querySelector('#setup-title')?.textContent).toBe(home.text('setup.title'));
             expect(Object.fromEntries(Object.entries(setupItems()).map(([key, item]) => [key, item.done]))).toEqual({ service: 'true', hours: 'true', link: 'true', booking: 'true', [fact]: 'false' });
@@ -466,7 +471,7 @@ describe('Home', () => {
 
     it('links each fact to where it is done: New service, the Shifts screen while the staff feature holds the hours, the Booking page section, and the wizard opened on press with no prefill beside the hosted page', () => {
         inertia.props = propsWith({ setup: { service: false, hours: false, link: false, booking: false, hosted_url: HOSTED } });
-        view.render(<Home />);
+        renderHome();
 
         expect(Object.fromEntries(Object.entries(setupItems()).map(([key, item]) => [key, item.href]))).toEqual({
             service: '/admin/services/new',
@@ -485,7 +490,7 @@ describe('Home', () => {
 
     it('links the hours to Settings without the staff feature, and offers the hosted page alone to a viewer without the wizard', () => {
         inertia.props = propsWith({ entitlements: [], catalog: null, setup: { ...READY, hours: false, booking: false } });
-        view.render(<Home />);
+        renderHome();
 
         expect(setupItems()['hours']?.href).toBe('/admin/settings#section-opening-hours');
         expect(setupItems()['booking']?.href).toBe(HOSTED);
@@ -495,12 +500,12 @@ describe('Home', () => {
 
     it('renders no setup card once all four facts are true, and none when the props carry no setup, the tiles and the days still drawn', () => {
         inertia.props = propsWith({ setup: READY });
-        view.render(<Home />);
+        renderHome();
         expect(view.host.querySelector('.admin-setup')).toBeNull();
         expect(view.host.querySelector('.admin-home-figures')).not.toBeNull();
 
         inertia.props = propsWith();
-        view.render(<Home />);
+        renderHome();
         expect(view.host.querySelector('.admin-setup')).toBeNull();
         expect(view.host.querySelectorAll('.admin-home-day')).toHaveLength(7);
     });
@@ -705,5 +710,402 @@ describe('Home\'s feeds', () => {
         expect(read).toMatchObject({ only: ['detail'], preserveUrl: true });
         expect(view.host.querySelectorAll('.admin-home-awaiting__row')).toHaveLength(0);
         expect(texts('.admin-home-activity__sentence')).toEqual([home.text('activity.approved.user', { staff: 'Alex Owner', customer: 'Maria Rossi' })]);
+    });
+});
+
+/*
+ * To mark's rows: two today, then two on Saturday the 31st, one of them an erased customer's, on
+ * luna's clock in Athens, two hours ahead of UTC in November.
+ */
+function toMark(patch: Partial<ToMarkList> = {}): ToMarkList {
+    return {
+        count: 4,
+        thank_you: true,
+        days: [
+            { date: '2026-11-02', today: true, bookings: [feedRow('t1', { customer: 'Maria P.', starts_at: '2026-11-02T06:00:00+00:00' }), feedRow('t2', { customer: 'Nikos K.', starts_at: '2026-11-02T07:15:00+00:00' })] },
+            { date: '2026-10-31', today: false, bookings: [feedRow('o1', { customer: 'Eleni D.', starts_at: '2026-10-31T07:30:00+00:00' }), feedRow('o2', { customer: null, starts_at: '2026-10-31T12:00:00+00:00' })] },
+        ],
+        ...patch,
+    };
+}
+
+function toMarkCard(): Element | null {
+    return view.host.querySelector('.admin-home-to-mark');
+}
+
+/** A row's own control by its booking: the checkbox, the text that opens it, or one of its marks. */
+function rowPart(uuid: string, part: 'tick' | 'open' | 'complete' | 'no-show'): Element | null {
+    return view.host.querySelector(`.admin-home-to-mark__row[data-booking="${uuid}"] .admin-home-to-mark__${part}`);
+}
+
+function dayTick(date: string): HTMLInputElement | null {
+    return view.host.querySelector<HTMLInputElement>(`.admin-home-to-mark__day[data-date="${date}"] .admin-home-to-mark__day-tick`);
+}
+
+function lastPost(): [string, Record<string, unknown>, Visit] {
+    return (inertia.post.mock.lastCall ?? []) as [string, Record<string, unknown>, Visit];
+}
+
+describe('Home\'s To mark', () => {
+    it('lists each day under its heading, Today first, an older one by its long weekday and its date in the tenant\'s format, each row its start on the tenant\'s clock, the customer, and the services with the member', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        expect(toMarkCard()?.querySelector('h2, h3')?.textContent).toBe(home.text('to_mark.title'));
+        expect(texts('.admin-home-to-mark__heading')).toEqual([home.text('to_mark.today'), home.text('to_mark.day', { weekday: 'Saturday', date: '31/10/2026' })]);
+        expect(texts('.admin-home-to-mark__time')).toEqual(['08:00', '09:15', '09:30', '14:00']);
+        expect(texts('.admin-home-to-mark__customer')).toEqual(['Maria P.', 'Nikos K.', 'Eleni D.', home.text('customer_erased')]);
+        expect(texts('.admin-home-to-mark__what')[0]).toBe(home.text('with', { services: 'Haircut', staff: 'Elena Papadaki' }));
+        expect(view.host.querySelector('.admin-home-to-mark__showing')).toBeNull();
+    });
+
+    it('sits under the title and above the range card, with no setup card on the page', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        expect(view.host.querySelector('h1')?.compareDocumentPosition(toMarkCard() as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(toMarkCard()?.compareDocumentPosition(view.host.querySelector('.admin-home-range') as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('shows the count beside the title with its whole sentence as the accessible text, and names each checkbox for its booking', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        const count = view.host.querySelector('.admin-home-to-mark__count');
+
+        expect(count?.querySelector('[aria-hidden="true"]')?.textContent).toBe('4');
+        expect(count?.querySelector('.sr-only')?.textContent).toBe(home.choice('to_mark.count', 4, { count: '4' }));
+        expect(rowPart('t1', 'tick')?.getAttribute('aria-label')).toBe(home.text('to_mark.select_booking', { customer: 'Maria P.', time: '08:00' }));
+        expect(rowPart('o2', 'tick')?.getAttribute('aria-label')).toBe(home.text('to_mark.select_erased', { time: '14:00' }));
+        expect(dayTick('2026-10-31')?.getAttribute('aria-label')).toBe(home.text('to_mark.select_day'));
+        expect(dayTick('2026-10-31')?.getAttribute('aria-describedby')).toBe(view.host.querySelector('.admin-home-to-mark__day[data-date="2026-10-31"] .admin-home-to-mark__heading')?.id);
+    });
+
+    it('says Nothing to mark with no count, no list and no bulk control when nothing is waiting', () => {
+        renderHome();
+
+        expect(texts('.admin-home-to-mark__empty')).toEqual([home.text('to_mark.empty')]);
+        expect(view.host.querySelector('.admin-home-to-mark__count')).toBeNull();
+        expect(view.host.querySelector('.admin-home-to-mark__list')).toBeNull();
+        expect(view.host.querySelector('.admin-home-to-mark__bulk')).toBeNull();
+    });
+
+    it('says how many it shows of how many there are where the server listed fewer than it counted', () => {
+        inertia.props = propsWith({ to_mark: toMark({ count: 240 }) });
+        renderHome();
+
+        expect(texts('.admin-home-to-mark__showing')).toEqual([home.text('to_mark.showing', { listed: '4', count: '240' })]);
+        expect(view.host.querySelector('.admin-home-to-mark__count .sr-only')?.textContent).toBe(home.choice('to_mark.count', 240, { count: '240' }));
+    });
+
+    it('marks a row at once by the dialog\'s own route with no dialog, the pressed button busy and every other press refused until the server answers', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        press(rowPart('t1', 'complete'));
+
+        const [url, body, visit] = lastPost();
+
+        expect(inertia.post).toHaveBeenCalledTimes(1);
+        expect(url).toBe('/admin/bookings/t1/complete');
+        expect(body).toEqual({});
+        expect(visit).toMatchObject({ preserveScroll: true, preserveState: true });
+        expect(q('.admin-booking-dialog')).toBeNull();
+        expect(q('.admin-home-to-mark-confirm')).toBeNull();
+
+        act(() => visit.onStart?.());
+        expect(rowPart('t1', 'complete')?.getAttribute('aria-busy')).toBe('true');
+        expect(rowPart('t1', 'complete')?.textContent).toBe(KEYED_BOOKINGS.busy.complete);
+        press(rowPart('o1', 'no-show'));
+        expect(inertia.post).toHaveBeenCalledTimes(1);
+
+        // The redirect back lands Home with the row no longer listed.
+        const [, ...rest] = toMark().days[0]?.bookings ?? [];
+        inertia.props = propsWith({ to_mark: toMark({ count: 3, days: [{ date: '2026-11-02', today: true, bookings: rest }, ...toMark().days.slice(1)] }) });
+        renderHome();
+        act(() => visit.onFinish?.());
+
+        expect(view.host.querySelector('.admin-home-to-mark__row[data-booking="t1"]')).toBeNull();
+        press(rowPart('o1', 'no-show'));
+        expect(lastPost()[0]).toBe('/admin/bookings/o1/no-show');
+    });
+
+    it('selects a row by its checkbox and a day by its own, the day\'s reading mixed while some of its rows are, the selection\'s two marks shown beside its count only while a row is selected', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        expect(view.host.querySelector('.admin-home-to-mark__mark-completed')).toBeNull();
+        expect(view.host.querySelector('.admin-home-to-mark__mark-no-show')).toBeNull();
+        expect(view.host.querySelector('.admin-home-to-mark__selected')).toBeNull();
+        expect(texts('.admin-home-to-mark__mark-rest')).toEqual([home.text('to_mark.mark_rest')]);
+
+        press(rowPart('o1', 'tick'));
+
+        expect(dayTick('2026-10-31')?.indeterminate).toBe(true);
+        expect(dayTick('2026-10-31')?.checked).toBe(false);
+        expect(texts('.admin-home-to-mark__selected')).toEqual([home.choice('to_mark.selected', 1, { count: '1' })]);
+        expect(texts('.admin-home-to-mark__mark-completed')).toEqual([home.text('to_mark.mark_completed')]);
+        expect(texts('.admin-home-to-mark__mark-no-show')).toEqual([home.text('to_mark.mark_no_show')]);
+
+        press(dayTick('2026-10-31'));
+
+        expect(dayTick('2026-10-31')?.indeterminate).toBe(false);
+        expect(dayTick('2026-10-31')?.checked).toBe(true);
+        expect((rowPart('o2', 'tick') as HTMLInputElement).checked).toBe(true);
+        expect(dayTick('2026-11-02')?.checked).toBe(false);
+        expect(texts('.admin-home-to-mark__selected')).toEqual([home.choice('to_mark.selected', 2, { count: '2' })]);
+
+        press(dayTick('2026-10-31'));
+
+        expect((rowPart('o1', 'tick') as HTMLInputElement).checked).toBe(false);
+        expect(view.host.querySelector('.admin-home-to-mark__mark-completed')).toBeNull();
+        expect(view.host.querySelector('.admin-home-to-mark__selected')).toBeNull();
+    });
+
+    it('asks once before marking the selection as no-shows, the count in the title and that it cannot be undone, then posts the outcome and the rows in the list\'s order, keeping the rows still listed selected', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+        press(rowPart('o2', 'tick'));
+        press(rowPart('t1', 'tick'));
+        press(rowPart('t2', 'tick'));
+
+        press(view.host.querySelector('.admin-home-to-mark__mark-no-show'));
+
+        expect(inertia.post).not.toHaveBeenCalled();
+        expect(q('.admin-modal__title')?.textContent).toBe(home.choice('to_mark.confirm.no_show', 3, { count: '3' }));
+        expect(q('.admin-home-to-mark-confirm__undone')?.textContent).toBe(home.text('to_mark.confirm.undone'));
+        expect(q('.admin-home-to-mark-confirm__thanks')).toBeNull();
+        expect(q('.admin-home-to-mark-confirm__keep')?.textContent).toBe(home.text('to_mark.confirm.back'));
+        expect(q('.admin-home-to-mark-confirm__confirm')?.textContent).toBe(home.text('to_mark.confirm.mark_no_show'));
+
+        press(q('.admin-home-to-mark-confirm__confirm'));
+
+        const [url, body, visit] = lastPost();
+
+        expect(inertia.post).toHaveBeenCalledTimes(1);
+        expect(url).toBe('/admin/bookings/mark');
+        expect(body).toEqual({ outcome: 'no_show', bookings: ['t1', 't2', 'o2'] });
+        act(() => visit.onStart?.());
+        expect(q('.admin-home-to-mark-confirm__confirm')?.getAttribute('aria-busy')).toBe('true');
+        expect(q('.admin-home-to-mark-confirm__pending')?.textContent).toBe(home.text('to_mark.confirm.pending'));
+
+        // Two of the three went; the one the server still lists stays selected.
+        inertia.props = propsWith({ to_mark: toMark({ count: 2, days: [{ date: '2026-11-02', today: true, bookings: [feedRow('t2', { customer: 'Nikos K.', starts_at: '2026-11-02T07:15:00+00:00' })] }, { date: '2026-10-31', today: false, bookings: [feedRow('o1', { customer: 'Eleni D.', starts_at: '2026-10-31T07:30:00+00:00' })] }] }) });
+        renderHome();
+        act(() => visit.onFinish?.());
+
+        expect(q('.admin-home-to-mark-confirm')).toBeNull();
+        expect((rowPart('t2', 'tick') as HTMLInputElement).checked).toBe(true);
+        expect((rowPart('o1', 'tick') as HTMLInputElement).checked).toBe(false);
+        expect(texts('.admin-home-to-mark__selected')).toEqual([home.choice('to_mark.selected', 1, { count: '1' })]);
+    });
+
+    it('marks the rest as completed, whatever is selected, saying each customer gets the thank-you where the tenant sends it, and Back marks nothing', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+        press(rowPart('o1', 'tick'));
+
+        press(view.host.querySelector('.admin-home-to-mark__mark-rest'));
+
+        expect(q('.admin-modal__title')?.textContent).toBe(home.choice('to_mark.confirm.completed', 4, { count: '4' }));
+        expect(q('.admin-home-to-mark-confirm__thanks')?.textContent).toBe(home.choice('to_mark.confirm.thanks', 4));
+        expect(q('.admin-home-to-mark-confirm__confirm')?.textContent).toBe(home.text('to_mark.confirm.mark_completed'));
+
+        press(q('.admin-home-to-mark-confirm__keep'));
+
+        expect(q('.admin-home-to-mark-confirm')).toBeNull();
+        expect(inertia.post).not.toHaveBeenCalled();
+
+        press(view.host.querySelector('.admin-home-to-mark__mark-rest'));
+        press(q('.admin-home-to-mark-confirm__confirm'));
+
+        expect(lastPost().slice(0, 2)).toEqual(['/admin/bookings/mark', { outcome: 'completed', bookings: ['t1', 't2', 'o1', 'o2'] }]);
+    });
+
+    it('says nothing of the thank-you where the tenant has it switched off, and asks of one booking in the singular', () => {
+        inertia.props = propsWith({ to_mark: toMark({ count: 1, thank_you: false, days: [{ date: '2026-11-02', today: true, bookings: [feedRow('t1')] }] }) });
+        renderHome();
+
+        press(view.host.querySelector('.admin-home-to-mark__mark-rest'));
+
+        expect(q('.admin-modal__title')?.textContent).toBe(home.choice('to_mark.confirm.completed', 1, { count: '1' }));
+        expect(q('.admin-home-to-mark-confirm__undone')).not.toBeNull();
+        expect(q('.admin-home-to-mark-confirm__thanks')).toBeNull();
+    });
+
+    it('shows a viewer without manageBookings the rows alone: no checkbox, no mark and no bulk control, the row still opening the booking', () => {
+        inertia.props = propsWith({ to_mark: toMark(), permissions: ['viewBookings'] });
+        renderHome();
+
+        expect(texts('.admin-home-to-mark__customer')).toHaveLength(4);
+        expect(toMarkCard()?.querySelectorAll('input')).toHaveLength(0);
+        expect([...(toMarkCard()?.querySelectorAll('button') ?? [])].every((button) => button.classList.contains('admin-home-to-mark__open'))).toBe(true);
+        expect(view.host.querySelector('.admin-home-to-mark__bulk')).toBeNull();
+        expect(q('.admin-home-to-mark-confirm')).toBeNull();
+
+        press(rowPart('t1', 'open'));
+
+        expect(lastGet().slice(0, 2)).toEqual(['/admin', { booking: 't1' }]);
+    });
+
+    it('opens the booking dialog from a row\'s text by the partial reload Home\'s other rows use', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        press(rowPart('o1', 'open'));
+
+        const [url, query, visit] = lastGet();
+
+        expect(url).toBe('/admin');
+        expect(query).toEqual({ booking: 'o1' });
+        expect(visit).toMatchObject({ only: ['detail'], preserveUrl: true });
+        expect(q('.admin-booking-dialog')).not.toBeNull();
+        expect(inertia.post).not.toHaveBeenCalled();
+    });
+
+    it('holds a row\'s text while a mark is in flight, opening no booking and reading no detail until the server answers', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        press(rowPart('t1', 'complete'));
+
+        const [, , visit] = lastPost();
+
+        act(() => visit.onStart?.());
+        press(rowPart('o1', 'open'));
+        press(rowPart('t1', 'open'));
+
+        expect(inertia.get).not.toHaveBeenCalled();
+        expect(q('.admin-booking-dialog')).toBeNull();
+
+        act(() => visit.onFinish?.());
+        press(rowPart('o1', 'open'));
+
+        expect(lastGet().slice(0, 2)).toEqual(['/admin', { booking: 'o1' }]);
+        expect(q('.admin-booking-dialog')).not.toBeNull();
+    });
+
+    it('holds the three bulk buttons while a row\'s mark is in flight, asking nothing, then asks of the rows the server still lists and posts those', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+        press(rowPart('t2', 'tick'));
+
+        press(rowPart('t1', 'complete'));
+
+        const [, , visit] = lastPost();
+
+        act(() => visit.onStart?.());
+        ['mark-completed', 'mark-no-show', 'mark-rest'].forEach((name) => {
+            press(view.host.querySelector(`.admin-home-to-mark__${name}`));
+            expect(q('.admin-home-to-mark-confirm')).toBeNull();
+        });
+
+        // The redirect back lands Home with the marked row gone.
+        const [, ...rest] = toMark().days[0]?.bookings ?? [];
+        inertia.props = propsWith({ to_mark: toMark({ count: 3, days: [{ date: '2026-11-02', today: true, bookings: rest }, ...toMark().days.slice(1)] }) });
+        renderHome();
+        act(() => visit.onFinish?.());
+
+        press(view.host.querySelector('.admin-home-to-mark__mark-rest'));
+        expect(q('.admin-modal__title')?.textContent).toBe(home.choice('to_mark.confirm.completed', 3, { count: '3' }));
+
+        press(q('.admin-home-to-mark-confirm__confirm'));
+
+        expect(inertia.post).toHaveBeenCalledTimes(2);
+        expect(lastPost().slice(0, 2)).toEqual(['/admin/bookings/mark', { outcome: 'completed', bookings: ['t2', 'o1', 'o2'] }]);
+    });
+
+    it('says a bulk mark the server refused in the server\'s sentence and a row\'s mark that never arrived in the shell\'s, each in an error toast, the question closed and every row left listed with its marks live', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        const said = () => [...document.body.querySelectorAll('.admin-toast[data-kind="error"] p')].map((line) => line.textContent);
+
+        press(view.host.querySelector('.admin-home-to-mark__mark-rest'));
+        press(q('.admin-home-to-mark-confirm__confirm'));
+
+        const refused = lastPost()[2];
+        const refusal = new CustomEvent('invalid', { cancelable: true, detail: { response: { status: 400, data: { code: 'invalid_request', data: { detail: 'mark-refusal-token' } } } } });
+
+        act(() => refused.onStart?.());
+        act(() => inertia.listeners.get('invalid')?.(refusal));
+        act(() => refused.onFinish?.());
+
+        expect(refusal.defaultPrevented).toBe(true);
+        expect(said()).toEqual(['mark-refusal-token']);
+        expect(q('.admin-home-to-mark-confirm')).toBeNull();
+        expect(inertia.listeners.size).toBe(0);
+
+        press(rowPart('t1', 'no-show'));
+
+        const lost = lastPost()[2];
+        const offline = new CustomEvent('exception', { cancelable: true, detail: { exception: new Error('offline') } });
+
+        act(() => lost.onStart?.());
+        act(() => inertia.listeners.get('exception')?.(offline));
+        act(() => lost.onFinish?.());
+
+        expect(offline.defaultPrevented).toBe(true);
+        expect(said()).toEqual(['mark-refusal-token', keyedShell().text(NOT_DONE)]);
+        expect(view.host.querySelectorAll('.admin-home-to-mark__row')).toHaveLength(4);
+        expect(rowPart('t1', 'no-show')?.getAttribute('aria-busy')).toBeNull();
+
+        press(rowPart('t1', 'no-show'));
+        expect(inertia.post).toHaveBeenCalledTimes(3);
+    });
+
+    it('leaves the focus to the bulk button that asked where it is still there, and hands it to the card where the mark took that button away', async () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        const pressFocused = (name: string): HTMLElement | null => {
+            const button = view.host.querySelector<HTMLElement>(`.admin-home-to-mark__${name}`);
+
+            button?.focus();
+            press(button);
+
+            return button;
+        };
+
+        const rest = pressFocused('mark-rest');
+
+        press(q('.admin-home-to-mark-confirm__keep'));
+        await settle();
+
+        expect(document.activeElement).toBe(rest);
+
+        press(dayTick('2026-11-02'));
+        pressFocused('mark-completed');
+        press(q('.admin-home-to-mark-confirm__confirm'));
+
+        const [, , visit] = lastPost();
+
+        act(() => visit.onStart?.());
+
+        // The redirect back lands Home with today's two gone, and the selection's buttons with them.
+        inertia.props = propsWith({ to_mark: toMark({ count: 2, days: toMark().days.slice(1) }) });
+        renderHome();
+        act(() => visit.onFinish?.());
+        await settle();
+
+        expect(q('.admin-home-to-mark-confirm')).toBeNull();
+        expect(view.host.querySelector('.admin-home-to-mark__mark-completed')).toBeNull();
+        expect(document.activeElement).toBe(toMarkCard());
+    });
+
+    it('gives a row the classes that stack it below the breakpoint, its two marks side by side under its text, and the bulk buttons the ones that take the full width and let a long label wrap inside its button, the one breakpoint\'s variants alone', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+        press(rowPart('t1', 'tick'));
+
+        const classesOf = (element: Element | null | undefined): string[] => [...(element?.classList ?? [])];
+        const row = view.host.querySelector('.admin-home-to-mark__row[data-booking="t1"]');
+
+        expect(classesOf(row)).toContain('max-desktop:flex-wrap');
+        expect(classesOf(row?.querySelector('.admin-home-to-mark__marks'))).toContain('max-desktop:w-full');
+        expect(classesOf(rowPart('t1', 'complete'))).toContain('max-desktop:flex-1');
+        expect(classesOf(rowPart('t1', 'no-show'))).toContain('max-desktop:flex-1');
+        expect(classesOf(view.host.querySelector('.admin-home-to-mark__bulk'))).toEqual(expect.arrayContaining(['max-desktop:flex-col', 'max-desktop:items-stretch']));
+        ['mark-completed', 'mark-no-show', 'mark-rest'].forEach((name) => expect(classesOf(view.host.querySelector(`.admin-home-to-mark__${name}`))).toEqual(expect.arrayContaining(['max-desktop:w-full', 'max-desktop:h-auto', 'max-desktop:whitespace-normal'])));
     });
 });

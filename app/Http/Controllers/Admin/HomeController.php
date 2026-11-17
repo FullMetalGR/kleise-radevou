@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Application\Clock;
+use App\Application\Notification\MessageKey;
 use App\Http\AdminSession;
 use App\Http\AdminStrings;
 use App\Http\BookingTrail;
@@ -49,6 +50,13 @@ use Inertia\Response;
  * CalendarPage::detail with no scope, the viewer's own staff row beside it; `members` is how many
  * staff rows the tenant has, the rows half of the rule that hides a staff choice with one value.
  *
+ * `to_mark`: the confirmed bookings whose last segment has ended by the same now, the ones nobody
+ * has marked completed or a no-show yet, up to TO_MARK of them by the date their first start falls
+ * on in the tenant's zone, today first, then older dates latest first, beside the count of every
+ * one and whether the tenant sends the thank-you email a Completed mark sets off
+ * (HomePayload::toMark). Each row is marked by the booking dialog's own two routes, a selection of
+ * rows by MarkOutcomesController.
+ *
  * `range_figures`: the six tiles and the two Top tables over the range the request's range()
  * names, today, yesterday, week or month, any other word or none reading as week, read by
  * RangeFigureRecords and shaped by HomeRangeFigures; the screen's range card asks for it alone by
@@ -61,6 +69,9 @@ final readonly class HomeController
 
     /** The rows Next up and Awaiting approval each list. */
     private const int FEED = 5;
+
+    /** The most rows To mark lists; the landing page reads no more, and the count says the rest. */
+    public const int TO_MARK = 100;
 
     public function __construct(
         private CurrentTenant $current,
@@ -97,6 +108,13 @@ final readonly class HomeController
                 $request->range($today, $this->settings->read($tenant)->startOfWeek),
             )),
             'days' => fn (): array => $this->bookings->perDay($tenant, $today, self::DAYS),
+            'to_mark' => fn (): array => HomePayload::toMark(
+                $this->bookings->toMark($tenant, $now, self::TO_MARK),
+                $this->bookings->toMarkCount($tenant, $now),
+                $tenant->zone(),
+                $today,
+                $this->settings->read($tenant)->sends(MessageKey::ThankYou),
+            ),
             'next_up' => fn (): array => array_map(HomePayload::booking(...), $this->bookings->nextUp($tenant, $now, self::FEED)),
             'awaiting' => fn (): array => array_map(HomePayload::booking(...), $this->bookings->awaiting($tenant, self::FEED)),
             'activity' => function () use ($tenant): array {

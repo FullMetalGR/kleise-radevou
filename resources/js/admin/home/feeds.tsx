@@ -20,7 +20,7 @@ import type { HomeWords } from './words';
  * names in them are data, a list of them joined as ICU joins one in the user's language.
  */
 
-/** A booking as Next up and Awaiting approval list it, HomePayload::booking. */
+/** A booking as Next up, Awaiting approval and To mark list it, HomePayload::booking. */
 export type HomeBooking = {
     uuid: string;
     status: string;
@@ -57,7 +57,7 @@ const ALL_BOOKINGS = '/admin/bookings';
 export const APPROVAL_INBOX = `${ALL_BOOKINGS}?${new URLSearchParams(queryOf({ ...NO_FILTERS, status: AWAITING_APPROVAL }, 1)).toString()}`;
 
 /** The customer's name, or the erased line where the customer was erased. */
-function customerOf(customer: string | null, words: HomeWords): string {
+export function customerOf(customer: string | null, words: HomeWords): string {
     return customer ?? words.text('customer_erased');
 }
 
@@ -113,7 +113,7 @@ type BookingFeed = { rows: HomeBooking[]; clock: TenantClock; words: HomeWords; 
  * The services, with the members where the staff choice is real and one is named, as one line,
  * each list joined as ICU joins one in the user's language.
  */
-function whatOf(services: string[], staff: string[], staffShown: boolean, words: HomeWords): string {
+export function whatOf(services: string[], staff: string[], staffShown: boolean, words: HomeWords): string {
     const named = listOf(services, words.language);
 
     return staffShown && staff.length > 0 ? words.text('with', { services: named, staff: listOf(staff, words.language) }) : named;

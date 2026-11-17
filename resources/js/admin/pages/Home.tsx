@@ -8,6 +8,7 @@ import { Strip } from '@/figures/kit';
 import { Activity, Awaiting, type HomeActivityRow, type HomeBooking, NextUp } from '@/home/feeds';
 import { RangeCard, type RangeFigures, Tiles, TopTables } from '@/home/figures';
 import { type Setup, SetupCard } from '@/home/SetupCard';
+import { ToMark, type ToMarkList } from '@/home/ToMark';
 import { type HomeWords, homeWordsOf } from '@/home/words';
 import { isoWeekday } from '@/lib/day';
 import { clockOf, formatCount } from '@/lib/format';
@@ -22,7 +23,8 @@ import { useNewBooking } from '@/wizard/NewBooking';
 /*
  * Home, the landing of every viewer holding viewBookings. The title reads Home; then, in order,
  * the setup checklist while the setup prop carries a fact still false, its booking item opening
- * the wizard with no prefill; the range card, a choice of range being a visit to Home with the
+ * the wizard with no prefill; To mark, the confirmed bookings whose time is over, marked from the
+ * card one at a time or in bulk by a viewer holding manageBookings; the range card, a choice of range being a visit to Home with the
  * range in the address (none for this week) that keeps the scroll and reads range_figures alone,
  * the card busy while it reads and a failed read said in Home's own sentence; the six tiles and
  * the footnote; Next up beside Awaiting approval; Top services beside Top staff; Recent activity
@@ -35,7 +37,8 @@ import { useNewBooking } from '@/wizard/NewBooking';
  * page's own state, the detail prop read for its uuid by a partial reload with the URL preserved,
  * so a reload lands with no dialog; the dialog's actions post as every screen's do (useActs), and
  * the server's redirect back lands Home with every prop re-read, the feeds included, the page then
- * reading the detail again for the booking still open.
+ * reading the detail again for the booking still open. To mark's rows open the dialog the same
+ * way, and its marks land the same way, a marked row gone from the props re-read.
  */
 
 /**
@@ -48,6 +51,7 @@ type Props = SharedProps & {
     strings: SharedProps['strings'] & { home?: HomeStrings; bookings?: BookingsStrings };
     range_figures: RangeFigures;
     days: HomeDay[];
+    to_mark: ToMarkList;
     next_up: HomeBooking[];
     awaiting: HomeBooking[];
     activity: HomeActivityRow[];
@@ -157,6 +161,7 @@ export default function Home() {
             <div className="admin-home-screen flex flex-col gap-4">
                 <h1 className="text-2xl font-semibold">{words.text('title')}</h1>
                 <SetupCard setup={props.setup} entitlements={props.entitlements} bookable={Boolean(props.catalog)} onBook={() => openWizard()} words={words} />
+                <ToMark list={props.to_mark} manage={props.permissions.includes('manageBookings')} clock={clock} words={words} staffShown={shown} onOpen={opening.open} />
                 <RangeCard range={props.range_figures.range} clock={clock} words={words} busy={ranging.loading} failed={ranging.error} onChoose={(word) => ranging.read(PATH, word === 'week' ? {} : { range: word })} />
                 <Tiles figures={props.range_figures} words={words} />
                 <div className="grid gap-4 lg:grid-cols-2">

@@ -1000,11 +1000,12 @@ function languageSharedValues(): array
         ':day: :windows',
         ':start-:end',
         ', ',
-        // admin/shifts.php's page.day_head and admin/calendar.php's toolbar.day_title, a day's ICU
-        // weekday before its date; admin/shifts.php's editor.title, the day editor's name of the
-        // member before the day; admin/calendar.php's grid.block, a booking block's customer and
-        // service, and day.menu, a Day column menu's member and date: layouts of placeholders and
-        // punctuation alone, no word in them, the same in both languages.
+        // admin/shifts.php's page.day_head, admin/calendar.php's toolbar.day_title and
+        // admin/home.php's to_mark.day, a day's weekday before its date; admin/shifts.php's
+        // editor.title, the day editor's name of the member before the day; admin/calendar.php's
+        // grid.block, a booking block's customer and service, and day.menu, a Day column menu's
+        // member and date: layouts of placeholders and punctuation alone, no word in them, the
+        // same in both languages.
         ':weekday :date',
         ':name, :weekday :date',
         ':customer, :service',
