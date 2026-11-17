@@ -6,7 +6,8 @@
  * greeting, the one layout's own string and the instant's shape sit beside them for every mail.
  * Every value may name the public name as :name, filled on every line; the reader's own name is
  * :owner, since every reader here owns the business, but for the set-password link, which any user
- * of the tenant may be sent. The zone line is the same sentence under each mail's own key, one per
+ * of the tenant may be sent, and the reply to a help ticket, which every user who wrote in it is
+ * sent. The zone line is the same sentence under each mail's own key, one per
  * mail, since each mail class reads its own section.
  */
 
@@ -156,5 +157,17 @@ return [
         'offer' => 'Would you like us to set it up with you? Write to :contact and we will arrange it.',
         'zone' => 'Times are in :zone, the clock you keep.',
         'reason' => 'You received this email because :business was set up at :name with this address.',
+    ],
+
+    // The reply to a help ticket: sent to each user of the business who wrote in the ticket when the
+    // platform's support replies. The support's name and the business, the ticket's subject as it was
+    // written, then the reply itself as its own paragraph, and the link that opens the ticket in the
+    // admin. The reader is any user of the tenant who wrote in it, named by the greeting's :owner.
+    'help_reply' => [
+        'subject' => 'A reply to your help ticket: :subject',
+        'replied' => ':name Support replied to a help ticket of :business.',
+        'about' => 'Subject: :subject',
+        'open' => 'Open the ticket in your admin to read the whole thread and answer:',
+        'reason' => 'You received this email because you wrote in this help ticket of :business at :name.',
     ],
 ];

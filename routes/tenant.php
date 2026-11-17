@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerNoteController;
 use App\Http\Controllers\Admin\CustomerProfileController;
 use App\Http\Controllers\Admin\GalleryController;
+use App\Http\Controllers\Admin\HelpController;
 use App\Http\Controllers\Admin\HomeController;
 use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\LinkQrController;
@@ -480,6 +481,15 @@ Route::prefix('admin')->name('admin.')->middleware(HandleInertiaRequests::class)
     // The user's own language: one of the two by the path's constraint, never the subscription
     // gate, a person's preference and no configuration, and under no limit.
     Route::put('/language/{language}', LanguageController::class)->whereIn('language', array_map(fn (SiteLanguage $language): string => $language->value, SiteLanguage::cases()))->middleware(RequiresSignIn::NAME)->name('language');
+
+    // The help panel's tickets: every signed-in user, whatever the role and never behind the
+    // subscription gate, the support session and the demo refused by the controller's gate; the two
+    // hourly limits are counted where the write happens, so no route throttle. The GET is the link
+    // a mail carries, which opens the admin on the thread through sign-in when needed.
+    Route::post('/help', [HelpController::class, 'store'])->middleware(RequiresSignIn::NAME)->name('help.store');
+    Route::post('/help/{uuid}/messages', [HelpController::class, 'reply'])->whereUuid('uuid')->middleware(RequiresSignIn::NAME)->name('help.reply');
+    Route::post('/help/{uuid}/read', [HelpController::class, 'read'])->whereUuid('uuid')->middleware(RequiresSignIn::NAME)->name('help.read');
+    Route::get('/help/{uuid}', [HelpController::class, 'open'])->whereUuid('uuid')->middleware(RequiresSignIn::NAME)->name('help.open');
 
     Route::get('/{path}', NotFoundController::class)->where('path', '.*')->middleware(RequiresSignIn::NAME)->name('not-found');
 });

@@ -48,4 +48,16 @@ enum PlatformAuditAction: string
 
     /** An operator reopened a closing tenant from the console. */
     case TenantReopened = 'tenant_reopened';
+
+    /**
+     * An operator answered a business's help ticket, its payload the ticket's id and never a word
+     * of the answer. Added to the CHECK by migration 000025, with the two after it.
+     */
+    case HelpTicketReplied = 'help_ticket_replied';
+
+    /** An operator closed a help ticket. */
+    case HelpTicketClosed = 'help_ticket_closed';
+
+    /** An operator reopened a closed help ticket. */
+    case HelpTicketReopened = 'help_ticket_reopened';
 }

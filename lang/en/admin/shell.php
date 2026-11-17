@@ -34,6 +34,10 @@
  * a reason was typed), and the list of bookings to move with its row's button, a moved row's word
  * and the button closing it.
  *
+ * help is the help bubble's own two lines, its name for a screen reader and that name with the
+ * unread state said in words; every other word of its panel is the help section's, sent only when
+ * the panel asks for it.
+ *
  * validation, refusals and flashes are the server's: the sign-in form's four lines, which the
  * console's door reads in English, the set-password form's two refusals with :floor and :ceiling,
  * PasswordRule's two figures by the names signup.php gives them, the four image uploads' sentences,
@@ -242,6 +246,10 @@ return [
             'times' => 'Each window has a start and an end, times of day such as 09:00.',
             'order' => 'A window starts before it ends.',
         ],
+    ],
+    'help' => [
+        'name' => 'Help',
+        'unread' => 'Help, a ticket has a new reply',
     ],
     'refusals' => [
         'sign_in' => 'That email and password do not match an account at this business.',

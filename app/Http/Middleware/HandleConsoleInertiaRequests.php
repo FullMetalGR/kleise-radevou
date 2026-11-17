@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Help\HelpDesk;
 use App\Http\AdminProps;
 use App\Http\AdminStrings;
 use App\Http\ConsoleNav;
@@ -18,9 +19,10 @@ use Inertia\Middleware;
  * The Inertia adapter for the console's host: the central adapter's twin. The console's pages are
  * the admin bundle's, rendered from a root view of their own, and the props every page shares are
  * the flash, the operator, the console guard's operator's name or null, the validation errors
- * Inertia's base share hands every page, the rail as nav, ConsoleNav's for an operator and empty
- * for anyone else, and the console's zone, which the shell's top bar names once for every instant
- * on the screen and the date fields read their today in, and the brand, the public name the shell's
+ * Inertia's base share hands every page, the rail as nav, ConsoleNav's for an operator with the
+ * count of help tickets awaiting a reply and empty for anyone else, and the console's zone, which
+ * the shell's top bar names once for every instant on the screen and the date fields read their
+ * today in, and the brand, the public name the shell's
  * wordmark, the door and the title template read, and the strings, the admin's shell section read
  * through the translator with the locale fixed to English, since the console's door and shell
  * render the admin's kit, which spells no word of its own, and the console stays English; the
@@ -34,7 +36,7 @@ final class HandleConsoleInertiaRequests extends Middleware
 
     protected $rootView = self::ROOT_VIEW;
 
-    public function __construct(private readonly ConsoleSession $session, private readonly ConsoleTime $time, private readonly Brand $brand, private readonly AdminStrings $strings) {}
+    public function __construct(private readonly ConsoleSession $session, private readonly ConsoleTime $time, private readonly Brand $brand, private readonly AdminStrings $strings, private readonly HelpDesk $desk) {}
 
     public function version(Request $request): ?string
     {
@@ -54,7 +56,7 @@ final class HandleConsoleInertiaRequests extends Middleware
             'operator' => $operator?->name,
             // Read when the page renders, after the controller ran, so a 404 a routed page
             // answered through NotFoundController lights no entry.
-            'nav' => $operator === null ? [] : fn (): array => ConsoleNav::for($request->attributes->get(ConsoleNav::NO_ENTRY) === true ? null : $request->route()?->getName()),
+            'nav' => $operator === null ? [] : fn (): array => ConsoleNav::for($request->attributes->get(ConsoleNav::NO_ENTRY) === true ? null : $request->route()?->getName(), $this->desk->awaiting()),
             'zone' => $this->time->zone()->getName(),
             'brand' => $this->brand->prop(),
             'strings' => fn (): array => self::stringsOf($this->strings),

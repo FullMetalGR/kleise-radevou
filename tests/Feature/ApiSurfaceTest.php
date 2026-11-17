@@ -27,6 +27,8 @@ use App\Http\Requests\ColourByRequest;
 use App\Http\Requests\ConsoleAuditRequest;
 use App\Http\Requests\ConsoleMessagesRequest;
 use App\Http\Requests\ConsoleTenantsRequest;
+use App\Http\Requests\ConsoleTicketReplyRequest;
+use App\Http\Requests\ConsoleTicketsRequest;
 use App\Http\Requests\ContactRequest;
 use App\Http\Requests\CoverRequest;
 use App\Http\Requests\CustomerBlockRequest;
@@ -35,6 +37,8 @@ use App\Http\Requests\CustomerProfileRequest;
 use App\Http\Requests\CustomerRequest;
 use App\Http\Requests\DecisionRequest;
 use App\Http\Requests\GalleryPhotoRequest;
+use App\Http\Requests\HelpReplyRequest;
+use App\Http\Requests\HelpTicketRequest;
 use App\Http\Requests\HomeRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\LogoRequest;
@@ -308,6 +312,10 @@ it('names the public surface, the routes behind the manage token and the pages b
         'admin.billing.portal' => ['permission:manageBilling'],
         'admin.billing.checkout' => ['permission:manageBilling'],
         'admin.language' => [RequiresSignIn::NAME],
+        'admin.help.store' => [RequiresSignIn::NAME],
+        'admin.help.reply' => [RequiresSignIn::NAME],
+        'admin.help.read' => [RequiresSignIn::NAME],
+        'admin.help.open' => [RequiresSignIn::NAME],
         'admin.not-found' => [RequiresSignIn::NAME],
     ]);
 });
@@ -354,7 +362,7 @@ function adminRoutes(): array
     return $routes;
 }
 
-it('declares on every admin route one declaration naming one permission or more, or public on the door, the set-password link and the support link alone, or signed-in on the language write, the retired My calendar address and the 404 page, names permissions that exist, and reads them back as declared', function () {
+it('declares on every admin route one declaration naming one permission or more, or public on the door, the set-password link and the support link alone, or signed-in on the language write, the help tickets, the retired My calendar address and the 404 page, names permissions that exist, and reads them back as declared', function () {
     $routes = adminRoutes();
 
     expect($routes)->not->toBeEmpty();
@@ -487,7 +495,7 @@ function adminAccess(string $access, bool $gated = false): array
     return ['access' => $access, 'gated' => $gated];
 }
 
-it('spells the admin surface under the prefix, verb by path: the door, the set-password link and the support link public, every page and action under its one permission, the configuration writes alone behind the subscription gate, and the language write, the retired My calendar address and the 404 page signed-in', function () {
+it('spells the admin surface under the prefix, verb by path: the door, the set-password link and the support link public, every page and action under its one permission, the configuration writes alone behind the subscription gate, and the language write, the help tickets, the retired My calendar address and the 404 page signed-in', function () {
     $public = adminAccess(PublicRoute::NAME);
     $viewBookings = adminAccess('permission:viewBookings');
     $manageBookings = adminAccess('permission:manageBookings');
@@ -640,6 +648,12 @@ it('spells the admin surface under the prefix, verb by path: the door, the set-p
         // The top bar's language control, the signed-in user's own language: every user owns it and
         // no permission does, and it is a person's preference, so never behind the gate.
         'PUT /admin/language/{language}' => adminAccess(RequiresSignIn::NAME),
+        // The help tickets, which every signed-in user of the business may ask whatever their role,
+        // so no permission does, and which a lapsed subscription still reaches, so never the gate.
+        'POST /admin/help' => adminAccess(RequiresSignIn::NAME),
+        'POST /admin/help/{uuid}/messages' => adminAccess(RequiresSignIn::NAME),
+        'POST /admin/help/{uuid}/read' => adminAccess(RequiresSignIn::NAME),
+        'GET /admin/help/{uuid}' => adminAccess(RequiresSignIn::NAME),
         'GET /admin/{path}' => adminAccess(RequiresSignIn::NAME),
     ]);
 });
@@ -828,6 +842,10 @@ it('counts every API route under a limit and counts one page alone, the My booki
         'admin.billing.portal' => ['throttle:billing'],
         'admin.billing.checkout' => ['throttle:billing'],
         'admin.language' => [],
+        'admin.help.store' => [],
+        'admin.help.reply' => [],
+        'admin.help.read' => [],
+        'admin.help.open' => [],
         'admin.not-found' => [],
     ]);
 });
@@ -933,6 +951,8 @@ it('takes every admin write\'s form request from the house\'s admin write reques
             'admin.settings.payments.platform' => [PlatformConnectRequest::class],
             'admin.billing.plan' => [ChangePlanRequest::class],
             'admin.billing.checkout' => [CheckoutRequest::class],
+            'admin.help.store' => [HelpTicketRequest::class],
+            'admin.help.reply' => [HelpReplyRequest::class],
         ]);
 });
 
@@ -970,6 +990,8 @@ const SURFACE_PLAIN_REQUESTS = [
     ConsoleAuditRequest::class,
     ConsoleMessagesRequest::class,
     ConsoleTenantsRequest::class,
+    ConsoleTicketReplyRequest::class,
+    ConsoleTicketsRequest::class,
     NewTenantRequest::class,
     OperatorReasonRequest::class,
     SuspendRequest::class,

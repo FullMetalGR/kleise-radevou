@@ -65,7 +65,7 @@ abstract class OperatorReasonRequest extends FormRequest
 
     private static function plainText(string $attribute, mixed $value, Closure $fail): void
     {
-        if (is_string($value) && (! mb_check_encoding($value, 'UTF-8') || str_contains($value, "\0"))) {
+        if (is_string($value) && ! PlainText::holds($value)) {
             $fail(self::NOT_TEXT);
         }
     }

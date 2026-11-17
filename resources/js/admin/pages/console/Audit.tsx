@@ -20,10 +20,10 @@ import type { ConsoleProps } from '@/types';
  */
 
 /** The vocabulary of App\Platform\PlatformAuditAction, as the server sends each row's action. */
-type AuditAction = 'sign_in' | 'sign_out' | 'tenant_suspended' | 'tenant_resumed' | 'tenant_created' | 'features_changed' | 'password_link_sent' | 'support_opened' | 'support_ended' | 'contact_archived' | 'tenant_closed' | 'tenant_reopened';
+type AuditAction = 'sign_in' | 'sign_out' | 'tenant_suspended' | 'tenant_resumed' | 'tenant_created' | 'features_changed' | 'password_link_sent' | 'support_opened' | 'support_ended' | 'contact_archived' | 'tenant_closed' | 'tenant_reopened' | 'help_ticket_replied' | 'help_ticket_closed' | 'help_ticket_reopened';
 
 /** The key list of App\Platform\PlatformAuditKey. */
-type AuditKey = 'reason' | 'features' | 'user' | 'message';
+type AuditKey = 'reason' | 'features' | 'user' | 'message' | 'ticket';
 
 type Scalar = string | number | boolean;
 
@@ -70,6 +70,9 @@ export const ACTION_WORDS: Record<AuditAction, string> = {
     contact_archived: 'Archived a contact message',
     tenant_closed: 'Closed a tenant',
     tenant_reopened: 'Reopened a tenant',
+    help_ticket_replied: 'Replied to a help ticket',
+    help_ticket_closed: 'Closed a help ticket',
+    help_ticket_reopened: 'Reopened a help ticket',
 };
 
 /** Each payload key in words, one per case of the key list. */
@@ -78,6 +81,7 @@ const FACT_WORDS: Record<AuditKey, string> = {
     features: 'Features',
     user: 'User',
     message: 'Message',
+    ticket: 'Ticket',
 };
 
 const WHEN_HEADING = 'When';

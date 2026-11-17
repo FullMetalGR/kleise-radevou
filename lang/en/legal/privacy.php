@@ -17,7 +17,7 @@ return [
     'title' => 'Privacy policy - :name',
     'description' => 'How :name handles the personal data of the people who visit this site, write to us, sign up a business or sign in to one.',
     'heading' => 'Privacy policy',
-    'version' => '3 November 2026',
+    'version' => '18 November 2026',
     'sections' => [
         'scope' => [
             'heading' => 'Who we are and what this policy covers',
@@ -40,6 +40,7 @@ return [
             'body' => [
                 'When you send the contact form, we keep your name, your email address, your message and the language of the page you sent it from, and we email the message to our support mailbox so that we can answer you. We do not store the network address it came from with it.',
                 'To stop the form being misused, your network address is used for an hour to count how many messages come from one connection, and the form is protected by Cloudflare Turnstile.',
+                'A person signed in to a business\'s admin can also write to us from there, in a help ticket. We keep their name, the ticket\'s subject, each message with the date and time it was sent, and up to which message each person of the business has read the ticket. We email each message from the business to our support mailbox so that we can answer it, and each reply of ours to the people of the business who wrote in the ticket.',
             ],
         ],
         'signup' => [
@@ -72,6 +73,7 @@ return [
                 [
                     'To set up and run a business\'s account, let its people sign in, send the emails the account needs and bill its subscription: the contract with the business, and at the signup the steps taken at its owner\'s request before it.',
                     'To answer a message sent through the contact form: our legitimate interest in answering the people who write to us, and theirs in an answer.',
+                    'To answer a help ticket sent from a business\'s admin: the contract with the business.',
                     'To protect the forms and the service, with the anti-spam check, the limits on how often a form can be sent, the sessions\' safeguards and the servers\' logs: our legitimate interest in keeping :name secure and working.',
                     'To count visits with Google Analytics: your consent, which you can withdraw at any time.',
                     'To keep the records of our accounts: the obligations the law places on us.',
@@ -99,6 +101,7 @@ return [
             'body' => [
                 [
                     'A message sent through the contact form: twelve months from when it was sent, whether or not it has been dealt with.',
+                    'A help ticket sent from a business\'s admin, with its messages: twelve months from its last message, whether or not it has been closed.',
                     'A signup whose link is not opened: 24 hours.',
                     'A business\'s account and the people who sign in to it: while the account exists. When an account closes, everything in it is deleted thirty days later, except the account\'s own record, kept for our accounts, which holds none of the business\'s customers\' data.',
                     'A session\'s record: while the session lasts, until it is cleared after it lapses.',
@@ -107,7 +110,7 @@ return [
                     'The servers\' logs: [the period, to be confirmed].',
                     'Google Analytics data: [the retention period set in Google Analytics, to be confirmed].',
                 ],
-                'The deletion of a signup whose link was never opened runs every hour. A scheduled deletion runs every day at 04:30, Athens time: it deletes the contact form\'s messages, Stripe\'s notifications and the entries of our console\'s audit log once their periods above have passed, and a closed account, with the people who sign in to it, at the end of its thirty days.',
+                'The deletion of a signup whose link was never opened runs every hour. A scheduled deletion runs every day at 04:30, Athens time: it deletes the contact form\'s messages, the help tickets, Stripe\'s notifications and the entries of our console\'s audit log once their periods above have passed, and a closed account, with the people who sign in to it, at the end of its thirty days.',
             ],
         ],
         'rights' => [

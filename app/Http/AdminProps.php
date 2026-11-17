@@ -72,6 +72,8 @@ use LogicException;
  * read them. The rail lights the entry of the request's route, read when the rail is, so a page
  * that answered the 404 inside the shell from a route of its own, NotFoundController marking the
  * request, lights none.
+ *
+ * The help bubble's props and its panel's are HelpProps', joined here for a signed-in user alone.
  */
 final readonly class AdminProps
 {
@@ -95,6 +97,7 @@ final readonly class AdminProps
         private Languages $languages,
         private Translator $translator,
         private AdminStrings $strings,
+        private HelpProps $help,
     ) {}
 
     /**
@@ -133,6 +136,7 @@ final readonly class AdminProps
         return [
             ...$shared,
             ...($principal->kind === Principal::USER ? ['languages' => $this->languageLabels()] : []),
+            ...$this->help->for($request, $tenant, $principal),
             'support' => self::supportOf($principal),
             'permissions' => array_map(fn (Permission $permission): string => $permission->value, $principal->permissions),
             'entitlements' => fn (): array => $entitlements()->toSlugs(),

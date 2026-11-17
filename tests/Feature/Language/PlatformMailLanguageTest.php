@@ -5,9 +5,13 @@ use App\Application\Notification\PlatformMessage;
 use App\Application\Notification\PlatformMessageKind;
 use App\Application\Notification\PlatformMessenger;
 use App\Domain\Lifetime;
+use App\Help\HelpAuthor;
+use App\Help\HelpDesk;
+use App\Help\HelpTickets;
 use App\Models\User;
 use App\Notifications\AccountClosing;
 use App\Notifications\ContactMessageReceived;
+use App\Notifications\HelpMessageReceived;
 use App\Notifications\OperatorSignedIn;
 use App\Notifications\SetPasswordLink;
 use App\Notifications\TenantReopened;
@@ -27,13 +31,14 @@ use App\Tenancy\TenantProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\FixedClock;
 use Tests\Support\RecordingPlatformMessages;
 
 pest()->use(RefreshDatabase::class);
 
 /*
- * The platform's mails in their recipient's language: every one of the eight BrandedMail classes,
+ * The platform's mails in their recipient's language: every one of the nine BrandedMail classes,
  * sent to three owners of one tenant, one who chose Greek, one who chose English and one who
  * chose none. Each message is in its recipient's users.locale, the one who chose none reading the
  * tenant default, settings.language over the row's tenants.locale. The verification link, sent
@@ -96,7 +101,8 @@ function mailLanguageOf(PlatformMessage $message): array
  * fills it, and the send. The trial notices and the lapse's close run through their commands, so
  * the owner reader of TrialDeadlines is the one read; the console's and the owner's writes hand
  * their mails the owners as AccountOwners reads them; the set-password link and the welcome go to
- * each user in turn.
+ * each user in turn; the reply to a help ticket goes to each user who wrote in it, here all three,
+ * their messages written straight to the table so none sends the mail to the support mailbox.
  *
  * @return array<string, array{string, array<string, string>, Closure(Tenant): void}>
  */
@@ -129,6 +135,23 @@ function mailLanguageSends(): array
             DB::table('tenants')->where('id', $tenant->id)->update(['trial_ends_at' => '2026-11-10 09:00:00+00']);
             app(Welcome::class)->send(Tenant::query()->whereKey($tenant->id)->sole(), $user);
         })],
+        'the reply to a help ticket' => ['help_reply.subject', ['subject' => 'A question about the calendar'], function (Tenant $tenant): void {
+            $ticket = DB::table('help_tickets')->insertGetId([
+                'uuid' => (string) Str::uuid(),
+                'tenant_id' => $tenant->id,
+                'subject' => 'A question about the calendar',
+                'last_message_at' => '2026-11-03 08:00:00+00',
+                'last_side' => 'business',
+                'created_at' => '2026-11-03 08:00:00+00',
+                'updated_at' => '2026-11-03 08:00:00+00',
+            ]);
+
+            foreach (User::query()->where('tenant_id', $tenant->id)->orderBy('id')->get() as $user) {
+                DB::table('help_messages')->insert(['ticket_id' => $ticket, 'side' => 'business', 'user_id' => $user->id, 'author_name' => $user->name, 'body' => 'Where do I set my hours?', 'created_at' => '2026-11-03 08:00:00+00']);
+            }
+
+            app(HelpDesk::class)->reply($ticket, addOperator(), 'Open the Staff screen.');
+        }],
     ];
 }
 
@@ -213,13 +236,17 @@ it('sends the operator\'s mails as plain English text with no HTML part, as befo
 
     app(OperatorSignedIn::class)->send(addOperator(), new DateTimeImmutable('2026-11-03 09:00:00', new DateTimeZone('UTC')), '203.0.113.7');
     app(ContactMessageReceived::class)->send(new ContactMessage('Ada Person', 'ada@example.com', 'A question about the pricing.', SiteLanguage::Greek));
+    $owner = User::query()->where('email', 'greek@luna.example')->sole();
+    app(HelpTickets::class)->open($owner->tenant_id, new HelpAuthor($owner->id, $owner->name, $owner->role), 'A question about the calendar', 'Where do I set my hours?');
 
     expect(array_map(fn (PlatformMessage $message): array => [$message->kind, $message->html, preg_match('/[^\x00-\x7F]/', $message->subject.$message->body)], $this->seam->sent))->toBe([
         [PlatformMessageKind::OperatorSignIn, null, 0],
         [PlatformMessageKind::ContactMessage, null, 0],
+        [PlatformMessageKind::HelpMessage, null, 0],
     ])
         ->and($this->seam->sent[0]->subject)->toBe(sprintf(OperatorSignedIn::SUBJECT, siteName()))
-        ->and($this->seam->sent[1]->subject)->toBe(sprintf(ContactMessageReceived::SUBJECT, siteName()));
+        ->and($this->seam->sent[1]->subject)->toBe(sprintf(ContactMessageReceived::SUBJECT, siteName()))
+        ->and($this->seam->sent[2]->subject)->toBe(sprintf(HelpMessageReceived::OPENED, 'Luna Hair Studio'));
 });
 
 /**

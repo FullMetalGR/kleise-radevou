@@ -4,6 +4,7 @@ use App\Application\Clock;
 use App\Http\ConsoleSession;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\SetPasswordController;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\KeepLinkTokensOutOfTheSession;
 use App\Http\Requests\PasswordRule;
 use App\Http\Requests\SetPasswordRequest;
@@ -184,6 +185,72 @@ it('sets the password once inside 72 hours under the rule, clearing the link in 
         ->assertRedirect(tenantUrl('luna', '/admin'));
 });
 
+it('leaves the page by a whole page load on both endings, the password set and the link found dead, for {case}, the sign-in page read next carrying the flash', function (bool $client) {
+    $login = tenantUrl('luna', '/admin/login');
+    $token = setpwMint();
+
+    $leaves = function () use ($client, $login, $token): void {
+        $response = $client
+            ? $this->post(tenantUrl('luna', '/admin/set-password/'.$token), ['password' => SETPW_NEW], ['X-Inertia' => 'true'])
+            : setpwPost($this, $token);
+
+        if ($client) {
+            $response->assertStatus(409)->assertHeader('X-Inertia-Location', $login)->assertHeaderMissing('Location');
+
+            expect((string) $response->getContent())->toBe('');
+        } else {
+            $response->assertStatus(302)->assertRedirect($login)->assertHeaderMissing('X-Inertia-Location');
+        }
+    };
+
+    $reads = function (string $kind, string $key) use ($login): void {
+        $this->get($login)
+            ->assertOk()
+            ->assertHeaderMissing('Referrer-Policy')
+            ->assertInertia(fn (Assert $page) => $page->component('auth/Login')->where('flash', ['kind' => $kind, 'message' => adminLine($key)]));
+    };
+
+    $leaves();
+    expect(setpwRow()['hash'])->toBeNull();
+    $reads('success', SetPasswordController::SET);
+
+    $leaves();
+    $reads('error', SetPasswordController::EXPIRED);
+
+    $this->get($login)->assertOk()->assertInertia(fn (Assert $page) => $page->where('flash', null));
+})->with([
+    'the admin\'s client, told the address to load as a new document' => [true],
+    'a plain form post, redirected' => [false],
+]);
+
+it('leaves the page by a whole page load where the link is found dead as the page is asked for, as after a refused password whose link died meanwhile: the admin\'s client is told the address to load as a new document, a plain request is redirected', function () {
+    $login = tenantUrl('luna', '/admin/login');
+    $page = tenantUrl('luna', '/admin/set-password/'.setpwMint());
+    $client = ['X-Inertia' => 'true', 'X-Inertia-Version' => (string) HandleInertiaRequests::manifestHash()];
+    $expired = ['kind' => 'error', 'message' => adminLine(SetPasswordController::EXPIRED)];
+    setpwMint();
+
+    $this->post($page, ['password' => 'short'], $client)
+        ->assertRedirect($page)
+        ->assertSessionHasErrors(['password' => setpwRefusal(SetPasswordRequest::TOO_SHORT)]);
+
+    $response = $this->get($page, $client);
+    $response->assertStatus(409)->assertHeader('X-Inertia-Location', $login)->assertHeaderMissing('Location');
+
+    expect((string) $response->getContent())->toBe('');
+
+    $this->get($login)
+        ->assertOk()
+        ->assertHeaderMissing('Referrer-Policy')
+        ->assertInertia(fn (Assert $read) => $read->component('auth/Login')->where('flash', $expired));
+
+    $this->get($page)
+        ->assertStatus(302)
+        ->assertRedirect($login)
+        ->assertHeaderMissing('X-Inertia-Location')
+        ->assertSessionHas('flash', $expired);
+});
+
 it('ends every other session of the user by user_id in the set, the current session surviving under a new id, and leaves every other user\'s and every visitor\'s', function () {
     config(['session.driver' => 'database']);
     app('session')->forgetDrivers();
@@ -213,7 +280,7 @@ it('ends every other session of the user by user_id in the set, the current sess
         ->and(setpwSessionOwners())->toBe($expected);
 });
 
-it('ends nobody\'s session and hashes nothing for a link that sets nothing, judging the link by a read before the password is hashed (08d)', function () {
+it('ends nobody\'s session and hashes nothing for a link that sets nothing, judging the link by a read before the password is hashed', function () {
     $hasher = new class(app(Hasher::class)) implements Hasher
     {
         public int $made = 0;
@@ -371,7 +438,7 @@ it('refuses a password that is {case} on the field with the rule\'s sentence, ba
     'not text' => [['a list'], SetPasswordRequest::TOO_SHORT],
 ]);
 
-it('answers a refused password posted to a link of the wrong shape back to that link\'s page, which answers the sign-in page with the expired sentence, nothing changed and the link kept out of the session (08g)', function () {
+it('answers a refused password posted to a link of the wrong shape back to that link\'s page, which answers the sign-in page with the expired sentence, nothing changed and the link kept out of the session', function () {
     $token = setpwMint();
     $before = setpwRow();
     $malformed = strtoupper($token);

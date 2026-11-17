@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useState } from 'react';
+import { HelpBubble } from './help/HelpBubble';
 import { LanguageControl } from './shell/LanguageControl';
 import { NarrowedBanner } from './shell/NarrowedBanner';
 import { Shell } from './shell/Shell';
@@ -177,6 +178,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             >
                 {children}
             </Shell>
+            <HelpBubble />
         </NewBookingProvider>
     );
 }

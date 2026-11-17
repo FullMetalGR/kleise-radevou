@@ -144,6 +144,7 @@ beforeEach(function () {
 
 afterEach(function () {
     dropDemoSchemas();
+    DB::table('help_tickets')->delete();
     DB::table('subscriptions')->delete();
     DB::table('users')->delete();
     DB::table('tenants')->delete();
@@ -310,6 +311,10 @@ it('refuses exactly the configuration writes of a lapsed or closing tenant with 
         $refused[FREEZE_CLOSE] = $refusal;
     }
 
+    // A help ticket, which the walk's empty body cannot open: a lapsed or closing business still
+    // asks for help, so the write lands whatever the state.
+    $help = $this->actingAs($owner)->from(tenantUrl('luna', '/admin/billing'))->post(tenantUrl('luna', '/admin/help'), ['subject' => 'Our plan', 'body' => 'Can we keep our bookings?']);
+
     $walked = array_map(fn (RegisteredRoute $route): string => $route->getName() ?? $route->uri(), freezeRoutes());
     $expected = array_fill_keys(array_values(array_intersect($walked, FREEZE_CONFIGURATION_WRITES)), $status === 'closing' ? '403 closing' : '403 '.$state);
 
@@ -319,6 +324,7 @@ it('refuses exactly the configuration writes of a lapsed or closing tenant with 
         ->and([$answers['POST '.FREEZE_GUEST_CANCEL] ?? null, $answers['POST '.FREEZE_GUEST_RESCHEDULE] ?? null])->toBe([200, 200], 'the guest\'s cancel and reschedule did not land: '.json_encode($answers, JSON_THROW_ON_ERROR))
         ->and(array_combine(FREEZE_ANSWERING, array_map(fn (string $key): ?int => $answers[$key] ?? null, FREEZE_ANSWERING)))->toBe(array_fill_keys(FREEZE_ANSWERING, 200), 'the booking page, the API or the admin did not answer')
         ->and($answers['POST '.FREEZE_LINK_COPIED] ?? null)->toBe(302, 'the copy button\'s press was not recorded: it configures nothing and is not gated')
+        ->and($help->getStatusCode())->toBe(302, 'a help ticket was refused: every state may ask for help')
         ->and($answers['POST '.FREEZE_CLOSE])->toBe($status === 'closing' ? 409 : 302, 'the owner\'s close was gated: an open account closes and a closing one is refused as closing');
 })->with([
     'past_due' => ['past_due'],

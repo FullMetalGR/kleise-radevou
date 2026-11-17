@@ -12,10 +12,14 @@ namespace App\Http;
  * admin's rail is rendered.
  *
  * Each screen's entry is in entries(), in rail order: the tenant list's first, Messages after it,
- * Audit last. An entry is current when the request's route is the entry's route or one named under
- * it, so a tenant's detail named under console.tenants lights Tenants, and the console's 404 page
- * lights none: under a route of its own, and from a routed page answering a path naming nothing,
- * the request NotFoundController marks, as the admin's rail reads AdminNav::NO_ENTRY.
+ * then Tickets, Audit last. An entry is current when the request's route is the entry's route or
+ * one named under it, so a tenant's detail named under console.tenants lights Tenants, a ticket's
+ * thread under console.tickets lights Tickets, and the console's 404 page lights none: under a
+ * route of its own, and from a routed page answering a path naming nothing, the request
+ * NotFoundController marks, as the admin's rail reads AdminNav::NO_ENTRY.
+ *
+ * The one count on the rail rides on Tickets: the help tickets awaiting a reply, open with the
+ * business having written last, and null where none does, so the rail shows no badge reading zero.
  */
 final readonly class ConsoleNav
 {
@@ -33,8 +37,14 @@ final readonly class ConsoleNav
     /** The contact messages' entry. */
     public const string MESSAGES_LABEL = 'Messages';
 
+    /** The help tickets' entry. */
+    public const string TICKETS_LABEL = 'Tickets';
+
     /** The Audit screen's entry. */
     public const string AUDIT_LABEL = 'Audit';
+
+    /** The route of the one entry that carries a count. */
+    private const string TICKETS = 'console.tickets';
 
     /**
      * @return list<array{label: string, url: string, group: string, route: string}>
@@ -44,23 +54,24 @@ final readonly class ConsoleNav
         return [
             ['label' => self::TENANTS_LABEL, 'url' => '/', 'group' => self::PLATFORM, 'route' => 'console.tenants'],
             ['label' => self::MESSAGES_LABEL, 'url' => '/messages', 'group' => self::PLATFORM, 'route' => 'console.messages'],
+            ['label' => self::TICKETS_LABEL, 'url' => '/tickets', 'group' => self::PLATFORM, 'route' => self::TICKETS],
             ['label' => self::AUDIT_LABEL, 'url' => '/audit', 'group' => self::PLATFORM, 'route' => 'console.audit'],
         ];
     }
 
     /**
-     * The rail as the nav prop carries it, in the admin rail's shape: no entry carries a pending
-     * count here.
+     * The rail as the nav prop carries it, in the admin rail's shape, the count on Tickets alone.
      *
-     * @return list<array{label: string, url: string, group: string, pending: null, current: bool}>
+     * @param  int  $awaiting  the help tickets awaiting a reply, App\Help\HelpDesk::awaiting
+     * @return list<array{label: string, url: string, group: string, pending: int|null, current: bool}>
      */
-    public static function for(?string $route): array
+    public static function for(?string $route, int $awaiting): array
     {
         return array_map(fn (array $entry): array => [
             'label' => $entry['label'],
             'url' => $entry['url'],
             'group' => $entry['group'],
-            'pending' => null,
+            'pending' => $entry['route'] === self::TICKETS && $awaiting > 0 ? $awaiting : null,
             'current' => $route !== null && ($route === $entry['route'] || str_starts_with($route, $entry['route'].'.')),
         ], self::entries());
     }

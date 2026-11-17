@@ -126,12 +126,13 @@ final class RetentionSweepCommand extends Command
 
         $log->info('Retention sweep', ['tenant' => $tenantId, 'table' => self::DROPPED, 'schema' => $dropped->schema, ...$dropped->counts()]);
         $this->info(sprintf(
-            '%s: dropped, tenant %d closed; %d users, %d payment routes, %d support sessions and %d webhook events deleted.',
+            '%s: dropped, tenant %d closed; %d users, %d payment routes, %d support sessions, %d help tickets and %d webhook events deleted.',
             $dropped->schema,
             $tenantId,
             $dropped->users,
             $dropped->paymentRoutes,
             $dropped->supportSessions,
+            $dropped->helpTickets,
             $dropped->webhookEvents,
         ));
 

@@ -430,10 +430,10 @@ it('spells in the action CHECK the vocabulary\'s cases and nothing else, a liter
     sort($vocabulary);
 
     expect($literals[1])->toBe($vocabulary)
-        ->and($vocabulary)->toHaveCount(12);
+        ->and($vocabulary)->toHaveCount(15);
 });
 
-it('refuses an action outside the vocabulary\'s twelve', function () {
+it('refuses an action outside the vocabulary\'s fifteen', function () {
     expect(fn () => DB::table('platform_audit_log')->insert(['operator_id' => auditOperatorId(), 'action' => 'tenant_deleted']))
         ->toThrow(QueryException::class, 'platform_audit_log_action_check');
 });
@@ -737,4 +737,114 @@ it('lets a customer wait for its subscription, which no snapshot has named yet',
 
     expect(DB::table('subscriptions')->whereIn('provider_customer_id', ['cus_1', 'cus_2'])->whereNull('provider_subscription_id')->count())->toBe(2)
         ->and(DB::table('subscriptions')->where('tenant_id', $tenantId)->value('items'))->toBe('[]');
+});
+
+/**
+ * A help ticket of a fresh tenant with one message from its owner, answering the ticket's id and
+ * the owner's.
+ *
+ * @return array{ticket: int, user: int, tenant: int}
+ */
+function helpTicketRows(): array
+{
+    $tenantId = DB::table('tenants')->insertGetId(tenantRow('acme'));
+    $userId = DB::table('users')->insertGetId(userRow($tenantId, 'owner@acme.example'));
+    $ticketId = DB::table('help_tickets')->insertGetId([
+        'uuid' => '00000000-0000-4000-8000-000000000001',
+        'tenant_id' => $tenantId,
+        'subject' => 'Moving a booking',
+        'last_message_at' => DB::raw('now()'),
+        'last_side' => 'business',
+        'created_at' => DB::raw('now()'),
+        'updated_at' => DB::raw('now()'),
+    ]);
+    DB::table('help_messages')->insert(['ticket_id' => $ticketId, 'side' => 'business', 'user_id' => $userId, 'author_name' => 'Someone', 'body' => 'Hello', 'created_at' => DB::raw('now()')]);
+    DB::table('help_reads')->insert(['ticket_id' => $ticketId, 'user_id' => $userId, 'read_at' => DB::raw('now()')]);
+
+    return ['ticket' => $ticketId, 'user' => $userId, 'tenant' => $tenantId];
+}
+
+it('types help_tickets.{column} as {type}', function (string $column, string $type) {
+    expect(centralColumn('help_tickets', $column))->toBe($type);
+})->with([
+    ['id', 'bigint not null'],
+    ['uuid', 'uuid not null'],
+    ['tenant_id', 'bigint not null'],
+    ['subject', 'text not null'],
+    ['status', 'text not null'],
+    ['last_message_at', 'timestamp with time zone not null'],
+    ['last_side', 'text not null'],
+    ['last_platform_at', 'timestamp with time zone'],
+    ['created_at', 'timestamp with time zone not null'],
+    ['updated_at', 'timestamp with time zone not null'],
+]);
+
+it('types help_messages.{column} as {type}', function (string $column, string $type) {
+    expect(centralColumn('help_messages', $column))->toBe($type);
+})->with([
+    ['id', 'bigint not null'],
+    ['ticket_id', 'bigint not null'],
+    ['side', 'text not null'],
+    ['user_id', 'bigint'],
+    ['operator_id', 'bigint'],
+    ['author_name', 'text not null'],
+    ['body', 'text not null'],
+    ['created_at', 'timestamp with time zone not null'],
+]);
+
+it('types help_reads.{column} as {type}', function (string $column, string $type) {
+    expect(centralColumn('help_reads', $column))->toBe($type);
+})->with([
+    ['ticket_id', 'bigint not null'],
+    ['user_id', 'bigint not null'],
+    ['read_at', 'timestamp with time zone not null'],
+]);
+
+it('keeps the help tables to their columns: no address on a message, its writer by reference and by the name written', function () {
+    $columns = fn (string $table): array => DB::table('information_schema.columns')
+        ->where('table_schema', DB::raw('current_schema()'))
+        ->where('table_name', $table)
+        ->orderBy('ordinal_position')
+        ->pluck('column_name')
+        ->all();
+
+    expect($columns('help_tickets'))->toBe(['id', 'uuid', 'tenant_id', 'subject', 'status', 'last_message_at', 'last_side', 'last_platform_at', 'created_at', 'updated_at'])
+        ->and($columns('help_messages'))->toBe(['id', 'ticket_id', 'side', 'user_id', 'operator_id', 'author_name', 'body', 'created_at'])
+        ->and($columns('help_reads'))->toBe(['ticket_id', 'user_id', 'read_at']);
+});
+
+it('defaults a help ticket to open and refuses {case}', function (string $table, array $columns, string $constraint) {
+    $rows = helpTicketRows();
+
+    expect(DB::table('help_tickets')->where('id', $rows['ticket'])->value('status'))->toBe('open');
+
+    $row = $table === 'help_tickets'
+        ? ['uuid' => '00000000-0000-4000-8000-000000000002', 'tenant_id' => $rows['tenant'], 'subject' => 'Another', 'last_message_at' => DB::raw('now()'), 'last_side' => 'business', 'created_at' => DB::raw('now()'), 'updated_at' => DB::raw('now()')]
+        : ['ticket_id' => $rows['ticket'], 'side' => 'business', 'user_id' => $rows['user'], 'author_name' => 'Someone', 'body' => 'Hello', 'created_at' => DB::raw('now()')];
+
+    expect(fn () => DB::table($table)->insert([...$row, ...$columns]))->toThrow(QueryException::class, $constraint);
+})->with([
+    'an empty subject' => ['help_tickets', ['subject' => ''], 'help_tickets_subject_check'],
+    'a subject of 151 characters' => ['help_tickets', ['subject' => str_repeat('a', 151)], 'help_tickets_subject_check'],
+    'a third status' => ['help_tickets', ['status' => 'pending'], 'help_tickets_status_check'],
+    'a third side last' => ['help_tickets', ['last_side' => 'customer'], 'help_tickets_last_side_check'],
+    'a second ticket on the same uuid' => ['help_tickets', ['uuid' => '00000000-0000-4000-8000-000000000001'], 'help_tickets_uuid_unique'],
+    'an empty message' => ['help_messages', ['body' => ''], 'help_messages_body_check'],
+    'a message of 5001 characters' => ['help_messages', ['body' => str_repeat('a', 5001)], 'help_messages_body_check'],
+    'a business message with no user' => ['help_messages', ['user_id' => null], 'help_messages_author_check'],
+    'a platform message by a user' => ['help_messages', ['side' => 'platform'], 'help_messages_author_check'],
+]);
+
+it('takes a ticket\'s messages and read marks with it, a user\'s read marks with the user, the messages staying, and keeps a tenant that holds tickets', function () {
+    $rows = helpTicketRows();
+
+    DB::table('users')->where('id', $rows['user'])->delete();
+
+    expect(DB::table('help_messages')->where('user_id', $rows['user'])->value('author_name'))->toBe('Someone')
+        ->and(DB::table('help_reads')->count())->toBe(0)
+        ->and(fn () => DB::transaction(fn () => DB::table('tenants')->where('id', $rows['tenant'])->delete()))->toThrow(QueryException::class, 'help_tickets_tenant_id_fkey');
+
+    DB::table('help_tickets')->where('id', $rows['ticket'])->delete();
+
+    expect(DB::table('help_messages')->count())->toBe(0);
 });

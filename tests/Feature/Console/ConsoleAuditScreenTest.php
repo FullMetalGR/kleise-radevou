@@ -212,16 +212,17 @@ it('hands the console\'s rail, Audit lit on the Audit screen and dark elsewhere,
     $pat = addOperator();
     $tenants = ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null];
     $messages = ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null];
+    $tickets = ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null];
     $audit = ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null];
 
-    auditScreen($this, $pat)->assertInertia(fn (Assert $page) => $page->where('nav', [[...$tenants, 'current' => false], [...$messages, 'current' => false], [...$audit, 'current' => true]]));
+    auditScreen($this, $pat)->assertInertia(fn (Assert $page) => $page->where('nav', [[...$tenants, 'current' => false], [...$messages, 'current' => false], [...$tickets, 'current' => false], [...$audit, 'current' => true]]));
 
     $this->actingAs($pat, ConsoleSession::GUARD)->withSession(freshConsoleSession())->get(consoleUrl('/'))
-        ->assertInertia(fn (Assert $page) => $page->component('console/Tenants')->where('nav', [[...$tenants, 'current' => true], [...$messages, 'current' => false], [...$audit, 'current' => false]]));
+        ->assertInertia(fn (Assert $page) => $page->component('console/Tenants')->where('nav', [[...$tenants, 'current' => true], [...$messages, 'current' => false], [...$tickets, 'current' => false], [...$audit, 'current' => false]]));
 
     $this->actingAs($pat, ConsoleSession::GUARD)->withSession(freshConsoleSession())->get(consoleUrl('/audit/nothing'))
         ->assertNotFound()
-        ->assertInertia(fn (Assert $page) => $page->component('console/NotFound')->where('nav', [[...$tenants, 'current' => false], [...$messages, 'current' => false], [...$audit, 'current' => false]]));
+        ->assertInertia(fn (Assert $page) => $page->component('console/NotFound')->where('nav', [[...$tenants, 'current' => false], [...$messages, 'current' => false], [...$tickets, 'current' => false], [...$audit, 'current' => false]]));
 });
 
 it('sends a visitor with no operator session from the Audit screen to the door', function () {

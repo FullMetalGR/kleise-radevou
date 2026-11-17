@@ -106,13 +106,25 @@ describe('the Audit screen', () => {
     });
 
     it('words every action of the vocabulary, one sentence each', () => {
-        expect(Object.keys(ACTION_WORDS)).toEqual(['sign_in', 'sign_out', 'tenant_suspended', 'tenant_resumed', 'tenant_created', 'features_changed', 'password_link_sent', 'support_opened', 'support_ended', 'contact_archived', 'tenant_closed', 'tenant_reopened']);
-        expect(new Set(Object.values(ACTION_WORDS)).size).toBe(12);
+        expect(Object.keys(ACTION_WORDS)).toEqual(['sign_in', 'sign_out', 'tenant_suspended', 'tenant_resumed', 'tenant_created', 'features_changed', 'password_link_sent', 'support_opened', 'support_ended', 'contact_archived', 'tenant_closed', 'tenant_reopened', 'help_ticket_replied', 'help_ticket_closed', 'help_ticket_reopened']);
+        expect(new Set(Object.values(ACTION_WORDS)).size).toBe(15);
         expect(ACTION_WORDS.sign_in).toBe('Signed in');
         expect(ACTION_WORDS.sign_out).toBe('Signed out');
         expect(ACTION_WORDS.contact_archived).toBe('Archived a contact message');
         expect(ACTION_WORDS.tenant_closed).toBe('Closed a tenant');
         expect(ACTION_WORDS.tenant_reopened).toBe('Reopened a tenant');
+        expect(ACTION_WORDS.help_ticket_replied).toBe('Replied to a help ticket');
+        expect(ACTION_WORDS.help_ticket_closed).toBe('Closed a help ticket');
+        expect(ACTION_WORDS.help_ticket_reopened).toBe('Reopened a help ticket');
+    });
+
+    it('words a help ticket\'s fact as the ticket\'s id beside its tenant', () => {
+        inertia.props = propsWith([{ id: 6, at: SIGNED_IN.at, operator: 'Pat Operator', action: 'help_ticket_closed', tenant: 'acme', facts: [{ key: 'ticket', value: 42 }] }]);
+        view.render(<Audit />);
+
+        expect(texts('.admin-audit__action')).toEqual(['Closed a help ticket']);
+        expect(texts('.admin-audit__fact')).toEqual(['Ticket: 42']);
+        expect(texts('.admin-audit__tenant')).toEqual(['acme']);
     });
 
     it('words an archived contact message\'s fact as the message\'s id', () => {

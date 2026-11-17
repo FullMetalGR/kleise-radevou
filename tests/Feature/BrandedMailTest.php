@@ -3,6 +3,7 @@
 use App\Application\Clock;
 use App\Notifications\BrandedMail;
 use App\Notifications\BrandedMails;
+use App\Notifications\MailLines;
 use App\Notifications\MailLink;
 use App\Site\SiteLanguage;
 use Illuminate\Support\Facades\File;
@@ -12,11 +13,13 @@ use Tests\Support\FixedClock;
  * The platform's branded mail: a tenant-facing mail's words read from mail.php in the tenant's
  * language, the text part joined from its paragraphs, and the HTML part rendered in the one
  * layout, one column, the wordmark as styled text, the brand's colours inline as the tokens'
- * values, no remote image and no pixel. The layout is a view and the strings are files, so
- * nothing here touches the database and the file is unwrapped. The case that tells the two
- * languages apart lays a line over the loaded Greek file, as ContactPageTest does, to tell the
- * test's line from the file's whatever the file holds. The instant case spells a date, so the
- * clock is pinned first, though nothing here reads it.
+ * values, no remote image and no pixel. A line break in a paragraph is a break on the page only
+ * in the one kind of paragraph that asks, and a value a mail prints on one line is folded to one
+ * by the mail that prints it. The layout is a view and the strings are files, so nothing here
+ * touches the database and the file is unwrapped. The case that tells the two languages apart
+ * lays a line over the loaded Greek file, as ContactPageTest does, to tell the test's line from
+ * the file's whatever the file holds. The instant case spells a date, so the clock is pinned
+ * first, though nothing here reads it.
  */
 
 beforeEach(fn () => app()->instance(Clock::class, FixedClock::at('2026-10-01 09:00')));
@@ -87,6 +90,34 @@ it('renders the HTML part in the layout: one document in the language, the subje
         ->and($html)->not->toContain('mail.layout')
         ->and(preg_match('/[^\x00-\x7F]/', $html))->toBe(0)
         ->and(substr_count($html, '<p '))->toBe(6);
+});
+
+it('draws a line break in a paragraph as no break on the page, in a greeting built from a name typed with line breaks as in any other, and keeps the breaks of the one kind of paragraph that asks, its text escaped first', function () {
+    $greeting = brandedMail()->line('greeting', ['owner' => "Ada\nYour account is closed.\r\nPay at https://evil.example"]);
+    $plain = "A first sentence.\nA second <sentence>.";
+    $written = "Open the <b>booking</b> & drag it.\r\n\nThen save.";
+    $paragraphs = [$greeting, $plain, new MailLines($written), new MailLink('https://kleiseradevou.test/admin')];
+    $paragraph = fn (string $text): string => '<p style="margin:0 0 16px 0;">'.$text.'</p>';
+
+    $html = brandedMail()->html('A subject', $paragraphs, 'Because you asked.');
+
+    expect($greeting)->toBe("Hello Ada\nYour account is closed.\r\nPay at https://evil.example,")
+        ->and($html)->toContain($paragraph($greeting))
+        ->and($html)->toContain($paragraph("A first sentence.\nA second &lt;sentence&gt;."))
+        ->and($html)->toContain($paragraph("Open the &lt;b&gt;booking&lt;/b&gt; &amp; drag it.<br>\r\n<br>\nThen save."))
+        ->and(substr_count($html, '<br'))->toBe(2)
+        ->and(substr_count($html, 'href='))->toBe(1)
+        ->and($html)->not->toContain('<b>')
+        ->and($html)->not->toContain('<sentence>')
+        ->and(BrandedMail::text($paragraphs))->toBe(implode("\n\n", [$greeting, $plain, $written, 'https://kleiseradevou.test/admin']));
+});
+
+it('folds a one-line value to one line: every run of whitespace, line breaks of every kind among them, one space, and none at either end', function () {
+    expect(BrandedMail::oneLine("  Hours\r\n\r\nYour account\tis   closed.\n"))->toBe('Hours Your account is closed.')
+        ->and(BrandedMail::oneLine("Luna\u{2028}Hair\u{2029}Studio\u{00A0}\u{0085}Athens\v\f"))->toBe('Luna Hair Studio Athens')
+        ->and(BrandedMail::oneLine("\u{0391}\u{03B8}\u{03AE}\u{03BD}\u{03B1}\n\u{039B}\u{03BF}\u{03CD}\u{03BD}\u{03B1}"))->toBe("\u{0391}\u{03B8}\u{03AE}\u{03BD}\u{03B1} \u{039B}\u{03BF}\u{03CD}\u{03BD}\u{03B1}")
+        ->and(BrandedMail::oneLine('Moving a booking'))->toBe('Moving a booking')
+        ->and(BrandedMail::oneLine(" \n\t "))->toBe('');
 });
 
 it('inlines the brand\'s colours and type as the tokens file spells them, the primary on the wordmark and the rule, through no stylesheet, no script, no remote image and no pixel: the only addresses are the mail\'s own', function () {

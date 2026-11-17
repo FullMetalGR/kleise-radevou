@@ -8,12 +8,14 @@
  * Every value may name the public name as :name, filled on every line, read as a neuter noun as a
  * website's name is in Greek; the reader's own name is :owner, as it was given, since every
  * reader here owns the business, but for the set-password link, which any user of the tenant may
- * be sent. The business is named after the word for a business, so its name needs no article of
- * its own. An instant follows its verb with no article, as a Greek notice dates an event, since
- * the article would change with the weekday's gender. The zone line is the same sentence under
- * each mail's own key, one per mail, since each mail class reads its own section. The Billing
- * screen and Settings are named by the labels the admin shows, in English, between Greek
- * quotation marks.
+ * be sent, and the reply to a help ticket, which every user who wrote in it is sent. A help ticket
+ * is an "αίτημα υποστήριξης" in the subject and at its first mention, then the bare noun, and the
+ * platform's support puts its noun before the public name. The business is named after the word
+ * for a business, so its name needs no article of its own. An instant follows its verb with no
+ * article, as a Greek notice dates an event, since the article would change with the weekday's
+ * gender. The zone line is the same sentence under each mail's own key, one per mail, since each
+ * mail class reads its own section. The Billing screen and Settings are named by the labels the
+ * admin shows, in English, between Greek quotation marks.
  */
 
 return [
@@ -162,5 +164,17 @@ return [
         'offer' => 'Θέλετε να το στήσουμε μαζί; Γράψτε μας στο :contact και θα το κανονίσουμε.',
         'zone' => 'Οι ώρες αναφέρονται στη ζώνη ώρας :zone, αυτή που ακολουθείτε.',
         'reason' => 'Λάβατε αυτό το email επειδή η επιχείρηση :business δημιουργήθηκε στο :name με αυτή τη διεύθυνση.',
+    ],
+
+    // The reply to a help ticket: sent to each user of the business who wrote in the ticket when the
+    // platform's support replies. The support's name and the business, the ticket's subject as it was
+    // written, then the reply itself as its own paragraph, and the link that opens the ticket in the
+    // admin. The reader is any user of the tenant who wrote in it, named by the greeting's :owner.
+    'help_reply' => [
+        'subject' => 'Απάντηση στο αίτημα υποστήριξης: :subject',
+        'replied' => 'Η Υποστήριξη :name απάντησε σε αίτημα υποστήριξης της επιχείρησης :business.',
+        'about' => 'Θέμα: :subject',
+        'open' => 'Ανοίξτε το αίτημα στο διαχειριστικό σας για να διαβάσετε όλη τη συζήτηση και να απαντήσετε:',
+        'reason' => 'Λάβατε αυτό το email επειδή γράψατε σε αυτό το αίτημα υποστήριξης της επιχείρησης :business στο :name.',
     ],
 ];

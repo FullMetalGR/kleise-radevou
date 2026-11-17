@@ -6,6 +6,8 @@
  * server rather than a name compiled into the bundle.
  */
 
+import type { HelpProps } from './help/types';
+
 /** The brand prop: the public name, config('site.name'). */
 export type Brand = {
     name: string;
@@ -147,6 +149,7 @@ export type ShellStrings = {
         };
         weekly: { list: string; weekday: string; times: string; order: string };
     };
+    help: { name: string; unread: string };
     refusals: { sign_in: string; too_many: string; support_link: string };
     flashes: { signed_out: string; password_set: string; link_expired: string };
 };
@@ -1651,7 +1654,8 @@ export type WizardCatalog = {
     members: number;
 };
 
-export type SharedProps = GuestProps & {
+export type SharedProps = GuestProps &
+    HelpProps & {
     permissions: string[];
     entitlements: string[];
     /** The features a resolve took away, filtered to slugs this build knows; empty when nothing went. */

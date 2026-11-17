@@ -1,8 +1,10 @@
 <?php
 
 use App\Application\Clock;
+use App\Help\HelpDesk;
 use App\Infrastructure\Db\SqlText;
 use App\Retention\ContactMessagesLine;
+use App\Retention\HelpTicketsLine;
 use App\Retention\PasswordLinksLine;
 use App\Retention\PaymentEventsLine;
 use App\Retention\PlatformAuditLine;
@@ -20,6 +22,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 use Tests\Support\FixedClock;
 use Tests\Support\SeamLog;
@@ -41,11 +44,12 @@ pest()->use(RefreshDatabase::class);
  * session's zone may decide nothing.
  *
  * Each line is proven in every state its table holds a row in, one state to a case: contact
- * messages archived and not, webhook events processed and never processed, payment events
- * verified, processed or not, and refused. A line sweeps a row past its period whatever its
- * state, so a line that kept a state would keep that state's row a second past. Where a row
- * carries an instant later than the one its line reads, an archived message's archived_at and a
- * processed event's processed_at and updated_at, the later one is a minute on, so the row a
+ * messages archived and not, help tickets open and closed, webhook events processed and never
+ * processed, payment events verified, processed or not, and refused. A line sweeps a row past its
+ * period whatever its state, so a line that kept a state would keep that state's row a second
+ * past. Where a row carries an instant later than the one its line reads, an archived message's
+ * archived_at, a closed ticket's updated_at and a processed event's processed_at and updated_at,
+ * the later one is a minute on, so the row a
  * second past holds it inside the period and a line counting from it rather than from created_at
  * would keep that row too.
  *
@@ -77,7 +81,7 @@ function retentionSweepAt(string $now, string $zone = 'UTC'): array
 /**
  * One row of the line's table, in the state the line's name gives, whose instant, the one the line
  * reads, is the given one. Any later instant the state carries is a minute on: when an archived
- * message was archived, and when a processed event was marked, the mark writing processed_at and
+ * message was archived, when a closed ticket was closed, and when a processed event was marked, the mark writing processed_at and
  * updated_at together as BillingWebhook and PaymentEvents do.
  */
 function retentionRow(string $line, DateTimeImmutable $at): int
@@ -94,6 +98,20 @@ function retentionRow(string $line, DateTimeImmutable $at): int
             'locale' => 'en',
             'created_at' => $instant,
             'archived_at' => $line === 'contact_messages archived' ? $later : null,
+        ]),
+        // A ticket whose last message, the platform's reply, is the instant, opened an hour
+        // before it; the closed one was closed a minute on, which moves its updated_at and never
+        // its last message's time.
+        'help_tickets open', 'help_tickets closed' => DB::table('help_tickets')->insertGetId([
+            'uuid' => (string) Str::uuid(),
+            'tenant_id' => retentionTenant(),
+            'subject' => 'Where do I set my opening hours?',
+            'status' => $line === 'help_tickets closed' ? 'closed' : 'open',
+            'last_message_at' => $instant,
+            'last_side' => 'platform',
+            'last_platform_at' => $instant,
+            'created_at' => SqlText::instant($at->sub(new DateInterval('PT1H'))),
+            'updated_at' => $line === 'help_tickets closed' ? $later : $instant,
         ]),
         // Ended ten minutes after it opened and twenty before its sixty were up, so a session
         // whose end is a second past the boundary has its expiry still inside it, and a line
@@ -220,6 +238,7 @@ function retentionKept(string $line, array $ids): array
 {
     $kept = match ($line) {
         'contact_messages unarchived', 'contact_messages archived' => DB::table('contact_messages')->whereIn('id', $ids)->pluck('id')->all(),
+        'help_tickets open', 'help_tickets closed' => DB::table('help_tickets')->whereIn('id', $ids)->pluck('id')->all(),
         'support_sessions ended', 'support_sessions never ended' => DB::table('support_sessions')->whereIn('id', $ids)->pluck('id')->all(),
         'users password link' => DB::table('users')->whereIn('id', $ids)->whereNotNull('password_link_hash')->pluck('id')->all(),
         'platform_audit_log' => DB::table('platform_audit_log')->whereIn('id', $ids)->pluck('id')->all(),
@@ -263,6 +282,8 @@ it('keeps a row one second inside its period, and the row at its boundary where 
 })->with([
     'contact_messages, twelve months from created_at, unarchived' => ['contact_messages unarchived', 'contact_messages', '2025-10-29 09:00:00', '2025-03-29 01:30:00', true],
     'contact_messages, twelve months from created_at, archived a minute on' => ['contact_messages archived', 'contact_messages', '2025-10-29 09:00:00', '2025-03-29 01:30:00', true],
+    'help_tickets, twelve months from the last message, open' => ['help_tickets open', 'help_tickets', '2025-10-29 09:00:00', '2025-03-29 01:30:00', true],
+    'help_tickets, twelve months from the last message and not from updated_at, closed a minute on' => ['help_tickets closed', 'help_tickets', '2025-10-29 09:00:00', '2025-03-29 01:30:00', true],
     'support_sessions, ninety days from ended_at' => ['support_sessions ended', 'support_sessions', '2026-07-31 09:00:00', '2025-12-29 01:30:00', true],
     'support_sessions, ninety days from expires_at where never ended' => ['support_sessions never ended', 'support_sessions', '2026-07-31 09:00:00', '2025-12-29 01:30:00', true],
     'users, a password link nulled once its expiry has passed, at its own instant as the link reads it' => ['users password link', 'users', '2026-10-29 09:00:00', '2026-03-29 01:30:00', false],
@@ -326,7 +347,7 @@ it('runs its lines in order, the central lines, then the stranded rows\' after t
     $hash = DB::table('users')->where('id', retentionRow('users password link', $past))->value('password_link_hash');
     $email = DB::table('users')->whereNotNull('password_link_hash')->value('email');
 
-    foreach (['contact_messages unarchived', 'support_sessions ended', 'support_sessions never ended', 'platform_audit_log', 'webhook_events processed', 'payment_events verified and processed'] as $line) {
+    foreach (['contact_messages unarchived', 'help_tickets open', 'support_sessions ended', 'support_sessions never ended', 'platform_audit_log', 'webhook_events processed', 'payment_events verified and processed'] as $line) {
         retentionRow($line, $past);
     }
 
@@ -336,6 +357,7 @@ it('runs its lines in order, the central lines, then the stranded rows\' after t
 
     expect($swept)->toBe(['code' => 0, 'output' => implode("\n", [
         'contact_messages: 1 row swept.',
+        'help_tickets: 1 row swept.',
         'support_sessions: 2 rows swept.',
         'users: 1 row swept.',
         'platform_audit_log: 1 row swept.',
@@ -346,6 +368,7 @@ it('runs its lines in order, the central lines, then the stranded rows\' after t
     ])])
         ->and($this->log->records)->toBe([
             ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'contact_messages', 'count' => 1]],
+            ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'help_tickets', 'count' => 1]],
             ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'support_sessions', 'count' => 2]],
             ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'users', 'count' => 1]],
             ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'platform_audit_log', 'count' => 1]],
@@ -355,7 +378,7 @@ it('runs its lines in order, the central lines, then the stranded rows\' after t
             ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'subscriptions', 'count' => 1]],
         ]);
 
-    foreach (['Ada Prospect', 'ada@prospect.example', 'group of six', 'cus_luna', 'owner@luna.example', $hash, $email, $event, $checkout?->provider_customer_id, $checkout?->checkout_session_id, $checkout?->checkout_url] as $content) {
+    foreach (['Ada Prospect', 'ada@prospect.example', 'group of six', 'opening hours', 'cus_luna', 'owner@luna.example', $hash, $email, $event, $checkout?->provider_customer_id, $checkout?->checkout_session_id, $checkout?->checkout_url] as $content) {
         expect($content)->toBeString()
             ->and($this->log->text())->not->toContain($content)
             ->and($swept['output'])->not->toContain($content);
@@ -390,6 +413,7 @@ it('runs each line as one statement in a transaction of its own, in order, bindi
 
     expect(array_values(array_filter($trace)))->toBe([
         'begin', 'delete from contact_messages', 'commit',
+        'begin', 'delete from help_tickets', 'commit',
         'begin', 'delete from support_sessions', 'commit',
         'begin', 'update users', 'commit',
         'begin', 'delete from platform_audit_log', 'commit',
@@ -409,7 +433,7 @@ it('sweeps nothing a second time in the same instant, the rows inside their peri
     $inside = new DateTimeImmutable('2026-10-28 09:00:00', new DateTimeZone('UTC'));
     $kept = [];
 
-    foreach (['contact_messages unarchived', 'support_sessions ended', 'support_sessions never ended', 'platform_audit_log', 'webhook_events processed', 'payment_events verified and processed'] as $line) {
+    foreach (['contact_messages unarchived', 'help_tickets open', 'help_tickets closed', 'support_sessions ended', 'support_sessions never ended', 'platform_audit_log', 'webhook_events processed', 'payment_events verified and processed'] as $line) {
         retentionRow($line, $past);
         $kept[$line] = retentionRow($line, $inside);
     }
@@ -423,7 +447,7 @@ it('sweeps nothing a second time in the same instant, the rows inside their peri
     $this->log->records = [];
 
     expect(retentionSweepAt('2026-10-29 09:00:00')['code'])->toBe(0)
-        ->and(retentionLogged($this->log))->toBe(['contact_messages' => 0, 'support_sessions' => 0, 'users' => 0, 'platform_audit_log' => 0, 'webhook_events' => 0, 'payment_events' => 0, 'tenants' => 0, 'subscriptions' => 0]);
+        ->and(retentionLogged($this->log))->toBe(['contact_messages' => 0, 'help_tickets' => 0, 'support_sessions' => 0, 'users' => 0, 'platform_audit_log' => 0, 'webhook_events' => 0, 'payment_events' => 0, 'tenants' => 0, 'subscriptions' => 0]);
 
     foreach ($kept as $line => $id) {
         expect(retentionKept($line, [$id]))->toBe([$id]);
@@ -434,11 +458,11 @@ it('stops at a line that throws, the earlier lines\' work committed and standing
     $past = new DateTimeImmutable('2024-01-01 00:00:00', new DateTimeZone('UTC'));
     $rows = [];
 
-    foreach (['contact_messages unarchived', 'support_sessions ended', 'users password link', 'platform_audit_log', 'webhook_events processed', 'payment_events verified and processed', 'subscriptions checkout'] as $line) {
+    foreach (['contact_messages unarchived', 'help_tickets open', 'support_sessions ended', 'users password link', 'platform_audit_log', 'webhook_events processed', 'payment_events verified and processed', 'subscriptions checkout'] as $line) {
         $rows[$line] = retentionRow($line, $past);
     }
 
-    // The fourth line's table is not there, so its statement fails as a statement can: the
+    // The fifth line's table is not there, so its statement fails as a statement can: the
     // database refuses it with an SQLSTATE and a message that spells the statement.
     DB::statement('alter table platform_audit_log rename to platform_audit_log_away');
 
@@ -448,11 +472,13 @@ it('stops at a line that throws, the earlier lines\' work committed and standing
         ->and($stopped['output'])->toEndWith('platform_audit_log: the line failed, and the sweep stopped.')
         ->and($this->log->records)->toBe([
             ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'contact_messages', 'count' => 1]],
+            ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'help_tickets', 'count' => 1]],
             ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'support_sessions', 'count' => 1]],
             ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => 'users', 'count' => 1]],
             ['level' => 'error', 'message' => 'The retention sweep stopped', 'context' => ['table' => 'platform_audit_log', 'exception' => QueryException::class, 'sqlstate' => '42P01']],
         ])
         ->and(retentionKept('contact_messages unarchived', [$rows['contact_messages unarchived']]))->toBe([])
+        ->and(retentionKept('help_tickets open', [$rows['help_tickets open']]))->toBe([])
         ->and(retentionKept('support_sessions ended', [$rows['support_sessions ended']]))->toBe([])
         ->and(retentionKept('users password link', [$rows['users password link']]))->toBe([])
         ->and(DB::table('platform_audit_log_away')->where('id', $rows['platform_audit_log'])->count())->toBe(1)
@@ -464,7 +490,7 @@ it('stops at a line that throws, the earlier lines\' work committed and standing
     $this->log->records = [];
 
     expect(retentionSweepAt('2026-10-30 09:00:00')['code'])->toBe(0)
-        ->and(retentionLogged($this->log))->toBe(['contact_messages' => 0, 'support_sessions' => 0, 'users' => 0, 'platform_audit_log' => 1, 'webhook_events' => 1, 'payment_events' => 1, 'tenants' => 0, 'subscriptions' => 1]);
+        ->and(retentionLogged($this->log))->toBe(['contact_messages' => 0, 'help_tickets' => 0, 'support_sessions' => 0, 'users' => 0, 'platform_audit_log' => 1, 'webhook_events' => 1, 'payment_events' => 1, 'tenants' => 0, 'subscriptions' => 1]);
 });
 
 it('touches nothing of a tenant\'s schema beside the central one, its own trail, links and sessions long past any period of the central lines', function () {
@@ -478,7 +504,7 @@ it('touches nothing of a tenant\'s schema beside the central one, its own trail,
 
     // The central lines alone, by name: the tenant lines of the sweep reach these rows by
     // design.
-    foreach ([ContactMessagesLine::class, SupportSessionsLine::class, PasswordLinksLine::class, PlatformAuditLine::class, WebhookEventsLine::class, PaymentEventsLine::class] as $line) {
+    foreach ([ContactMessagesLine::class, HelpTicketsLine::class, SupportSessionsLine::class, PasswordLinksLine::class, PlatformAuditLine::class, WebhookEventsLine::class, PaymentEventsLine::class] as $line) {
         app($line)->apply();
     }
 
@@ -486,6 +512,33 @@ it('touches nothing of a tenant\'s schema beside the central one, its own trail,
         ->and(DB::table($schema.'.audit_log')->count())->toBe(1)
         ->and(DB::table($schema.'.customer_links')->count())->toBe(1)
         ->and(DB::table($schema.'.customer_sessions')->count())->toBe(1);
+});
+
+it('deletes a help ticket past its twelve months with its messages and its read marks, and a close and a reopen since leave its clock where it was', function () {
+    $past = new DateTimeImmutable('2025-10-29 08:00:00', new DateTimeZone('UTC'));
+    $ticket = retentionRow('help_tickets open', $past);
+    $user = DB::table('users')->insertGetId(['tenant_id' => retentionTenant(), 'name' => 'Lin Manager', 'email' => 'lin@luna.example', 'password' => 'not a hash anybody checks', 'role' => 'manager']);
+    DB::table('help_messages')->insert([
+        ['ticket_id' => $ticket, 'side' => 'business', 'user_id' => $user, 'operator_id' => null, 'author_name' => 'Lin Manager', 'body' => 'Where do I set my opening hours?', 'created_at' => SqlText::instant($past->sub(new DateInterval('PT1H')))],
+        ['ticket_id' => $ticket, 'side' => 'platform', 'user_id' => null, 'operator_id' => retentionOperator(), 'author_name' => 'Pat Operator', 'body' => 'On the Staff screen.', 'created_at' => SqlText::instant($past)],
+    ]);
+    DB::table('help_reads')->insert(['ticket_id' => $ticket, 'user_id' => $user, 'read_at' => SqlText::instant($past)]);
+    $kept = retentionRow('help_tickets open', new DateTimeImmutable('2025-10-29 10:00:00', new DateTimeZone('UTC')));
+
+    $before = DB::table('help_tickets')->where('id', $ticket)->first(['last_message_at', 'updated_at']);
+
+    app()->instance(Clock::class, FixedClock::at('2026-10-28 09:00:00'));
+    app(HelpDesk::class)->close($ticket, retentionOperator());
+    app(HelpDesk::class)->reopen($ticket, retentionOperator());
+    $after = DB::table('help_tickets')->where('id', $ticket)->first(['last_message_at', 'updated_at']);
+
+    expect($after?->last_message_at)->toBe($before?->last_message_at)
+        ->and($after?->updated_at)->not->toBe($before?->updated_at)
+        ->and(retentionSweepAt('2026-10-29 09:00:00')['code'])->toBe(0)
+        ->and(retentionKept('help_tickets open', [$ticket, $kept]))->toBe([$kept])
+        ->and(DB::table('help_messages')->where('ticket_id', $ticket)->count())->toBe(0)
+        ->and(DB::table('help_reads')->where('ticket_id', $ticket)->count())->toBe(0)
+        ->and(DB::table('users')->where('id', $user)->count())->toBe(1);
 });
 
 it('runs daily at 04:30 Europe/Athens in the console schedule, without overlapping, after the demo\'s reset at 04:00', function () {

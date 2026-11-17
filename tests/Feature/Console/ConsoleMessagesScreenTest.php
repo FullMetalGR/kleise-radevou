@@ -25,7 +25,7 @@ pest()->use(RefreshDatabase::class);
  * writes archived_at as the clock's now where it is null and records contact_archived with the
  * message's id under message in the same transaction; a repeat writes and records nothing and
  * answers its sentence, and an id no row holds is the console's
- * 404. The rail reads Tenants, Messages, Audit.
+ * 404. The rail reads Tenants, Messages, Tickets, Audit.
  */
 
 beforeEach(function () {
@@ -262,15 +262,17 @@ it('reads a page in two statements, the count and the messages, whatever it hold
     expect($statements)->toHaveCount(2);
 });
 
-it('hands the console\'s rail as Tenants, Messages, Audit, Messages lit on the messages screen', function () {
+it('hands the console\'s rail as Tenants, Messages, Tickets, Audit, Messages lit on the messages screen', function () {
     $pat = addOperator();
     $tenants = ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null];
     $messages = ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null];
+    $tickets = ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null];
     $audit = ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null];
 
     messagesScreen($this, $pat)->assertInertia(fn (Assert $page) => $page->where('nav', [
         [...$tenants, 'current' => false],
         [...$messages, 'current' => true],
+        [...$tickets, 'current' => false],
         [...$audit, 'current' => false],
     ]));
 });

@@ -128,9 +128,9 @@ it('sends a message about no tenant as it sends any other, to the one address gi
     expect(array_map(fn ($address): string => $address->getAddress(), seamOnly()->getTo()))->toBe(['perpetua.vandersnoot@example.test']);
 });
 
-it('names the platform\'s messages and nothing else: the verification link, the trial notice, the closing email, the operator\'s sign-in notice, the suspension\'s two, the set-password link, the contact form\'s message, the welcome email and the console\'s reopen', function () {
+it('names the platform\'s messages and nothing else: the verification link, the trial notice, the closing email, the operator\'s sign-in notice, the suspension\'s two, the set-password link, the contact form\'s message, the welcome email, the console\'s reopen, and a help ticket\'s two', function () {
     expect(array_map(fn (PlatformMessageKind $kind): string => $kind->value, PlatformMessageKind::cases()))
-        ->toBe(['verification', 'trial_notice', 'closing', 'operator_sign_in', 'suspension', 'resumption', 'set_password', 'contact_message', 'welcome', 'reopened']);
+        ->toBe(['verification', 'trial_notice', 'closing', 'operator_sign_in', 'suspension', 'resumption', 'set_password', 'contact_message', 'welcome', 'reopened', 'help_message', 'help_reply']);
 });
 
 it('sets the reply-to a message names, the contact form\'s sender, and nothing else of the message changes', function () {

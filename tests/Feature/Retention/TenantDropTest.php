@@ -26,6 +26,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Psr\Log\LoggerInterface;
 use Tests\Support\FakeBillingProvider;
@@ -40,14 +41,16 @@ pest()->use(DatabaseTruncation::class);
 
 /*
  * The drop, the retention sweep's last line: thirty days after a tenant closed, its schema
- * dropped, its users, payment routes and support sessions deleted, the billing notifications
+ * dropped, its help tickets with their messages and read marks, its users, payment routes and
+ * support sessions deleted, the billing notifications
  * naming its provider customer deleted and its uploaded images deleted from the disk, the central
  * row written closed with closed_at and its slug released, the subscriptions row, the platform
  * audit rows and the payment events kept, one transaction per tenant in id order, a neighbouring
  * tenant whole.
  *
  * luna is the tenant with everything: a second user, a payment connection with its route, a
- * support session and its platform audit row, a logo and a cover on the disk, a subscriptions row
+ * support session and its platform audit row, a help ticket with a message from each side and a
+ * read mark, a logo and a cover on the disk, a subscriptions row
  * naming its provider customer and a notification naming it, a payment event, a booking with its
  * items, its intake row and its trail. pier, the demo's other tenant, holds the same of its own
  * and must come through whole. luna is closed by the one writer of a close, the owner's, on the
@@ -77,14 +80,17 @@ afterEach(function () {
     dropDemoSchemas();
     dropSiteDemo();
 
-    foreach (['platform_audit_log', 'support_sessions', 'operators', 'webhook_events', 'payment_events', 'payment_routes', 'subscriptions', 'users', 'tenants'] as $table) {
+    // The help tickets first: they name the tenant and their messages the operator, neither by a
+    // cascade, and their messages and read marks go with them.
+    foreach (['help_tickets', 'platform_audit_log', 'support_sessions', 'operators', 'webhook_events', 'payment_events', 'payment_routes', 'subscriptions', 'users', 'tenants'] as $table) {
         DB::table($table)->delete();
     }
 });
 
 /**
  * Everything a tenant holds, written for the slug: a second user, a connection with its route, a
- * support session opened by the operator with its platform audit row, a logo and a cover on the
+ * support session opened by the operator with its platform audit row, a help ticket the second user
+ * opened and the operator answered, with the second user's read mark, a logo and a cover on the
  * disk named on the settings row, a subscriptions row naming the customer cus_{slug}, a
  * notification naming that customer, a payment event naming the tenant, and a booking with its
  * item, its intake row and its trail. Answers the tenant.
@@ -95,9 +101,16 @@ function dropEverything(string $slug): Tenant
     $schema = $tenant->schema_name;
     $images = app(TenantImages::class);
 
-    DB::table('users')->insert(['tenant_id' => $tenant->id, 'name' => 'Sam Staff', 'email' => 'sam@'.$slug.'.example', 'password' => bcrypt('correct horse battery staple'), 'role' => 'staff']);
+    $sam = DB::table('users')->insertGetId(['tenant_id' => $tenant->id, 'name' => 'Sam Staff', 'email' => 'sam@'.$slug.'.example', 'password' => bcrypt('correct horse battery staple'), 'role' => 'staff']);
     connectPaymentFake(slug: $slug);
-    app(SupportSessions::class)->open(addOperator('pat.'.$slug.'@inbox.example'), $tenant);
+    $operator = addOperator('pat.'.$slug.'@inbox.example');
+    app(SupportSessions::class)->open($operator, $tenant);
+    $ticket = DB::table('help_tickets')->insertGetId(['uuid' => (string) Str::uuid(), 'tenant_id' => $tenant->id, 'subject' => 'Where do I set my opening hours?', 'status' => 'open', 'last_message_at' => '2026-11-01 10:00:00+00', 'last_side' => 'platform', 'last_platform_at' => '2026-11-01 10:00:00+00', 'created_at' => '2026-11-01 09:00:00+00', 'updated_at' => '2026-11-01 10:00:00+00']);
+    DB::table('help_messages')->insert([
+        ['ticket_id' => $ticket, 'side' => 'business', 'user_id' => $sam, 'operator_id' => null, 'author_name' => 'Sam Staff', 'body' => 'Where do I set my opening hours?', 'created_at' => '2026-11-01 09:00:00+00'],
+        ['ticket_id' => $ticket, 'side' => 'platform', 'user_id' => null, 'operator_id' => $operator->id, 'author_name' => $operator->name, 'body' => 'On the Staff screen.', 'created_at' => '2026-11-01 10:00:00+00'],
+    ]);
+    DB::table('help_reads')->insert(['ticket_id' => $ticket, 'user_id' => $sam, 'read_at' => '2026-11-01 10:00:00+00']);
     settingsOf($slug)->update([
         'brand_logo_path' => $images->store($tenant, ImageKind::Logo, UploadedFile::fake()->image('logo.png', 60, 40)),
         'cover_path' => $images->store($tenant, ImageKind::Cover, UploadedFile::fake()->image('cover.png', 120, 80)),
@@ -147,6 +160,7 @@ function dropHoldings(int $tenantId, string $schema, string $customer): array
         'users' => $count('users'),
         'payment_routes' => $count('payment_routes'),
         'support_sessions' => $count('support_sessions'),
+        'help_tickets' => $count('help_tickets'),
         'webhook_events' => DB::table('webhook_events')->whereRaw("payload->>'customer' = ?", [$customer])->count(),
         'subscriptions' => $count('subscriptions'),
         'platform_audit_log' => $count('platform_audit_log'),
@@ -199,8 +213,10 @@ it('drops a tenant thirty days after its close, leaving nothing but the central 
     DB::table('webhook_events')->insert(['provider_event_id' => 'evt_nobody', 'type' => 'fake.other', 'payload' => FakeBillingProvider::notice('evt_nobody', NoticeKind::Other)]);
     $pierBefore = dropHoldings($pier->id, 'tenant_pier', 'cus_pier');
     $pierBookings = DB::table('tenant_pier.bookings')->count();
+    $tickets = fn (Tenant $tenant): array => DB::table('help_tickets')->where('tenant_id', $tenant->id)->pluck('id')->all();
+    [$lunaTickets, $pierTickets] = [$tickets($luna), $tickets($pier)];
 
-    expect(dropHoldings($luna->id, 'tenant_luna', 'cus_luna'))->toBe(['schema' => true, 'users' => 2, 'payment_routes' => 1, 'support_sessions' => 1, 'webhook_events' => 1, 'subscriptions' => 1, 'platform_audit_log' => 1, 'payment_events' => 1])
+    expect(dropHoldings($luna->id, 'tenant_luna', 'cus_luna'))->toBe(['schema' => true, 'users' => 2, 'payment_routes' => 1, 'support_sessions' => 1, 'help_tickets' => 1, 'webhook_events' => 1, 'subscriptions' => 1, 'platform_audit_log' => 1, 'payment_events' => 1])
         ->and(dropFiles('luna'))->toHaveCount(2);
 
     // The acceptance of the terms is no personal data and stays on the row.
@@ -210,7 +226,7 @@ it('drops a tenant thirty days after its close, leaving nothing but the central 
     $row = (array) DB::selectOne(sprintf('select status, slug, name, schema_name, %s as closed_at, %s as closing_at, %s as terms_accepted_at, terms_version::text as terms_version from tenants where id = ?', SqlText::instantColumn('closed_at'), SqlText::instantColumn('closing_at'), SqlText::instantColumn('terms_accepted_at')), [$luna->id]);
 
     expect($code)->toBe(Command::SUCCESS)
-        ->and(dropHoldings($luna->id, 'tenant_luna', 'cus_luna'))->toBe(['schema' => false, 'users' => 0, 'payment_routes' => 0, 'support_sessions' => 0, 'webhook_events' => 0, 'subscriptions' => 1, 'platform_audit_log' => 1, 'payment_events' => 1])
+        ->and(dropHoldings($luna->id, 'tenant_luna', 'cus_luna'))->toBe(['schema' => false, 'users' => 0, 'payment_routes' => 0, 'support_sessions' => 0, 'help_tickets' => 0, 'webhook_events' => 0, 'subscriptions' => 1, 'platform_audit_log' => 1, 'payment_events' => 1])
         ->and(dropFiles('luna'))->toBe([])
         ->and(Storage::disk(TenantImages::DISK)->directoryExists('tenants/luna'))->toBeFalse()
         ->and($row)->toBe([
@@ -229,6 +245,10 @@ it('drops a tenant thirty days after its close, leaving nothing but the central 
         ->and(dropHoldings($pier->id, 'tenant_pier', 'cus_pier'))->toBe($pierBefore)
         ->and(DB::table('tenant_pier.bookings')->count())->toBe($pierBookings)
         ->and(DB::table('tenant_pier.booking_meta')->count())->toBe(1)
+        ->and(DB::table('help_messages')->whereIn('ticket_id', $lunaTickets)->count())->toBe(0)
+        ->and(DB::table('help_reads')->whereIn('ticket_id', $lunaTickets)->count())->toBe(0)
+        ->and(DB::table('help_messages')->whereIn('ticket_id', $pierTickets)->count())->toBe(2)
+        ->and(DB::table('help_reads')->whereIn('ticket_id', $pierTickets)->count())->toBe(1)
         ->and(dropFiles('pier'))->toHaveCount(2)
         ->and(Tenant::query()->whereKey($pier->id)->sole()->status)->toBe(TenantStatus::Active)
         ->and(Tenant::query()->whereKey($pier->id)->sole()->slug)->toBe('pier')
@@ -238,9 +258,9 @@ it('drops a tenant thirty days after its close, leaving nothing but the central 
         ->and(array_values(array_filter($this->log->records, fn (array $record): bool => ($record['context']['table'] ?? null) === RetentionSweepCommand::DROPPED && isset($record['context']['tenant']))))->toBe([[
             'level' => 'info',
             'message' => 'Retention sweep',
-            'context' => ['tenant' => $luna->id, 'table' => 'tenants', 'schema' => 'tenant_luna', 'users' => 2, 'payment_routes' => 1, 'support_sessions' => 1, 'webhook_events' => 1],
+            'context' => ['tenant' => $luna->id, 'table' => 'tenants', 'schema' => 'tenant_luna', 'users' => 2, 'payment_routes' => 1, 'support_sessions' => 1, 'help_tickets' => 1, 'webhook_events' => 1],
         ]])
-        ->and(Artisan::output())->toContain('tenant_luna: dropped, tenant '.$luna->id.' closed; 2 users, 1 payment routes, 1 support sessions and 1 webhook events deleted.');
+        ->and(Artisan::output())->toContain('tenant_luna: dropped, tenant '.$luna->id.' closed; 2 users, 1 payment routes, 1 support sessions, 1 help tickets and 1 webhook events deleted.');
 });
 
 it('keeps a closed tenant whole a second inside its window, the row closing and its schema, its users and its files standing, and drops it at the window\'s end', function () {
@@ -248,7 +268,7 @@ it('keeps a closed tenant whole a second inside its window, the row closing and 
     dropClose();
 
     expect(dropSweep('2026-12-02 05:59:59'))->toBe(Command::SUCCESS)
-        ->and(dropHoldings($luna->id, 'tenant_luna', 'cus_luna'))->toBe(['schema' => true, 'users' => 2, 'payment_routes' => 1, 'support_sessions' => 1, 'webhook_events' => 1, 'subscriptions' => 1, 'platform_audit_log' => 1, 'payment_events' => 1])
+        ->and(dropHoldings($luna->id, 'tenant_luna', 'cus_luna'))->toBe(['schema' => true, 'users' => 2, 'payment_routes' => 1, 'support_sessions' => 1, 'help_tickets' => 1, 'webhook_events' => 1, 'subscriptions' => 1, 'platform_audit_log' => 1, 'payment_events' => 1])
         ->and(dropFiles('luna'))->toHaveCount(2)
         ->and(DB::table('tenants')->where('id', $luna->id)->value('status'))->toBe('closing')
         ->and(DB::table('tenants')->where('id', $luna->id)->value('slug'))->toBe('luna');
@@ -272,7 +292,7 @@ it('keeps a tenant twenty-nine days into its window whole beside one past it, dr
         ->and(dropSweep('2026-12-02 06:00:00'))->toBe(Command::SUCCESS)
         ->and(DB::table('tenants')->where('id', $luna->id)->value('status'))->toBe('closed')
         ->and(DB::table('tenants')->where('id', $pier->id)->value('status'))->toBe('closing')
-        ->and(dropHoldings($pier->id, 'tenant_pier', 'cus_pier'))->toBe(['schema' => true, 'users' => 2, 'payment_routes' => 1, 'support_sessions' => 1, 'webhook_events' => 1, 'subscriptions' => 1, 'platform_audit_log' => 1, 'payment_events' => 1]);
+        ->and(dropHoldings($pier->id, 'tenant_pier', 'cus_pier'))->toBe(['schema' => true, 'users' => 2, 'payment_routes' => 1, 'support_sessions' => 1, 'help_tickets' => 1, 'webhook_events' => 1, 'subscriptions' => 1, 'platform_audit_log' => 1, 'payment_events' => 1]);
 });
 
 it('drops a row a reopening took first nothing, answering null, since the drop reads the row again under its lock', function () {

@@ -507,6 +507,7 @@ it('renders the form inside the console\'s shell with the kinds of business, the
             ->where('nav', [
                 ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
                 ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
+                ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
                 ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
             ]));
 

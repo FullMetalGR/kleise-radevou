@@ -454,6 +454,7 @@ it('lights Tenants on the rail on a tenant\'s detail', function () {
     detailScreen($this, addOperator(), 'luna')->assertInertia(fn (Assert $page) => $page->where('nav', [
         ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
         ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
         ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
     ]));
 });
@@ -463,7 +464,7 @@ it('answers the console\'s 404 inside its shell for {case}, the rail lighting no
 
     detailScreen($this, addOperator(), $slug)
         ->assertNotFound()
-        ->assertInertia(fn (Assert $page) => $page->component('console/NotFound')->where('operator', 'Pat Operator')->has('nav', 3)
+        ->assertInertia(fn (Assert $page) => $page->component('console/NotFound')->where('operator', 'Pat Operator')->has('nav', 4)
             ->where('nav', fn (Collection $nav): bool => $nav->where('current', true)->isEmpty()));
 })->with([
     'a slug no row holds' => ['nobody'],

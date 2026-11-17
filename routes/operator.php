@@ -14,6 +14,7 @@ use App\Http\Controllers\Console\SuspensionController;
 use App\Http\Controllers\Console\TenantController;
 use App\Http\Controllers\Console\TenantFeaturesController;
 use App\Http\Controllers\Console\TenantsController;
+use App\Http\Controllers\Console\TicketsController;
 use App\Http\Middleware\HandleConsoleInertiaRequests;
 use App\Http\Middleware\PublicRoute;
 use App\Http\Middleware\RequiresOperator;
@@ -58,6 +59,11 @@ Route::name('console.')->middleware(HandleConsoleInertiaRequests::class)->group(
     Route::post('/support/{id}/end', SupportEndController::class)->middleware(RequiresOperator::NAME)->name('support.end');
     Route::get('/messages', [MessagesController::class, 'index'])->middleware(RequiresOperator::NAME)->name('messages');
     Route::post('/messages/{id}/archive', [MessagesController::class, 'archive'])->middleware(RequiresOperator::NAME)->name('messages.archive');
+    Route::get('/tickets', [TicketsController::class, 'index'])->middleware(RequiresOperator::NAME)->name('tickets');
+    Route::get('/tickets/{id}', [TicketsController::class, 'show'])->middleware(RequiresOperator::NAME)->name('tickets.show');
+    Route::post('/tickets/{id}/messages', [TicketsController::class, 'reply'])->middleware(RequiresOperator::NAME)->name('tickets.reply');
+    Route::post('/tickets/{id}/close', [TicketsController::class, 'close'])->middleware(RequiresOperator::NAME)->name('tickets.close');
+    Route::post('/tickets/{id}/reopen', [TicketsController::class, 'reopen'])->middleware(RequiresOperator::NAME)->name('tickets.reopen');
     Route::get('/audit', AuditController::class)->middleware(RequiresOperator::NAME)->name('audit');
 
     // Last: any other GET on this host is the console's 404 inside its shell for an operator and

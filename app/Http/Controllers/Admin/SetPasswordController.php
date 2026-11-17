@@ -38,6 +38,15 @@ use Symfony\Component\HttpFoundation\Response;
  * URL the page was opened at. The page's one prop of its own is floor, PasswordRule's floor, which
  * its help line names.
  *
+ * Leaving the page ends its document. The admin's client would otherwise carry the sign-in page and
+ * then the whole admin inside the document this page began, which sends no Referer for as long as
+ * it lives, and a write that answers by going back to the screen it came from would find no screen
+ * to go back to. So every way out is a whole page load: the password set, the link found dead by
+ * the POST, and the link found dead when the page is asked for, as the client asks for it again
+ * after a refused password, the link having died meanwhile. The admin's client is told the address
+ * and loads it as a new document; a plain request, a mail link's or a form post, is redirected as
+ * ever. The flash waits in the session for that load either way.
+ *
  * Its words are the shell's set_password group, its two flashes the shell's flashes, worded here in
  * the request's language as the sign-in page's are: with nobody signed in, the tenant default,
  * never the link's user's own choice, so the page and the sign-in page it lands on agree.
@@ -62,7 +71,7 @@ final readonly class SetPasswordController
     public function show(Request $request, string $token): Response
     {
         if (! $this->links->live($this->current->get(), $token)) {
-            return self::expired($request);
+            return Inertia::location(self::expired($request));
         }
 
         $response = Inertia::render('auth/SetPassword', ['floor' => PasswordRule::FLOOR_CHARACTERS])->toResponse($request);
@@ -81,16 +90,16 @@ final readonly class SetPasswordController
         return self::expired($request);
     }
 
-    public function store(SetPasswordRequest $request, string $token): RedirectResponse
+    public function store(SetPasswordRequest $request, string $token): Response
     {
         if (! $this->links->set($this->current->get(), $token, $request->password())) {
-            return self::expired($request);
+            return Inertia::location(self::expired($request));
         }
 
         $request->session()->regenerate(true);
         $request->session()->flash('flash', ['kind' => 'success', 'message' => __(self::SET)]);
 
-        return redirect(AdminSession::at($request, AdminSession::LOGIN));
+        return Inertia::location(redirect(AdminSession::at($request, AdminSession::LOGIN)));
     }
 
     private static function expired(Request $request): RedirectResponse

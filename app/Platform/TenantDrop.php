@@ -36,16 +36,20 @@ use UnexpectedValueException;
  * first leaves the row standing and the drop answers null; one waiting behind the drop finds the
  * row closed. Then, in order: the schema dropped, cascade, by its schema_name, under ExclusiveStep's
  * lock timeout, since a DROP SCHEMA takes ACCESS EXCLUSIVE on every table in it and must not queue
- * a reader's request behind it for longer; the tenant's users, payment routes and support sessions
- * deleted by tenant_id; the billing notifications naming the tenant's provider customer deleted,
- * the customer read from the subscriptions row and found in each payload where the bound billing
- * provider's own shape carries it (BillingProvider::customerPath()), a notification naming no
- * customer there being left to the ninety days of its own line; and the row written closed, its
- * closed_at the clock's now as UTC text with its offset and its slug nulled, which releases the
- * address for a new signup. The schema_name and the name are kept, and so are the subscriptions
- * row, the platform audit rows, to their own 24 months, and the payment events, with their tenant
- * id to their ninety days. The schema is the one the slug names, refused otherwise, so the
- * statement can never name another.
+ * a reader's request behind it for longer; the tenant's users deleted by tenant_id, their read
+ * marks on help tickets with them by their cascade; the tenant's help tickets deleted by tenant_id,
+ * their messages with them by their cascade, after the users, since a user's reply on a ticket
+ * holds the user's row and then takes the ticket's, and the drop takes the two in that same order,
+ * so the reply and the drop never each hold the row the other waits for; the tenant's payment
+ * routes and support sessions deleted by tenant_id; the billing notifications naming the tenant's
+ * provider customer deleted, the customer read from the subscriptions row and found in each payload
+ * where the bound billing provider's own shape carries it (BillingProvider::customerPath()), a
+ * notification naming no customer there being left to the ninety days of its own line; and the row
+ * written closed, its closed_at the clock's now as UTC text with its offset and its slug nulled,
+ * which releases the address for a new signup. The schema_name and the name are kept, and so are
+ * the subscriptions row, the platform audit rows, to their own 24 months, and the payment events,
+ * with their tenant id to their ninety days. The schema is the one the slug names, refused
+ * otherwise, so the statement can never name another.
  *
  * After the commit the tenant's directory of uploaded images is deleted from the public disk, by
  * the slug read before the statement nulled it. A disk that refuses is logged once at error with
@@ -125,6 +129,7 @@ final readonly class TenantDrop
                 tenantId: $tenantId,
                 schema: $schema,
                 users: $db->delete('delete from users where tenant_id = ?', [$tenantId]),
+                helpTickets: $db->delete('delete from help_tickets where tenant_id = ?', [$tenantId]),
                 paymentRoutes: $db->delete('delete from payment_routes where tenant_id = ?', [$tenantId]),
                 supportSessions: $db->delete('delete from support_sessions where tenant_id = ?', [$tenantId]),
                 webhookEvents: $customer === null ? 0 : $db->delete(

@@ -12,12 +12,12 @@ use App\Platform\PlatformAuditKey;
  * reached the table.
  */
 
-it('holds the vocabulary\'s twelve actions and four keys, the console\'s close and reopen among them', function () {
+it('holds the vocabulary\'s fifteen actions and five keys, the console\'s close and reopen and the help tickets\' three acts among them', function () {
     expect(array_map(fn (PlatformAuditAction $action): string => $action->value, PlatformAuditAction::cases()))->toBe([
         'sign_in', 'sign_out', 'tenant_suspended', 'tenant_resumed', 'tenant_created',
         'features_changed', 'password_link_sent', 'support_opened', 'support_ended', 'contact_archived',
-        'tenant_closed', 'tenant_reopened',
-    ])->and(array_map(fn (PlatformAuditKey $key): string => $key->value, PlatformAuditKey::cases()))->toBe(['reason', 'features', 'user', 'message']);
+        'tenant_closed', 'tenant_reopened', 'help_ticket_replied', 'help_ticket_closed', 'help_ticket_reopened',
+    ])->and(array_map(fn (PlatformAuditKey $key): string => $key->value, PlatformAuditKey::cases()))->toBe(['reason', 'features', 'user', 'message', 'ticket']);
 });
 
 it('keeps an action with no facts as an empty payload', function () {
@@ -35,7 +35,7 @@ it('keeps a payload of declared keys holding {case}', function (array $payload) 
     'a list of strings' => [['features' => ['staff']]],
     'an empty list' => [['features' => []]],
     'a float and a boolean in a list' => [['features' => [1.5, true]]],
-    'every key at once' => [['reason' => 'Asked to', 'features' => ['staff'], 'user' => 7, 'message' => 3]],
+    'every key at once' => [['reason' => 'Asked to', 'features' => ['staff'], 'user' => 7, 'message' => 3, 'ticket' => 12]],
 ]);
 
 it('keeps an archived contact message as its id under message and nothing else', function () {
@@ -47,7 +47,7 @@ it('keeps an archived contact message as its id under message and nothing else',
 
 it('refuses a payload key outside the declared list: {case}', function (array $payload) {
     expect(fn () => new PlatformAuditEntry(PlatformAuditAction::SignIn, $payload))
-        ->toThrow(InvalidArgumentException::class, 'is outside the declared list: reason, features, user, message.');
+        ->toThrow(InvalidArgumentException::class, 'is outside the declared list: reason, features, user, message, ticket.');
 })->with([
     'an email' => [['email' => 'pat@inbox.example']],
     'a name' => [['name' => 'Pat Operator']],

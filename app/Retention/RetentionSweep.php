@@ -28,6 +28,7 @@ final readonly class RetentionSweep
 
     public function __construct(
         ContactMessagesLine $contactMessages,
+        HelpTicketsLine $helpTickets,
         SupportSessionsLine $supportSessions,
         PasswordLinksLine $passwordLinks,
         PlatformAuditLine $platformAudit,
@@ -44,7 +45,7 @@ final readonly class RetentionSweep
         LapsedSubscribersLine $lapsedSubscribers,
         CheckoutRecordsLine $checkoutRecords,
     ) {
-        $this->lines = [$contactMessages, $supportSessions, $passwordLinks, $platformAudit, $webhookEvents, $paymentEvents];
+        $this->lines = [$contactMessages, $helpTickets, $supportSessions, $passwordLinks, $platformAudit, $webhookEvents, $paymentEvents];
         $this->tenantLines = [$bookingCustomers, $bookingMeta, $auditLog, $manageTokens, $customerLinks, $customerSessions, $customerProfiles, $customerNotes];
         $this->strandedLines = [$lapsedSubscribers, $checkoutRecords];
     }

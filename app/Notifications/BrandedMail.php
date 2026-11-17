@@ -76,23 +76,40 @@ final readonly class BrandedMail
     }
 
     /**
-     * The text part: the paragraphs joined by a blank line, a link as its bare address.
+     * A value a person typed that a mail prints on one line, a subject or a name: every run of
+     * whitespace in it, line breaks among them, as one space, and none at either end. So a value
+     * typed with line breaks in it stays inside the line that names it and cannot stand as lines
+     * of its own, in a mail's subject or in its text.
+     */
+    public static function oneLine(string $value): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? preg_replace('/\s+/', ' ', $value) ?? $value);
+    }
+
+    /**
+     * The text part: the paragraphs joined by a blank line, a link as its bare address and a
+     * paragraph of a person's own lines as written.
      *
-     * @param  list<string|MailLink>  $paragraphs
+     * @param  list<string|MailLink|MailLines>  $paragraphs
      */
     public static function text(array $paragraphs): string
     {
         return implode("\n\n", array_map(
-            fn (string|MailLink $paragraph): string => $paragraph instanceof MailLink ? $paragraph->href : $paragraph,
+            fn (string|MailLink|MailLines $paragraph): string => match (true) {
+                $paragraph instanceof MailLink => $paragraph->href,
+                $paragraph instanceof MailLines => $paragraph->text,
+                default => $paragraph,
+            },
             $paragraphs,
         ));
     }
 
     /**
      * The HTML part: the same paragraphs in the layout, the subject as the document's title, and
-     * the footer giving the reason the mail was sent beside the platform's name.
+     * the footer giving the reason the mail was sent beside the platform's name. The layout keeps
+     * the line breaks of a paragraph of a person's own lines and of no other.
      *
-     * @param  list<string|MailLink>  $paragraphs
+     * @param  list<string|MailLink|MailLines>  $paragraphs
      */
     public function html(string $subject, array $paragraphs, string $reason): string
     {
@@ -102,9 +119,11 @@ final readonly class BrandedMail
             'name' => $this->brand->name,
             'tokens' => $this->brand->tokens(),
             'paragraphs' => array_map(
-                fn (string|MailLink $paragraph): array => $paragraph instanceof MailLink
-                    ? ['text' => $paragraph->href, 'href' => $paragraph->href]
-                    : ['text' => $paragraph, 'href' => null],
+                fn (string|MailLink|MailLines $paragraph): array => match (true) {
+                    $paragraph instanceof MailLink => ['text' => $paragraph->href, 'href' => $paragraph->href, 'lines' => false],
+                    $paragraph instanceof MailLines => ['text' => $paragraph->text, 'href' => null, 'lines' => true],
+                    default => ['text' => $paragraph, 'href' => null, 'lines' => false],
+                },
                 $paragraphs,
             ),
             'reason' => $reason,

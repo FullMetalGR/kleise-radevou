@@ -28,7 +28,7 @@ describe('the shell section\'s type', () => {
     });
 
     it('is the file the keyed table walks, group by group', () => {
-        const groups: (keyof ShellStrings)[] = ['nav', 'login', 'set_password', 'top_bar', 'banners', 'boundary', 'not_found', 'toaster', 'copy', 'kit', 'shared', 'validation', 'refusals', 'flashes'];
+        const groups: (keyof ShellStrings)[] = ['nav', 'login', 'set_password', 'top_bar', 'banners', 'boundary', 'not_found', 'toaster', 'copy', 'kit', 'shared', 'validation', 'help', 'refusals', 'flashes'];
 
         expect(Object.keys(ADMIN_LINES_EN.shell)).toEqual(groups);
         expect(Object.keys(KEYED_SHELL)).toEqual(groups);

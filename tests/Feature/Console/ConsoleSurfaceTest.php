@@ -66,6 +66,9 @@ function consoleAuditedWrites(): array
         'console.tenants.support' => PlatformAuditAction::SupportOpened,
         'console.support.end' => PlatformAuditAction::SupportEnded,
         'console.messages.archive' => PlatformAuditAction::ContactArchived,
+        'console.tickets.reply' => PlatformAuditAction::HelpTicketReplied,
+        'console.tickets.close' => PlatformAuditAction::HelpTicketClosed,
+        'console.tickets.reopen' => PlatformAuditAction::HelpTicketReopened,
     ];
 }
 
@@ -133,6 +136,11 @@ it('spells the console surface verb by path in registration order: the door\'s t
         'POST /support/{id}/end' => RequiresOperator::NAME,
         'GET /messages' => RequiresOperator::NAME,
         'POST /messages/{id}/archive' => RequiresOperator::NAME,
+        'GET /tickets' => RequiresOperator::NAME,
+        'GET /tickets/{id}' => RequiresOperator::NAME,
+        'POST /tickets/{id}/messages' => RequiresOperator::NAME,
+        'POST /tickets/{id}/close' => RequiresOperator::NAME,
+        'POST /tickets/{id}/reopen' => RequiresOperator::NAME,
         'GET /audit' => RequiresOperator::NAME,
         'GET /{path}' => RequiresOperator::NAME,
     ]);
@@ -158,6 +166,11 @@ it('names every console route, so the walk reads each by its name', function () 
         'console.support.end',
         'console.messages',
         'console.messages.archive',
+        'console.tickets',
+        'console.tickets.show',
+        'console.tickets.reply',
+        'console.tickets.close',
+        'console.tickets.reopen',
         'console.audit',
         'console.not-found',
     ]);

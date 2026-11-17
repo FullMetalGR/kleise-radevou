@@ -17,13 +17,14 @@ final readonly class DroppedTenant
         public int $users,
         public int $paymentRoutes,
         public int $supportSessions,
+        public int $helpTickets,
         public int $webhookEvents,
     ) {}
 
     /**
      * The counts by the table each was deleted from, as the sweep's line logs them.
      *
-     * @return array{users: int, payment_routes: int, support_sessions: int, webhook_events: int}
+     * @return array{users: int, payment_routes: int, support_sessions: int, help_tickets: int, webhook_events: int}
      */
     public function counts(): array
     {
@@ -31,6 +32,7 @@ final readonly class DroppedTenant
             'users' => $this->users,
             'payment_routes' => $this->paymentRoutes,
             'support_sessions' => $this->supportSessions,
+            'help_tickets' => $this->helpTickets,
             'webhook_events' => $this->webhookEvents,
         ];
     }

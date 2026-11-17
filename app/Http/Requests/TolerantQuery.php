@@ -30,7 +30,7 @@ final class TolerantQuery
     {
         $value = $request->query($key);
 
-        if (! is_string($value) || ! mb_check_encoding($value, 'UTF-8') || str_contains($value, "\0")) {
+        if (! is_string($value) || ! PlainText::holds($value)) {
             return null;
         }
 

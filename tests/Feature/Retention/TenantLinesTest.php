@@ -419,6 +419,7 @@ function tenantSweepPrinted(string $schema, array $counts): array
 /** The central lines' printed lines on a database holding none of their rows. */
 const TENANT_SWEEP_CENTRAL = [
     'contact_messages: 0 rows swept.',
+    'help_tickets: 0 rows swept.',
     'support_sessions: 0 rows swept.',
     'users: 0 rows swept.',
     'platform_audit_log: 0 rows swept.',
@@ -461,11 +462,11 @@ it('runs the tenant lines after the central ones, every line over each schema in
             'info "bravo" "bookings" 1', 'info "bravo" "booking_meta" 0', 'info "bravo" "audit_log" 1', 'info "bravo" "bookings" 1', 'info "bravo" "customer_links" 1', 'info "bravo" "customer_sessions" 1', 'info "bravo" "customer_profiles" 0', 'info "bravo" "customer_notes" 0',
             'info "aria" "bookings" 1', 'info "aria" "booking_meta" 0', 'info "aria" "audit_log" 1', 'info "aria" "bookings" 1', 'info "aria" "customer_links" 1', 'info "aria" "customer_sessions" 1', 'info "aria" "customer_profiles" 0', 'info "aria" "customer_notes" 0',
         ])
-        ->and(array_slice($this->log->records, 0, 6))->toBe(array_map(
+        ->and(array_slice($this->log->records, 0, 7))->toBe(array_map(
             fn (string $table): array => ['level' => 'info', 'message' => 'Retention sweep', 'context' => ['table' => $table, 'count' => 0]],
-            ['contact_messages', 'support_sessions', 'users', 'platform_audit_log', 'webhook_events', 'payment_events'],
+            ['contact_messages', 'help_tickets', 'support_sessions', 'users', 'platform_audit_log', 'webhook_events', 'payment_events'],
         ))
-        ->and($this->log->records[6] ?? null)->toBe(['level' => 'info', 'message' => 'Retention sweep', 'context' => ['tenant' => 'luna', 'table' => 'bookings', 'count' => 1]]);
+        ->and($this->log->records[7] ?? null)->toBe(['level' => 'info', 'message' => 'Retention sweep', 'context' => ['tenant' => 'luna', 'table' => 'bookings', 'count' => 1]]);
 
     foreach (['luna', 'bravo', 'aria'] as $slug) {
         $schema = 'tenant_'.$slug;
@@ -503,7 +504,7 @@ it('runs each tenant line as one statement in a transaction of its own over its 
 
     $central = [];
 
-    foreach (['delete from contact_messages', 'delete from support_sessions', 'update users', 'delete from platform_audit_log', 'delete from webhook_events', 'delete from payment_events'] as $statement) {
+    foreach (['delete from contact_messages', 'delete from help_tickets', 'delete from support_sessions', 'update users', 'delete from platform_audit_log', 'delete from webhook_events', 'delete from payment_events'] as $statement) {
         array_push($central, 'begin', $statement, 'commit');
     }
 

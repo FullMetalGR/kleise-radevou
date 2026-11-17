@@ -16,7 +16,8 @@ namespace App\Application\Notification;
  * The signup verification, the trial notice and the closing email, the console's sign-in notice
  * beside them, the two a suspension sends the owners, the set-password link the console sends a
  * user, the contact form's message to the support mailbox, the welcome email the building click
- * sends the owner, and the reopen the console tells the owners of.
+ * sends the owner, the reopen the console tells the owners of, and the two a help ticket sends: a
+ * business's message to the support mailbox and an operator's reply to the business's writers.
  */
 enum PlatformMessageKind: string
 {
@@ -58,4 +59,13 @@ enum PlatformMessageKind: string
      * open and nothing in it is deleted.
      */
     case Reopened = 'reopened';
+
+    /**
+     * A help ticket's new message from a business, to the support mailbox, about the business and
+     * with no reply-to: it is answered in the console.
+     */
+    case HelpMessage = 'help_message';
+
+    /** An operator's reply on a help ticket, to each of the business's users who wrote in it. */
+    case HelpReply = 'help_reply';
 }

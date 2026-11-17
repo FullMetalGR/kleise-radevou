@@ -149,7 +149,7 @@ it('refuses an operator\'s console session on every admin route of a tenant host
         + 1 // Team
         + 1 // Opening hours
         + 3; // Online payments
-    expect($calls)->toHaveCount(88 + $steps);
+    expect($calls)->toHaveCount(92 + $steps);
 
     // Each call reaches the route it names, never the 404 page's catch-all standing in for it.
     foreach ($calls as $row => $call) {

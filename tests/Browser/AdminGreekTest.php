@@ -4,6 +4,7 @@ use App\Application\Clock;
 use App\Application\Dto\FigureRange;
 use App\Application\Notification\Audience;
 use App\Application\Notification\MessageKey;
+use App\Application\Notification\PlatformMessenger;
 use App\Billing\PlanChangeRefused;
 use App\Domain\Availability\CalendarDay;
 use App\Domain\Money\Currency;
@@ -11,12 +12,15 @@ use App\Domain\Money\Money;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Platform\ClosingWindow;
+use App\Site\Brand;
 use App\Site\SiteLanguage;
 use App\Tenancy\Profile;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Help;
+use Tests\Support\RecordingPlatformMessages;
 use Tests\Support\WeeklyHours;
 
 /*
@@ -59,7 +63,7 @@ beforeEach(function () {
 afterEach(fn () => dropDemoSchemas());
 
 /** The files the walk reads, by their path under lang/{en,el}. */
-const ADMIN_GREEK_FILES = ['admin/customers', 'admin/services', 'admin/shell', 'admin/bookings', 'admin/home', 'admin/staff', 'admin/payments', 'admin/settings', 'admin/team', 'admin/billing', 'admin/emails', 'admin/shifts', 'admin/calendar', 'admin/reports', 'admin/setup'];
+const ADMIN_GREEK_FILES = ['admin/customers', 'admin/services', 'admin/shell', 'admin/bookings', 'admin/home', 'admin/staff', 'admin/payments', 'admin/settings', 'admin/team', 'admin/billing', 'admin/emails', 'admin/shifts', 'admin/calendar', 'admin/reports', 'admin/setup', 'admin/help', 'admin/help_answers'];
 
 /** The page's language. */
 const ADMIN_GREEK_LANG = "document.documentElement.getAttribute('lang')";
@@ -1249,5 +1253,80 @@ it('reads Reports in Greek on an empty range and on this week with every part sh
         ->waitForText(adminLine('admin/reports.filters.to_before_from', [], SiteLanguage::Greek))
         ->assertScript($walk, $clean)
         ->assertScript($names, '')
+        ->assertNoJavaScriptErrors();
+});
+
+it('reads the help panel in Greek, its answers as it opens, with each one open and under a search that finds and one that finds nothing, its tickets as a list with an unread reply, a thread, the thread closed and the form, no English value of the walked files left', function () {
+    app()->instance(PlatformMessenger::class, new RecordingPlatformMessages);
+    $operator = addOperator();
+    $greek = fn (string $key): string => adminLine('admin/'.$key, [], SiteLanguage::Greek);
+
+    // The ticket's own words are lines of the Greek answers, so the walk types no English that
+    // the read would then find in the list or in the thread.
+    $subject = $greek('help_answers.getting_started.answers.ask_us.question');
+    $reply = $greek('help_answers.getting_started.answers.ask_us.answer.1');
+    $uuid = Help::ticket(Admin::owner('luna'), $subject, $greek('help_answers.getting_started.answers.ask_us.answer.0'));
+    Help::answer($uuid, $operator, $reply);
+
+    $word = Help::greekWord();
+    $found = Help::matching(SiteLanguage::Greek, $word);
+    $walk = adminGreekScript(Help::PANEL);
+    $clean = count(adminGreekPatterns()).':';
+
+    expect($found)->not->toBe([]);
+
+    // The answers as the panel opens on them: the topics, their questions and the foot.
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
+        ->assertScript(ADMIN_GREEK_LANG, 'el')
+        ->click(Help::BUBBLE)
+        ->assertVisible(Help::SEARCH)
+        ->assertSeeIn('.admin-help-still', $greek('help.still'))
+        ->assertScript($walk, $clean);
+
+    // An answer's paragraphs are drawn only while it is open, so each is opened and read.
+    foreach (Help::answerNames(SiteLanguage::Greek) as $name) {
+        $page->click('.admin-help-question[aria-controls="admin-help-answer-'.$name.'"]')
+            ->assertVisible('#admin-help-answer-'.$name)
+            ->assertScript($walk, $clean);
+    }
+
+    // A search that finds, then one that finds nothing and offers a ticket.
+    $page->type(Help::SEARCH, $word)
+        ->assertSeeIn('.admin-help-count', adminChoice('admin/help.search.found', count($found), [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-help-matches', $found[0])
+        ->assertScript($walk, $clean)
+        ->type(Help::SEARCH, 'qqzzxx')
+        ->assertSeeIn('.admin-help-count', $greek('help.search.none'))
+        ->assertSeeIn('.admin-help-matches > button', $greek('help.open'))
+        ->assertScript($walk, $clean);
+
+    // The list with a row that holds a reply not yet read, then its thread with that reply.
+    $page->click(Help::TICKETS_TAB)
+        ->assertSeeIn(Help::ROW.' .admin-help-unread', $greek('help.list.unread'))
+        ->assertScript($walk, $clean)
+        ->click(Help::ROW)
+        ->assertSeeIn(Help::PLATFORM_MESSAGE, $reply)
+        ->assertSeeIn(Help::PLATFORM_MESSAGE, adminLine('admin/help.platform', ['brand' => app(Brand::class)->name], SiteLanguage::Greek))
+        ->assertSeeIn(Help::THREAD_STATUS, $greek('help.statuses.open'))
+        ->assertScript($walk, $clean);
+
+    // The platform closes the ticket: the list says so on its row, and the thread under a note.
+    Help::close($uuid, $operator);
+
+    $page->click(Help::BACK_FROM_THREAD)
+        ->assertSeeIn(Help::ROW, $greek('help.statuses.closed'))
+        ->assertScript($walk, $clean)
+        ->click(Help::ROW)
+        ->assertSeeIn('.admin-help-closed', $greek('help.thread.closed'))
+        ->assertSeeIn(Help::THREAD_STATUS, $greek('help.statuses.closed'))
+        ->assertScript($walk, $clean);
+
+    // The form a new ticket is written in.
+    $page->click(Help::BACK_FROM_THREAD)
+        ->assertSeeIn(Help::ROW, $subject)
+        ->click(Help::LIST_OPEN)
+        ->assertVisible(Help::SUBJECT)
+        ->assertSeeIn('.admin-help-form h3', $greek('help.form.title'))
+        ->assertScript($walk, $clean)
         ->assertNoJavaScriptErrors();
 });

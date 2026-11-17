@@ -523,3 +523,32 @@
 .admin-calendar-column--bare .fc .fc-timegrid-now-indicator-arrow {
     display: none;
 }
+
+/*
+ * Room for the help bubble, which stands over the bottom corner of every screen that shows it, so
+ * it never hides a control: the page's foot runs past it, a form's save bar keeps its end clear
+ * of it, and at the desktop width the toasts rise above it rather than under it. While its panel
+ * is open at that width the toasts stand beside the panel, not over its foot: past the panel's
+ * width and a gap on each side of it, or as far as the window lets them go while keeping their
+ * own width and a gap from its left edge. Outside a layer, so these outrank the utilities that
+ * place the page, the bar and the toaster.
+ */
+body:has(.admin-help-bubble) .admin-page {
+    padding-bottom: 5rem;
+}
+
+body:has(.admin-help-bubble) .admin-save-bar {
+    padding-right: 4rem;
+}
+
+body:has(.admin-help-bubble) .admin-toaster {
+    @variant desktop {
+        bottom: 5rem;
+    }
+}
+
+body:has(.admin-help-panel) .admin-toaster {
+    @variant desktop {
+        right: min(400px + 2rem, 100% - 21rem);
+    }
+}

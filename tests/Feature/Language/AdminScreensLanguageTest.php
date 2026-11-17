@@ -264,7 +264,7 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
         $walked['rows']++;
     }
 
-    // Nineteen rows and fifty-six props: shell.php's 137 leaves on every row, its kit's nine
+    // Nineteen rows and fifty-six props: shell.php's 139 leaves on every row, its kit's nine
     // counted lines among them; bookings.php's 174 on ten (the two Home rows, the Bookings list, a
     // booking opened by its address, a customer's page, the Calendar and the four Staff rows, whose
     // closures card lists bookings and opens the Move form); home.php's 181 on the two Home rows;
@@ -286,7 +286,7 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
         + 8 // Opening hours
         + 2 // Online payments
         + 5; // Booking link
-    expect($walked)->toBe(['rows' => 19, 'props' => 56, 'leaves' => 19 * 137 + 10 * 174 + 2 * 181 + $setup + 2 * 146 + 4 * 116 + 38 + 5 * 168 + 2 * 143 + 2 * 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
+    expect($walked)->toBe(['rows' => 19, 'props' => 56, 'leaves' => 19 * 139 + 10 * 174 + 2 * 181 + $setup + 2 * 146 + 4 * 116 + 38 + 5 * 168 + 2 * 143 + 2 * 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
 });
 
 it('reads the Calendar in Greek for a user at el under view=day, view=week and view=month, and for a Greek viewer who holds viewOwnCalendar without viewBookings, pinned to her own row', function () {
@@ -368,7 +368,7 @@ it('reads the shell in the tenant default on the door and the set-password page,
         $walked['leaves'] += count(Arr::dot($shell));
     }
 
-    // Six pages, each the shell's 137 leaves: the door and the set-password page at a default
+    // Six pages, each the shell's 139 leaves: the door and the set-password page at a default
     // of el and at one of en, and the 404 for the user at el and the colleague at en.
-    expect($walked)->toBe(['pages' => 6, 'leaves' => 6 * 137]);
+    expect($walked)->toBe(['pages' => 6, 'leaves' => 6 * 139]);
 });

@@ -435,10 +435,11 @@ it('reads a page in two statements over tenants left join subscriptions, the cou
         ->and(array_filter($statements, fn (string $sql): bool => str_contains($sql, 'from tenants tenant left join subscriptions subscription')))->toHaveCount(2);
 });
 
-it('carries Tenants first on the rail, lit on the list, with Messages and Audit after it', function () {
+it('carries Tenants first on the rail, lit on the list, with Messages, Tickets and Audit after it', function () {
     tenantsScreen($this, addOperator())->assertInertia(fn (Assert $page) => $page->where('nav', [
         ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
         ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
         ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
     ]));
 });

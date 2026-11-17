@@ -3,7 +3,9 @@
     type inline as the tokens file spells them, no remote image and no tracking pixel. Every
     string is handed in by BrandedMail, read from mail.php in the tenant's language, so this view
     reads no translator and no request; each paragraph is text, escaped here, or a link, printed
-    as an anchor to its own address. Tables because mail clients read little else; styles inline
+    as an anchor to its own address. A line break in a paragraph's text is no break on the page,
+    but for the one kind of paragraph that asks, a person's own lines, where each is drawn as a
+    break after the text is escaped. Tables because mail clients read little else; styles inline
     because most read no stylesheet.
 --}}
 <!doctype html>
@@ -28,6 +30,8 @@
 @foreach ($paragraphs as $paragraph)
 @if ($paragraph['href'] !== null)
 <p style="margin:0 0 16px 0;word-break:break-all;"><a href="{{ $paragraph['href'] }}" style="color:{{ $tokens['primary'] }};text-decoration:underline;">{{ $paragraph['text'] }}</a></p>
+@elseif ($paragraph['lines'])
+<p style="margin:0 0 16px 0;">{!! nl2br(e($paragraph['text']), false) !!}</p>
 @else
 <p style="margin:0 0 16px 0;">{{ $paragraph['text'] }}</p>
 @endif
