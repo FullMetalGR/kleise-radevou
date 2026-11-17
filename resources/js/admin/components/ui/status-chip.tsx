@@ -51,13 +51,12 @@ export function chipShapeOf(status: string): ChipShape | null {
 }
 
 /**
- * A count, where given, makes the compact chip the month overview draws per status present on a
- * day, and Home's awaiting feed its own, in the same shape. A booking status's chip reads its
- * whole line of the kit's counted group, chosen by the count, since Greek bends the word by the
- * number: the figure, spelled by formatCount in the shell's locale, stands where the line's :count
- * does, in its own span, and the words in theirs. A status the chip does not know keeps the figure
- * before its raw value, and a catalog row's state (active, inactive) given a count does as that
- * status does, the figure before its label.
+ * A count, where given, makes the compact chip Home's awaiting feed draws, in the status's shape.
+ * A booking status's chip reads its whole line of the kit's counted group, chosen by the count,
+ * since Greek bends the word by the number: the figure, spelled by formatCount in the shell's
+ * locale, stands where the line's :count does, in its own span, and the words in theirs. A status
+ * the chip does not know keeps the figure before its raw value, and a catalog row's state (active,
+ * inactive) given a count does as that status does, the figure before its label.
  */
 export function StatusChip({ status, count, label: given, className }: { status: string; count?: number; label?: string; className?: string }) {
     const shell = useShell();

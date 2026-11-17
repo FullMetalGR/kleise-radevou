@@ -14,7 +14,8 @@ import { addDays, parseDay, parseInstant, wallClockOf } from '../../booking/time
  * The calendar's data as the server sends it, CalendarController, and the calendar's rules as
  * pure functions of it: the view and the date and their moves, the fetch window as the visible
  * range with an exclusive end, the client cuts, the blocks and gaps one window answer draws in
- * Week and Day and the counts per day and status it draws in Month, the hue as a stable
+ * Week and Day and the chips it draws per day in Month and per row and day in Week's grid of
+ * people (calendar/staff-week), the hue as a stable
  * function of the staff id, and the initial scroll. Nothing here touches the grid library; the
  * grid renders what these say. A word is a key of the calendar section, read through the words
  * a function is handed, and a closure's the shifts section's.
@@ -29,7 +30,8 @@ export type CalendarItem = BookingItem & {
     processing_ends_utc?: string | null;
 };
 
-export type CalendarBooking = Omit<Booking, 'items'> & { items: CalendarItem[] };
+/** noted: whether the customer wrote a note, the words left to the dialog; absent reads as none. */
+export type CalendarBooking = Omit<Booking, 'items'> & { items: CalendarItem[]; noted?: boolean };
 
 export type Member = { id: number; name: string };
 
@@ -59,7 +61,8 @@ export type NextWorking = { date: string; windows: HoursWindow[] } | null;
  * booking in it. hours is keyed by the member's id and then the date, next_working by the
  * member's id; an empty answer may arrive as a list, so each is read by key alone. closures are
  * the closures, per row and per date, of a row whose bookings are drawn but which hours does not
- * cover, the implicit row's, so a block on it can tell whether a closure holds it.
+ * cover, the implicit row's, so a block on it can tell whether a closure holds it. closed_days
+ * names the dates the business is closed all day, which Month hatches; absent reads as none.
  */
 export type Window = {
     from: string;
@@ -71,6 +74,7 @@ export type Window = {
     hours: Record<string, Record<string, DayHours>> | [];
     next_working: Record<string, NextWorking> | [];
     closures?: Record<string, Record<string, Closure[]>> | [];
+    closed_days?: string[];
     bookings: CalendarBooking[];
 };
 
@@ -97,7 +101,7 @@ export const NO_CALENDAR_FILTERS: CalendarFilters = { status: '', who: 'schedule
 
 export const CALENDAR_MEMORY_KEY = 'kr.admin.calendar.filters';
 
-/** The nine statuses in the order the server lists them for the status filter, which the month's chips follow. */
+/** The nine statuses in the order the server lists them for the status filter, which the legend's status swatches follow. */
 const STATUSES = ['pending', 'awaiting_approval', 'awaiting_payment', 'confirmed', 'completed', 'no_show', 'cancelled', 'rejected', 'expired'];
 
 const isPositive = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0;
@@ -429,50 +433,105 @@ export function insideClosure(closed: Closed, item: Pick<CalendarItem, 'staff_id
     return false;
 }
 
-/** One chip of a month day: a status and how many bookings that day hold it. */
-export type StatusCount = { status: string; count: number };
-
 /**
- * The counts the Month view draws: per tenant day, a count per status present, the chips in the
- * order the status filter lists the nine and a status the client does not know after them. A
- * booking counts once, on the tenant's wall-clock day its first item starts, however many items it
- * has and wherever they fall. The status and service cuts are the caller's, cut() as for the
- * blocks; the members shown are applied here as blocksOf applies them, a booking counting while any
- * item sits on one of their rows, which is the read's own narrowing, so it is a guarantee and never
- * a second answer. A day with nothing has no entry.
+ * A booking as one chip of a cell, the line a day or a row's day lists it by. start is the
+ * tenant's wall clock, with no zone, of the item it is drawn at: what a cell orders by and the
+ * time the chip prints. staffId and category are that item's, for Colour by. badge, noted and
+ * inside are its marks: a request or an approved booking awaiting payment, a note the customer
+ * wrote, and a closure holding the time of a booking that still keeps it. segments are the items
+ * it stands for, by their place in the booking's chain: what a drag onto another row hands over.
  */
-export function countsOf(bookings: readonly CalendarBooking[], staff: readonly number[] | null, timezone: string): Map<string, StatusCount[]> {
-    const tally = new Map<string, Map<string, number>>();
+export type Chip = {
+    uuid: string;
+    start: string;
+    customer: string | null;
+    status: string;
+    staffId: number;
+    category: string | null;
+    badge: Badge | null;
+    noted: boolean;
+    inside: boolean;
+    movable: boolean;
+    segments: number[];
+};
 
-    for (const booking of bookings) {
-        const first = booking.items[0];
+/** A booking's chip drawn at the first of the items given, the closure mark read off them all; null for no item. */
+function chipOf(booking: CalendarBooking, items: readonly CalendarItem[], timezone: string, closed: Closed): Chip | null {
+    const first = items[0];
 
-        if (first === undefined || (staff !== null && !booking.items.some((item) => staff.includes(item.staff_id)))) {
-            continue;
-        }
-
-        const day = wallClockOf(first.start, timezone).date;
-        const statuses = tally.get(day) ?? new Map<string, number>();
-        statuses.set(booking.status, (statuses.get(booking.status) ?? 0) + 1);
-        tally.set(day, statuses);
+    if (first === undefined) {
+        return null;
     }
 
-    // A status the client does not know ranks after the nine.
-    const rank = (status: string) => {
-        const at = STATUSES.indexOf(status);
-
-        return at === -1 ? STATUSES.length : at;
+    return {
+        uuid: booking.uuid,
+        start: wallOf(first.start, timezone),
+        customer: booking.customer_name,
+        status: booking.status,
+        staffId: first.staff_id,
+        category: first.category ?? null,
+        badge: badgeOf(booking.status),
+        noted: booking.noted === true,
+        inside: HELD.includes(booking.status) && items.some((item) => insideClosure(closed, item, timezone)),
+        movable: booking.movable === true,
+        segments: items.map((item) => item.sort),
     };
-
-    return new Map(
-        [...tally].map(([day, statuses]) => [
-            day,
-            [...statuses]
-                .map(([status, count]) => ({ status, count }))
-                .sort((a, b) => rank(a.status) - rank(b.status)),
-        ]),
-    );
 }
+
+/** A cell's order: by start, then by uuid, so two chips at one time keep their places from one read to the next. */
+function chipOrder(a: Chip, b: Chip): number {
+    if (a.start !== b.start) {
+        return a.start < b.start ? -1 : 1;
+    }
+
+    return a.uuid < b.uuid ? -1 : a.uuid > b.uuid ? 1 : 0;
+}
+
+/**
+ * Month's chips per tenant day: one per booking, on the wall-clock day its first item starts and
+ * at that item's start, however many items it has and wherever they fall. The status and service
+ * cuts are the caller's, cut() as for the blocks; the members shown are applied here as blocksOf
+ * applies them, a booking drawn while any item sits on one of their rows, which is the read's own
+ * narrowing, so it is a guarantee and never a second answer. A day with nothing has no entry.
+ */
+export function monthChipsOf(bookings: readonly CalendarBooking[], staff: readonly number[] | null, timezone: string, closed: Closed = NO_CLOSURES): Map<string, Chip[]> {
+    return chipsByDayOf(bookings, (booking) => (staff === null || booking.items.some((item) => staff.includes(item.staff_id)) ? booking.items : []), timezone, closed);
+}
+
+/**
+ * Chips per tenant day of the items a rule picks from each booking: one per booking, on the
+ * wall-clock day the first item picked starts and at its start, standing for every item picked; a
+ * booking with none picked has no chip. A day's chips are in their order; a day with nothing has
+ * no entry. Month picks a whole booking, Week's rows the items on each row.
+ */
+export function chipsByDayOf(bookings: readonly CalendarBooking[], picked: (booking: CalendarBooking) => readonly CalendarItem[], timezone: string, closed: Closed): Map<string, Chip[]> {
+    const days = new Map<string, Chip[]>();
+
+    for (const booking of bookings) {
+        const chip = chipOf(booking, picked(booking), timezone, closed);
+
+        if (chip !== null) {
+            const day = chip.start.slice(0, 10);
+            days.set(day, [...(days.get(day) ?? []), chip]);
+        }
+    }
+
+    for (const chips of days.values()) {
+        chips.sort(chipOrder);
+    }
+
+    return days;
+}
+
+/** The days Month draws, six weeks from the week holding the month's first day, the read's own range. */
+export function monthDaysOf(date: string, weekStart: number): string[] {
+    const { from } = rangeOf('month', date, weekStart);
+
+    return Array.from({ length: MONTH_GRID_DAYS }, (_, at) => addDays(from, at));
+}
+
+/** A day the business is closed all day, as a day's cell names it and the legend beside its hatch. */
+export const CLOSED_DAY: CalendarKey = 'closure.all_day';
 
 /** A block's fill: the hue mixed toward the surface, never applied as alpha, so hour rules do not bleed through and two blocks never stack into a third colour. */
 export function fillOf(hue: string): string {
@@ -552,11 +611,11 @@ export type Swatch = { key: string; label: string; hue: string; staffId?: number
 
 /**
  * The legend's swatches: under Staff member the members shown, while the palette is in play,
- * else none; under Service category the categories the blocks drawn carry, sorted, the blank
- * bucket last; under Status the statuses the blocks drawn hold, in the order the status filter
- * lists them, each named as its chip names it.
+ * else none; under Service category the categories the blocks or chips drawn carry, sorted, the
+ * blank bucket last; under Status the statuses they hold, in the order the status filter lists
+ * them, each named as its chip names it.
  */
-export function swatchesOf(colouring: Colouring, members: readonly Member[], blocks: readonly Block[], statusName: (status: string) => string, words: CalendarWords): Swatch[] {
+export function swatchesOf(colouring: Colouring, members: readonly Member[], blocks: readonly Pick<Block, 'category' | 'status'>[], statusName: (status: string) => string, words: CalendarWords): Swatch[] {
     if (colouring.by === 'staff') {
         return colouring.palette ? members.map((member) => ({ key: `staff-${member.id}`, label: member.name, hue: hueOf(member.id, colouring.own), staffId: member.id })) : [];
     }
@@ -578,9 +637,9 @@ export function swatchesOf(colouring: Colouring, members: readonly Member[], blo
     return [...known, ...unknown].map((status) => ({ key: `status-${status}`, label: statusName(status), hue: statusHueOf(status) }));
 }
 
-/** Whether the legend is drawn, 5.5: never in Month; under Staff member only while the palette is in play; under the other two always. */
-export function legendShown(colouring: Colouring, view: View): boolean {
-    return view !== 'month' && (colouring.by !== 'staff' || colouring.palette);
+/** Whether the legend is drawn, in every view: under Staff member only while the palette is in play; under the other two always. */
+export function legendShown(colouring: Colouring): boolean {
+    return colouring.by !== 'staff' || colouring.palette;
 }
 
 /** The hour an empty day opens at, with no margin subtracted. */
@@ -859,7 +918,7 @@ export type ClosureBlock = { id: string; title: string; start: string; end: stri
  * week's own for the same closure, read from the shifts section the screen carries, so each is
  * spelled once.
  */
-function closureTitleOf(closure: Closure, clock: TenantClock, closed: ShiftWords): string {
+export function closureTitleOf(closure: Closure, clock: TenantClock, closed: ShiftWords): string {
     if (closure.start !== null && closure.end !== null) {
         const range = { start: formatTimeOfDay(closure.start, clock), end: formatTimeOfDay(closure.end, clock) };
 
@@ -936,6 +995,32 @@ function instantOfWall(wall: string, timezone: string): string {
 export function moveOfDrop(booking: Pick<CalendarBooking, 'uuid' | 'items'>, drop: Drop, timezone: string): DropMove | null {
     const delta = wallMillis(drop.start) - wallMillis(drop.block.start);
     const staff: Record<number, number> = drop.staffId !== null && drop.staffId !== drop.block.staffId ? { [drop.block.segment]: drop.staffId } : {};
+
+    return movedBy(booking, delta, staff, timezone);
+}
+
+/**
+ * What a cell hands on a chip's drop: the chip, the day it landed on, and the row's member where
+ * the row changed; Month has no rows, so none there.
+ */
+export type ChipDrop = { chip: Chip; date: string; staffId: number | null };
+
+/**
+ * The move a chip's drop makes: the booking moved by the whole days between the chip's day and
+ * the day it landed on, its clock time kept; where it landed on another member's row, every item
+ * the chip stands for is given to that member, the booking's other items keeping theirs. Null
+ * where it changed neither the day nor the member.
+ */
+export function moveOfChipDrop(booking: Pick<CalendarBooking, 'uuid' | 'items'>, drop: ChipDrop, timezone: string): DropMove | null {
+    const delta = wallMillis(`${drop.date}T00:00:00`) - wallMillis(`${drop.chip.start.slice(0, 10)}T00:00:00`);
+    const to = drop.staffId;
+    const staff: Record<number, number> = to !== null && to !== drop.chip.staffId ? Object.fromEntries(drop.chip.segments.map((segment) => [segment, to])) : {};
+
+    return movedBy(booking, delta, staff, timezone);
+}
+
+/** A booking moved by a delta on the wall clock from its first start, the chain with it, and the segments handed on; null where nothing changes. */
+function movedBy(booking: Pick<CalendarBooking, 'uuid' | 'items'>, delta: number, staff: Record<number, number>, timezone: string): DropMove | null {
     const first = booking.items.reduce<string | null>((earliest, item) => (earliest === null || parseInstant(item.start) < parseInstant(earliest) ? item.start : earliest), null);
 
     if (first === null || (delta === 0 && Object.keys(staff).length === 0)) {

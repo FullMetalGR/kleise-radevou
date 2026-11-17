@@ -742,8 +742,12 @@ function adminGreekMemberWithoutPattern(string $name): int
  * shifts.php's page.closed_reason, and a third member with no pattern, whose column Who's All
  * staff shows with no hours that day. The walk and the names check run at each state: Day with
  * Who's picker open and closed, a Day column's menu, the Add menu, the closure dialog opened from
- * it with Closed all day unticked so Start and End show, then Week and Month by the address. On
- * Month the Wednesday's chip reads the shell's whole Greek counted line at the one booking seeded.
+ * it with Closed all day unticked so Start and End show, then Week and Month by the address, two
+ * more bookings of Elena's that Wednesday giving it a third chip. On Week, a row per member under
+ * All staff, the walk runs on Elena's Wednesday with its chips and the closure's line, the third
+ * member's row hatched, the legend, and the date menu of Elena's Wednesday. On Month the walk runs
+ * on the chips and the legend of their marks, on the popover of the Wednesday's line saying one
+ * more, and on the Wednesday's date menu.
  */
 it('reads the Calendar in Greek on Day with its columns, Who, a column\'s menu, the Add menu and the closure dialog, then on Week and Month, no English value of the walked files and no English month or weekday name left', function () {
     DB::table('tenants')->where('slug', 'luna')->update(['locale' => SiteLanguage::Greek->value]);
@@ -752,6 +756,8 @@ it('reads the Calendar in Greek on Day with its columns, Who, a column\'s menu, 
     $wednesday = athensDaysOn($days, 10);
     $date = $wednesday->format('Y-m-d');
     adminGreekBooking('Casey Customer', 'casey@example.com', $wednesday);
+    adminGreekBooking('Dana Customer', 'dana@example.com', athensDaysOn($days, 11));
+    adminGreekBooking('Eli Customer', 'eli@example.com', athensDaysOn($days, 12));
     $elena = DB::table('tenant_luna.staff')->where('name', 'Elena Papadaki')->value('id');
     assert(is_int($elena));
     DB::table('tenant_luna.blackouts')->insert(['staff_id' => $elena, 'date' => $date, 'start_time' => '14:00', 'end_time' => '16:00', 'reason' => 'Dentist token']);
@@ -760,6 +766,8 @@ it('reads the Calendar in Greek on Day with its columns, Who, a column\'s menu, 
     $clean = count(adminGreekPatterns()).':';
     $names = adminGreekNamesScript();
     $column = fn (int $staffId): string => '.admin-calendar-column[data-column="member-'.$staffId.'"]';
+    $cell = '.admin-calendar-month__day[data-date="'.$date.'"]';
+    $row = fn (int $staffId): string => '.admin-calendar-week__cell[data-row="member-'.$staffId.'"][data-date="'.$date.'"]';
 
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
         ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day&date='.$date))
@@ -786,7 +794,8 @@ it('reads the Calendar in Greek on Day with its columns, Who, a column\'s menu, 
         ->assertScript($walk, $clean)
         ->assertScript($names, '')
         ->keys('.admin-calendar-column__book', 'Escape')
-        ->assertMissing('.admin-calendar-column__close');
+        ->assertMissing('.admin-calendar-column__close')
+        ->assertScript(Admin::focusIsOn($column($elena).' .admin-calendar-head__menu'), true);
 
     $page->click('.admin-calendar-add')
         ->assertSeeIn('.admin-menu', adminLine('admin/calendar.page.add_hint', [], SiteLanguage::Greek))
@@ -804,15 +813,50 @@ it('reads the Calendar in Greek on Day with its columns, Who, a column\'s menu, 
         ->assertMissing('.admin-closure');
 
     $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view=week&date='.$date))
-        ->waitForText(adminLine('admin/calendar.grid.block', ['customer' => 'Casey Customer', 'service' => 'Haircut'], SiteLanguage::Greek))
+        ->waitForText('Casey Customer')
         ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.week', [], SiteLanguage::Greek))
+        ->assertSeeIn($row($elena).' .admin-calendar-chip__customer', 'Casey Customer')
+        ->assertCount($row($elena).' .admin-calendar-chip', 3)
+        ->assertAttribute($row($elena).' .admin-calendar-week__closure', 'title', adminLine('admin/shifts.page.closed_reason', ['start' => '14:00', 'end' => '16:00', 'reason' => 'Dentist token'], SiteLanguage::Greek))
+        ->assertPresent($row($iris).'.admin-calendar-week__cell--hatched')
+        ->assertSeeIn('.admin-calendar-legend__outside', adminLine('admin/calendar.legend.outside', [], SiteLanguage::Greek))
+        ->assertScript($walk, $clean)
+        ->assertScript($names, '');
+
+    $page->keys($row($elena).' .admin-calendar-date', 'Enter')
+        ->assertSeeIn('.admin-calendar-date__book', adminLine('admin/calendar.page.add_booking', [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-calendar-date__closure', adminLine('admin/calendar.closure.title', [], SiteLanguage::Greek))
         ->assertScript($walk, $clean)
         ->assertScript($names, '')
-        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=month&date='.$date))
+        ->keys('.admin-calendar-date__day', 'Escape')
+        ->assertMissing('.admin-calendar-date__day');
+
+    $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view=month&date='.$date))
+        ->waitForText(adminChoice('admin/calendar.cells.more', 1, [], SiteLanguage::Greek))
         ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.month', [], SiteLanguage::Greek))
-        ->assertSeeIn('.admin-calendar-day[data-date="'.$date.'"] .admin-chip--live', adminChoice('admin/shell.kit.counted.confirmed', 1, [], SiteLanguage::Greek))
+        ->assertSeeIn($cell.' .admin-calendar-chip__customer', 'Casey Customer')
+        ->assertSeeIn('.admin-calendar-legend__noted', adminLine('admin/calendar.badges.noted', [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-calendar-legend__closed', adminLine('admin/calendar.closure.all_day', [], SiteLanguage::Greek))
+        ->assertScript($walk, $clean)
+        ->assertScript($names, '');
+
+    // The popover hands focus back to its line a moment after it is gone, so the walk waits for
+    // it there: landing after the next key, it would close the menu that key opens.
+    $page->click($cell.' .admin-calendar-more')
+        ->assertCount('.admin-calendar-popover .admin-calendar-chip', 3)
         ->assertScript($walk, $clean)
         ->assertScript($names, '')
+        ->keys('.admin-calendar-popover li:first-child .admin-calendar-chip', 'Escape')
+        ->assertMissing('.admin-calendar-popover')
+        ->assertScript(Admin::focusIsOn($cell.' .admin-calendar-more'), true);
+
+    $page->keys($cell.' .admin-calendar-date', 'Enter')
+        ->assertSeeIn('.admin-calendar-date__day', adminLine('admin/calendar.cells.open_day', [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-calendar-date__book', adminLine('admin/calendar.page.add_booking', [], SiteLanguage::Greek))
+        ->assertScript($walk, $clean)
+        ->assertScript($names, '')
+        ->keys('.admin-calendar-date__day', 'Escape')
+        ->assertMissing('.admin-calendar-date__day')
         ->assertNoJavaScriptErrors();
 });
 

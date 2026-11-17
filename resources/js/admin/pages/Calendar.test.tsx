@@ -2,7 +2,8 @@ import { act, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { key, mount, type Mounted, onPhone, press, settle } from '@/components/ui/harness';
 import type { Detail } from '@/bookings/model';
-import type { Block, CalendarBooking, Colouring, DayColumn, DayHours, Drop, StatusCount, View, Window } from '@/calendar/model';
+import type { Block, CalendarBooking, Chip, ChipDrop, Colouring, DayColumn, DayHours, Drop, View, Window } from '@/calendar/model';
+import type { WeekRow } from '@/calendar/staff-week';
 import { formatInstant } from '@/lib/format';
 import { COLOUR_BY_LOCKED, COLOUR_BY_NOTE, COLOUR_BY_SAVING, LEGEND_CLOSURE, LEGEND_OUTSIDE, TO_DAY, WEEK_NEEDS_WIDTH, WHO_NOTE, WHO_PICK } from '@/calendar/Chrome';
 import { CLOSURE_TITLE, WHOLE_BUSINESS } from '@/calendar/ClosureDialog';
@@ -29,12 +30,15 @@ import Calendar, { CALENDAR_LOAD_ERROR, UNLINKED } from './Calendar';
  * what it was handed and offers a block and a slot to press, because the grid's own rendering is
  * proven over the real library in calendar/Grid.test.tsx. A link's view and date, the opening prop
  * the server read from `?view=` and `?date=`, seed the first render alone. Month: the third view
- * reads its six-week grid in one read, moves a month at a time, hands the grid the counts the
- * client cuts leave with no legend, opens Day view on a day pressed, and is never remembered; the
- * grid's own refusal of a slot selection in Month is proven in the browser, where a selection can
- * be made. The page carries the keyed calendar, bookings and shifts sections in its strings prop,
- * as CalendarController names them, so every word reads as its key and is read through the same
- * tables.
+ * reads its six weeks in one read, moves a month at a time, hands Month the chips the client cuts
+ * leave and the days the business is closed, with the legend of the chips' marks under it; a chip
+ * opens its booking, a day's date the wizard, the closure dialog or Day view on that day; and it is
+ * never remembered. Month stands in as a stub too, its own rendering proven in
+ * calendar/Month.test.tsx. Week for a team is the grid of people, a stub as well, handed a row per
+ * member and the other bookings' row; a chip dropped there or in Month asks the same verdict as a
+ * block dropped in Day. The page carries the keyed calendar, bookings and shifts sections in
+ * its strings prop, as CalendarController names them, so every word reads as its key and is read
+ * through the same tables.
  */
 
 const shell = keyedShell();
@@ -66,7 +70,10 @@ const inertia = vi.hoisted(() => ({
 const wizard = vi.hoisted(() => ({ open: vi.fn() }));
 
 /** Where the stub grid's drop lands its first block: the wall clock and the column's member. */
-const dropping = vi.hoisted(() => ({ start: '', staffId: null as number | null }));
+const dropping = vi.hoisted(() => ({ start: '', staffId: null as number | null, date: '' }));
+
+/** The rows the grid of people was last handed, to tell rows built anew from the same rows handed again. */
+const handed = vi.hoisted(() => ({ rows: null as readonly unknown[] | null }));
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
@@ -98,8 +105,6 @@ type StubProps = {
     colouring: Colouring;
     onBlock: (uuid: string) => void;
     onSlot?: (date: string, staffId?: number) => void;
-    counts?: ReadonlyMap<string, readonly StatusCount[]>;
-    onDay?: (date: string) => void;
     span?: { min: string; max: string };
     columns?: readonly DayColumn[];
     head?: (column: DayColumn) => ReactNode;
@@ -107,7 +112,7 @@ type StubProps = {
 };
 
 vi.mock('@/calendar/Grid', () => ({
-    Grid: ({ view, date, blocks, colouring, onBlock, onSlot, counts, onDay, span, columns, head, onDrop }: StubProps) => (
+    Grid: ({ view, date, blocks, colouring, onBlock, onSlot, span, columns, head, onDrop }: StubProps) => (
         <div
             className="stub-grid"
             data-view={view}
@@ -117,21 +122,105 @@ vi.mock('@/calendar/Grid', () => ({
             data-categories={colouring.categories.join('|')}
             data-own={colouring.own.map((member) => `${member.id}:${member.colour}`).join('|')}
             data-blocks={blocks.map((block) => block.id).join(' ')}
-            data-counts={counts === undefined ? undefined : JSON.stringify(Object.fromEntries(counts))}
             data-span={span === undefined ? undefined : `${span.min}-${span.max}`}
         >
             <button type="button" className="stub-block" onClick={() => onBlock(blocks[0]?.uuid ?? '')} />
             {onDrop !== undefined && blocks[0] !== undefined && <button type="button" className="stub-drop" onClick={() => blocks[0] !== undefined && onDrop({ block: blocks[0], start: dropping.start, staffId: dropping.staffId })} />}
             {onSlot !== undefined && <button type="button" className="stub-slot" onClick={() => onSlot(date)} />}
-            {[...(counts?.keys() ?? [])].map((day) => (
-                <button key={day} type="button" className="stub-day" data-date={day} onClick={() => onDay?.(day)} />
-            ))}
             {columns?.map((column) => (
                 <div key={column.key} className="stub-column" data-column={column.key} data-blocks={column.blocks.map((block) => block.id).join(' ')} data-hours={JSON.stringify(column.hours)} data-next={JSON.stringify(column.next)}>
                     {head?.(column)}
                     {onSlot !== undefined && column.member !== null && <button type="button" className="stub-column-slot" onClick={() => onSlot(date, column.member?.id)} />}
                 </div>
             ))}
+        </div>
+    ),
+}));
+
+type MonthStubProps = {
+    date: string;
+    chips: ReadonlyMap<string, readonly Chip[]>;
+    closedDays: readonly string[];
+    colouring: Colouring;
+    onOpen: (uuid: string) => void;
+    onBook?: (date: string) => void;
+    onClosure?: (date: string) => void;
+    onDay: (date: string) => void;
+    onDrop?: (drop: ChipDrop) => void;
+};
+
+/** Month as a stub: what it was handed, and per day that has chips its chips, its date's three actions to press and a drop of its first chip on the day the test names. */
+vi.mock('@/calendar/Month', () => ({
+    Month: ({ date, chips, closedDays, colouring, onOpen, onBook, onClosure, onDay, onDrop }: MonthStubProps) => (
+        <div className="stub-grid" data-view="month" data-date={date} data-colour-by={colouring.by} data-chips={JSON.stringify(Object.fromEntries([...chips].map(([day, list]) => [day, list.map((chip) => chip.uuid)])))} data-closed={closedDays.join(' ')}>
+            {[...chips].map(([day, list]) => (
+                <div key={day} className="stub-month-day" data-date={day}>
+                    {list.map((chip) => (
+                        <button key={chip.uuid} type="button" className="stub-chip" data-uuid={chip.uuid} onClick={() => onOpen(chip.uuid)} />
+                    ))}
+                    {onBook !== undefined && <button type="button" className="stub-book" onClick={() => onBook(day)} />}
+                    {onClosure !== undefined && <button type="button" className="stub-closure" onClick={() => onClosure(day)} />}
+                    <button type="button" className="stub-day" onClick={() => onDay(day)} />
+                    {onDrop !== undefined && list[0] !== undefined && <button type="button" className="stub-drop-chip" onClick={() => list[0] !== undefined && onDrop({ chip: list[0], date: dropping.date, staffId: null })} />}
+                </div>
+            ))}
+        </div>
+    ),
+}));
+
+type PeopleStubProps = {
+    days: readonly string[];
+    rows: readonly WeekRow[];
+    colouring: Colouring;
+    onOpen: (uuid: string) => void;
+    onBook?: (date: string, staffId: number) => void;
+    onClosure?: (date: string, staffId: number) => void;
+    onDay: (date: string) => void;
+    onDrop?: (drop: ChipDrop) => void;
+};
+
+/**
+ * Week's grid of people as a stub: what it was handed, each row's chips by day and its hatched
+ * days, and per member row the first day's three actions and a drop of the row's first chip on
+ * the day the test names, onto that row's member.
+ */
+vi.mock('@/calendar/StaffWeek', () => ({
+    StaffWeek: ({ days, rows, colouring, onOpen, onBook, onClosure, onDay, onDrop }: PeopleStubProps) => (
+        <div
+            ref={() => {
+                handed.rows = rows;
+            }}
+            className="stub-grid"
+            data-view="people"
+            data-days={days.join(' ')}
+            data-palette={String(colouring.palette)}
+            data-colour-by={colouring.by}
+            data-categories={colouring.categories.join('|')}
+            data-own={colouring.own.map((member) => `${member.id}:${member.colour}`).join('|')}
+        >
+            {rows.map((row) => {
+                const first = row.cells.flatMap((cell) => cell.chips)[0];
+                const day = row.cells[0]?.date ?? '';
+
+                return (
+                    <div
+                        key={row.key}
+                        className="stub-row"
+                        data-row={row.key}
+                        data-chips={JSON.stringify(Object.fromEntries(row.cells.filter((cell) => cell.chips.length > 0).map((cell) => [cell.date, cell.chips.map((chip) => chip.uuid)])))}
+                        data-hatched={row.cells.filter((cell) => cell.hatched).map((cell) => cell.date).join(' ')}
+                        data-lines={row.cells.flatMap((cell) => cell.lines.map((line) => line.range)).join('|')}
+                    >
+                        {row.cells.flatMap((cell) => cell.chips).map((chip) => (
+                            <button key={chip.uuid} type="button" className="stub-chip" data-uuid={chip.uuid} onClick={() => onOpen(chip.uuid)} />
+                        ))}
+                        {row.member !== null && onBook !== undefined && <button type="button" className="stub-book" onClick={() => row.member !== null && onBook(day, row.member.id)} />}
+                        {row.member !== null && onClosure !== undefined && <button type="button" className="stub-closure" onClick={() => row.member !== null && onClosure(day, row.member.id)} />}
+                        {row.member !== null && <button type="button" className="stub-day" onClick={() => onDay(day)} />}
+                        {onDrop !== undefined && first !== undefined && <button type="button" className="stub-drop-chip" onClick={() => onDrop({ chip: first, date: dropping.date, staffId: dropping.staffId })} />}
+                    </div>
+                );
+            })}
         </div>
     ),
 }));
@@ -218,11 +307,21 @@ function grid(): HTMLElement {
     return element;
 }
 
-/** The counts the grid was handed, by day, or null where it was handed none. */
-function counts(): Record<string, StatusCount[]> | null {
-    const json = grid().dataset['counts'];
+/** The chips Month was handed, their uuids by day, or null where Month is not shown. */
+function chips(): Record<string, string[]> | null {
+    const json = grid().dataset['chips'];
 
-    return json === undefined ? null : (JSON.parse(json) as Record<string, StatusCount[]>);
+    return json === undefined ? null : (JSON.parse(json) as Record<string, string[]>);
+}
+
+/** The rows Week's grid of people was handed, each row's chips' uuids by day, or null where the grid is not shown. */
+function rows(): Record<string, Record<string, string[]>> | null {
+    return grid().dataset['view'] !== 'people' ? null : Object.fromEntries([...view.host.querySelectorAll<HTMLElement>('.stub-row')].map((row) => [row.dataset['row'], JSON.parse(row.dataset['chips'] ?? '{}') as Record<string, string[]>]));
+}
+
+/** Presses the stub Month's control of the kind given on the day given. */
+function pressMonth(date: string, kind: 'book' | 'closure' | 'day'): void {
+    press(view.host.querySelector(`.stub-month-day[data-date="${date}"] .stub-${kind}`));
 }
 
 /** Day's title of a date: the weekday, Intl's long English name, before the date in the tenant's format. */
@@ -353,7 +452,7 @@ function linesOf(table: object, prefix = ''): [string, string][] {
 describe('the calendar section', () => {
     it('is typed as the keys of lang/en/admin/calendar.php, no more and no fewer', () => {
         expectTypeOf<Shape<typeof ADMIN_LINES_EN.calendar>>().toEqualTypeOf<CalendarStrings>();
-        expect(Object.keys(ADMIN_LINES_EN.calendar)).toEqual(['page', 'toolbar', 'filters', 'who', 'legend', 'badges', 'grid', 'day', 'closure', 'validation']);
+        expect(Object.keys(ADMIN_LINES_EN.calendar)).toEqual(['page', 'toolbar', 'filters', 'who', 'legend', 'badges', 'grid', 'cells', 'day', 'closure', 'validation']);
     });
 
     it('leaves no English sentence of the file on the screen, its Day columns, its Add menu or its closure dialog, every word read from the section', async () => {
@@ -378,8 +477,9 @@ describe('the calendar screen', () => {
     it('opens on Week and the tenant today whatever the machine date, titled by the week from the tenant week start, and reads nothing when the window carried is the one wanted', () => {
         view.render(<Page />);
 
-        expect(grid().dataset['view']).toBe('week');
-        expect(grid().dataset['date']).toBe('2026-11-05');
+        // Two members answered on a tenant with the staff feature: Week is the grid of people.
+        expect(grid().dataset['view']).toBe('people');
+        expect(grid().dataset['days']).toBe('2026-11-02 2026-11-03 2026-11-04 2026-11-05 2026-11-06 2026-11-07 2026-11-08');
         expect(view.host.querySelector('.admin-calendar-title')?.textContent).toBe('02/11/2026 - 08/11/2026');
         expect(view.host.querySelector('.admin-calendar')?.getAttribute('aria-labelledby')).toBe('calendar-title');
         expect(view.host.querySelector('.admin-calendar-view [aria-pressed="true"]')?.textContent).toBe(viewWord('week'));
@@ -392,13 +492,14 @@ describe('the calendar screen', () => {
         expect([...view.host.querySelectorAll('.admin-calendar-service option')].map((option) => option.textContent)).toEqual([cal.text('filters.all_services'), 'Haircut', 'Colour', cal.text('filters.inactive_service', { service: 'Bridal trial' })]);
         expect(view.host.querySelector('.admin-calendar-legend ul')?.getAttribute('aria-label')).toBe(cal.text('legend.staff'));
         expect(inertia.get).not.toHaveBeenCalled();
-        expect(grid().dataset['blocks']).toBe('chain:0 chain:1 request:0');
+        expect(rows()).toEqual({ [`member-${ELENA}`]: { '2026-11-03': ['chain'], '2026-11-04': ['request'] }, [`member-${NIKOS}`]: { '2026-11-03': ['chain'] } });
         expect(grid().dataset['palette']).toBe('true');
         expect([...view.host.querySelectorAll('.admin-calendar-legend__member')].map((el) => el.textContent)).toEqual(['Elena Papadaki', 'Nikos Georgiou']);
-        expect([...view.host.querySelectorAll('.admin-calendar-legend__badge')].map((el) => [el.querySelector('.admin-calendar-badge')?.textContent, el.textContent])).toEqual([
-            [cal.text('badges.pending'), `${cal.text('badges.pending')}${shell.text('kit.statuses.awaiting_approval')}`],
-            [shell.text('kit.statuses.awaiting_payment'), `${shell.text('kit.statuses.awaiting_payment')}${cal.text('badges.payment')}`],
-        ]);
+        // The legend names the chips' marks and the rows' closures and hatch, never a closed day's hatch or a slot.
+        expect([...view.host.querySelectorAll('.admin-calendar-legend__badge')].map((el) => el.getAttribute('data-badge'))).toEqual(['awaiting_approval', 'awaiting_payment']);
+        expect(view.host.querySelector('.admin-calendar-legend__noted')).not.toBeNull();
+        expect([...view.host.querySelectorAll(`.admin-calendar-legend ul[aria-label="${cal.text('legend.closures')}"] li`)].map((item) => item.textContent)).toEqual([cal.text(LEGEND_CLOSURE), cal.text(LEGEND_OUTSIDE)]);
+        expect(view.host.querySelector('.admin-calendar-legend__closed, .admin-calendar-legend__gap, .admin-calendar-legend__hint')).toBeNull();
     });
 
     it('moves seven days in Week and one in Day, returns to the tenant today, and asks the server for each visible range with an exclusive end and the URL preserved', () => {
@@ -436,9 +537,10 @@ describe('the calendar screen', () => {
         tick(ELENA);
         expect(lastRead()?.data).toEqual({ from: '2026-11-02', to: '2026-11-09', staff: String(NIKOS) });
         expect(whoShown()).toBe('Nikos Georgiou');
-        // The window still answers both members, so both are drawn until the answer lands.
-        expect(grid().dataset['blocks']).toBe('chain:0 chain:1 request:0');
+        // The window still answers both members, so both rows are drawn until the answer lands.
+        expect(rows()).toEqual({ [`member-${ELENA}`]: { '2026-11-03': ['chain'], '2026-11-04': ['request'] }, [`member-${NIKOS}`]: { '2026-11-03': ['chain'] } });
 
+        // One member answered: Week is that member's time grid.
         answer({ window: { ...WINDOW, who: 'picked', staff: [NIKOS], members: [NIKOS_ROW], bookings: [CHAIN] } });
         expect(grid().dataset['blocks']).toBe('chain:1');
         expect([...view.host.querySelectorAll('.admin-calendar-legend__member')].map((el) => el.textContent)).toEqual(['Nikos Georgiou']);
@@ -458,11 +560,11 @@ describe('the calendar screen', () => {
         expect(inertia.get).toHaveBeenCalledTimes(3);
 
         select('#calendar-service', '3');
-        expect(grid().dataset['blocks']).toBe('chain:0 chain:1');
+        expect(rows()).toEqual({ [`member-${ELENA}`]: { '2026-11-03': ['chain'] }, [`member-${NIKOS}`]: { '2026-11-03': ['chain'] } });
         select('#calendar-status', 'awaiting_approval');
-        expect(grid().dataset['blocks']).toBe('');
+        expect(rows()).toEqual({ [`member-${ELENA}`]: {}, [`member-${NIKOS}`]: {} });
         select('#calendar-service', '');
-        expect(grid().dataset['blocks']).toBe('request:0');
+        expect(rows()).toEqual({ [`member-${ELENA}`]: { '2026-11-04': ['request'] }, [`member-${NIKOS}`]: {} });
         expect(inertia.get).toHaveBeenCalledTimes(3);
         expect(JSON.parse(window.sessionStorage.getItem('kr.admin.calendar.filters') ?? '')).toEqual({ status: 'awaiting_approval', who: 'all', staff: [], service: null });
     });
@@ -573,10 +675,10 @@ describe('the calendar screen', () => {
         expect(inertia.get).not.toHaveBeenCalled();
     });
 
-    it('opens the dialog on a block as client state, reading the detail alone with the URL preserved, shows it once the props carry it, and closes it without a visit', () => {
+    it('opens the dialog on a booking as client state, reading the detail alone with the URL preserved, shows it once the props carry it, and closes it without a visit', () => {
         view.render(<Page />);
 
-        press(view.host.querySelector('.stub-block'));
+        press(view.host.querySelector('.stub-chip[data-uuid="chain"]'));
         expect(inertia.get.mock.lastCall?.[0]).toBe('/admin/calendar');
         expect(lastRead()?.data).toEqual({ booking: 'chain' });
         expect(lastRead()?.visit.only).toEqual(['detail']);
@@ -629,13 +731,17 @@ describe('the calendar screen', () => {
     });
 
     it('opens the wizard from a slot with the date and the one member shown, if one is, never the slot payload', () => {
+        // Where the staff choice is not real no member is answered and Week stays the time grid.
+        inertia.props = propsWith({ entitlements: [], options: { ...(propsWith().options as Record<string, unknown>), members: 1 }, window: { ...WINDOW, members: [] } });
         view.render(<Page />);
 
         press(view.host.querySelector('.stub-slot'));
         expect(wizard.open).toHaveBeenLastCalledWith({ date: '2026-11-05', staffId: null });
 
-        tick(ELENA);
-        answer({ window: { ...WINDOW, who: 'picked', staff: [ELENA], members: [ELENA_ROW] } });
+        view.unmount();
+        view = mount();
+        inertia.props = propsWith({ window: { ...WINDOW, who: 'picked', staff: [ELENA], members: [ELENA_ROW] } });
+        view.render(<Page />);
         press(view.host.querySelector('.stub-slot'));
         expect(wizard.open).toHaveBeenLastCalledWith({ date: '2026-11-05', staffId: ELENA });
     });
@@ -696,7 +802,7 @@ describe('the calendar screen', () => {
         expect([grid().dataset['view'], grid().dataset['date']]).toEqual(['day', '2026-11-18']);
     });
 
-    it('offers Week, Day and Month, Month reading the six weeks of its grid in one read with the URL preserved, titled by the month, with no legend', () => {
+    it('offers Week, Day and Month, Month reading its six weeks in one read with the URL preserved, titled by the month, the legend naming the chips\' marks with no hint', () => {
         view.render(<Page />);
 
         expect([...view.host.querySelectorAll('.admin-calendar-view button')].map((el) => el.textContent)).toEqual([cal.text('toolbar.views.day'), cal.text('toolbar.views.week'), cal.text('toolbar.views.month')]);
@@ -709,13 +815,17 @@ describe('the calendar screen', () => {
         expect(lastRead()?.visit).toMatchObject({ only: ['window'], preserveUrl: true });
         expect(inertia.get).toHaveBeenCalledTimes(1);
         expect(title()).toBe('November 2026');
-        expect(view.host.querySelector('.admin-calendar-legend')).toBeNull();
+        expect(view.host.querySelector('.admin-calendar-legend__noted')).not.toBeNull();
+        expect(view.host.querySelector('.admin-calendar-legend__closed')).not.toBeNull();
+        expect(view.host.querySelector('.admin-calendar-legend__gap, .admin-calendar-legend__hint')).toBeNull();
 
-        // The props still carry this week, so going back to Week reads nothing.
+        // The props still carry this week, so going back to Week reads nothing; its grid of people
+        // draws chips too, its hatch the members' hours rather than a closed day.
         choose('week');
-        expect(grid().dataset['view']).toBe('week');
+        expect(grid().dataset['view']).toBe('people');
         expect(inertia.get).toHaveBeenCalledTimes(1);
-        expect(view.host.querySelector('.admin-calendar-legend')).not.toBeNull();
+        expect(view.host.querySelector('.admin-calendar-legend__noted')).not.toBeNull();
+        expect(view.host.querySelector('.admin-calendar-legend__closed, .admin-calendar-legend__gap, .admin-calendar-legend__hint')).toBeNull();
     });
 
     it('moves a month at a time in Month and back to the tenant today, reading only a range the props do not already carry', () => {
@@ -741,34 +851,74 @@ describe('the calendar screen', () => {
         expect(title()).toBe('November 2026');
     });
 
-    it('hands Month the counts per day and status, cut by status and service on the client with no request and by Who on the server', () => {
+    it('hands Month one chip per booking on its day and the days the business is closed, the chips cut by status and service on the client with no request and by Who on the server', () => {
         view.render(<Page />);
         choose('month');
-        answer({ window: NOVEMBER });
-        expect(counts()).toEqual({ '2026-11-03': [{ status: 'confirmed', count: 1 }], '2026-11-04': [{ status: 'awaiting_approval', count: 1 }] });
-        expect(grid().dataset['blocks']).toBe('chain:0 chain:1 request:0');
+        answer({ window: { ...NOVEMBER, closed_days: ['2026-11-08', '2026-11-15'] } });
+        expect(chips()).toEqual({ '2026-11-03': ['chain'], '2026-11-04': ['request'] });
+        expect(grid().dataset['closed']).toBe('2026-11-08 2026-11-15');
 
         select('#calendar-status', 'confirmed');
-        expect(counts()).toEqual({ '2026-11-03': [{ status: 'confirmed', count: 1 }] });
+        expect(chips()).toEqual({ '2026-11-03': ['chain'] });
         select('#calendar-status', '');
         select('#calendar-service', '5');
-        expect(counts()).toEqual({ '2026-11-04': [{ status: 'awaiting_approval', count: 1 }] });
+        expect(chips()).toEqual({ '2026-11-04': ['request'] });
         select('#calendar-service', '');
         expect(inertia.get).toHaveBeenCalledTimes(1);
 
         tick(ELENA);
         expect(lastRead()?.data).toEqual({ from: '2026-10-26', to: '2026-12-07', staff: String(NIKOS) });
         answer({ window: { ...NOVEMBER, who: 'picked', staff: [NIKOS], members: [NIKOS_ROW], bookings: [CHAIN] } });
-        expect(counts()).toEqual({ '2026-11-03': [{ status: 'confirmed', count: 1 }] });
+        expect(chips()).toEqual({ '2026-11-03': ['chain'] });
+        expect(grid().dataset['closed']).toBe('');
         expect(inertia.get).toHaveBeenCalledTimes(2);
     });
 
-    it('opens Day view on a day pressed in Month in one change, reading that day alone', () => {
+    it('opens the dialog on a chip in Month as on a block, reading the detail alone with the URL preserved', () => {
         view.render(<Page />);
         choose('month');
         answer({ window: NOVEMBER });
 
-        press(view.host.querySelector('.stub-day[data-date="2026-11-04"]'));
+        press(view.host.querySelector('.stub-chip[data-uuid="request"]'));
+        expect(lastRead()?.data).toEqual({ booking: 'request' });
+        expect(lastRead()?.visit).toMatchObject({ only: ['detail'], preserveUrl: true });
+        expect(document.body.querySelector('.admin-booking-dialog')).not.toBeNull();
+        expect(grid().dataset['view']).toBe('month');
+    });
+
+    it('opens the wizard on a day\'s date in Month with that date, and the closure dialog of the whole business on it where the viewer may settle closures', () => {
+        inertia.props = propsWith({ permissions: ['viewBookings', 'manageBookings', 'manageSettings'] });
+        view.render(<Page />);
+        choose('month');
+        answer({ window: NOVEMBER });
+
+        pressMonth('2026-11-04', 'book');
+        expect(wizard.open).toHaveBeenLastCalledWith({ date: '2026-11-04', staffId: null });
+
+        pressMonth('2026-11-03', 'closure');
+        expect(document.querySelector('.admin-modal__title')?.textContent).toBe(cal.text(CLOSURE_TITLE));
+        press(document.querySelector('.admin-closure__add'));
+        const call = inertia.post.mock.calls.at(-1) as [string, Record<string, unknown>] | undefined;
+        expect(call?.[0]).toBe('/admin/blackouts');
+        expect(call?.[1]).toEqual({ date: '2026-11-03', until: null, start_time: null, end_time: null, reason: null });
+    });
+
+    it('hands Month neither a booking nor a closure where the viewer may add neither, so a day\'s date opens the day', () => {
+        inertia.props = propsWith({ permissions: ['viewBookings'], catalog: null });
+        view.render(<Page />);
+        choose('month');
+        answer({ window: NOVEMBER });
+
+        expect(view.host.querySelectorAll('.stub-book, .stub-closure')).toHaveLength(0);
+        expect(view.host.querySelectorAll('.stub-day')).toHaveLength(2);
+    });
+
+    it('opens Day view on a day\'s Open day in Month in one change, reading that day alone', () => {
+        view.render(<Page />);
+        choose('month');
+        answer({ window: NOVEMBER });
+
+        pressMonth('2026-11-04', 'day');
         expect(grid().dataset['view']).toBe('day');
         expect(grid().dataset['date']).toBe('2026-11-04');
         expect(pressed()).toBe('day');
@@ -985,7 +1135,7 @@ describe('the calendar screen on a phone', () => {
         expect(view.host.querySelector('.admin-calendar-legend')).not.toBeNull();
     });
 
-    it('draws Day and Month as the grid, and Week chosen again as the notice', () => {
+    it('draws Day as the grid and Month as itself, and Week chosen again as the notice', () => {
         view.render(<Page />);
 
         choose('day');
@@ -994,7 +1144,9 @@ describe('the calendar screen on a phone', () => {
         choose('month');
         answer({ window: NOVEMBER });
         expect(grid().dataset['view']).toBe('month');
-        expect(counts()).not.toBeNull();
+        expect(chips()).toEqual({ '2026-11-03': ['chain'], '2026-11-04': ['request'] });
+        // Its days hold a count and no chip, so no legend names a chip's marks under it.
+        expect(view.host.querySelector('.admin-calendar-legend')).toBeNull();
 
         choose('week');
         expect(view.host.querySelector('.stub-grid')).toBeNull();
@@ -1004,6 +1156,8 @@ describe('the calendar screen on a phone', () => {
 
 describe('the screen\'s composition', () => {
     it('holds the toolbar over the filters in one card, the grid with the legend at its foot in the next, and the footnote under it', () => {
+        // One member answered, so Week is the time grid, its legend naming the blocks' badges.
+        inertia.props = propsWith({ window: { ...WINDOW, members: [ELENA_ROW] } });
         view.render(<Page />);
 
         const controls = view.host.querySelector<HTMLElement>('.admin-calendar-controls');
@@ -1016,11 +1170,15 @@ describe('the screen\'s composition', () => {
         expect(card?.nextElementSibling?.textContent).toBe(cal.text('page.footnote'));
         expect(view.host.querySelector('.admin-calendar-legend__hint')?.textContent).toBe(cal.text('legend.hint'));
         expect(view.host.querySelector('.admin-calendar-legend__gap')?.textContent).toBe(cal.text('legend.gap'));
+        expect([...view.host.querySelectorAll('.admin-calendar-legend__badge')].map((el) => [el.querySelector('.admin-calendar-badge')?.textContent, el.textContent])).toEqual([
+            [cal.text('badges.pending'), `${cal.text('badges.pending')}${shell.text('kit.statuses.awaiting_approval')}`],
+            [shell.text('kit.statuses.awaiting_payment'), `${shell.text('kit.statuses.awaiting_payment')}${cal.text('badges.payment')}`],
+        ]);
     });
 
-    it('hands Week the span of the shown members\' hours that week with an hour each side, the whole day where none has hours, and Day and Month none', () => {
+    it('hands Week\'s time grid the span of the shown member\'s hours that week with an hour each side, the whole day where they have none, and Day and Month none', () => {
         const hours = { windows: [{ start: '09:00', end: '17:00' }], closures: [], source: 'pattern', pattern: [] };
-        inertia.props = propsWith({ window: { ...WINDOW, hours: { [String(ELENA)]: { '2026-11-03': hours }, [String(NIKOS)]: { '2026-11-06': { ...hours, windows: [{ start: '12:00', end: '19:30' }] } } } } });
+        inertia.props = propsWith({ window: { ...WINDOW, members: [ELENA_ROW], hours: { [String(ELENA)]: { '2026-11-03': hours, '2026-11-06': { ...hours, windows: [{ start: '12:00', end: '19:30' }] } } } } });
         view.render(<Page />);
 
         expect(grid().dataset['view']).toBe('week');
@@ -1031,7 +1189,7 @@ describe('the screen\'s composition', () => {
 
         view.unmount();
         view = mount();
-        inertia.props = propsWith();
+        inertia.props = propsWith({ window: { ...WINDOW, members: [ELENA_ROW] } });
         view.render(<Page />);
         expect(grid().dataset['span']).toBe('00:00:00-24:00:00');
     });
@@ -1466,12 +1624,18 @@ describe('Day as member columns', () => {
         expect(column(`member-${NIKOS}`)?.querySelector('.admin-calendar-head__hours')?.textContent).toBe(cal.text(NOT_WORKING_THIS_DAY));
     });
 
-    it('adds Closure and Outside the member\'s hours to the legend in Day, and not in Week', () => {
+    it('adds Closure and Outside the member\'s hours to the legend in Day and in Week\'s grid of people, and not in Week\'s time grid', () => {
         onDay();
         expect([...view.host.querySelectorAll(`.admin-calendar-legend ul[aria-label="${cal.text('legend.closures')}"] li`)].map((item) => item.textContent)).toEqual([cal.text(LEGEND_CLOSURE), cal.text(LEGEND_OUTSIDE)]);
         expect(view.host.querySelector('.admin-calendar-legend__outside .admin-calendar-hatch')).not.toBeNull();
 
         choose('week');
+        expect(grid().dataset['view']).toBe('people');
+        expect(view.host.querySelector('.admin-calendar-legend__closure')).not.toBeNull();
+        expect(view.host.querySelector('.admin-calendar-legend__outside')).not.toBeNull();
+
+        answer({ window: { ...DAY_WINDOW, members: [ELENA_ROW] } });
+        expect(grid().dataset['view']).toBe('week');
         expect(view.host.querySelector('.admin-calendar-legend')).not.toBeNull();
         expect(view.host.querySelector('.admin-calendar-legend__closure')).toBeNull();
         expect(view.host.querySelector('.admin-calendar-legend__outside')).toBeNull();
@@ -1482,7 +1646,7 @@ describe('Day as member columns', () => {
         expect(columns().map((element) => element.dataset['column'])).toEqual([`member-${ELENA}`, `member-${NIKOS}`]);
 
         choose('week');
-        expect(grid().dataset['view']).toBe('week');
+        expect(grid().dataset['view']).toBe('people');
         expect(columns()).toHaveLength(0);
 
         choose('month');
@@ -1631,6 +1795,115 @@ describe('Day as member columns', () => {
     });
 });
 
+/*
+ * Week for a team: two members or more answered, the staff feature on and the viewer not pinned.
+ * The grid of people stands in as a stub reporting the rows it was handed, its own drawing proven
+ * in calendar/StaffWeek.test.tsx and the rows in calendar/staff-week.test.ts.
+ */
+describe('Week\'s grid of people', () => {
+    const IMPLICIT = 1;
+    const DAYS = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08'];
+    const WORKING: DayHours = { windows: [{ start: '09:00', end: '18:00' }], closures: [], source: 'pattern', pattern: [] };
+    const OFF: DayHours = { windows: [], closures: [], source: 'none', pattern: [] };
+    const DENTIST: DayHours = { ...WORKING, closures: [{ start: '13:00', end: '15:00', reason: 'Dentist', business: false }] };
+    const IMPLICIT_BOOKING: CalendarBooking = { ...REQUEST, uuid: 'implicit', items: [{ ...(REQUEST.items[0] as CalendarBooking['items'][number]), staff_id: IMPLICIT, start: '2026-11-05T08:00:00+00:00', end: '2026-11-05T09:00:00+00:00' }] };
+
+    const week = (off: readonly string[], own: Record<string, DayHours> = {}) => Object.fromEntries(DAYS.map((date) => [date, own[date] ?? (off.includes(date) ? OFF : WORKING)]));
+    const TEAM: Window = { ...WINDOW, implicit: IMPLICIT, hours: { [String(ELENA)]: week(['2026-11-07', '2026-11-08'], { '2026-11-03': DENTIST }), [String(NIKOS)]: week(['2026-11-02']) }, bookings: [CHAIN, REQUEST, IMPLICIT_BOOKING] };
+    const row = (key: string) => view.host.querySelector<HTMLElement>(`.stub-row[data-row="${key}"]`);
+
+    it('draws a row per member in the window\'s order, then the other bookings\' row, each day\'s chips, its hatch and its closure lines from the hours the window carries, reading nothing more', () => {
+        inertia.props = propsWith({ window: TEAM });
+        view.render(<Page />);
+
+        expect(rows()).toEqual({ [`member-${ELENA}`]: { '2026-11-03': ['chain'], '2026-11-04': ['request'] }, [`member-${NIKOS}`]: { '2026-11-03': ['chain'] }, other: { '2026-11-05': ['implicit'] } });
+        expect(row(`member-${ELENA}`)?.dataset['hatched']).toBe('2026-11-07 2026-11-08');
+        expect(row(`member-${ELENA}`)?.dataset['lines']).toBe('13:00 - 15:00');
+        expect(row(`member-${NIKOS}`)?.dataset['hatched']).toBe('2026-11-02');
+        expect(row('other')?.dataset['hatched']).toBe('');
+        expect(inertia.get).not.toHaveBeenCalled();
+    });
+
+    it('keeps Week the time grid for one member answered, for a viewer pinned to their own row, and where the staff choice is not real', () => {
+        const cases = [
+            propsWith({ window: { ...WINDOW, members: [ELENA_ROW] } }),
+            propsWith({ permissions: ['viewOwnCalendar'], catalog: null, own: ELENA_ROW, pinned: true, window: { ...WINDOW, who: 'me' } }),
+            // Two members answered all the same, so the staff choice alone decides.
+            propsWith({ entitlements: [], options: { ...(propsWith().options as Record<string, unknown>), members: 1 } }),
+        ];
+
+        for (const props of cases) {
+            view.unmount();
+            view = mount();
+            inertia.props = props;
+            view.render(<Page />);
+            expect(grid().dataset['view']).toBe('week');
+        }
+    });
+
+    it('opens the wizard on the member and the day from a cell\'s New booking, and the closure dialog on them from its New closure', () => {
+        inertia.props = propsWith({ window: TEAM, permissions: ['viewBookings', 'manageBookings', 'manageSettings'] });
+        view.render(<Page />);
+
+        press(row(`member-${NIKOS}`)?.querySelector('.stub-book') ?? null);
+        expect(wizard.open).toHaveBeenLastCalledWith({ date: '2026-11-02', staffId: NIKOS });
+
+        press(row(`member-${NIKOS}`)?.querySelector('.stub-closure') ?? null);
+        expect(document.querySelector('.admin-modal__title')?.textContent).toBe(cal.text(CLOSURE_TITLE));
+        expect(document.querySelector<HTMLSelectElement>('.admin-closure__who')?.value).toBe(String(NIKOS));
+        press(document.querySelector('.admin-closure__add'));
+        const call = inertia.post.mock.calls.at(-1) as [string, Record<string, unknown>] | undefined;
+        expect(call?.[0]).toBe(`/admin/staff/${NIKOS}/blackouts`);
+        expect(call?.[1]).toEqual({ date: '2026-11-02', until: null, start_time: null, end_time: null, reason: null });
+    });
+
+    it('hands the grid neither a booking nor a closure where the viewer may add neither', () => {
+        inertia.props = propsWith({ window: TEAM, permissions: ['viewBookings'], catalog: null });
+        view.render(<Page />);
+
+        expect(view.host.querySelectorAll('.stub-book, .stub-closure')).toHaveLength(0);
+        expect(view.host.querySelectorAll('.stub-day')).toHaveLength(2);
+    });
+
+    it('hands the grid no closure where a member\'s own cannot be made, a roster without the staff feature still reading its week and booking from it, Month keeping the business\'s', () => {
+        inertia.props = propsWith({ window: TEAM, permissions: ['viewBookings', 'manageBookings', 'manageSettings'], entitlements: [], options: { ...(propsWith().options as Record<string, unknown>), members: 2 } });
+        view.render(<Page />);
+
+        expect(grid().dataset['view']).toBe('people');
+        expect(view.host.querySelectorAll('.stub-book')).toHaveLength(2);
+        expect(view.host.querySelector('.stub-closure')).toBeNull();
+
+        choose('month');
+        answer({ window: NOVEMBER });
+
+        expect(view.host.querySelector('.stub-closure')).not.toBeNull();
+    });
+
+    it('builds the grid\'s rows once per answer: a render of the page that changes neither the window nor a filter hands the grid the rows it had', () => {
+        inertia.props = propsWith({ window: TEAM, permissions: ['viewBookings', 'manageBookings', 'manageSettings'] });
+        view.render(<Page />);
+        const first = handed.rows;
+        expect(first).not.toBeNull();
+
+        press(row(`member-${NIKOS}`)?.querySelector('.stub-closure') ?? null);
+        expect(document.querySelector('.admin-closure__cancel')).not.toBeNull();
+        press(document.querySelector('.admin-closure__cancel'));
+
+        expect(handed.rows).toBe(first);
+    });
+
+    it('opens Day view on a day from the grid, reading that day alone, Who kept', () => {
+        inertia.props = propsWith({ window: TEAM });
+        view.render(<Page />);
+
+        press(row(`member-${ELENA}`)?.querySelector('.stub-day') ?? null);
+        expect([grid().dataset['view'], grid().dataset['date']]).toEqual(['day', '2026-11-02']);
+        expect(pressed()).toBe('day');
+        expect(lastRead()?.data).toEqual({ from: '2026-11-02', to: '2026-11-03', who: 'scheduled' });
+        expect(inertia.get).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('a drop on the calendar', () => {
     const bookings = keyedBookings();
     const CLOCK = { timezone: 'Europe/Athens', dateFormat: 'd/m/Y', timeFormat: 'H:i' };
@@ -1660,7 +1933,9 @@ describe('a drop on the calendar', () => {
     const one = (selector: string) => document.body.querySelector(selector);
     const toasts = () => [...document.body.querySelectorAll('.admin-toast')].map((toast) => toast.querySelector('p, span')?.textContent ?? toast.textContent);
 
+    // A block's drop is Day's: the day of the chain, its members as columns.
     async function drop(): Promise<void> {
+        inertia.props = propsWith({ opening: { view: 'day', date: '2026-11-03' } });
         view.render(<Page />);
         press(view.host.querySelector('.stub-drop'));
         await settle();
@@ -1790,5 +2065,46 @@ describe('a drop on the calendar', () => {
 
         expect(one('.admin-move-confirm')).toBeNull();
         expect(toasts().at(-1)).toContain(bookings.text('move.not_moved'));
+    });
+
+    it('asks the same verdict for a chip dropped in Week\'s grid of people, moved by whole days at its own time and handed to the row\'s member, and posts it on confirm', async () => {
+        const moved = '2026-11-04T08:00:00+00:00';
+        reply = () => verdict({ start: moved, verdict: { placeable: true, crossings: [] } });
+        dropping.date = '2026-11-04';
+        dropping.staffId = NIKOS;
+        view.render(<Page />);
+
+        // Elena's row's first chip is the chain, standing for its first segment alone.
+        press(view.host.querySelector(`.stub-row[data-row="member-${ELENA}"] .stub-drop-chip`));
+        await settle();
+
+        const params = new URLSearchParams(String(fetched.mock.calls[0]?.[0] ?? '').split('?')[1] ?? '');
+        expect(fetched).toHaveBeenCalledTimes(1);
+        expect(params.get('start')).toBe(moved);
+        expect(params.get('staff[0]')).toBe(String(NIKOS));
+        expect(params.has('staff[1]')).toBe(false);
+        expect([...document.body.querySelectorAll('.admin-move-confirm__change')].map((line) => line.textContent)).toEqual([bookings.text('move.confirm.member', { service: 'Haircut', from: 'Elena Papadaki', to: 'Nikos Georgiou' })]);
+
+        press(one('.admin-move-confirm__confirm'));
+        expect(lastPost().url).toBe('/admin/bookings/chain/move');
+        expect(lastPost().body).toEqual({ start: moved, staff: { 0: NIKOS }, warning_accepted: false, tell_customer: true });
+    });
+
+    it('asks the verdict for a chip dropped on another day in Month, moved by whole days with no member changed', async () => {
+        const moved = '2026-11-10T08:00:00+00:00';
+        reply = () => verdict({ start: moved, verdict: { placeable: true, crossings: [] } });
+        dropping.date = '2026-11-10';
+        view.render(<Page />);
+        choose('month');
+
+        press(view.host.querySelector('.stub-month-day[data-date="2026-11-03"] .stub-drop-chip'));
+        await settle();
+
+        const params = new URLSearchParams(String(fetched.mock.calls[0]?.[0] ?? '').split('?')[1] ?? '');
+        expect(fetched).toHaveBeenCalledTimes(1);
+        expect(params.get('start')).toBe(moved);
+        expect([...params.keys()].filter((name) => name.startsWith('staff'))).toEqual([]);
+        expect(one('.admin-move-confirm')).not.toBeNull();
+        expect(document.body.querySelectorAll('.admin-move-confirm__change')).toHaveLength(0);
     });
 });

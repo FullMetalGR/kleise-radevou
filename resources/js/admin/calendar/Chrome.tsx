@@ -11,9 +11,10 @@ import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
 import { useDesktop } from '@/lib/viewport';
 import { BADGE_ORDER, BlockBadge, badgeMeaning, InsideMark } from './Badge';
-import { Caret, Chevron, Tick } from '@/components/glyphs';
+import { CHIP_OUTLINES, NOTED } from './Chip';
+import { Caret, Chevron, NoteSheet, Tick } from '@/components/glyphs';
 import { Initials } from '@/components/initials';
-import { type CalendarFilters, type CalendarOptions, COLOUR_BY_CHOICES, type ColourBy, idsOf, type Member, type Swatch, type View, type Who, whoSummary } from './model';
+import { type CalendarFilters, type CalendarOptions, CLOSED_DAY, COLOUR_BY_CHOICES, type ColourBy, idsOf, type Member, type Swatch, type View, type Who, whoSummary } from './model';
 import { hueOf, type OwnColours } from '@/lib/hue';
 import type { Calendar } from './useCalendar';
 import { type CalendarKey, useCalendarWords } from './words';
@@ -69,7 +70,7 @@ export function Toolbar({ views, calendar, title, titleId }: ToolbarProps) {
 type FiltersProps = {
     filters: CalendarFilters;
     options: CalendarOptions;
-    /** Whether Who shows: the staff choice is real (6.1), or the viewer is pinned to their own row. */
+    /** Whether Who shows: the staff choice is real, or the viewer is pinned to their own row. */
     staffShown: boolean;
     /** The viewer's own staff row, which Me stands for, or null where none is linked. */
     own: Member | null;
@@ -224,7 +225,7 @@ function WhoField({ filters, options, own, pinned, shown, colours, onChange }: O
 
 /**
  * The controls card's second row, the filters, side by side at or above the admin's breakpoint and
- * one to a row below it (1.6), each label small and no line under any but where a control is held:
+ * one to a row below it, each label small and no line under any but where a control is held:
  * Who, only while the choice is real or the viewer is pinned, the note under it for the pinned
  * viewer alone; Status, Any status then the nine; Service, All services then the full catalog,
  * inactive rows suffixed; Colour by, the settings row's word, disabled without manageSettings, with
@@ -299,16 +300,76 @@ export const LEGEND_OUTSIDE: CalendarKey = 'legend.outside';
 /** A swatch's shape, every entry's alike. */
 const SWATCH = 'admin-calendar-legend__swatch inline-block size-3 shrink-0 rounded-[3px]';
 
+/** The marks blocks wear: the two badges, the closure's mark and the gap's hatch. */
+function BlockMarks() {
+    const shell = useShell();
+    const words = useCalendarWords();
+
+    return (
+        <>
+            {BADGE_ORDER.map((badge) => (
+                <li key={badge} className="admin-calendar-legend__badge flex items-center" data-badge={badge}>
+                    <BlockBadge badge={badge} />
+                    {badgeMeaning(badge, shell, words)}
+                </li>
+            ))}
+            <li className="admin-calendar-legend__inside flex items-center">
+                <InsideMark />
+                {words.text('badges.closure')}
+            </li>
+            <li className="admin-calendar-legend__gap flex items-center gap-1.5">
+                <span className={cn(SWATCH, 'admin-calendar-gap-swatch')} aria-hidden="true" />
+                {words.text('legend.gap')}
+            </li>
+        </>
+    );
+}
+
+/** The marks chips wear, and the hatch of a day the business is closed where the hatch means nothing else. */
+function ChipMarks({ closed }: { closed: boolean }) {
+    const shell = useShell();
+    const words = useCalendarWords();
+
+    return (
+        <>
+            {BADGE_ORDER.map((badge) => (
+                <li key={badge} className="admin-calendar-legend__badge flex items-center gap-1.5" data-badge={badge}>
+                    <span className={cn(SWATCH, 'bg-card', CHIP_OUTLINES[badge])} aria-hidden="true" />
+                    {badgeMeaning(badge, shell, words)}
+                </li>
+            ))}
+            <li className="admin-calendar-legend__noted flex items-center gap-1.5">
+                <NoteSheet />
+                {words.text(NOTED)}
+            </li>
+            <li className="admin-calendar-legend__inside flex items-center">
+                <InsideMark />
+                {words.text('badges.closure')}
+            </li>
+            {closed && (
+                <li className="admin-calendar-legend__closed flex items-center gap-1.5">
+                    <span className={cn(SWATCH, 'admin-calendar-hatch')} aria-hidden="true" />
+                    {words.text(CLOSED_DAY)}
+                </li>
+            )}
+        </>
+    );
+}
+
+type LegendProps = { by: ColourBy; swatches: readonly Swatch[]; chips?: boolean; day?: boolean; hint?: boolean };
+
 /**
  * The legend, as the grid card's foot: one swatch per member shown, per category or per status as
- * Colour by says, from the same hue functions the blocks use, then the two block badges each
- * beside what it marks, the mark of a booking inside a closure as a narrow block draws it, beside
- * its words, and the gap's hatch; in Day's member columns then Closure and Outside the
- * member's hours, each drawn as the columns draw it; and, where an empty slot starts a booking,
- * the line saying so at the end. The screen decides whether it is drawn.
+ * Colour by says, from the same hue functions the blocks and the chips use; then the marks. Where
+ * the grid draws blocks, the two block badges each beside what it marks, the mark of a booking
+ * inside a closure as a narrow block draws it, beside its words, and the gap's hatch; where it
+ * draws chips, the outline each badge's chip wears, the note's mark, the closure's mark and the
+ * hatch of a day the business is closed. In Day's member columns and Week's grid of people then
+ * Closure and Outside the member's hours, each drawn as the columns and the rows draw it, the
+ * hatch named once; and, where an empty slot starts a booking, the line saying so at the end. The
+ * screen decides whether it is drawn.
  */
-export function Legend({ by, swatches, day = false, hint = false }: { by: ColourBy; swatches: readonly Swatch[]; day?: boolean; hint?: boolean }) {
-    const shell = useShell();
+export function Legend({ by, swatches, chips = false, day = false, hint = false }: LegendProps) {
     const words = useCalendarWords();
 
     return (
@@ -322,20 +383,7 @@ export function Legend({ by, swatches, day = false, hint = false }: { by: Colour
                 ))}
             </ul>
             <ul className="contents" aria-label={words.text('legend.badges')}>
-                {BADGE_ORDER.map((badge) => (
-                    <li key={badge} className="admin-calendar-legend__badge flex items-center" data-badge={badge}>
-                        <BlockBadge badge={badge} />
-                        {badgeMeaning(badge, shell, words)}
-                    </li>
-                ))}
-                <li className="admin-calendar-legend__inside flex items-center">
-                    <InsideMark />
-                    {words.text('badges.closure')}
-                </li>
-                <li className="admin-calendar-legend__gap flex items-center gap-1.5">
-                    <span className={cn(SWATCH, 'admin-calendar-gap-swatch')} aria-hidden="true" />
-                    {words.text('legend.gap')}
-                </li>
+                {chips ? <ChipMarks closed={!day} /> : <BlockMarks />}
             </ul>
             {day && (
                 <ul className="contents" aria-label={words.text('legend.closures')}>

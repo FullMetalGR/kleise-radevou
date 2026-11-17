@@ -264,10 +264,10 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
     // form and the new service's form); the wizard's group's 38 over the Calendar; staff.php's 168
     // on four (the Staff list with the staff feature and without it, a new member's form and a
     // member's page); settings.php's 143, payments.php's 97 and emails.php's 21 on Settings;
-    // team.php's 45 on the Team screen; calendar.php's 79 on the Calendar; shifts.php's 79 on two
+    // team.php's 45 on the Team screen; calendar.php's 85 on the Calendar; shifts.php's 79 on two
     // (the Calendar and the Shifts screen); billing.php's 88 on two (Settings and the Billing
-    // screen); and reports.php's 118 on the Reports screen: 6408.
-    expect($walked)->toBe(['rows' => 18, 'props' => 48, 'leaves' => 18 * 137 + 9 * 174 + 189 + 2 * 146 + 3 * 116 + 38 + 4 * 168 + 143 + 97 + 45 + 79 + 2 * 79 + 2 * 88 + 21 + 118]);
+    // screen); and reports.php's 118 on the Reports screen: 6414.
+    expect($walked)->toBe(['rows' => 18, 'props' => 48, 'leaves' => 18 * 137 + 9 * 174 + 189 + 2 * 146 + 3 * 116 + 38 + 4 * 168 + 143 + 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
 });
 
 it('reads the Calendar in Greek for a user at el under view=day, view=week and view=month, and for a Greek viewer who holds viewOwnCalendar without viewBookings, pinned to her own row', function () {

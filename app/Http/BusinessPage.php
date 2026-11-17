@@ -6,8 +6,6 @@ namespace App\Http;
 
 use App\Application\Clock;
 use App\Application\Map\Coordinates;
-use App\Billing\EntitlementResolver;
-use App\Billing\Feature;
 use App\Infrastructure\Db\CatalogReader;
 use App\Infrastructure\Db\StaffRecords;
 use App\Infrastructure\Storage\TenantImages;
@@ -163,7 +161,7 @@ final readonly class BusinessPage
 
     public function __construct(
         private StaffRecords $staff,
-        private EntitlementResolver $entitlements,
+        private OpeningWeek $opening,
         private CatalogReader $catalog,
         private TenantUrls $urls,
         private Clock $clock,
@@ -183,7 +181,7 @@ final readonly class BusinessPage
         $profile = $settings->profile;
         $members = $this->staff->all($tenant);
         $now = $this->clock->now()->setTimezone($tenant->zone());
-        $week = $this->week($tenant, $members, $now->format('Y-m-d'));
+        $week = $this->opening->of($tenant, $members, $now->format('Y-m-d'));
         $address = $profile->addressLines();
         $slug = Slug::of($tenant->slug);
         $cover = $settings->coverPath === null ? null : $this->urls->image($slug, TenantImages::fileOf($settings->coverPath));
@@ -329,50 +327,6 @@ final readonly class BusinessPage
         $last = count($words) > 1 ? mb_substr($words[count($words) - 1], 0, 1) : '';
 
         return mb_strtoupper($first.$last);
-    }
-
-    /**
-     * The usual week by ISO weekday, each day's windows merged where they overlap or touch: the
-     * windows of the implicit member's pattern on the floor and where no other member is active,
-     * else the active members'. The overrides and the cadence are not drawn: the table is the week
-     * a customer can expect, the times offered the resolver's. A pattern whose end is before the
-     * tenant's today is left out, since the flow offers nothing from it from today on; one that
-     * starts later is kept.
-     *
-     * @param  list<array{status: string, is_implicit: bool, pattern: array{ends_on: string|null, windows: list<array{weekday: int, start: string, end: string}>}|null}>  $members
-     * @return array<int, list<array{0: string, 1: string}>>
-     */
-    private function week(Tenant $tenant, array $members, string $today): array
-    {
-        $active = array_filter($members, fn (array $member): bool => ! $member['is_implicit'] && $member['status'] === 'active');
-        $floor = $active === [] || ! $this->entitlements->resolve($tenant)->allows(Feature::Staff);
-        $windows = [];
-
-        foreach ($members as $member) {
-            $pattern = $member['pattern'];
-
-            if ($pattern !== null && ($pattern['ends_on'] === null || $pattern['ends_on'] >= $today) && ($floor ? $member['is_implicit'] : $member['status'] === 'active')) {
-                array_push($windows, ...$pattern['windows']);
-            }
-        }
-
-        usort($windows, fn (array $a, array $b): int => [$a['weekday'], $a['start']] <=> [$b['weekday'], $b['start']]);
-        $week = [];
-
-        foreach ($windows as $window) {
-            $day = $week[$window['weekday']] ?? [];
-            $last = array_key_last($day);
-
-            if ($last !== null && $window['start'] <= $day[$last][1]) {
-                $day[$last][1] = max($day[$last][1], $window['end']);
-            } else {
-                $day[] = [$window['start'], $window['end']];
-            }
-
-            $week[$window['weekday']] = $day;
-        }
-
-        return $week;
     }
 
     /**

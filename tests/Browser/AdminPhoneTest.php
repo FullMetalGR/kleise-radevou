@@ -19,8 +19,8 @@ use Tests\Support\LunaFixture;
  * carrying the pending count the rail's Bookings entry carries, so a request waiting is seen with
  * the drawer closed, and the others none where none is pending. A last walk reads the wizard,
  * Month, Services, Staff and Settings at the same width, none of them scrolling the page sideways,
- * Month's day a cell with no control inside it. The rest of the suite stays on the plugin's desktop
- * device.
+ * Month's day its number and how many bookings it has with no chip, the whole cell its date menu,
+ * whose Open day opens Day view on it. The rest of the suite stays on the plugin's desktop device.
  *
  * The bookings are written straight to luna's rows, dated whole days from the tenant's today in
  * Athens on the real clock, which the browser and the application both read.
@@ -220,7 +220,10 @@ it('carries the pending count on the Menu control with the drawer closed, the co
         ->assertNoJavaScriptErrors();
 });
 
-it('fits the wizard, Month, Services, Staff and Settings to a phone, none of them scrolling the page sideways', function () {
+it('fits the wizard, Month, Services, Staff and Settings to a phone, none of them scrolling the page sideways, and opens a day from Month\'s date menu', function () {
+    phoneBooking('Cora Cut', athensDaysOn(0, 10));
+    phoneBooking('Bo Brush', athensDaysOn(0, 12));
+    $today = '.admin-calendar-month__day[data-date="'.athensToday()->format('Y-m-d').'"]';
     $page = Admin::onPhoneCalendar($this, 'luna', Admin::owner('luna'))->waitForText(adminLine(PHONE_FOOTNOTE));
 
     $page->click('.admin-new-booking')
@@ -234,11 +237,21 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
         ->click('.admin-wizard-cancel')
         ->assertNotPresent('.admin-wizard');
 
+    // A day holds its number and its count, the count's words read with the day's name alone.
     $page->click('.admin-calendar-view button:nth-child(3)')
         ->waitForText((new DateTimeImmutable('now', new DateTimeZone('Europe/Athens')))->format('F Y'))
-        ->assertPresent('td.admin-calendar-day[tabindex="0"]')
-        ->assertNotPresent('.admin-calendar-day button')
-        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+        ->assertSeeIn($today.' .admin-calendar-month__count', '2')
+        ->assertScript(sprintf("document.querySelector('%s .admin-calendar-date').textContent.includes(%s)", $today, json_encode(adminChoice('admin/calendar.cells.count', 2))), true)
+        ->assertCount($today.' button', 1)
+        ->assertNotPresent('.admin-calendar-chip')
+        ->assertNotPresent('.admin-calendar-more')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->click($today.' .admin-calendar-date')
+        ->assertSeeIn('.admin-calendar-date__day', adminLine('admin/calendar.cells.open_day'))
+        ->click('.admin-calendar-date__day')
+        ->waitForText('Cora Cut')
+        ->assertNotPresent('.admin-calendar-month')
+        ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'));
 
     foreach (['/services' => 'Beard trim', '/staff' => 'Nikos Georgiou', '/settings' => adminLine('admin/settings.sections.booking_rules')] as $path => $text) {
         $page->navigate(Admin::url('luna', $path))

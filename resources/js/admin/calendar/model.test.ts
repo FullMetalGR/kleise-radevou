@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { localeOf } from '../../booking/language';
 import { staffShown } from '@/bookings/model';
 import { keyedCalendar, keyedShifts } from '@/testing/keyed';
-import { applicableFilters, type Block, moveOfDrop, blockHueOf, blocksOf, businessHoursOf, categoryHueOf, CALENDAR_FILTER_SHAPE, CALENDAR_VIEWS, type CalendarBooking, type CalendarItem, closureBlocksOf, colourOf, countsOf, cut, dayAxisOf, dayColumnsOf, weekAxisOf, type DayHours, fillOf, headHoursOf, hoursOn, NO_HOURS_AHEAD, NEXT_WORKING_THIS_DAY, NOT_WORKING_THIS_DAY, nextLineOf, GAP_TITLE, idsOf, legendShown, MORNING, move, NO_CALENDAR_FILTERS, rangeOf, scrollTimeOf, slotDurationOf, slotHeightOf, shownRows, slotStaffOf, statusHueOf, swatchesOf, titleOf, wallOf, whoSummary } from './model';
+import { applicableFilters, type Block, type Chip, moveOfChipDrop, moveOfDrop, blockHueOf, blocksOf, businessHoursOf, categoryHueOf, CALENDAR_FILTER_SHAPE, CALENDAR_VIEWS, type CalendarBooking, type CalendarItem, closureBlocksOf, colourOf, cut, dayAxisOf, dayColumnsOf, weekAxisOf, type DayHours, fillOf, headHoursOf, hoursOn, NO_HOURS_AHEAD, NEXT_WORKING_THIS_DAY, NOT_WORKING_THIS_DAY, nextLineOf, GAP_TITLE, idsOf, legendShown, MORNING, monthChipsOf, monthDaysOf, move, NO_CALENDAR_FILTERS, rangeOf, scrollTimeOf, slotDurationOf, slotHeightOf, shownRows, slotStaffOf, statusHueOf, swatchesOf, titleOf, wallOf, whoSummary } from './model';
 import { hueOf, NEUTRAL, PALETTE, paletteHue } from '@/lib/hue';
 
 /*
@@ -290,63 +290,72 @@ describe('the blocks one window answer draws', () => {
     });
 });
 
-describe('the month counts', () => {
+describe('the month chips', () => {
     const at = (uuid: string, status: string, start: string, staff = 2, service = 1): CalendarBooking =>
         booking({ uuid, status, items: [{ sort: 0, service_id: service, service_name: 'Haircut', staff_id: staff, staff_name: 'Elena', start, end: start, price_minor: 1 }] });
     const chain = booking({
         uuid: 'chain',
         items: [
-            { sort: 0, service_id: 1, service_name: 'Haircut', staff_id: 2, staff_name: 'Elena', start: '2026-11-03T21:00:00+00:00', end: '2026-11-03T21:45:00+00:00', price_minor: 1 },
-            { sort: 1, service_id: 3, service_name: 'Colour', staff_id: 4, staff_name: 'Nikos', start: '2026-11-03T22:00:00+00:00', end: '2026-11-03T23:00:00+00:00', price_minor: 1 },
+            { sort: 0, service_id: 1, service_name: 'Haircut', staff_id: 2, staff_name: 'Elena', start: '2026-11-03T21:00:00+00:00', end: '2026-11-03T21:45:00+00:00', price_minor: 1, category: 'Hair' },
+            { sort: 1, service_id: 3, service_name: 'Colour', staff_id: 4, staff_name: 'Nikos', start: '2026-11-03T22:00:00+00:00', end: '2026-11-03T23:00:00+00:00', price_minor: 1, category: 'Colour' },
         ],
     });
+    const uuidsOn = (chips: Map<string, { uuid: string }[]>) => Object.fromEntries([...chips].map(([day, list]) => [day, list.map((chip) => chip.uuid)]));
 
-    it('counts each booking once on the tenant day its first item starts, a status per chip in the order the status filter lists them, and nothing for a day with none', () => {
-        const counts = countsOf(
-            [
-                at('a', 'confirmed', '2026-11-03T08:00:00+00:00'),
-                at('b', 'awaiting_approval', '2026-11-03T09:00:00+00:00'),
-                at('c', 'confirmed', '2026-11-03T12:00:00+00:00'),
-                at('d', 'pending', '2026-11-03T13:00:00+00:00'),
-                at('e', 'cancelled', '2026-11-02T22:30:00+00:00'),
-                chain,
-            ],
+    it('draws each booking once, on the tenant day its first item starts and at that item\'s start, a day\'s chips by start and then by uuid, and nothing for a day with none', () => {
+        const chips = monthChipsOf(
+            [at('c', 'confirmed', '2026-11-03T12:00:00+00:00'), at('b2', 'awaiting_approval', '2026-11-03T09:00:00+00:00'), at('b1', 'pending', '2026-11-03T09:00:00+00:00'), at('e', 'cancelled', '2026-11-02T22:30:00+00:00'), chain],
             null,
             ATHENS,
         );
 
         // 22:30 UTC on the second is 00:30 on the third in Athens; the chain starts at 23:00 on
-        // the third in Athens and its second item at midnight, and counts once, on the third.
-        expect(Object.fromEntries(counts)).toEqual({
-            '2026-11-03': [
-                { status: 'pending', count: 1 },
-                { status: 'awaiting_approval', count: 1 },
-                { status: 'confirmed', count: 3 },
-                { status: 'cancelled', count: 1 },
-            ],
-        });
-        expect(countsOf([], null, ATHENS).size).toBe(0);
+        // the third in Athens and its second item at midnight, and is drawn once, on the third.
+        expect(uuidsOn(chips)).toEqual({ '2026-11-03': ['e', 'b1', 'b2', 'c', 'chain'] });
+        expect(chips.get('2026-11-03')?.at(-1)).toEqual({ uuid: 'chain', start: '2026-11-03T23:00:00', customer: 'Ada North', status: 'confirmed', staffId: 2, category: 'Hair', badge: null, noted: false, inside: false, movable: false, segments: [0, 1] });
+        expect(monthChipsOf([], null, ATHENS).size).toBe(0);
     });
 
-    it('places a booking across a clock change on its wall-clock day, and lists a status the client does not know after the nine', () => {
-        const counts = countsOf([at('late', 'confirmed', '2026-10-24T21:30:00+00:00'), at('odd', 'on_hold_forever', '2026-10-25T08:00:00+00:00'), at('early', 'expired', '2026-10-25T08:00:00+00:00')], null, ATHENS);
-
-        expect(Object.fromEntries(counts)).toEqual({
-            '2026-10-25': [
-                { status: 'confirmed', count: 1 },
-                { status: 'expired', count: 1 },
-                { status: 'on_hold_forever', count: 1 },
-            ],
-        });
+    it('places a booking across a clock change on its wall-clock day', () => {
+        expect(uuidsOn(monthChipsOf([at('late', 'confirmed', '2026-10-24T21:30:00+00:00'), at('early', 'expired', '2026-10-25T08:00:00+00:00')], null, ATHENS))).toEqual({ '2026-10-25': ['late', 'early'] });
     });
 
-    it('counts the bookings the status and service cuts leave, and under a set of members only those with an item on one of their rows, as the read narrows them', () => {
+    it('carries the marks: the two badged statuses, the note flag as the server sent it, the closure mark on a booking that still keeps its time alone, the erased customer as none and the movable fact', () => {
+        const closed = { hours: { '2': { '2026-11-03': { windows: [], closures: [{ start: '10:00', end: '11:00', reason: null, business: true }], source: 'pattern' as const, pattern: [] } } }, closures: [] as [] };
+        const inside = '2026-11-03T08:30:00+00:00';
+        const chips = monthChipsOf(
+            [
+                booking({ uuid: 'a', status: 'awaiting_approval', noted: true, items: [{ ...ITEM, start: inside, end: '2026-11-03T09:00:00+00:00' }] }),
+                booking({ uuid: 'b', status: 'awaiting_payment', customer_name: null, movable: true, items: [{ ...ITEM, start: '2026-11-03T09:30:00+00:00', end: '2026-11-03T10:00:00+00:00' }] }),
+                booking({ uuid: 'c', status: 'cancelled', items: [{ ...ITEM, start: inside, end: '2026-11-03T09:00:00+00:00' }] }),
+            ],
+            null,
+            ATHENS,
+            closed,
+        ).get('2026-11-03');
+
+        expect(chips?.map((chip) => [chip.uuid, chip.badge, chip.noted, chip.inside, chip.customer, chip.movable])).toEqual([
+            ['a', 'awaiting_approval', true, true, 'Ada North', false],
+            ['c', null, false, false, 'Ada North', false],
+            ['b', 'awaiting_payment', false, false, null, true],
+        ]);
+    });
+
+    it('draws the bookings the status and service cuts leave, and under a set of members only those with an item on one of their rows, as the read narrows them', () => {
         const bookings = [at('a', 'confirmed', '2026-11-03T08:00:00+00:00'), at('b', 'awaiting_approval', '2026-11-04T08:00:00+00:00', 2, 5), chain];
 
-        expect(Object.fromEntries(countsOf(cut(bookings, { ...NO_CALENDAR_FILTERS, status: 'awaiting_approval' }), null, ATHENS))).toEqual({ '2026-11-04': [{ status: 'awaiting_approval', count: 1 }] });
-        expect(Object.fromEntries(countsOf(cut(bookings, { ...NO_CALENDAR_FILTERS, service: 3 }), null, ATHENS))).toEqual({ '2026-11-03': [{ status: 'confirmed', count: 1 }] });
-        expect(Object.fromEntries(countsOf(bookings, [4], ATHENS))).toEqual({ '2026-11-03': [{ status: 'confirmed', count: 1 }] });
-        expect(countsOf(bookings, [9], ATHENS).size).toBe(0);
+        expect(uuidsOn(monthChipsOf(cut(bookings, { ...NO_CALENDAR_FILTERS, status: 'awaiting_approval' }), null, ATHENS))).toEqual({ '2026-11-04': ['b'] });
+        expect(uuidsOn(monthChipsOf(cut(bookings, { ...NO_CALENDAR_FILTERS, service: 3 }), null, ATHENS))).toEqual({ '2026-11-03': ['chain'] });
+        expect(uuidsOn(monthChipsOf(bookings, [4], ATHENS))).toEqual({ '2026-11-03': ['chain'] });
+        expect(monthChipsOf(bookings, [9], ATHENS).size).toBe(0);
+    });
+
+    it('lays the month out as the forty-two days of its read, from the tenant\'s week start', () => {
+        const days = monthDaysOf('2026-11-17', 1);
+
+        expect(days).toHaveLength(42);
+        expect([days[0], days[41]]).toEqual([rangeOf('month', '2026-11-17', 1).from, '2026-12-06']);
+        expect(monthDaysOf('2026-11-17', 7)[0]).toBe('2026-11-01');
     });
 });
 
@@ -443,11 +452,11 @@ describe('Colour by', () => {
         expect(blockHueOf(block, { by: 'status', palette: false, categories: ['Hair'], own: [] })).toBe(statusHueOf('confirmed'));
     });
 
-    it('draws the legend under the other two choices on any tenant, under Staff member only with the palette, and never in Month', () => {
-        expect(legendShown({ by: 'staff', palette: true, categories: [], own: [] }, 'week')).toBe(true);
-        expect(legendShown({ by: 'staff', palette: false, categories: [], own: [] }, 'week')).toBe(false);
-        expect(legendShown({ by: 'category', palette: false, categories: [], own: [] }, 'day')).toBe(true);
-        expect(legendShown({ by: 'status', palette: true, categories: [], own: [] }, 'month')).toBe(false);
+    it('draws the legend in every view under the other two choices on any tenant, and under Staff member only with the palette', () => {
+        expect(legendShown({ by: 'staff', palette: true, categories: [], own: [] })).toBe(true);
+        expect(legendShown({ by: 'staff', palette: false, categories: [], own: [] })).toBe(false);
+        expect(legendShown({ by: 'category', palette: false, categories: [], own: [] })).toBe(true);
+        expect(legendShown({ by: 'status', palette: true, categories: [], own: [] })).toBe(true);
         expect(swatchesOf({ by: 'staff', palette: false, categories: [], own: [] }, [{ id: 2, name: 'Elena' }], [], String, CAL)).toEqual([]);
         expect(swatchesOf({ by: 'staff', palette: true, categories: [], own: [{ id: 2, colour: 'purple' }] }, [{ id: 2, name: 'Elena' }], [], String, CAL).map((swatch) => swatch.hue)).toEqual(['#cc79a7']);
     });
@@ -668,5 +677,41 @@ describe('a drop on the grid as a move', () => {
         expect(moveOfDrop(saturday, { block, start: '2026-10-25T10:00:00', staffId: null }, ATHENS)).toEqual({ uuid: 'sat', start: '2026-10-25T08:00:00+00:00', staff: {} });
         // The hour the clocks repeat reads its earlier instant, summer time's.
         expect(moveOfDrop(saturday, { block, start: '2026-10-25T03:30:00', staffId: null }, ATHENS)).toEqual({ uuid: 'sat', start: '2026-10-25T00:30:00+00:00', staff: {} });
+    });
+});
+
+describe('a chip\'s drop as a move', () => {
+    /** Haircut with Elena at 10:00 Athens, then Colour with Nikos at 10:45, then a blow-dry with Elena at 11:30, on Tuesday the third. */
+    const CHAIN = booking({
+        uuid: 'chain',
+        items: [
+            { ...ITEM, start: '2026-11-03T08:00:00+00:00', end: '2026-11-03T08:45:00+00:00' },
+            { ...ITEM, sort: 1, service_id: 4, service_name: 'Colour', staff_id: 4, staff_name: 'Nikos Georgiou', start: '2026-11-03T08:45:00+00:00', end: '2026-11-03T09:30:00+00:00' },
+            { ...ITEM, sort: 2, service_id: 5, service_name: 'Blow-dry', start: '2026-11-03T09:30:00+00:00', end: '2026-11-03T10:00:00+00:00' },
+        ],
+    });
+    const elena = { ...(monthChipsOf([CHAIN], null, ATHENS).get('2026-11-03')?.[0] as Chip), segments: [0, 2] };
+    const nikos = { ...elena, start: '2026-11-03T10:45:00', staffId: 4, segments: [1] };
+
+    it('moves the booking by whole days from its first start, the clock time and the members kept, where the chip landed on another day of its row', () => {
+        expect(moveOfChipDrop(CHAIN, { chip: elena, date: '2026-11-05', staffId: null }, ATHENS)).toEqual({ uuid: 'chain', start: '2026-11-05T08:00:00+00:00', staff: {} });
+        expect(moveOfChipDrop(CHAIN, { chip: nikos, date: '2026-11-02', staffId: null }, ATHENS)).toEqual({ uuid: 'chain', start: '2026-11-02T08:00:00+00:00', staff: {} });
+    });
+
+    it('hands every item the chip stands for to the row\'s member where it landed on another row, the other items keeping theirs', () => {
+        expect(moveOfChipDrop(CHAIN, { chip: elena, date: '2026-11-03', staffId: 7 }, ATHENS)).toEqual({ uuid: 'chain', start: '2026-11-03T08:00:00+00:00', staff: { 0: 7, 2: 7 } });
+        expect(moveOfChipDrop(CHAIN, { chip: nikos, date: '2026-11-04', staffId: 2 }, ATHENS)).toEqual({ uuid: 'chain', start: '2026-11-04T08:00:00+00:00', staff: { 1: 2 } });
+    });
+
+    it('is nothing where the chip landed on its own day of its own row', () => {
+        expect(moveOfChipDrop(CHAIN, { chip: elena, date: '2026-11-03', staffId: null }, ATHENS)).toBeNull();
+        expect(moveOfChipDrop(CHAIN, { chip: elena, date: '2026-11-03', staffId: 2 }, ATHENS)).toBeNull();
+    });
+
+    it('keeps the clock time across a change of the clocks', () => {
+        const saturday = booking({ uuid: 'sat', items: [{ ...ITEM, start: '2026-10-24T07:00:00+00:00', end: '2026-10-24T07:45:00+00:00' }] });
+        const chip = monthChipsOf([saturday], null, ATHENS).get('2026-10-24')?.[0] as Chip;
+
+        expect(moveOfChipDrop(saturday, { chip, date: '2026-10-26', staffId: null }, ATHENS)).toEqual({ uuid: 'sat', start: '2026-10-26T08:00:00+00:00', staff: {} });
     });
 });

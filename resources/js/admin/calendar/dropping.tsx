@@ -6,11 +6,12 @@ import type { TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
 import type { Crossing, Failure } from '@/lib/visits';
 import { useToasts } from '@/toast/toasts';
-import { type CalendarBooking, type Drop, type DropMove, moveOfDrop } from './model';
+import { type CalendarBooking, type ChipDrop, type Drop, type DropMove, moveOfChipDrop, moveOfDrop } from './model';
 
 /*
  * A drop on the calendar. The grid has already put the block back; the drop is read as a move
- * (moveOfDrop), and a drop that changes nothing does nothing. Before anything is written the
+ * (moveOfDrop, or moveOfChipDrop for a chip dropped on a cell of Week's grid of people or of
+ * Month), and a drop that changes nothing does nothing. Before anything is written the
  * move's read is asked for the verdict on the new start with the staff map: not placeable, or the
  * read refused, is the server's sentence as an error toast, and no answer at all the screen's
  * own. Placeable opens the Move form's own confirmation, from and to, the member change and the
@@ -28,6 +29,7 @@ type Pending = { booking: CalendarBooking; move: DropMove; segments: MoveSegment
 
 export type Dropping = {
     drop: (drop: Drop) => void;
+    dropChip: (drop: ChipDrop) => void;
     pending: Pending | null;
     busy: boolean;
     /** The crossings the open confirmation shows: the write's where it named some, else the verdict's. */
@@ -49,9 +51,9 @@ export function useDropping({ bookings, timezone, words }: { bookings: readonly 
     // A drop is asked about while the last one's verdict is out; a second is let go.
     const asking = useRef(false);
 
-    const drop = (dropped: Drop) => {
-        const booking = bookings.find((each) => each.uuid === dropped.block.uuid);
-        const move = booking === undefined ? null : moveOfDrop(booking, dropped, timezone);
+    const ask = (uuid: string, moveOf: (booking: CalendarBooking) => DropMove | null) => {
+        const booking = bookings.find((each) => each.uuid === uuid);
+        const move = booking === undefined ? null : moveOf(booking);
 
         if (booking === undefined || move === null || asking.current || pending !== null) {
             return;
@@ -72,6 +74,10 @@ export function useDropping({ bookings, timezone, words }: { bookings: readonly 
         });
     };
 
+    const drop = (dropped: Drop) => ask(dropped.block.uuid, (booking) => moveOfDrop(booking, dropped, timezone));
+
+    const dropChip = (dropped: ChipDrop) => ask(dropped.chip.uuid, (booking) => moveOfChipDrop(booking, dropped, timezone));
+
     const confirm = (choice: MoveChoice) => {
         if (pending === null) {
             return;
@@ -88,6 +94,7 @@ export function useDropping({ bookings, timezone, words }: { bookings: readonly 
 
     return {
         drop,
+        dropChip,
         pending,
         busy: write.busy,
         shown: write.written ?? pending?.crossings ?? [],

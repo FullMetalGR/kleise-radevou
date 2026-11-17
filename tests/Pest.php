@@ -1003,13 +1003,14 @@ function languageSharedValues(): array
         // admin/shifts.php's page.day_head, admin/calendar.php's toolbar.day_title and
         // admin/home.php's to_mark.day, a day's weekday before its date; admin/shifts.php's
         // editor.title, the day editor's name of the member before the day; admin/calendar.php's
-        // grid.block, a booking block's customer and service, and day.menu, a Day column menu's
-        // member and date: layouts of placeholders and punctuation alone, no word in them, the
-        // same in both languages.
+        // grid.block, a booking block's customer and service, day.menu, a Day column menu's
+        // member and date, and cells.chip, a booking chip's time, customer and status: layouts of
+        // placeholders and punctuation alone, no word in them, the same in both languages.
         ':weekday :date',
         ':name, :weekday :date',
         ':customer, :service',
         ':staff, :date',
+        ':time, :customer, :status',
         // admin/shell.php's shared.closure.row and shared.closure.row_staff: a listed booking's
         // customer and services, and its members after them where the screen shows members,
         // layouts of placeholders and commas alone, the same in both languages.

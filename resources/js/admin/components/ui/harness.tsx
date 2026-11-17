@@ -81,6 +81,31 @@ export function drag(from: Element | null, to: Element | null): void {
     });
 }
 
+/** One of the browser's drag and drop events, bubbling inside act, with a transfer to carry; the event, to read whether it was taken. */
+export function dragEvent(target: Element | null, type: string, relatedTarget: Element | null = null): Event {
+    if (target === null) {
+        throw new Error(`Nothing to fire ${type} on.`);
+    }
+
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, relatedTarget });
+    Object.defineProperty(event, 'dataTransfer', { value: { effectAllowed: 'all', dropEffect: 'none', setData: () => undefined, getData: () => '' } });
+    act(() => {
+        target.dispatchEvent(event);
+    });
+
+    return event;
+}
+
+/** An element dragged by the browser's drag and drop onto another and let go there; whether the target took it, as its drag over said. */
+export function carry(from: Element | null, to: Element | null): boolean {
+    dragEvent(from, 'dragstart');
+    const over = dragEvent(to, 'dragover');
+    dragEvent(to, 'drop');
+    dragEvent(from, 'dragend');
+
+    return over.defaultPrevented;
+}
+
 /**
  * One task passed inside act, for what the primitives defer to the next task: the focus scope
  * hands focus back that way once a modal or a popover has closed, and a popover starts hearing

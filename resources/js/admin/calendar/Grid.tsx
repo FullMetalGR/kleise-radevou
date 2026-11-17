@@ -1,27 +1,25 @@
-import type { DateSelectArg, DayCellContentArg, DayCellMountArg, DayHeaderContentArg, EventClickArg, EventContentArg, EventDropArg, EventInput, EventMountArg, NowIndicatorContentArg, SlotLabelContentArg } from '@fullcalendar/core';
+import type { DateSelectArg, DayHeaderContentArg, EventClickArg, EventContentArg, EventDropArg, EventInput, EventMountArg, NowIndicatorContentArg, SlotLabelContentArg } from '@fullcalendar/core';
 import type { EventLeaveArg, EventReceiveArg } from '@fullcalendar/interaction';
-import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, useEffect, useRef } from 'react';
-import { StatusChip } from '@/components/ui/status-chip';
+import { type CSSProperties, type ReactNode, useEffect, useRef } from 'react';
 import { isoWeekday, utcDayOf } from '@/lib/day';
 import { formatDate, formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { weekdayName } from '@/lib/names';
 import { useShell } from '@/lib/strings';
 import type { Language } from '../../booking/language';
 import { BlockBadge, InsideMarker } from './Badge';
-import { type Block, blockHueOf, businessHoursOf, type ClosureBlock, closureBlocksOf, type Colouring, type DayColumn, dayAxisOf, type Drop, fillOf, nextLineOf, scrollTimeOf, slotDurationOf, slotHeightOf, type StatusCount, TIMED_MINUTES, type View, wallOf } from './model';
+import { type Block, blockHueOf, businessHoursOf, type ClosureBlock, closureBlocksOf, type Colouring, type DayColumn, dayAxisOf, type Drop, fillOf, nextLineOf, scrollTimeOf, slotDurationOf, slotHeightOf, TIMED_MINUTES, type View, wallOf } from './model';
 import { useCalendarWords, useClosureWords } from './words';
 
 /*
- * The calendar grid, over FullCalendar's time grid, and its day grid for Month: its own toolbar
- * off, because the screen owns the view and the date, Week, Day and Month and no other view, the
- * axis stepping at the tenant's granularity, the columns from the tenant's week start. The library
- * is told it is in UTC and handed wall-clock strings with no zone, so it draws every instant at the
- * tenant's hour and knows no daylight saving of its own: a block at 04:30 on the day the clocks go
- * back sits at 04:30.
+ * The calendar grid of Week and Day, over FullCalendar's time grid: its own toolbar off, because
+ * the screen owns the view and the date, Week and Day and no other view, Month being a grid of its
+ * own (Month), the axis stepping at the tenant's granularity, the columns from the tenant's week
+ * start. The library is told it is in UTC and handed wall-clock strings with no zone, so it draws
+ * every instant at the tenant's hour and knows no daylight saving of its own: a block at 04:30 on
+ * the day the clocks go back sits at 04:30.
  *
  * A block's hue is what Colour by says: its member's, its service's category's or its status's chip
  * tone. Its fill is the hue mixed toward the surface, set on the element itself with a
@@ -35,15 +33,6 @@ import { useCalendarWords, useClosureWords } from './words';
  * a badge shares the line, and leaves the title its room. The scroll on every view or date change
  * is one hour before the day's earliest block or the fixed morning hour, computed by the model and
  * carried on the wrapper as data-scroll-time.
- *
- * Month draws no block and offers no slot selection. It is six weeks always, from the week
- * holding the month's first day, the range the screen reads. Each day's cell is the press: one
- * tab stop, a pointer press anywhere in it or Enter or Space on it hands the day to the screen.
- * The cell holds the day's number and a compact status chip per status present with its count,
- * nothing on a day with none, inside the day grid's own day-number element, an anchor with no
- * href while the library's navigation links are off and no control inside it, which is the one
- * place the library takes a day's content. The cell is the library's grid cell, named by that
- * element: the day in the tenant's date format and its chips.
  *
  * Day as member columns, where the screen hands the columns: one time-grid instance per column side
  * by side in a row that scrolls sideways past a minimum column width, every instance on the same
@@ -66,8 +55,11 @@ import { useCalendarWords, useClosureWords } from './words';
  * the events prop says, so a block moves only when the server's answer, re-read, says it has.
  */
 
+/** The views the time grid draws. */
+type GridView = Exclude<View, 'month'>;
+
 type Props = {
-    view: View;
+    view: GridView;
     date: string;
     blocks: readonly Block[];
     /**
@@ -84,10 +76,6 @@ type Props = {
      * member in Day's member columns; absent, the grid offers no slot selection.
      */
     onSlot?: (date: string, staffId?: number) => void;
-    /** The counts per tenant day Month draws, countsOf's answer; Week and Day draw blocks instead. */
-    counts?: ReadonlyMap<string, readonly StatusCount[]>;
-    /** Where a Month day's press hands that day. */
-    onDay?: (date: string) => void;
     /** Week's span, from weekAxisOf; absent, the whole day. */
     span?: { min: string; max: string };
     /**
@@ -101,7 +89,7 @@ type Props = {
     onDrop?: (drop: Drop) => void;
 };
 
-const VIEWS: Record<View, string> = { week: 'timeGridWeek', day: 'timeGridDay', month: 'dayGridMonth' };
+const VIEWS: Record<GridView, string> = { week: 'timeGridWeek', day: 'timeGridDay' };
 
 function pad(value: number): string {
     return String(value).padStart(2, '0');
@@ -110,19 +98,6 @@ function pad(value: number): string {
 /** A grid date's wall clock: the library holds it in UTC fields, since it was told it is in UTC. */
 function timeOf(date: Date): string {
     return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
-}
-
-/** The class a Month day's cell carries, the press's target. */
-const DAY = 'admin-calendar-day';
-
-/** The Month day a press landed in, read off its cell, or null for a press outside every day. */
-function dayPressed(target: EventTarget): string | null {
-    return target instanceof Element ? (target.closest<HTMLElement>(`.${DAY}`)?.dataset['date'] ?? null) : null;
-}
-
-/** Enter or Space on a Month day's cell, the cell itself holding the focus, as a button takes them. */
-function dayKeyed(event: KeyboardEvent): string | null {
-    return (event.key === 'Enter' || event.key === ' ') && event.target instanceof HTMLElement && event.target.classList.contains(DAY) ? (event.target.dataset['date'] ?? null) : null;
 }
 
 /** A wall clock as the grid's readings spell one, read off a date the library holds in UTC fields. */
@@ -253,7 +228,7 @@ function sharedOf({ weekStart, granularity, scrollTime, clock, language, onBlock
                 onDrop?.({ block: painted.block, start: wallOfDate(arg.event.start), staffId: null });
             }
         },
-        plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
+        plugins: [timeGridPlugin, interactionPlugin],
         headerToolbar: false as const,
         allDaySlot: false,
         timeZone: 'UTC',
@@ -280,7 +255,7 @@ function sharedOf({ weekStart, granularity, scrollTime, clock, language, onBlock
 
 type Shared = ReturnType<typeof sharedOf>;
 
-/** The wrapper's slot height, an hour sixty pixels whatever the step (5.1), which the stylesheet gives every slot. */
+/** The wrapper's slot height, an hour sixty pixels whatever the step, which the stylesheet gives every slot. */
 function scaleOf(granularity: number | null | undefined): CSSProperties {
     return { '--admin-calendar-slot-height': slotHeightOf(granularity) } as CSSProperties;
 }
@@ -390,11 +365,10 @@ function DayColumns({ columns, date, colouring, clock, shared, scrollTime, scale
     );
 }
 
-export function Grid({ view, date, blocks, colouring, granularity, weekStart, clock, onBlock, onSlot, counts, onDay, span, columns, head, onDrop }: Props) {
+export function Grid({ view, date, blocks, colouring, granularity, weekStart, clock, onBlock, onSlot, span, columns, head, onDrop }: Props) {
     const shell = useShell();
     const calendar = useRef<FullCalendar>(null);
     const scrollTime = scrollTimeOf(blocks, date);
-    const month = view === 'month';
     const split = view === 'day' && columns !== undefined && columns.some((column) => column.member !== null);
 
     useEffect(() => {
@@ -405,53 +379,10 @@ export function Grid({ view, date, blocks, colouring, granularity, weekStart, cl
         calendar.current?.getApi().scrollToTime(scrollTime);
     }, [scrollTime, view, date]);
 
-    /**
-     * A column's head: the weekday, ICU's short name in the page's language, and the date in the
-     * tenant's format, or the weekday alone over Month's six rows.
-     */
-    const header = (arg: DayHeaderContentArg) => {
-        const weekday = weekdayName(isoWeekday(utcDayOf(arg.date)), 'short', shell.language);
+    /** A column's head: the weekday, ICU's short name in the page's language, and the date in the tenant's format. */
+    const header = (arg: DayHeaderContentArg) => `${weekdayName(isoWeekday(utcDayOf(arg.date)), 'short', shell.language)} ${formatDate(utcDayOf(arg.date), clock)}`;
 
-        return month ? weekday : `${weekday} ${formatDate(utcDayOf(arg.date), clock)}`;
-    };
-
-    /** A Month day's content, inside the library's day-number element: no control of its own, since the cell is the press. */
-    const cell = (arg: DayCellContentArg) => {
-        const day = utcDayOf(arg.date);
-
-        return (
-            <>
-                <span className="sr-only">{formatDate(day, clock)}</span>
-                <span className="admin-calendar-day__number" aria-hidden="true">
-                    {arg.date.getUTCDate()}
-                </span>
-                {(counts?.get(day) ?? []).map(({ status, count }) => (
-                    <StatusChip key={status} status={status} count={count} />
-                ))}
-            </>
-        );
-    };
-
-    /** A pointer press anywhere in a Month day's cell, the cell's own padding included. */
-    const pointed = (event: MouseEvent) => {
-        const day = dayPressed(event.target);
-
-        if (day !== null) {
-            onDay?.(day);
-        }
-    };
-
-    /** Enter or Space on the focused cell; Space would otherwise scroll the page. */
-    const keyed = (event: KeyboardEvent) => {
-        const day = dayKeyed(event);
-
-        if (day !== null) {
-            event.preventDefault();
-            onDay?.(day);
-        }
-    };
-
-    const shared = sharedOf({ weekStart, granularity, scrollTime, clock, language: shell.language, onBlock, onDrop: month ? undefined : onDrop });
+    const shared = sharedOf({ weekStart, granularity, scrollTime, clock, language: shell.language, onBlock, onDrop });
     const scale = scaleOf(granularity);
 
     if (split) {
@@ -459,28 +390,20 @@ export function Grid({ view, date, blocks, colouring, granularity, weekStart, cl
     }
 
     return (
-        <div className="admin-calendar-grid" data-scroll-time={scrollTime} style={scale} onClick={month ? pointed : undefined} onKeyDown={month ? keyed : undefined}>
+        <div className="admin-calendar-grid" data-scroll-time={scrollTime} style={scale}>
             <FullCalendar
                 key={colouringKey(colouring)}
                 ref={calendar}
                 {...shared}
                 initialView={VIEWS[view]}
                 initialDate={date}
-                fixedWeekCount={true}
                 slotMinTime={view === 'week' && span !== undefined ? span.min : '00:00:00'}
                 slotMaxTime={view === 'week' && span !== undefined ? span.max : '24:00:00'}
                 nowIndicator={false}
                 slotLabelContent={(arg: SlotLabelContentArg) => formatTimeOfDay(timeOf(arg.date), clock)}
                 dayHeaderContent={header}
-                dayCellContent={month ? cell : undefined}
-                dayCellClassNames={(arg) => (arg.view.type === VIEWS.month ? [DAY, ...(arg.isOther ? [`${DAY}--other`] : [])] : [])}
-                dayCellDidMount={(arg: DayCellMountArg) => {
-                    if (arg.view.type === VIEWS.month) {
-                        arg.el.tabIndex = 0;
-                    }
-                }}
-                events={month ? [] : blocks.map((block) => eventOf(block, colouring, onDrop !== undefined))}
-                selectable={onSlot !== undefined && !month}
+                events={blocks.map((block) => eventOf(block, colouring, onDrop !== undefined))}
+                selectable={onSlot !== undefined}
                 select={(arg: DateSelectArg) => onSlot?.(utcDayOf(arg.start))}
             />
         </div>

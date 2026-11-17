@@ -5,7 +5,7 @@ import { NestedOverlay } from './modal';
 
 /*
  * The dropdown menu, the kit's first, on Radix's DropdownMenu as the popover stands on its
- * Popover: the Calendar's Add, and the Day column header's menu after it. A trigger the caller
+ * Popover: the Calendar's Add, the Day column header's menu and a day's date menu. A trigger the caller
  * hands over, an optional title heading the list (a label, not an item: it takes no focus and the
  * arrows pass it by), a list of items, each a label, an optional description under it and either
  * a handler or an href, and an optional note closing the list behind a rule, a muted line the
@@ -20,7 +20,12 @@ import { NestedOverlay } from './modal';
  * Placement and dismissal are the popover plumbing's: portaled out of the page at the trigger in
  * viewport coordinates, flipped and clamped by the library, no taller than the room on its side,
  * and counted up in an enclosing modal while open, so a backdrop press with the menu up closes
- * the menu alone.
+ * the menu alone. The library hangs the list from whatever the trigger's ref answers, the button
+ * itself as a rule; a trigger answering a point inside itself has the list open there, as the
+ * Calendar's date menu does where the day was pressed.
+ *
+ * Open or closed is the library's to hold, a press or a key on the trigger changing it, unless a
+ * caller holds it: one that opens its menu on more than those hands `open` and hears every change.
  */
 
 export type MenuItem = {
@@ -42,6 +47,9 @@ type Props = {
     /** A muted line closing the list behind a rule, not an item: what the items mean, where a word needs saying. */
     note?: string;
     align?: 'start' | 'center' | 'end';
+    /** Whether the menu is open, where the caller holds that; the library holds it where not given. */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
     className?: string;
 };
 
@@ -56,9 +64,9 @@ function Body({ item }: { item: MenuItem }) {
 
 const ITEM = 'admin-menu__item flex cursor-default flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left text-sm outline-none select-none data-[highlighted]:bg-accent';
 
-export function DropdownMenu({ trigger, label, items, title, note, align = 'start', className }: Props) {
+export function DropdownMenu({ trigger, label, items, title, note, align = 'start', open, onOpenChange, className }: Props) {
     return (
-        <MenuPrimitive.Root modal={false}>
+        <MenuPrimitive.Root modal={false} open={open} onOpenChange={onOpenChange}>
             <MenuPrimitive.Trigger asChild>{trigger}</MenuPrimitive.Trigger>
             <MenuPrimitive.Portal>
                 <MenuPrimitive.Content

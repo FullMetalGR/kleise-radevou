@@ -21,11 +21,13 @@ use Tests\Support\LunaFixture;
  * Dragging, with the real mouse: on Day a block dragged to another time in its column and onto
  * Nikos's column, each confirmed and then drawn once, where the server put it, with the move on
  * its trail; dragged onto another of Elena's bookings, refused before any confirmation with the
- * server's sentence and the block back; Keep it leaving everything as it was; and on Week
- * dragged to the next day at the same hour. Onto closed time the same drags open the warning
- * first: on Day onto a closure of the business, named with its window and reason, where Cancel
- * puts the block back and writes nothing, then onto Nikos's column over his own closure, moved on
- * Move anyway; and on Week onto Saturday, Elena's day off, cancelled once and then moved.
+ * server's sentence and the block back; Keep it leaving everything as it was. On Week, a row per
+ * member, a chip dragged along Elena's row to the next day keeps its hour, and onto Nikos's row
+ * the booking becomes his; on Month a chip dragged to the next day keeps its hour too. Onto
+ * closed time the same drags open the warning first: on Day onto a closure of the business, named
+ * with its window and reason, where Cancel puts the block back and writes nothing, then onto
+ * Nikos's column over his own closure, moved on Move anyway; and on Week onto Elena's Saturday,
+ * her day off, cancelled once and then moved.
  *
  * The booking is written straight to luna's rows on the next Wednesday in Athens, a day Elena
  * works 09:00-13:00 and 14:00-18:00, whole days from today, since the browser and the
@@ -262,7 +264,8 @@ function moveDrawn(AwaitableWebpage|Webpage $page, string $uuid, string $column,
 }
 
 /**
- * The calendar's Day on the day, as the owner, or the view named.
+ * The calendar's Day on the day, as the owner, or the view named, once Cora Cut's booking is
+ * drawn: a block names her on Day, a chip on Week and Month.
  *
  * @return Webpage
  */
@@ -270,7 +273,46 @@ function moveDay(BrowserTestCase $test, string $day, string $view = 'day')
 {
     return Admin::signedIn($test, 'luna', Admin::owner('luna'))
         ->navigate(Admin::url('luna', Admin::CALENDAR.'?view='.$view.'&date='.$day))
-        ->waitForText(adminLine('admin/calendar.grid.block', ['customer' => 'Cora Cut', 'service' => 'Haircut']));
+        ->waitForText('Cora Cut');
+}
+
+/** A day of a member's row on Week, by the member's name. */
+function moveCell(string $staff, string $day): string
+{
+    return '.admin-calendar-week__cell[data-row="member-'.LunaFixture::id('staff', $staff).'"][data-date="'.$day.'"]';
+}
+
+/** A day of Month. */
+function moveMonthDay(string $day): string
+{
+    return '.admin-calendar-month__day[data-date="'.$day.'"]';
+}
+
+/**
+ * Drags the booking's chip with the mouse from the cell given onto another, by the browser's own
+ * drag and drop, and lets it go near the target's top corner, where the day's date menu lies
+ * under the pointer: a chip moves by whole days, so where in the cell it lands does not matter.
+ */
+function moveChipDrag(AwaitableWebpage|Webpage $page, string $uuid, string $from, string $target): void
+{
+    $playwright = movePlaywright($page);
+    $playwright->locator($from.' .admin-calendar-chip[data-uuid="'.$uuid.'"]')->dragTo($playwright->locator($target), ['sourcePosition' => ['x' => 8, 'y' => 6], 'targetPosition' => ['x' => 12, 'y' => 8], 'steps' => 12]);
+}
+
+/**
+ * Waits until the booking's chip is drawn once, in the cell given.
+ *
+ * @return Webpage
+ */
+function moveChipDrawn(AwaitableWebpage|Webpage $page, string $uuid, string $cell)
+{
+    $chip = '.admin-calendar-chip[data-uuid="'.$uuid.'"]';
+
+    return $page->assertScript(<<<JS
+        () => document.querySelectorAll('{$chip}').length === 1
+            && document.querySelector('{$cell}')?.querySelector('{$chip}') !== null
+        JS, true)
+        ->assertCount($cell.' '.$chip, 1);
 }
 
 it('moves a booking by dragging its block to another time on Day, drawn once at the new time with the move on its trail', function () {
@@ -344,24 +386,60 @@ it('leaves everything as it was on Keep it', function () {
         ->and(moveStaffOf($uuid))->toBe('Elena Papadaki');
 });
 
-it('moves a booking to the next day at the same hour by dragging its block on Week', function () {
+it('moves a booking to the next day at the same hour by dragging its chip along its member\'s row on Week', function () {
     $day = moveWednesday();
     $next = (new DateTimeImmutable($day, new DateTimeZone('Europe/Athens')))->add(new DateInterval('P1D'))->format('Y-m-d');
     $uuid = moveBooking('Cora Cut', $day, '10:00');
     $date = (new DateTimeImmutable($next, new DateTimeZone('Europe/Athens')))->format('d/m/Y');
-    $column = '.fc-timegrid-col[data-date="'.$next.'"]';
 
     $page = moveDay($this, $day, 'week');
-    moveDrag($page, $uuid, '10:00', $column, '10:00');
+    moveChipDrag($page, $uuid, moveCell('Elena Papadaki', $day), moveCell('Elena Papadaki', $next));
     $page->waitForText(adminLine('admin/bookings.move.confirm.title'))
         ->assertSeeIn('.admin-move-confirm__from-to', $date.' 10:00')
+        ->assertNotPresent('.admin-move-confirm__change')
         ->click('.admin-move-confirm__confirm')
         ->waitForText(adminLine('admin/bookings.flashes.moved'));
-    moveDrawn($page, $uuid, $column, '10:00')->assertNoJavaScriptErrors();
+    moveChipDrawn($page, $uuid, moveCell('Elena Papadaki', $next))
+        ->assertCount(moveCell('Elena Papadaki', $day).' .admin-calendar-chip', 0)
+        ->assertNoJavaScriptErrors();
 
-    $start = DB::table('tenant_luna.booking_items')->join('tenant_luna.bookings', 'bookings.id', '=', 'booking_items.booking_id')->where('bookings.uuid', $uuid)->value('start_utc');
-    assert(is_string($start));
-    expect((new DateTimeImmutable($start, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/Athens'))->format('Y-m-d H:i'))->toBe($next.' 10:00');
+    expect(moveWhenOf($uuid))->toBe($next.' 10:00');
+});
+
+it('gives the booking to another member on another day by dragging its chip onto their row on Week, the hour kept', function () {
+    $day = moveWednesday();
+    $next = (new DateTimeImmutable($day, new DateTimeZone('Europe/Athens')))->add(new DateInterval('P1D'))->format('Y-m-d');
+    $uuid = moveBooking('Cora Cut', $day, '10:00');
+
+    $page = moveDay($this, $day, 'week');
+    moveChipDrag($page, $uuid, moveCell('Elena Papadaki', $day), moveCell('Nikos Georgiou', $next));
+    $page->waitForText(adminLine('admin/bookings.move.confirm.title'))
+        ->assertSeeIn('.admin-move-confirm__from-to', (new DateTimeImmutable($next, new DateTimeZone('Europe/Athens')))->format('d/m/Y').' 10:00')
+        ->assertSeeIn('.admin-move-confirm__change', adminLine('admin/bookings.move.confirm.member', ['service' => 'Haircut', 'from' => 'Elena Papadaki', 'to' => 'Nikos Georgiou']))
+        ->click('.admin-move-confirm__confirm')
+        ->waitForText(adminLine('admin/bookings.flashes.moved'));
+    moveChipDrawn($page, $uuid, moveCell('Nikos Georgiou', $next))->assertNoJavaScriptErrors();
+
+    expect(moveWhenOf($uuid))->toBe($next.' 10:00')
+        ->and(moveStaffOf($uuid))->toBe('Nikos Georgiou');
+});
+
+it('moves a booking to the next day at the same hour by dragging its chip on Month', function () {
+    $day = moveWednesday();
+    $next = (new DateTimeImmutable($day, new DateTimeZone('Europe/Athens')))->add(new DateInterval('P1D'))->format('Y-m-d');
+    $uuid = moveBooking('Cora Cut', $day, '10:00');
+
+    $page = moveDay($this, $day, 'month');
+    moveChipDrag($page, $uuid, moveMonthDay($day), moveMonthDay($next));
+    $page->waitForText(adminLine('admin/bookings.move.confirm.title'))
+        ->assertSeeIn('.admin-move-confirm__from-to', (new DateTimeImmutable($next, new DateTimeZone('Europe/Athens')))->format('d/m/Y').' 10:00')
+        ->assertNotPresent('.admin-move-confirm__change')
+        ->click('.admin-move-confirm__confirm')
+        ->waitForText(adminLine('admin/bookings.flashes.moved'));
+    moveChipDrawn($page, $uuid, moveMonthDay($next))->assertNoJavaScriptErrors();
+
+    expect(moveWhenOf($uuid))->toBe($next.' 10:00')
+        ->and(moveStaffOf($uuid))->toBe('Elena Papadaki');
 });
 
 it('warns before a drag onto a closure on Day, puts the block back on Cancel, and moves it onto another member\'s closure on Move anyway', function () {
@@ -395,31 +473,31 @@ it('warns before a drag onto a closure on Day, puts the block back on Cancel, an
         ->and(moveStaffOf($uuid))->toBe('Nikos Georgiou');
 });
 
-it('warns before a drag onto the member\'s day off on Week, puts the block back on Cancel, and moves it there on Move anyway', function () {
+it('warns before a drag onto the member\'s day off on Week, leaves the chip where it was on Cancel, and moves it there on Move anyway', function () {
     $day = moveWednesday();
     $saturday = (new DateTimeImmutable($day, new DateTimeZone('Europe/Athens')))->add(new DateInterval('P3D'))->format('Y-m-d');
     $uuid = moveBooking('Cora Cut', $day, '10:00');
-    $wednesdays = '.fc-timegrid-col[data-date="'.$day.'"]';
-    $saturdays = '.fc-timegrid-col[data-date="'.$saturday.'"]';
+    $wednesdays = moveCell('Elena Papadaki', $day);
+    $saturdays = moveCell('Elena Papadaki', $saturday);
     $off = adminLine('admin/bookings.move.confirm.off_weekday', ['staff' => 'Elena Papadaki', 'weekdays' => adminLine('admin/bookings.move.confirm.weekdays.saturday')]);
 
-    $page = moveDay($this, $day, 'week');
-    moveDrag($page, $uuid, '10:00', $saturdays, '10:00');
+    $page = moveDay($this, $day, 'week')->assertPresent($saturdays.'.admin-calendar-week__cell--hatched');
+    moveChipDrag($page, $uuid, $wednesdays, $saturdays);
     $page->waitForText(adminLine('admin/bookings.move.confirm.closed_title'))
         ->assertSeeIn('.admin-move-confirm__from-to', (new DateTimeImmutable($saturday, new DateTimeZone('Europe/Athens')))->format('d/m/Y').' 10:00')
         ->assertSeeIn('.admin-move-confirm__warning', $off)
         ->click('.admin-move-confirm__keep')
         ->assertNotPresent('.admin-move-confirm');
-    moveDrawn($page, $uuid, $wednesdays, '10:00');
+    moveChipDrawn($page, $uuid, $wednesdays);
 
     expect(moveWhenOf($uuid))->toBe($day.' 10:00');
 
-    moveDrag($page, $uuid, '10:00', $saturdays, '10:00');
+    moveChipDrag($page, $uuid, $wednesdays, $saturdays);
     $page->waitForText(adminLine('admin/bookings.move.confirm.closed_title'))
         ->assertSeeIn('.admin-move-confirm__warning', $off)
         ->click('.admin-move-confirm__confirm')
         ->waitForText(adminLine('admin/bookings.flashes.moved'));
-    moveDrawn($page, $uuid, $saturdays, '10:00')->assertNoJavaScriptErrors();
+    moveChipDrawn($page, $uuid, $saturdays)->assertNoJavaScriptErrors();
 
     expect(moveWhenOf($uuid))->toBe($saturday.' 10:00');
 });

@@ -6,10 +6,13 @@ import { BookingsProvider, type BookingsWords, bookingsWordsOf } from '@/booking
 import { DesktopWeek, Filters, Legend, Toolbar } from '@/calendar/Chrome';
 import { ClosureDialog } from '@/calendar/ClosureDialog';
 import { useColourByWrite } from '@/calendar/colour-by';
-import { DropConfirm, useDropping } from '@/calendar/dropping';
+import { DropConfirm, type Dropping, useDropping } from '@/calendar/dropping';
 import { type ColumnActions, ColumnHead } from '@/calendar/ColumnHead';
 import { Caret } from '@/components/glyphs';
 import { Grid } from '@/calendar/Grid';
+import { Month } from '@/calendar/Month';
+import { staffWeekShown, weekDaysOf, type WeekRow, weekRowsOf } from '@/calendar/staff-week';
+import { StaffWeek } from '@/calendar/StaffWeek';
 import {
     applicableFilters,
     type Block,
@@ -17,19 +20,21 @@ import {
     CALENDAR_FILTER_SHAPE,
     CALENDAR_MEMORY_KEY,
     CALENDAR_VIEWS,
+    type CalendarBooking,
     type CalendarFilters,
     type CalendarOptions,
+    type Chip,
     type ColourBy,
     type Colouring,
     colourOf,
     type Opening,
-    countsOf,
     cut,
     type DayColumn,
     dayColumnsOf,
     hoursOn,
     legendShown,
     type Member,
+    monthChipsOf,
     NO_CALENDAR_FILTERS,
     rangeOf,
     shownRows,
@@ -42,8 +47,8 @@ import {
     type Window,
 } from '@/calendar/model';
 import { NEUTRAL, type OwnColours } from '@/lib/hue';
-import { useCalendar } from '@/calendar/useCalendar';
-import { type CalendarKey, CalendarProvider, type CalendarWords, calendarWordsOf, shiftWordsOf } from '@/calendar/words';
+import { type Calendar as CalendarState, useCalendar } from '@/calendar/useCalendar';
+import { type CalendarKey, CalendarProvider, type CalendarWords, calendarWordsOf, shiftWordsOf, useClosureWords } from '@/calendar/words';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, type MenuItem } from '@/components/ui/dropdown-menu';
 import { Notice } from '@/components/ui/notice';
@@ -51,6 +56,7 @@ import { statusLabel } from '@/components/ui/status-chip';
 import { clockOf } from '@/lib/format';
 import { readMemory, writeMemory } from '@/lib/session-memory';
 import { useShell } from '@/lib/strings';
+import { useDesktop } from '@/lib/viewport';
 import { DayEditor } from '@/shifts/DayEditor';
 import { owningFailure } from '@/lib/visits';
 import { useToasts } from '@/toast/toasts';
@@ -77,10 +83,20 @@ import { useNewBooking } from '@/wizard/NewBooking';
  * what My calendar showed: Approve and Reject on it where the server allows them, no wizard, since
  * the catalog is null; with no row linked, the sentence saying why in place of the grid.
  *
- * Month, the third view: the grid draws the counts per day and status the same cuts leave in place
- * of blocks, with no slot selection, the legend is not rendered, and a day pressed opens Day view
- * on it. The cut and the counts are computed once per window answer and filter change, and the
- * counts in Month alone.
+ * Month, the third view, is its own grid (calendar/Month): each day's bookings the same cuts leave,
+ * as chips, and a day's date menu offering New booking where the wizard is, New closure where the
+ * Add menu offers one, and Open day; the legend under it names the chips' marks, and is not drawn
+ * below the admin's breakpoint, where a day holds a count and no chip. The chips are computed once
+ * per window answer and filter change, in Month alone.
+ *
+ * Week for a team is a grid of people by days (calendar/StaffWeek) where the staff choice is real,
+ * the viewer is not pinned to their own row and the window answers two members or more: a row per
+ * member, then the other bookings' row where the week has one, each day of a row its chips and its
+ * date menu on that member, New booking and New closure prefilled with the member and the day, the
+ * closure only where a member's own can be made (manageSettings with the staff feature): a tenant
+ * with a roster and no such feature reads the grid and closes no one from it. Otherwise Week stays
+ * the one time grid. Its rows are computed once per window answer and filter change, in that grid
+ * alone.
  *
  * Colour by is the settings row's word in the shared props, every block coloured by its member, its
  * service's category or its status, the legend following; the filter card's select writes it, for a
@@ -100,9 +116,9 @@ import { useNewBooking } from '@/wizard/NewBooking';
  * the read lands. The day editor's save redirects back, which lands every prop again, and the
  * screen re-reads the window it wants, as after a closure.
  *
- * A booking's block drags in Week and Day where the server says it is movable: the drop asks the
- * move's read for its verdict and a placeable one opens the Move form's confirmation
- * (calendar/dropping); the grid takes none in Month.
+ * A booking's block drags in Week and Day where the server says it is movable, and its chip in
+ * the grid of people and in Month: the drop asks the move's read for its verdict and a placeable
+ * one opens the Move form's confirmation (calendar/dropping), the same for each.
  */
 
 type Props = SharedProps & { options: CalendarOptions; own: Member | null; pinned: boolean; window: Window; detail: Detail | null; opening?: Opening; colours: OwnColours; strings: AdminStrings & { calendar?: CalendarStrings; bookings?: BookingsStrings; shifts?: ShiftsStrings } };
@@ -114,6 +130,12 @@ type Closing = { staffId?: number | null; date?: string };
 export const CALENDAR_PATH = '/admin/calendar';
 
 const TITLE_ID = 'calendar-title';
+
+/** Month's chips outside Month: none. */
+const NO_CHIPS: ReadonlyMap<string, readonly Chip[]> = new Map();
+
+/** The grid of people's rows outside it: none. */
+const NO_ROWS: readonly WeekRow[] = [];
 
 /** A failed window read, in words that hold in Week, Day and Month alike. */
 export const CALENDAR_LOAD_ERROR: CalendarKey = 'page.load_error';
@@ -153,23 +175,37 @@ function columnsFor(view: View, real: boolean, window: Window, blocks: Block[], 
     return view === 'day' && real ? dayColumnsOf(window, blocks, date) : [];
 }
 
-/** Where a slot hands the wizard its date and the column's member, else the one member shown (3.1); none without the wizard. */
+/** Where a slot hands the wizard its date and the column's member, else the one member shown; none without the wizard. */
 function slotOf(bookable: boolean, members: readonly Member[], open: (prefill: Prefill) => void): ((date: string, staffId?: number) => void) | undefined {
     return bookable ? (date, staffId) => open({ date, staffId: staffId ?? slotStaffOf(members) }) : undefined;
 }
 
+/** Whether a member's own closure can be made: manageSettings with the staff feature, refused without it, so the dialog would fall back to the whole business. */
+function closesMembers(props: Props): boolean {
+    return props.permissions.includes('manageSettings') && props.entitlements.includes('staff');
+}
+
+/** The closure a cell of the people's grid offers, a member's own: none where one cannot be made, however the grid came to show. */
+function memberClosureOf(props: Props, onClosure: SurfaceProps['onClosure']): SurfaceProps['onClosure'] {
+    return closesMembers(props) ? onClosure : undefined;
+}
+
+/** Whether the legend is drawn: where the colouring names one, and never under Month below the breakpoint, whose cells hold a count and no chip to name. */
+function legendDrawn(colours: Colouring, month: boolean, desktop: boolean): boolean {
+    return legendShown(colours) && (desktop || !month);
+}
+
 /**
  * A Day column's menu actions: New booking here where the wizard is offered, Closure here and
- * Edit this day's hours for manageSettings with the staff feature (a member's closure is refused
- * without it, so the dialog would fall back to the whole business), Open staff page for a
- * viewBookings holder; none for a viewer pinned to Me, who sees the head alone.
+ * Edit this day's hours where a member's closure can be made, Open staff page for a viewBookings
+ * holder; none for a viewer pinned to Me, who sees the head alone.
  */
 function columnActionsOf(props: Props, handlers: Required<Pick<ColumnActions, 'book' | 'close' | 'edit'>>): ColumnActions {
     if (props.pinned) {
         return {};
     }
 
-    const staffs = props.permissions.includes('manageSettings') && props.entitlements.includes('staff');
+    const staffs = closesMembers(props);
 
     return {
         ...(props.catalog ? { book: handlers.book } : {}),
@@ -197,13 +233,113 @@ function CalendarDayEditor({ member, date, props, words, onClose }: { member: Me
     );
 }
 
+type SurfaceProps = {
+    props: Props;
+    calendar: CalendarState;
+    kept: readonly CalendarBooking[];
+    ids: readonly number[] | null;
+    blocks: readonly Block[];
+    colours: Colouring;
+    columns: readonly DayColumn[];
+    slot: ((date: string, staffId?: number) => void) | undefined;
+    onClosure: ((date: string, staffId?: number) => void) | undefined;
+    head: (column: DayColumn) => ReactNode;
+    dropping: Pick<Dropping, 'drop' | 'dropChip'>;
+    words: CalendarWords;
+};
+
+/**
+ * The card's content: Month, Week's grid of people, or the time grid of Week and Day, with the
+ * legend at its foot where the colouring names one; Month's chips and the people's rows computed
+ * here, once per window answer and filter change.
+ */
+function Surface({ props, calendar, kept, ids, blocks, colours, columns, slot, onClosure, head, dropping, words }: SurfaceProps) {
+    const shell = useShell();
+    const desktop = useDesktop();
+    const closed = useClosureWords();
+    const clock = clockOf(props);
+    const { timezone, dateFormat, timeFormat } = clock;
+    const month = calendar.view === 'month';
+    const people = staffWeekShown(calendar.view, props.pinned, colours.palette, props.window.members);
+    const chips = useMemo(() => (month ? monthChipsOf(kept, ids, props.tenant.timezone, props.window) : NO_CHIPS), [month, kept, ids, props.tenant.timezone, props.window]);
+    const days = weekDaysOf(calendar.date, props.settings.week_start);
+    const rows = useMemo(
+        () => (people ? weekRowsOf(props.window, kept, weekDaysOf(calendar.date, props.settings.week_start), timezone, { timezone, dateFormat, timeFormat }, closed) : NO_ROWS),
+        [people, props.window, kept, calendar.date, props.settings.week_start, timezone, dateFormat, timeFormat, closed],
+    );
+    // The views drawing chips in cells: their legend names the chips' marks, and no slot starts a booking.
+    const celled = month || people;
+    // Week bounded as Day's axis is, by the shown members' hours that week and every block in it.
+    const span = calendar.view === 'week' ? weekAxisOf(props.window, blocks, rangeOf('week', calendar.date, props.settings.week_start).from) : undefined;
+
+    return (
+        <>
+            {calendar.view === 'month' ? (
+                <Month
+                    date={calendar.date}
+                    weekStart={props.settings.week_start}
+                    today={calendar.today}
+                    chips={chips}
+                    closedDays={props.window.closed_days ?? []}
+                    colouring={colours}
+                    clock={clock}
+                    onOpen={calendar.open}
+                    onBook={slot}
+                    onClosure={onClosure}
+                    onDay={calendar.showDay}
+                    onDrop={dropping.dropChip}
+                />
+            ) : people ? (
+                <StaffWeek
+                    days={days}
+                    rows={rows}
+                    today={calendar.today}
+                    colouring={colours}
+                    clock={clock}
+                    onOpen={calendar.open}
+                    onBook={slot}
+                    onClosure={memberClosureOf(props, onClosure)}
+                    onDay={calendar.showDay}
+                    onDrop={dropping.dropChip}
+                />
+            ) : (
+                <Grid
+                    view={calendar.view}
+                    date={calendar.date}
+                    blocks={blocks}
+                    colouring={colours}
+                    granularity={props.settings.granularity}
+                    weekStart={props.settings.week_start}
+                    clock={clock}
+                    onBlock={calendar.open}
+                    onSlot={slot}
+                    span={span}
+                    columns={columns}
+                    onDrop={dropping.drop}
+                    head={head}
+                />
+            )}
+            {legendDrawn(colours, month, desktop) && (
+                <Legend
+                    by={colours.by}
+                    swatches={swatchesOf(colours, props.window.members, celled ? [...[...chips.values()].flat(), ...rows.flatMap((row) => row.cells.flatMap((cell) => cell.chips))] : blocks, (status) => statusLabel(status, shell), words)}
+                    chips={celled}
+                    day={columns.length > 0 || people}
+                    hint={slot !== undefined && !celled}
+                />
+            )}
+        </>
+    );
+}
+
 export default function Calendar() {
     const { props } = usePage<Props>();
     const clock = clockOf(props);
     const shell = useShell();
     const words = calendarWordsOf(props.strings, shell.language);
     const bookingsWords = bookingsWordsOf(props.strings, shell.language);
-    const shiftWords = shiftWordsOf(props.strings, shell.language);
+    // Held from render to render, the people's rows being worded in them and built once per answer.
+    const shiftWords = useMemo(() => shiftWordsOf(props.strings, shell.language), [props.strings, shell.language]);
     const [filters, setFilters] = useState<CalendarFilters>(NO_CALENDAR_FILTERS);
     const restored = useRef(false);
     const pinned = props.pinned;
@@ -243,14 +379,11 @@ export default function Calendar() {
     const ids = useMemo(() => shownRows(props.window), [props.window]);
     const kept = useMemo(() => cut(props.window.bookings, filters), [props.window.bookings, filters]);
     const blocks = blocksOf(kept, ids, timezone, words, props.window);
-    const counts = useMemo(() => (calendar.view === 'month' ? countsOf(kept, ids, timezone) : undefined), [calendar.view, kept, ids, timezone]);
     const title = titleOf(calendar.view, calendar.date, props.settings.week_start, clock, words);
     const settles = props.permissions.includes('manageSettings');
     const adds = addItems(Boolean(props.catalog), settles, () => openWizard(), () => setClosing({}), words);
     const columns = columnsFor(calendar.view, pinned || palette, props.window, blocks, calendar.date);
     const day = calendar.date;
-    // Week bounded as Day's axis is, by the shown members' hours that week and every block in it.
-    const span = calendar.view === 'week' ? weekAxisOf(props.window, blocks, rangeOf('week', calendar.date, props.settings.week_start).from) : undefined;
     const slot = slotOf(Boolean(props.catalog), members, openWizard);
     const actions = columnActionsOf(props, {
         book: (member) => openWizard({ date: day, staffId: member.id }),
@@ -307,26 +440,20 @@ export default function Calendar() {
                         )}
                         <section className="admin-calendar flex flex-col overflow-hidden rounded-xl border" aria-labelledby={TITLE_ID} aria-busy={calendar.loading}>
                             <DesktopWeek view={calendar.view} onDay={() => calendar.setView('day')}>
-                                <Grid
-                                    view={calendar.view}
-                                    date={calendar.date}
+                                <Surface
+                                    props={props}
+                                    calendar={calendar}
+                                    kept={kept}
+                                    ids={ids}
                                     blocks={blocks}
-                                    colouring={colours}
-                                    granularity={props.settings.granularity}
-                                    weekStart={props.settings.week_start}
-                                    clock={clock}
-                                    onBlock={calendar.open}
-                                    onSlot={slot}
-                                    counts={counts}
-                                    span={span}
-                                    onDay={calendar.showDay}
+                                    colours={colours}
                                     columns={columns}
-                                    onDrop={dropping.drop}
+                                    slot={slot}
+                                    onClosure={settles ? (date, staffId) => setClosing({ date, staffId }) : undefined}
+                                    dropping={dropping}
                                     head={(column) => <ColumnHead column={column} date={day} clock={clock} hue={column.member === null ? NEUTRAL : colourOf(column.member.id, palette, props.colours)} actions={actions} />}
+                                    words={words}
                                 />
-                                {legendShown(colours, calendar.view) && (
-                                    <Legend by={colours.by} swatches={swatchesOf(colours, members, blocks, (status) => statusLabel(status, shell), words)} day={columns.length > 0} hint={slot !== undefined} />
-                                )}
                             </DesktopWeek>
                         </section>
                         <p className="admin-calendar-footnote text-xs text-muted-foreground">{words.text('page.footnote')}</p>

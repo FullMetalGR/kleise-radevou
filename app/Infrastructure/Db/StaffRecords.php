@@ -134,6 +134,29 @@ final readonly class StaffRecords
     }
 
     /**
+     * Every member's status, flag and repeating pattern as stored, in the roster's order and
+     * nothing else of the row: what the usual opening week is read off. Two statements whatever
+     * the roster holds, with no read of the service links or of the personal closures.
+     *
+     * @return list<array{status: string, is_implicit: bool, pattern: array{cadence_weeks: int, starts_on: string, ends_on: string|null, windows: list<array{weekday: int, start: string, end: string}>}|null}>
+     */
+    public function patterned(Tenant $tenant): array
+    {
+        $patterns = WeeklyPattern::stored($this->db->connection(), $tenant->schema_name.'.');
+        $members = [];
+
+        foreach ($this->table($tenant, 'staff')->orderBy('sort')->orderBy('id')->get(['id', 'status', 'is_implicit']) as $member) {
+            $members[] = [
+                'status' => BlackoutRecords::string($member->status),
+                'is_implicit' => (bool) $member->is_implicit,
+                'pattern' => $patterns[BlackoutRecords::int($member->id)] ?? null,
+            ];
+        }
+
+        return $members;
+    }
+
+    /**
      * Writes a member's own calendar colour, one word of StaffColour or null for Automatic. False
      * where no such member exists.
      */

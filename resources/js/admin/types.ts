@@ -388,13 +388,20 @@ export type CalendarStrings = {
         gap: string;
         hint: string;
     };
-    badges: { pending: string; payment: string; closure: string };
+    badges: { pending: string; payment: string; closure: string; noted: string };
     grid: {
         block: string;
         block_erased: string;
         gap: string;
         week_needs_width: string;
         to_day: string;
+    };
+    cells: {
+        chip: string;
+        erased: string;
+        more: string;
+        count: string;
+        open_day: string;
     };
     day: {
         other_bookings: string;

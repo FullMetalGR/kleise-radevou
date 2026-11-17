@@ -10,8 +10,8 @@ import { StatusChip, statusLabel } from './status-chip';
  * attention for awaiting approval, provisional for the two other held states, void for cancelled,
  * rejected and no-show, past for completed and expired. A status the client does not know renders
  * the base chip with the raw value as its label. A catalog row's active and inactive keep their two
- * shapes and take the word their caller gives. The compact form, the month overview's and Home's,
- * reads a booking status's whole kit.counted line chosen by the count, the figure in its own span.
+ * shapes and take the word their caller gives. The compact form, Home's, reads a booking status's
+ * whole kit.counted line chosen by the count, the figure in its own span.
  * Each word is the shell's, read through the keyed table.
  */
 

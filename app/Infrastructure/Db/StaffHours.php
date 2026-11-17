@@ -215,6 +215,20 @@ final readonly class StaffHours
     }
 
     /**
+     * The business's own closures over the window's dates, the tenant-wide rows alone, for the
+     * dates the business is closed all day.
+     *
+     * @return list<array{date: string, start: string|null, end: string|null}>
+     */
+    public function businessClosures(Tenant $tenant, CalendarWindow $window): array
+    {
+        return array_map(
+            fn (array $closure): array => ['date' => $closure['date'], 'start' => $closure['start'], 'end' => $closure['end']],
+            $this->closures($tenant, [], $window->days(), $window),
+        );
+    }
+
+    /**
      * The hours from rows already read and resolved, the pure half the unit test drives: for each
      * member and each date, the windows inForce answers over that date's resolved windows in their
      * order, and the closures of that date that reach the member, tenant-wide or their own, asked

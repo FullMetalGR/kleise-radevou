@@ -46,4 +46,30 @@ final readonly class BookingNotes
 
         return $note;
     }
+
+    /**
+     * Which of the bookings carry a note, by uuid, never the words: one statement for a whole
+     * window of bookings, their uuids bound as one array however many they are, the calendar's
+     * mark that a note is there to read in the dialog.
+     *
+     * @param  list<string>  $uuids
+     * @return list<string>
+     */
+    public function notedAmong(Tenant $tenant, array $uuids): array
+    {
+        $uuids = array_values(array_filter($uuids, SqlText::isUuid(...)));
+
+        if ($uuids === []) {
+            return [];
+        }
+
+        return array_values($this->db->connection()
+            ->table($tenant->schema_name.'.booking_meta', 'meta')
+            ->join($tenant->schema_name.'.bookings as booking', 'booking.id', '=', 'meta.booking_id')
+            ->whereRaw('booking.uuid = any(?::uuid[])', [TextArray::encode($uuids)])
+            ->where('meta.key', Intake::NOTE_KEY)
+            ->pluck('booking.uuid')
+            ->map(fn (mixed $uuid): string => is_string($uuid) ? $uuid : throw new LogicException(sprintf('A booking of tenant "%s" is not shaped as the schema declares.', $tenant->slug)))
+            ->all());
+    }
 }

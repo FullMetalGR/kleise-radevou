@@ -42,14 +42,19 @@ final readonly class CalendarPage
         private Clock $clock,
         private CalendarRoster $roster,
         private StaffHours $hours,
+        private OpeningWeek $opening,
     ) {}
 
     /** The week the calendar opens on: the tenant's today from the tenant's week start. */
     public function thisWeek(Tenant $tenant): CalendarWindow
     {
-        $today = $this->clock->now()->setTimezone($tenant->zone())->format('Y-m-d');
+        return CalendarWindow::weekOf($this->today($tenant), $this->settings->read($tenant)->startOfWeek);
+    }
 
-        return CalendarWindow::weekOf($today, $this->settings->read($tenant)->startOfWeek);
+    /** The tenant's today: the Clock port's instant in the tenant's zone, never the machine's date. */
+    private function today(Tenant $tenant): string
+    {
+        return $this->clock->now()->setTimezone($tenant->zone())->format('Y-m-d');
     }
 
     /**
@@ -63,7 +68,7 @@ final readonly class CalendarPage
      */
     public function openingWindow(Tenant $tenant, array $opening): CalendarWindow
     {
-        $date = $opening['date'] ?? $this->clock->now()->setTimezone($tenant->zone())->format('Y-m-d');
+        $date = $opening['date'] ?? $this->today($tenant);
 
         return match ($opening['view']) {
             'week' => CalendarWindow::weekOf($date, $this->settings->read($tenant)->startOfWeek),
@@ -107,6 +112,10 @@ final readonly class CalendarPage
      * a window that no whole-day closure takes, scanned through the resolver seam up to eight weeks
      * past the window, and its windows, or null; Day's column of a member with no hours names it.
      *
+     * `closed_days` names the dates of the range the business is closed all day, whoever Who
+     * shows: a weekday the opening week holds no window on, or a date the business's own closures
+     * take whole (OpeningWeek). Month hatches them.
+     *
      * @param  array{id: int, name: string}|null  $own  the viewer's own staff row
      * @return array{
      *     from: string,
@@ -118,6 +127,7 @@ final readonly class CalendarPage
      *     hours: array<int, array<string, array{windows: list<array{start: string, end: string}>, closures: list<array{start: string|null, end: string|null, reason: string|null, business: bool}>, source: string, pattern: list<array{start: string, end: string}>}>>,
      *     next_working: array<int, array{date: string, windows: list<array{start: string, end: string}>}|null>,
      *     closures: array<int, array<string, list<array{start: string|null, end: string|null, reason: string|null, business: bool}>>>,
+     *     closed_days: list<string>,
      *     bookings: list<array<string, mixed>>,
      * }
      */
@@ -151,6 +161,7 @@ final readonly class CalendarPage
             'hours' => $hours,
             'next_working' => $this->hours->nextWorking($tenant, $idle, $window->to),
             'closures' => $this->hours->closuresOf($tenant, self::uncovered($bookings, $hours, $window->narrows() ? $shown : null), $window),
+            'closed_days' => OpeningWeek::closedDays($this->opening->read($tenant, $this->today($tenant)), $window->days(), $this->hours->businessClosures($tenant, $window)),
             'bookings' => $bookings,
         ];
     }
@@ -194,6 +205,11 @@ final readonly class CalendarPage
      * by: the service row's column, read once per window, never a column of the booking's and so
      * outside the whitelist's buckets.
      *
+     * `noted` says whether the customer wrote a note, read for the whole window in one statement;
+     * the words stay with the dialog's detail. Every booking here is one whose dialog this viewer
+     * opens with its note, a pinned viewer's window being their own row's alone, the detail's
+     * scope, so the flag tells nobody of a note they could not read.
+     *
      * @return list<array<string, mixed>>
      */
     private function bookings(Tenant $tenant, CalendarWindow $window, Principal $viewer, ?int $ownStaff): array
@@ -201,9 +217,10 @@ final readonly class CalendarPage
         $manage = $viewer->holds(Permission::ManageBookings);
         $records = $this->records->window($tenant, $window);
         $categories = $records === [] ? [] : $this->roster->categories($tenant);
+        $noted = array_flip($this->notes->notedAmong($tenant, array_map(fn (BookingRecord $record): string => $record->snapshot->uuid, $records)));
 
-        return array_map(function (BookingRecord $record) use ($manage, $ownStaff, $categories, $viewer): array {
-            $booking = [...BookingPayload::admin($record, $manage, $ownStaff), 'movable' => BookingActions::movable($record, $viewer)];
+        return array_map(function (BookingRecord $record) use ($manage, $ownStaff, $categories, $viewer, $noted): array {
+            $booking = [...BookingPayload::admin($record, $manage, $ownStaff), 'movable' => BookingActions::movable($record, $viewer), 'noted' => isset($noted[$record->snapshot->uuid])];
             $items = $booking['items'];
             assert(is_array($items));
 

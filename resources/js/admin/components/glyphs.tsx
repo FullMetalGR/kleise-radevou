@@ -32,6 +32,15 @@ export function Tick() {
     );
 }
 
+/** A folded sheet, the mark of a booking the customer wrote a note on. */
+export function NoteSheet() {
+    return (
+        <svg viewBox="0 0 16 16" className="size-3 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+            <path d="M3.5 2.5h6l3 3v8h-9z M9.5 2.5v3h3 M5.5 8.5h5 M5.5 11h3.5" />
+        </svg>
+    );
+}
+
 /** The plus of a control that adds a row, a pattern day's second window. */
 export function Plus() {
     return (

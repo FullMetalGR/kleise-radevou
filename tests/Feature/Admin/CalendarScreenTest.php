@@ -3,10 +3,13 @@
 use App\Application\Clock;
 use App\Application\Dto\CalendarWindow;
 use App\Http\BookingPayload;
+use App\Http\OpeningWeek;
 use App\Infrastructure\Db\BookingRecords;
+use App\Infrastructure\Db\StaffRecords;
 use App\Models\User;
 use App\Site\SiteLanguage;
 use App\Tenancy\Tenant;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -830,4 +833,100 @@ it('reads Who\'s summary of a picked set by how many others, one reaching the fi
 
     expect($walked)->toBe(4)
         ->and(adminChoice($key, 2, ['staff' => 'name-token'], SiteLanguage::Greek))->not->toBe(adminChoice($key, 2, ['staff' => 'name-token']));
+});
+
+it('marks each booking the customer wrote a note on with noted, one flag and never the words, for the tenant and for a viewer pinned to her row', function () {
+    $elena = User::query()->findOrFail(addTenantUser('elena@luna.example', 'staff', staff: 'Elena Papadaki'));
+    $noted = calendared([['Haircut', 'Elena Papadaki', '2026-11-03 10:00', 45]], 'Nora Noted');
+    $plain = calendared([['Haircut', 'Elena Papadaki', '2026-11-03 12:00', 45]], 'Pia Plain');
+    $nikos = calendared([['Beard trim', 'Nikos Georgiou', '2026-11-04 12:00', 30]], 'Bo South');
+
+    foreach ([$noted, $nikos] as $uuid) {
+        DB::table('tenant_luna.booking_meta')->insert(['booking_id' => DB::table('tenant_luna.bookings')->where('uuid', $uuid)->value('id'), 'key' => 'note', 'value' => 'Please use the side door']);
+    }
+
+    $flags = fn (User $viewer): array => array_map(fn (array $booking): mixed => $booking['noted'] ?? 'absent', calendarByUuid(calendarWindow($this, $viewer, ['from' => '2026-11-02', 'to' => '2026-11-09', 'who' => 'all'])['bookings']));
+    $page = fn (User $viewer): string => (string) $this->actingAs($viewer)->get(tenantUrl('luna', '/admin/calendar?from=2026-11-02&to=2026-11-09&who=all'))->getContent();
+
+    expect($flags(calendarOwner()))->toBe([$noted => true, $plain => false, $nikos => true])
+        ->and($page(calendarOwner()))->not->toContain('side door')
+        ->and($flags($elena))->toBe([$noted => true, $plain => false])
+        ->and($page($elena))->not->toContain('side door');
+});
+
+it('names the dates of the window the business is closed all day: a weekday no opening hours reach and a date a business closure takes whole, and never a part-day closure or a member\'s own', function () {
+    $closedDays = fn (array $query): mixed => data_get($this->actingAs(calendarOwner())->get(tenantUrl('luna', '/admin/calendar?'.http_build_query($query)))->viewData('page'), 'props.window.closed_days');
+    DB::table('tenant_luna.blackouts')->insert([
+        ['staff_id' => null, 'date' => '2026-12-22', 'start_time' => '10:00', 'end_time' => '11:00', 'reason' => 'Inspection'],
+        ['staff_id' => LunaFixture::id('staff', 'Nikos Georgiou'), 'date' => '2026-12-23', 'start_time' => null, 'end_time' => null, 'reason' => null],
+        ['staff_id' => null, 'date' => '2026-12-24', 'start_time' => '00:00', 'end_time' => '23:59', 'reason' => 'Stocktake'],
+    ]);
+
+    // Sunday is the day no member works, and the business is closed on Christmas Day; the
+    // stocktake spans every opening hour of the Thursday, so it closes that day too.
+    expect($closedDays(['from' => '2026-12-21', 'to' => '2026-12-28']))->toBe(['2026-12-24', '2026-12-25', '2026-12-27'])
+        ->and($closedDays(['from' => '2026-12-21', 'to' => '2026-12-28', 'who' => 'all']))->toBe(['2026-12-24', '2026-12-25', '2026-12-27'])
+        ->and($closedDays(['from' => '2026-11-03', 'to' => '2026-11-04']))->toBe([])
+        ->and($closedDays(['view' => 'month', 'date' => '2026-11-10']))->toBe(['2026-11-01', '2026-11-08', '2026-11-15', '2026-11-22', '2026-11-29', '2026-12-06']);
+});
+
+it('counts the business closures of one date together where they overlap or touch: a day is closed once no opening minute is left outside them, and open while a minute or one of its two windows is', function () {
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $closure = fn (string $date, string $start, string $end, ?int $staffId = null): array => ['staff_id' => $staffId, 'date' => $date, 'start_time' => $start, 'end_time' => $end, 'reason' => null];
+    // The business opens Monday in two windows around lunch, Tuesday to Saturday in one.
+    WeeklyHours::clear('tenant_luna');
+    WeeklyHours::week('tenant_luna', $elena, [[1, '09:00', '13:00'], [1, '14:00', '18:00'], ...array_map(fn (int $weekday): array => [$weekday, '09:00', '17:00'], [2, 3, 4, 5, 6])]);
+    DB::table('tenant_luna.blackouts')->insert([
+        // Monday's morning alone is taken, the afternoon window left.
+        $closure('2026-12-07', '09:00', '13:00'),
+        // Two closures that meet at 13:00 take Tuesday.
+        $closure('2026-12-08', '13:00', '17:00'), $closure('2026-12-08', '09:00', '13:00'),
+        // Two that overlap and reach past both edges take Wednesday.
+        $closure('2026-12-09', '12:00', '20:00'), $closure('2026-12-09', '08:00', '15:00'),
+        // Half an hour is left between Thursday's two.
+        $closure('2026-12-10', '09:00', '13:00'), $closure('2026-12-10', '13:30', '17:00'),
+        // Friday's two leave 12:00 to 15:00, which a member's own closure does not fill.
+        $closure('2026-12-11', '09:00', '12:00'), $closure('2026-12-11', '15:00', '17:00'), $closure('2026-12-11', '12:00', '15:00', $elena),
+        // One closure on exactly the window's two edges takes Saturday.
+        $closure('2026-12-12', '09:00', '17:00'),
+        // The next Monday each of the two windows has a closure of its own, on its edges.
+        $closure('2026-12-14', '14:00', '18:00'), $closure('2026-12-14', '09:00', '13:00'),
+        // A minute is left at the start of that Tuesday and at the end of that Wednesday.
+        $closure('2026-12-15', '09:01', '17:00'),
+        $closure('2026-12-16', '09:00', '16:59'),
+        // Three that touch and overlap in a row take that Thursday.
+        $closure('2026-12-17', '13:00', '17:00'), $closure('2026-12-17', '09:00', '11:00'), $closure('2026-12-17', '11:00', '14:00'),
+    ]);
+
+    // The two Sundays are the day with no opening hours.
+    expect(data_get($this->actingAs(calendarOwner())->get(tenantUrl('luna', '/admin/calendar?from=2026-12-07&to=2026-12-21'))->viewData('page'), 'props.window.closed_days'))
+        ->toBe(['2026-12-08', '2026-12-09', '2026-12-12', '2026-12-13', '2026-12-14', '2026-12-17', '2026-12-20']);
+});
+
+it('reads the opening week in two statements, each member\'s status and flag and the stored patterns, so a window read names the service links once and no closure outside its dates, and asks for the note marks with one array', function () {
+    $tenant = Tenant::query()->where('slug', 'luna')->sole();
+    $wide = app(OpeningWeek::class)->of($tenant, app(StaffRecords::class)->all($tenant), '2026-11-05');
+    calendared([['Haircut', 'Elena Papadaki', '2026-11-03 10:00', 45]]);
+    calendared([['Beard trim', 'Nikos Georgiou', '2026-11-03 12:00', 30]]);
+    $statements = [];
+    DB::listen(function (QueryExecuted $query) use (&$statements): void {
+        $statements[] = ['sql' => $query->sql, 'bound' => count($query->bindings)];
+    });
+
+    $week = app(OpeningWeek::class)->read($tenant, '2026-11-05');
+    $own = array_column($statements, 'sql');
+    calendarWindow($this, calendarOwner(), ['from' => '2026-11-03', 'to' => '2026-11-04']);
+    $window = array_slice($statements, count($own));
+    $naming = fn (string $text): array => array_values(array_filter($window, fn (array $statement): bool => str_contains($statement['sql'], $text)));
+
+    // The week read alone, the same week the whole roster gives; then everything a window of
+    // two bookings runs, the two statements of the week among them.
+    expect($own)->toHaveCount(2)
+        ->and($own[0] ?? '')->toContain('"tenant_luna"."shift_patterns"')
+        ->and($own[1] ?? '')->toContain('select "id", "status", "is_implicit" from "tenant_luna"."staff"')
+        ->and($week)->toBe($wide)
+        ->and(array_keys($week))->toBe([1, 2, 3, 4, 5, 6])
+        ->and($naming('"service_staff"'))->toHaveCount(1)
+        ->and($naming('"blackouts"'))->toHaveCount(2)->toBe($naming('"blackouts" where "date" between'))
+        ->and(array_column($naming('booking_meta'), 'bound'))->toBe([2]);
 });

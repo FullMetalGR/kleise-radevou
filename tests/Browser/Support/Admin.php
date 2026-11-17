@@ -137,4 +137,34 @@ final class Admin
             $hours,
         );
     }
+
+    /**
+     * A script resolving true once focus is on the element given and has stayed there through
+     * the timers waiting when it was first seen there; false after two seconds, which is a
+     * failure worth reading. A popover or a menu that closes hands focus back by a timer, a
+     * moment after it is gone, and does so even where the page has put focus there itself. A
+     * walk waits here before it sends a key or a press elsewhere: a layer opened in between
+     * would be closed by the late focus landing outside it.
+     */
+    public static function focusIsOn(string $selector): string
+    {
+        $selector = json_encode($selector, JSON_THROW_ON_ERROR);
+
+        return <<<JS
+            new Promise((resolve) => {
+                const started = Date.now();
+                const there = () => document.activeElement !== null && document.activeElement === document.querySelector({$selector});
+                const check = () => {
+                    if (there()) {
+                        setTimeout(() => (there() ? resolve(true) : check()), 0);
+                    } else if (Date.now() - started > 2000) {
+                        resolve(false);
+                    } else {
+                        setTimeout(check, 25);
+                    }
+                };
+                check();
+            })
+            JS;
+    }
 }

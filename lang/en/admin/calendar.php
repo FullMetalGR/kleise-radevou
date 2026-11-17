@@ -23,19 +23,29 @@
  * many more).
  *
  * legend is the swatches' names by Colour by, the bucket of services with no category, the badges'
- * list and Day's list of closures and hours with its two entries, the gap's entry and the hint at
- * the legend's end on starting a booking from an empty slot; badges is the block badge of a
- * request (its meaning the status's own word) and the meaning of the payment badge (its word the
- * status's own), and closure the marker on a booking's block whose time a closure of its member
- * or of the whole business covers.
+ * list and the list of closures and hours Day's columns and Week's rows share, with its two
+ * entries, the gap's entry and the hint at the legend's end on starting a booking from an empty
+ * slot; badges is the block badge of a request (its meaning the status's own word) and the
+ * meaning of the payment badge (its word the status's own), closure the marker on a booking's
+ * block whose time a closure of its member or of the whole business covers, and noted the mark of
+ * a booking the customer wrote a note on.
  *
  * grid is a block's title (:customer and :service, or the erased customer's case with :service
- * alone), a processing gap's, Week's notice below the admin's breakpoint and its control.
+ * alone), a processing gap's, Week's notice below the admin's breakpoint and its control, which
+ * is also the title of a day's head in Week's rows.
+ *
+ * cells is a day's cell, in Month and in Week's rows: a booking chip's name (:time in the
+ * tenant's format, :customer, :status the status's own word), the customer of a chip whose
+ * customer was erased, the line under a full cell (:count the bookings it does not show), a day's
+ * count of bookings below the admin's breakpoint, and the date menu's way to Day view; the menu's
+ * other two items are page's New booking and closure's title, its title Day's.
  *
  * day is Day's member columns: the trailing column's head, the head of a member with no hours, the
  * pill of no hours ahead and of the next working day (:weekday ICU's name of it, :date in the
  * tenant's format, :hours its windows), the column menu's title (:staff and :date) and its four
- * items. Each reads on any date shown, never "today".
+ * items. Each reads on any date shown, never "today". Week's rows read the trailing column's head
+ * for the other bookings' row, the menu's title for a day of a member's row, and the head of no
+ * hours after it for a day the row hatches.
  *
  * closure is the closure dialog: its title, Who with the whole business, the date, Until (optional)
  * with its help, the last day of a closure over several days, the reason (its help the shell's
@@ -55,7 +65,7 @@ return [
         'add_hint' => 'A closure is a day or a window when someone, or the whole business, takes no bookings.',
         'load_error' => 'The calendar could not be loaded. Check your connection and change the view or the date to try again.',
         'colour_by_not_saved' => 'The colours could not be saved. Check your connection and try again.',
-        'footnote' => 'Week keeps the time grid, narrowed by Who: one member is their seven days, several are overlaid as before. Month is the counts per day. The hours drawn come from the Shifts screen, for the day shown.',
+        'footnote' => 'Week shows a row per member and a column per day, each day listing its bookings, the first six and how many more; with one member shown it is their time grid. Month lists the bookings of each day, the first two and how many more. The hours drawn come from the Shifts screen, for the day shown.',
         'unlinked' => 'Your sign-in is not linked to a staff member, so there is nothing to show here. The owner links it from the Staff screen.',
     ],
     'toolbar' => [
@@ -112,6 +122,7 @@ return [
         'pending' => 'Pending',
         'payment' => 'Approved, awaiting the customer\'s payment',
         'closure' => 'Inside a closure',
+        'noted' => 'Customer note',
     ],
     'grid' => [
         'block' => ':customer, :service',
@@ -119,6 +130,13 @@ return [
         'gap' => 'Processing gap',
         'week_needs_width' => 'The week view needs a wider screen.',
         'to_day' => 'Open Day view',
+    ],
+    'cells' => [
+        'chip' => ':time, :customer, :status',
+        'erased' => 'Customer erased',
+        'more' => '{1} :count more|[2,*] :count more',
+        'count' => '{1} :count booking|[2,*] :count bookings',
+        'open_day' => 'Open day',
     ],
     'day' => [
         'other_bookings' => 'Other bookings',

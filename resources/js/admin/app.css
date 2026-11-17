@@ -257,7 +257,7 @@
     }
 
     /*
-     * The compact chip, the month overview's: a booking status's figure stands where its counted
+     * The compact chip, a counted one's: a booking status's figure stands where its counted
      * line places it, an unknown status's before the label; the label giving way first.
      */
     .admin-chip--compact {
@@ -373,9 +373,10 @@
     }
 
     /*
-     * Day's member columns: the light hatch of the time outside a member's hours, a closure's
-     * grey hatch and its border, and the gap's swatch, all from the theme's tokens so the dark
-     * theme holds; one spelling each for the columns and the legend's entries.
+     * Day's member columns and Month's days: the light hatch of the time outside a member's hours
+     * and of a day the business is closed, a closure's grey hatch and its border, and the gap's
+     * swatch, all from the theme's tokens so the dark theme holds; one spelling each for the
+     * calendar and the legend's entries.
      */
     .admin-calendar {
         --admin-calendar-hatch: repeating-linear-gradient(135deg, var(--muted) 0 6px, var(--card) 6px 12px);
@@ -401,33 +402,17 @@
     .admin-calendar-now {
         @apply rounded-full bg-destructive px-1.5 font-mono text-[11px] leading-4 font-semibold text-white;
     }
-
-    /*
-     * Month: the day's cell is the press, the number on top and a chip per status under it. Its
-     * focus is the ring every admin control wears, drawn inside the cell, where the next cell
-     * cannot paint over it.
-     */
-    .admin-calendar-day {
-        @apply cursor-pointer outline-none focus-visible:inset-ring-3 focus-visible:inset-ring-ring/50;
-    }
-
-    .admin-calendar-day__number {
-        @apply text-xs font-medium text-muted-foreground;
-    }
-
-    .admin-calendar-day--other .admin-calendar-day__number {
-        @apply opacity-40;
-    }
 }
 
 /*
- * Week's and Day's scale, outside a layer for the reason Month's below are: an hour is sixty
- * pixels whatever the step, each slot the height the grid's wrapper carries as a variable from
- * the tenant's granularity, so a click or a drag still lands on a bookable start; the library's
- * spacer in an empty slot goes, or it would hold a short slot open; a rule on the hour alone; the
- * labels on the hour, in mono, on a 56px axis, each centred on its rule but the first, and taking
- * no height of their own, so a slot shorter than a label's line keeps its height; the blocks four
- * pixels in from each side.
+ * Week's and Day's scale, outside a layer because the library injects its stylesheet unlayered
+ * and an unlayered rule beats every layer whatever its specificity, so these outrank the
+ * library's selectors by one class each: an hour is sixty pixels whatever the step, each slot
+ * the height the grid's wrapper carries as a variable from the tenant's granularity, so a click
+ * or a drag still lands on a bookable start; the library's spacer in an empty slot goes, or it
+ * would hold a short slot open; a rule on the hour alone; the labels on the hour, in mono, on a
+ * 56px axis, each centred on its rule but the first, and taking no height of their own, so a slot
+ * shorter than a label's line keeps its height; the blocks four pixels in from each side.
  */
 .admin-calendar-grid .fc .fc-timegrid-slot {
     height: var(--admin-calendar-slot-height, 1.5em);
@@ -509,7 +494,7 @@
 
 /*
  * Day's member columns' overrides of the time grid's own rules, outside a layer for the reason
- * Month's below are: the library's non-business shade becomes the light hatch, a closure's
+ * the scale's above are: the library's non-business shade becomes the light hatch, a closure's
  * background block the closure's grey hatch at full opacity inside a border, inset as a block
  * is, with its words, and a column after the first keeps an axis of no width, its labels empty
  * and no pill, so the axis is drawn once.
@@ -537,40 +522,4 @@
 
 .admin-calendar-column--bare .fc .fc-timegrid-now-indicator-arrow {
     display: none;
-}
-
-/*
- * Month's overrides of the day grid's own rules. The library injects its stylesheet unlayered,
- * and an unlayered rule beats every layer whatever its specificity, so these sit outside one and
- * outrank the library's selectors by one class each: the day-number anchor holding the day's
- * content is stretched to the cell and lays it out, the hover tints the whole cell over the
- * library's own background for today, the library's dimming of another month's days moves from
- * the whole top to the number, and the empty events row the library keeps under every day
- * collapses.
- */
-.admin-calendar-grid .fc .fc-daygrid-day-top {
-    display: block;
-}
-
-.admin-calendar-grid .fc .fc-day-other .fc-daygrid-day-top {
-    opacity: 1;
-}
-
-.admin-calendar-grid .fc .admin-calendar-day:hover {
-    background-color: var(--muted);
-}
-
-.admin-calendar-grid .fc .fc-daygrid-day-number {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-    width: 100%;
-    min-height: 6rem;
-    padding: 0.375rem;
-}
-
-.admin-calendar-grid .fc .fc-daygrid-body .fc-daygrid-day-events {
-    min-height: 0;
-    margin: 0;
 }

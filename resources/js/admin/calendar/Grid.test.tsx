@@ -6,7 +6,7 @@ import { keyedCalendar, keyedShell, keyedShifts, WithCalendar } from '@/testing/
 import { Legend } from './Chrome';
 import { CLOSURE_HERE, type ColumnActions, ColumnHead, EDIT_THIS_DAYS_HOURS, NEW_BOOKING_HERE, OPEN_STAFF_PAGE } from './ColumnHead';
 import { Grid } from './Grid';
-import { type Block, categoryHueOf, type Closure, type DayHours, type HoursWindow, type Colouring, type DayColumn, fillOf, GAP_TITLE, NO_CATEGORY, NEXT_WORKING_THIS_DAY, NO_HOURS_AHEAD, NOT_WORKING_THIS_DAY, OTHER_BOOKINGS, type StatusCount, statusHueOf, swatchesOf } from './model';
+import { type Block, categoryHueOf, type Closure, type DayHours, type HoursWindow, type Colouring, type DayColumn, fillOf, GAP_TITLE, NO_CATEGORY, NEXT_WORKING_THIS_DAY, NO_HOURS_AHEAD, NOT_WORKING_THIS_DAY, OTHER_BOOKINGS, statusHueOf, swatchesOf } from './model';
 import { hueOf, NEUTRAL } from '@/lib/hue';
 
 /*
@@ -14,13 +14,10 @@ import { hueOf, NEUTRAL } from '@/lib/hue';
  * rather than the library's options: a block per item with its own id, the fill mixed and never
  * alpha, the gap hatched inside a dashed border, the same member the same hue, the neutral grey
  * where the staff choice is not real, the two badges and the time range by their rules, the axis
- * at the granularity, the columns from the week start, and the scroll the wrapper carries.
- * Month, over the real day grid: six weeks from the week start, each day's cell the press,
- * holding a compact chip per status present with its count and no block and no control, a
- * pointer or a key on it handing the day to the screen. The column heads name each weekday by
- * ICU in the page's language, held to Intl's own output; each chip reads its status's whole
- * counted line and the payment badge the kit's word, through the keyed table; the calendar's own
- * words and a closure's read through the keyed calendar and shifts sections the grid sits in.
+ * at the granularity, the columns from the week start, and the scroll the wrapper carries. The
+ * column heads name each weekday by ICU in the page's language, held to Intl's own output; the
+ * payment badge reads the kit's word, through the keyed table; the calendar's own words and a
+ * closure's read through the keyed calendar and shifts sections the grid sits in.
  */
 
 const shell = keyedShell();
@@ -229,7 +226,7 @@ describe('the grid', () => {
         expect(intlWeekday('2026-11-02', 'el')).not.toBe(intlWeekday('2026-11-02', 'en'));
     });
 
-    it('hands the library the page\'s language, so the labels it writes for assistive technology on Week\'s column heads and Month\'s weekday heads are Intl\'s in that language, and English\'s as before at en', () => {
+    it('hands the library the page\'s language, so the labels it writes for assistive technology on Week\'s column heads are Intl\'s in that language, and English\'s as before at en', () => {
         /** Intl's form of a UTC date in a language's code alone, the locale the grid hands the library. */
         const intlIn = (date: string, language: Language, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(language, { ...options, timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
         const longDate = { year: 'numeric', month: 'long', day: 'numeric' } as const;
@@ -242,20 +239,11 @@ describe('the grid', () => {
         expect(labels()).toEqual(WEEK.map((day) => intlIn(day, 'el', longDate)));
         expect(labels()[0]).not.toBe(intlIn(WEEK[0] ?? '', 'en', longDate));
 
-        render({ view: 'month' });
-
-        expect(labels()).toEqual(WEEK.map((day) => intlIn(day, 'el', { weekday: 'long' })));
-        expect(labels()[0]).not.toBe(intlIn(WEEK[0] ?? '', 'en', { weekday: 'long' }));
-
         view.unmount();
         view = mount('en');
         render();
 
         expect(labels()).toEqual(WEEK.map((day) => intlIn(day, 'en', longDate)));
-
-        render({ view: 'month' });
-
-        expect(labels()).toEqual(WEEK.map((day) => intlIn(day, 'en', { weekday: 'long' })));
     });
 
     it('bounds Week to the span the screen hands, every block of the week inside it, and keeps the scroll it carries', () => {
@@ -297,76 +285,6 @@ describe('the grid', () => {
         expect(view.host.querySelector('.admin-calendar-grid')?.getAttribute('data-scroll-time')).toBe('08:00:00');
     });
 
-    it('draws Month as six weeks from the tenant week start under the weekdays alone, each day\'s cell one tab stop named by its day and its chips, a compact chip per status present with its count, nothing on an empty day, no control in the cell, and no block', () => {
-        const counts = new Map<string, StatusCount[]>([
-            [
-                '2026-11-03',
-                [
-                    { status: 'confirmed', count: 2 },
-                    { status: 'awaiting_approval', count: 1 },
-                ],
-            ],
-            ['2026-12-06', [{ status: 'cancelled', count: 1 }]],
-        ]);
-        render({ view: 'month', counts, onDay: () => undefined });
-
-        const days = [...view.host.querySelectorAll<HTMLElement>('.admin-calendar-day')];
-        const tuesday = days.find((day) => day.dataset['date'] === '2026-11-03');
-        const chips = [...(tuesday?.querySelectorAll<HTMLElement>('.admin-chip') ?? [])];
-
-        expect(days.map((day) => day.dataset['date'])).toHaveLength(42);
-        expect(days[0]?.dataset['date']).toBe('2026-10-26');
-        expect(days[41]?.dataset['date']).toBe('2026-12-06');
-        expect(days.every((day) => day.tagName === 'TD' && day.getAttribute('role') === 'gridcell' && day.tabIndex === 0)).toBe(true);
-        expect(view.host.querySelectorAll('.fc-daygrid-day button, .fc-daygrid-day [tabindex]')).toHaveLength(0);
-        expect(tuesday?.querySelector('a.fc-daygrid-day-number')?.hasAttribute('href')).toBe(false);
-        const label = document.getElementById(tuesday?.getAttribute('aria-labelledby') ?? '');
-        expect(label?.classList.contains('fc-daygrid-day-number')).toBe(true);
-        expect(label?.textContent).toBe(`03/11/20263${shell.choice('kit.counted.confirmed', 2)}${shell.choice('kit.counted.awaiting_approval', 1)}`);
-        expect([...view.host.querySelectorAll('.fc-col-header-cell-cushion')].map((el) => el.textContent)).toEqual(WEEK.map((day) => intlWeekday(day)));
-        expect(chips.map((chip) => [chip.dataset['status'], chip.textContent, chip.classList.contains('admin-chip--compact')])).toEqual([
-            ['confirmed', shell.choice('kit.counted.confirmed', 2), true],
-            ['awaiting_approval', shell.choice('kit.counted.awaiting_approval', 1), true],
-        ]);
-        expect(chips[0]?.classList.contains('admin-chip--live')).toBe(true);
-        expect(chips[1]?.classList.contains('admin-chip--attention')).toBe(true);
-        expect(tuesday?.querySelector('.admin-calendar-day__number')?.textContent).toBe('3');
-        expect(tuesday?.textContent).toContain('03/11/2026');
-        expect(days[41]?.querySelector('.admin-chip--void')?.textContent).toBe(shell.choice('kit.counted.cancelled', 1));
-        expect(days.find((day) => day.dataset['date'] === '2026-11-04')?.querySelectorAll('.admin-chip')).toHaveLength(0);
-        expect(days[0]?.classList.contains('admin-calendar-day--other')).toBe(true);
-        expect(tuesday?.classList.contains('admin-calendar-day--other')).toBe(false);
-        expect(view.host.querySelectorAll('.fc-event')).toHaveLength(0);
-
-        render({ view: 'month', weekStart: 7, counts, onDay: () => undefined });
-
-        expect(view.host.querySelector<HTMLElement>('.admin-calendar-day')?.dataset['date']).toBe('2026-11-01');
-        expect(view.host.querySelector('.fc-col-header-cell-cushion')?.textContent).toBe(intlWeekday('2026-11-01'));
-
-        render({ view: 'week', counts, onDay: () => undefined });
-
-        expect(view.host.querySelectorAll('.admin-calendar-day')).toHaveLength(0);
-        expect(view.host.querySelectorAll('.fc-event').length).toBeGreaterThan(0);
-    });
-
-    it('hands a press anywhere in a Month day\'s cell, and Enter or Space on the cell, to the screen with that day, and nothing else', () => {
-        const onDay = vi.fn();
-        render({ view: 'month', counts: new Map([['2026-11-03', [{ status: 'confirmed', count: 1 }]]]), onDay });
-
-        const cell = (date: string) => view.host.querySelector(`.admin-calendar-day[data-date="${date}"]`);
-
-        press(cell('2026-11-17'));
-        press(cell('2026-11-03')?.querySelector('.admin-chip') ?? null);
-        press(cell('2026-12-01')?.querySelector('.admin-calendar-day__number') ?? null);
-        key(cell('2026-11-20'), 'Enter');
-        key(cell('2026-11-21'), ' ');
-        key(cell('2026-11-22'), 'a');
-        key(cell('2026-11-23')?.querySelector('.admin-calendar-day__number') ?? null, 'Enter');
-        press(view.host.querySelector('.fc-col-header-cell'));
-
-        expect(onDay.mock.calls).toEqual([['2026-11-17'], ['2026-11-03'], ['2026-12-01'], ['2026-11-20'], ['2026-11-21']]);
-    });
-
     it('hands a click on a block to the screen with the booking, a gap naming its parent', () => {
         const onBlock = vi.fn();
         render({ onBlock });
@@ -391,12 +309,9 @@ describe('dragging a booking', () => {
         expect(view.host.querySelectorAll('.fc-event-resizable')).toHaveLength(0);
     });
 
-    it('lets nothing drag where the screen takes no drop, nor in Month', () => {
+    it('lets nothing drag where the screen takes no drop', () => {
         render({ blocks: [MOVABLE] });
         expect(view.host.querySelectorAll('.fc-event-draggable')).toHaveLength(0);
-
-        render({ view: 'month', blocks: [MOVABLE], onDrop: () => undefined });
-        expect(view.host.querySelectorAll('.fc-event')).toHaveLength(0);
     });
 
     it('lets a movable block drag in Day as the one time grid', () => {
@@ -725,7 +640,7 @@ describe('Day as member columns', () => {
         expect(view.host.querySelectorAll('.fc-event-draggable')).toHaveLength(0);
     });
 
-    it('stays the one time grid in Day with no columns handed, and in Week and Month whatever is handed', () => {
+    it('stays the one time grid in Day with no columns handed, and in Week whatever is handed', () => {
         render({ view: 'day', date: DAY, blocks: [ELENA_DAY] });
         expect(view.host.querySelectorAll('.admin-calendar-column')).toHaveLength(0);
         expect(view.host.querySelectorAll('.fc')).toHaveLength(1);
