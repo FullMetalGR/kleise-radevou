@@ -49,6 +49,33 @@ describe('the button', () => {
         expect(button()?.classList.contains('admin-button--destructive')).toBe(false);
     });
 
+    it('writes a destructive primary\'s label in the ink made for the red, which is pale in dark mode and carries no white', () => {
+        view.render(
+            <Button variant="primary" destructive>
+                Delete
+            </Button>,
+        );
+
+        expect(button()?.classList.contains('bg-destructive')).toBe(true);
+        expect(button()?.classList.contains('text-destructive-foreground')).toBe(true);
+        expect(button()?.classList.contains('text-white')).toBe(false);
+        expect(button()?.classList.contains('text-primary-foreground')).toBe(false);
+    });
+
+    it('writes a link in the deepened primary, which reads at body size on a tinted ground where the raw primary does not, and a destructive link in the red', () => {
+        view.render(<Button variant="link">Open</Button>);
+        expect(button()?.classList.contains('text-primary-deep')).toBe(true);
+        expect(button()?.classList.contains('text-primary')).toBe(false);
+
+        view.render(
+            <Button variant="link" destructive>
+                Delete
+            </Button>,
+        );
+        expect(button()?.classList.contains('text-destructive')).toBe(true);
+        expect(button()?.classList.contains('text-primary-deep')).toBe(false);
+    });
+
     it('is normal with no spinner, no aria-busy and enabled', () => {
         view.render(<Button>Save</Button>);
 

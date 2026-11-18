@@ -8,8 +8,14 @@ import { describe, expect, it } from 'vitest';
  * redefined nowhere but in the brand's scope, the class the console's shell and the signup's
  * guest layout wear, and in the tenant's named themes, each a light and a dark block of the
  * primary, its text and the ring keyed on the body's data-theme, neutral having none so that it
- * stays the root's own. The build wrote the files this reads, so npm run build runs before npm
- * run test:js, the order the gates keep.
+ * stays the root's own. Every other colour that follows the theme is worked out from the primary
+ * by one rule declared on the root, on every theme's scope and on the brand's, so it is computed
+ * wherever a primary is set and never inherited finished from the root's neutral one; the mode's
+ * bases and percentages and the colours that mean the same in every theme sit on the root and the
+ * dark root alone. The base the page and the card are mixed into is the one colour declared twice:
+ * the mode's grey in the one rule, and the theme's own hue at the mode's lightness in a supports
+ * rule after it, for a browser that works one colour out of another. The build wrote the files
+ * this reads, so npm run build runs before npm run test:js, the order the gates keep.
  */
 
 const BUILD = resolve(process.cwd(), 'public/build/admin');
@@ -91,6 +97,137 @@ function firstValue(selector: string, property: string): string | undefined {
     return undefined;
 }
 
+/** The custom properties every rule of this prelude declares, in order of name. */
+function propertiesOf(selector: string): string[] {
+    const names = rulesOf(ADMIN)
+        .filter((rule) => rule.selector === selector)
+        .flatMap((rule) => rule.declarations.split(';').map((declaration) => declaration.split(':')[0]?.trim() ?? ''))
+        .filter((name) => name.length > 0);
+
+    return [...new Set(names)].sort();
+}
+
+/** A prelude's selectors, each on its own. */
+function selectorsOf(prelude: string): string[] {
+    return prelude.split(',').map((selector) => selector.trim());
+}
+
+/**
+ * The admin's stylesheet as it is written. The build sets a plain fallback beside each mix for a
+ * browser that cannot mix, in the same rule, so how many times a property is declared is read here.
+ */
+const ADMIN_SOURCE = readFileSync(resolve(process.cwd(), 'resources/js/admin/app.css'), 'utf8');
+
+/** How many declarations of the property a stylesheet holds. */
+function declarationCount(css: string, property: string): number {
+    return rulesOf(css)
+        .flatMap((rule) => rule.declarations.split(';'))
+        .filter((declaration) => declaration.trim().startsWith(`${property}:`)).length;
+}
+
+/** A piece of a stylesheet with its white space taken out, so the source and the build read alike. */
+function squeezed(css: string): string {
+    return css.replace(/\s+/g, '');
+}
+
+/** The values the rules of a stylesheet give the property, in the order they are written. */
+function valuesOf(css: string, property: string): string[] {
+    const pattern = new RegExp(`(?:^|;)\\s*${property}:([^;]+)`);
+
+    return rulesOf(css).flatMap((rule) => {
+        const found = pattern.exec(rule.declarations);
+
+        return found === null ? [] : [squeezed(found[1] ?? '')];
+    });
+}
+
+/** Every supports rule of a stylesheet that holds plain rules alone: its condition and those rules. */
+function supportsRulesOf(css: string): { condition: string; rules: { selector: string; declarations: string }[] }[] {
+    const pattern = /@supports([^{]+)\{((?:[^{}]*\{[^{}]*\})*)\s*\}/g;
+
+    return [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(pattern)].map((match) => ({
+        condition: (match[1] ?? '').trim(),
+        rules: rulesOf(match[2] ?? ''),
+    }));
+}
+
+/** The selectors the one rule is declared on: the root, the body a theme is keyed on and the brand's scope. */
+const ONE_RULE = [':root', '[data-theme]', '.brand-scope'];
+
+/**
+ * The base the page and the card are mixed into, and its two values: the mode's grey, and the
+ * theme's primary brought to the mode's lightness with a share of its chroma and its own hue.
+ */
+const BASE = '--surface-base';
+const BASE_PLAIN = squeezed('var(--mode-base)');
+const BASE_TINTED = squeezed('oklch(from var(--primary) var(--mode-base-lightness) calc(c * var(--mode-base-tint)) h)');
+
+/** The colours worked out from the theme's primary, the surfaces' base and the page's tint to the scrim, and the void status, which reads the secondary ink. */
+const FOLLOWING = [
+    BASE,
+    '--background',
+    '--card',
+    '--popover',
+    '--muted',
+    '--secondary',
+    '--accent',
+    '--tint-strong',
+    '--foreground',
+    '--card-foreground',
+    '--popover-foreground',
+    '--secondary-foreground',
+    '--accent-foreground',
+    '--muted-foreground',
+    '--ink-tertiary',
+    '--primary-deep',
+    '--border',
+    '--input',
+    '--shade',
+    '--scrim',
+    '--admin-status-void',
+];
+
+/** The colours that mean the same in every theme, each its light and its dark value. */
+const FIXED: Record<string, [string, string]> = {
+    '--destructive': ['#c3262e', '#ff8a90'],
+    '--destructive-foreground': ['#fff', '#2a0509'],
+    '--destructive-soft': ['#fde6e6', '#3c1d22'],
+    '--attention': ['#f2a20c', '#f2a20c'],
+    '--attention-soft': ['#fff5dc', '#34280c'],
+    '--attention-soft-strong': ['#ffe9b5', '#4a3710'],
+    '--attention-line': ['#f2d58a', '#6b4e12'],
+    '--attention-ink': ['#6b4200', '#ffd98a'],
+    '--positive': ['#0e9f6e', '#2bc48a'],
+    '--positive-soft': ['#daf5e7', '#0f3a2a'],
+    '--positive-ink': ['#065f3a', '#7be2b2'],
+    '--spark': ['#cdf64b', '#cdf64b'],
+    '--spark-foreground': ['#1b2b00', '#1b2b00'],
+    '--now-line': ['#d92d3a', '#ff6b74'],
+    '--neutral-mark': ['#7a88a6', '#8e9bba'],
+};
+
+/**
+ * The mode's bases, the lightness the tinted base sits at with the share of the primary's chroma
+ * it keeps, and how much primary each colour of the one rule takes, light and dark.
+ */
+const MODE: Record<string, [string, string]> = {
+    '--mode-base': ['#fff', '#0a0a0a'],
+    '--mode-base-lightness': ['1', '.145'],
+    '--mode-base-tint': ['0', '.24'],
+    '--mode-ink-base': ['#0a0a0a', '#fafafa'],
+    '--mode-deep-base': ['black', 'white'],
+    '--mix-page': ['6%', '8%'],
+    '--mix-surface': ['0%', '14%'],
+    '--mix-soft': ['10%', '12%'],
+    '--mix-strong': ['18%', '26%'],
+    '--mix-ink': ['15%', '15%'],
+    '--mix-deep': ['80%', '65%'],
+    '--mix-line-ink': ['10%', '0%'],
+    '--mix-line-primary': ['0%', '21%'],
+    '--shadow-hairline': ['5%', '30%'],
+    '--shadow-card-strength': ['22%', '65%'],
+};
+
 describe('the admin\'s own theme', () => {
     it('is redefined only by the root, the dark theme, the brand\'s scope and the tenant\'s coloured themes, so wherever the admin\'s theme applies its colours are its own', () => {
         const themes = Object.keys(THEMES).flatMap((theme) => [`.dark [data-theme=${theme}]`, `[data-theme=${theme}]`]);
@@ -111,10 +248,80 @@ describe('the admin\'s own theme', () => {
         expect(THEMED.map((token) => firstValue(`.dark [data-theme=${theme}]`, token))).toEqual(values.dark);
     });
 
-    it('keeps every other token of the theme on the root and the dark theme alone', () => {
-        for (const token of ['--background', '--foreground', '--card', '--secondary', '--muted', '--accent', '--destructive', '--border', '--input', '--radius']) {
-            expect(declaring(ADMIN, token).filter((selector) => selector !== ':root' && selector !== '.dark')).toEqual([]);
+    it('a theme declares its three tokens and nothing else', () => {
+        const blocks = Object.keys(THEMES).flatMap((theme) => [`[data-theme=${theme}]`, `.dark [data-theme=${theme}]`]);
+
+        expect(blocks).toHaveLength(12);
+
+        for (const block of blocks) {
+            expect(propertiesOf(block)).toEqual([...THEMED].sort());
         }
+    });
+
+    it('the tokens that follow the theme live in one rule, each declared once but the base, which a supports rule declares again', () => {
+        for (const token of FOLLOWING) {
+            for (const css of [ADMIN, ADMIN_SOURCE]) {
+                expect([...new Set(declaring(css, token).map((prelude) => selectorsOf(prelude).join()))]).toEqual([ONE_RULE.join()]);
+            }
+
+            expect(declarationCount(ADMIN_SOURCE, token)).toBe(token === BASE ? 2 : 1);
+        }
+    });
+
+    it('the base is the mode\'s grey first, then the theme\'s hue at the mode\'s lightness where a browser works one colour out of another', () => {
+        for (const css of [ADMIN, ADMIN_SOURCE]) {
+            expect(valuesOf(css, BASE)).toEqual([BASE_PLAIN, BASE_TINTED]);
+
+            const holding = supportsRulesOf(css).filter((supports) => supports.rules.some((rule) => rule.declarations.includes(`${BASE}:`)));
+
+            expect(holding.map((supports) => squeezed(supports.condition))).toEqual([squeezed('(color: oklch(from red 0.5 calc(c * 0.5) h))')]);
+            expect(holding[0]?.rules.map((rule) => selectorsOf(rule.selector))).toEqual([ONE_RULE]);
+            expect(holding[0]?.rules.map((rule) => squeezed(rule.declarations).replace(/;$/, ''))).toEqual([`${BASE}:${BASE_TINTED}`]);
+        }
+
+        expect(squeezed(ADMIN_SOURCE)).toContain(squeezed(`${BASE}: var(--mode-base); --background: color-mix(in oklab, var(--primary) var(--mix-page), var(${BASE}));`));
+        expect(squeezed(ADMIN_SOURCE)).toContain(squeezed(`--card: color-mix(in oklab, var(--primary) var(--mix-surface), var(${BASE}));`));
+    });
+
+    it('the fixed tokens and the mode properties are declared on the root and the dark root alone', () => {
+        for (const token of [...Object.keys(FIXED), ...Object.keys(MODE)]) {
+            expect(declaring(ADMIN, token)).toEqual(['.dark', ':root']);
+        }
+
+        expect(declaring(ADMIN, '--radius')).toEqual([':root']);
+    });
+
+    it('keeps the fixed tokens one value per mode, whatever the theme', () => {
+        expect(Object.keys(FIXED)).toHaveLength(15);
+
+        for (const [token, values] of Object.entries(FIXED)) {
+            expect([firstValue(':root', token), firstValue('.dark', token)]).toEqual(values);
+        }
+    });
+
+    it('no rule on the root alone reads the theme', () => {
+        const reads = ['--primary', ...FOLLOWING].map((token) => `var(${token})`);
+        const alone = rulesOf(ADMIN).filter((rule) => rule.selector === ':root' || rule.selector === '.dark');
+
+        expect(alone.length).toBeGreaterThan(0);
+
+        for (const rule of alone) {
+            expect(reads.filter((read) => rule.declarations.includes(read))).toEqual([]);
+        }
+    });
+
+    it('gives each mode property its light value on the root and its dark one on the dark root: the bases, the tinted base\'s lightness and share of chroma, how much primary each colour takes and the shadows\' strengths', () => {
+        for (const [property, values] of Object.entries(MODE)) {
+            expect([firstValue(':root', property), firstValue('.dark', property)]).toEqual(values);
+        }
+    });
+
+    it('writes the calendar\'s now pill, which the destructive red fills, in the ink made for that red, so its time reads on the dark mode\'s pale red too', () => {
+        const pill = rulesOf(ADMIN).filter((rule) => rule.selector === '.admin-calendar-now');
+
+        expect(pill).toHaveLength(1);
+        expect(squeezed(pill[0]?.declarations ?? '')).toContain('background-color:var(--destructive);');
+        expect(squeezed(pill[0]?.declarations ?? '')).toMatch(/(^|;)color:var\(--destructive-foreground\)(;|$)/);
     });
 
     it('takes the brand\'s primary into the scope from the brand\'s tokens and nothing else', () => {

@@ -17,7 +17,8 @@ import { TopBar } from './TopBar';
  * navigating anywhere mounts a fresh boundary. The key is the path alone, not the query string: a
  * filter is a query parameter of the same route, and a filter change must keep the page mounted,
  * with the focus in the search field and its in-flight state, where a new path is a new route and
- * mounts afresh.
+ * mounts afresh. The shell paints its own ground and ink, so a brand scope on its root, the
+ * console's, shows the page tint mixed from the brand's primary and not the body's.
  */
 
 function routeKey(url: string): string {
@@ -81,7 +82,7 @@ export function Shell({ route, nav, wordmark, business, userName, theme, onToggl
     const desktop = useDesktop();
 
     return (
-        <div className={cn('admin-shell flex min-h-screen', className)}>
+        <div className={cn('admin-shell flex min-h-screen bg-background text-foreground', className)}>
             {desktop && (
                 <aside className="admin-aside w-56 shrink-0 border-r p-3">
                     <Rail nav={nav} />

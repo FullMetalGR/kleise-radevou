@@ -27,15 +27,35 @@
     --color-foreground: var(--foreground);
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
+    --color-primary-deep: var(--primary-deep);
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
     --color-muted: var(--muted);
     --color-muted-foreground: var(--muted-foreground);
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
+    --color-tint-strong: var(--tint-strong);
+    --color-ink-tertiary: var(--ink-tertiary);
     --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive-soft: var(--destructive-soft);
+    --color-attention: var(--attention);
+    --color-attention-soft: var(--attention-soft);
+    --color-attention-soft-strong: var(--attention-soft-strong);
+    --color-attention-line: var(--attention-line);
+    --color-attention-ink: var(--attention-ink);
+    --color-positive: var(--positive);
+    --color-positive-soft: var(--positive-soft);
+    --color-positive-ink: var(--positive-ink);
+    --color-spark: var(--spark);
+    --color-spark-foreground: var(--spark-foreground);
+    --color-now-line: var(--now-line);
+    --color-neutral-mark: var(--neutral-mark);
+    --color-scrim: var(--scrim);
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -45,50 +65,153 @@
     --radius-xl: calc(var(--radius) * 1.4);
 }
 
+/*
+ * The root in light, then in dark: Neutral's primary, the text on it and the ring; the mode's
+ * bases, with how much primary each colour of the one rule below takes; and the colours that mean
+ * the same in every theme, attention amber, positive green, destructive red, the spark, the now
+ * line and the neutral mark, each its own value per mode. The bases are the ink's, the one primary
+ * deep is mixed toward, and the surfaces': the white or grey near-black the page and the card are
+ * mixed into where a browser cannot work one colour out of another, and beside it the lightness
+ * that base sits at and the share of the primary's chroma it keeps where a browser can, so a dark
+ * surface is the theme's own hue brought near black and a light one is white whatever the hue.
+ * The two selectors weigh the same, so dark comes second.
+ */
 :root {
     --radius: 0.625rem;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
     --primary: oklch(0.205 0 0);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
+
+    --mode-base: oklch(1 0 0);
+    --mode-base-lightness: 1;
+    --mode-base-tint: 0;
+    --mode-ink-base: oklch(0.145 0 0);
+    --mode-deep-base: black;
+    --mix-page: 6%;
+    --mix-surface: 0%;
+    --mix-soft: 10%;
+    --mix-strong: 18%;
+    --mix-ink: 15%;
+    --mix-deep: 80%;
+    --mix-line-ink: 10%;
+    --mix-line-primary: 0%;
+    --shadow-hairline: 5%;
+    --shadow-card-strength: 22%;
+
+    --destructive: #c3262e;
+    --destructive-foreground: #ffffff;
+    --destructive-soft: #fde6e6;
+    --attention: #f2a20c;
+    --attention-soft: #fff5dc;
+    --attention-soft-strong: #ffe9b5;
+    --attention-line: #f2d58a;
+    --attention-ink: #6b4200;
+    --positive: #0e9f6e;
+    --positive-soft: #daf5e7;
+    --positive-ink: #065f3a;
+    --spark: #cdf64b;
+    --spark-foreground: #1b2b00;
+    --now-line: #d92d3a;
+    --neutral-mark: #7a88a6;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
     --primary: oklch(0.922 0 0);
     --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
+
+    --mode-base: oklch(0.145 0 0);
+    --mode-base-lightness: 0.145;
+    --mode-base-tint: 0.24;
+    --mode-ink-base: oklch(0.985 0 0);
+    --mode-deep-base: white;
+    --mix-page: 8%;
+    --mix-surface: 14%;
+    --mix-soft: 12%;
+    --mix-strong: 26%;
+    --mix-ink: 15%;
+    --mix-deep: 65%;
+    --mix-line-ink: 0%;
+    --mix-line-primary: 21%;
+    --shadow-hairline: 30%;
+    --shadow-card-strength: 65%;
+
+    --destructive: #ff8a90;
+    --destructive-foreground: #2a0509;
+    --destructive-soft: #3c1d22;
+    --attention: #f2a20c;
+    --attention-soft: #34280c;
+    --attention-soft-strong: #4a3710;
+    --attention-line: #6b4e12;
+    --attention-ink: #ffd98a;
+    --positive: #2bc48a;
+    --positive-soft: #0f3a2a;
+    --positive-ink: #7be2b2;
+    --spark: #cdf64b;
+    --spark-foreground: #1b2b00;
+    --now-line: #ff6b74;
+    --neutral-mark: #8e9bba;
+}
+
+/*
+ * The one rule: every surface, tint, ink and line is the theme's primary mixed in oklab into the
+ * mode's bases by the mode's percentages, so the seven themes each get their own page, panels and
+ * borders in both modes and a theme still names only its primary. A custom property is worked
+ * out on the element that declares it and inherited finished, so a mix declared on the root alone
+ * would carry the root's Neutral primary into every theme; the rule is declared on every scope
+ * that sets a primary instead, the root, the body a theme is keyed on and the brand's scope, and
+ * computes afresh in each. The void status reads the secondary ink, so it follows the theme too.
+ *
+ * The page and the card are mixed into the surfaces' base, which is the mode's grey here and the
+ * theme's own colour in the supports rule after this one. A grey near-black only lightens a dark
+ * surface as primary is mixed in and leaves it a charcoal; a base that already carries the
+ * primary's hue, at the mode's lightness with a share of its chroma, makes Blue's dark page a
+ * navy. Neutral's primary has no chroma, so its base stays the grey, and the light base is white
+ * under every hue.
+ */
+:root,
+[data-theme],
+.brand-scope {
+    --surface-base: var(--mode-base);
+    --background: color-mix(in oklab, var(--primary) var(--mix-page), var(--surface-base));
+    --card: color-mix(in oklab, var(--primary) var(--mix-surface), var(--surface-base));
+    --popover: var(--card);
+    --muted: color-mix(in oklab, var(--primary) var(--mix-soft), var(--card));
+    --secondary: var(--muted);
+    --accent: var(--muted);
+    --tint-strong: color-mix(in oklab, var(--primary) var(--mix-strong), var(--card));
+    --foreground: color-mix(in oklab, var(--primary) var(--mix-ink), var(--mode-ink-base));
+    --card-foreground: var(--foreground);
+    --popover-foreground: var(--foreground);
+    --secondary-foreground: var(--foreground);
+    --accent-foreground: var(--foreground);
+    --muted-foreground: color-mix(in oklab, var(--foreground) 78%, var(--card));
+    --ink-tertiary: color-mix(in oklab, var(--foreground) 70%, var(--card));
+    --primary-deep: color-mix(in oklab, var(--primary) var(--mix-deep), var(--mode-deep-base));
+    --border: color-mix(
+        in oklab,
+        var(--foreground) var(--mix-line-ink),
+        color-mix(in oklab, var(--primary) var(--mix-line-primary), var(--card))
+    );
+    --input: var(--border);
+    --shade: color-mix(in oklab, var(--primary) 15%, black);
+    --scrim: color-mix(in oklab, var(--shade) 55%, transparent);
+    --admin-status-void: var(--muted-foreground);
+}
+
+@supports (color: oklch(from red 0.5 calc(c * 0.5) h)) {
+    :root,
+    [data-theme],
+    .brand-scope {
+        --surface-base: oklch(from var(--primary) var(--mode-base-lightness) calc(c * var(--mode-base-tint)) h);
+    }
 }
 
 /*
  * The tenant's named themes: the root view writes the settings row's word as the body's
  * data-theme, and each coloured theme redefines the primary, the text on it and the ring there,
  * in a light block and a dark one under the root's .dark, so every primitive and every Radix
- * portal in the body takes the colour and nothing else moves.
+ * portal in the body takes the colour, and the one rule above works out the rest from it.
  * The ring takes the primary. Neutral has no block: it is the root's own values above.
  */
 [data-theme="blue"] {
@@ -166,9 +289,10 @@
 /*
  * The brand's scope: the console's shell and the signup's guest layout wear the brand by taking
  * its primary into the admin's own tokens inside the scope alone, so the admin's primitives keep
- * their shapes, and the admin, which never enters the scope, keeps its theme unchanged. On the
- * dark theme the primary is lightened to read on the dark page and carries the brand's ink. The
- * console's top bar carries the primary as a rule along its top edge.
+ * their shapes, the one rule mixes the scope's tints from that primary, and the admin, which
+ * never enters the scope, keeps its theme unchanged. On the dark theme the primary is lightened
+ * to read on the dark page and carries the brand's ink. The console's top bar carries the primary
+ * as a rule along its top edge.
  */
 .brand-scope {
     --primary: var(--brand-primary);
@@ -214,13 +338,13 @@
  * Each status chip family's hue, one token each: the chips below paint with them, and the
  * calendar colours a block and a legend swatch by status with the same tokens (calendar/model.ts
  * statusHueOf), so a hue is spelled here alone. Past has no hue on its chip, a flat grey tag, and
- * keeps a lighter grey than void's on the calendar.
+ * keeps a lighter grey than void's on the calendar. Void is the secondary ink, which follows the
+ * theme, so it is declared in the one rule with the other colours that do.
  */
 :root {
     --admin-status-live: var(--color-emerald-700);
     --admin-status-attention: var(--color-amber-500);
     --admin-status-provisional: var(--color-sky-600);
-    --admin-status-void: var(--muted-foreground);
     --admin-status-past: var(--color-neutral-400);
 }
 
@@ -374,9 +498,9 @@
 
     /*
      * Day's member columns and Month's days: the light hatch of the time outside a member's hours
-     * and of a day the business is closed, a closure's grey hatch and its border, and the gap's
-     * swatch, all from the theme's tokens so the dark theme holds; one spelling each for the
-     * calendar and the legend's entries.
+     * and of a day the business is closed, a closure's hatch and its border, and the gap's
+     * swatch, all from the theme's tokens so each theme and the dark mode hold; one spelling each
+     * for the calendar and the legend's entries.
      */
     .admin-calendar {
         --admin-calendar-hatch: repeating-linear-gradient(135deg, var(--muted) 0 6px, var(--card) 6px 12px);
@@ -400,7 +524,7 @@
     }
 
     .admin-calendar-now {
-        @apply rounded-full bg-destructive px-1.5 font-mono text-[11px] leading-4 font-semibold text-white;
+        @apply rounded-full bg-destructive px-1.5 font-mono text-[11px] leading-4 font-semibold text-destructive-foreground;
     }
 }
 
@@ -495,7 +619,7 @@
 /*
  * Day's member columns' overrides of the time grid's own rules, outside a layer for the reason
  * the scale's above are: the library's non-business shade becomes the light hatch, a closure's
- * background block the closure's grey hatch at full opacity inside a border, inset as a block
+ * background block the closure's hatch at full opacity inside a border, inset as a block
  * is, with its words, and a column after the first keeps an axis of no width, its labels empty
  * and no pill, so the axis is drawn once.
  */

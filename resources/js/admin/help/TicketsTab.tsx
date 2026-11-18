@@ -43,7 +43,7 @@ function Failed({ text, words, onRetry }: { text: string; words: HelpWords; onRe
 
 function Unread({ words }: { words: HelpWords }) {
     return (
-        <span className="admin-help-unread inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+        <span className="admin-help-unread inline-flex items-center gap-1.5 text-xs font-medium text-primary-deep">
             <span className="size-2 rounded-full bg-destructive" aria-hidden="true" />
             {words.text('list.unread')}
         </span>

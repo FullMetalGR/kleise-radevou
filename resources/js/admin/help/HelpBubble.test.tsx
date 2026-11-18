@@ -498,6 +498,10 @@ describe('the help panel\'s tickets', () => {
         expect(rows[0]?.textContent).toContain(words.text('statuses.open'));
         expect(rows[0]?.textContent).toContain(words.text('list.last', { time: formatInstant(ROWS[0]?.last_message_at ?? '', CLOCK) }));
         expect(rows[0]?.textContent).toContain(words.text('list.unread'));
+        // The dot's words are small text, so they take the deepened primary, which holds the
+        // text floor in every theme where the raw one does not.
+        expect(rows[0]?.querySelector('.admin-help-unread')?.classList.contains('text-primary-deep')).toBe(true);
+        expect(rows[0]?.querySelector('.admin-help-unread')?.classList.contains('text-primary')).toBe(false);
         expect(rows[1]?.textContent).toContain(words.text('statuses.closed'));
         expect(rows[1]?.textContent).not.toContain(words.text('list.unread'));
 

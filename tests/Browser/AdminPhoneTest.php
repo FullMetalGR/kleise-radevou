@@ -6,6 +6,7 @@ use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Look;
 use Tests\Browser\Support\PhoneScripts;
 use Tests\Support\LunaFixture;
 
@@ -37,26 +38,6 @@ const PHONE_WEEK_NOTICE = 'admin/calendar.grid.week_needs_width';
 const PHONE_FOOTNOTE = 'admin/calendar.page.footnote';
 
 const PHONE_DRAWER = '.admin-modal__frame--drawer';
-
-/**
- * Every screen of the admin the rail reaches, by its path, each with what shows it is drawn:
- * Shifts by the edit control of its first member's first day and Team by a member's row, since
- * each of those tables holds a line only a screen reader hears, placed out of the flow, and is
- * read with it on the page.
- */
-const PHONE_SCREENS = [
-    '' => '.admin-home-screen',
-    '/calendar' => '.admin-calendar-screen',
-    '/bookings' => '.admin-bookings-screen',
-    '/customers' => '.admin-customers-screen',
-    '/services' => '.admin-services-screen',
-    '/staff' => '.admin-staff-screen',
-    '/shifts' => '.admin-shifts__row:first-child .admin-shifts__cell:first-of-type .admin-shifts__edit',
-    '/team' => '.admin-team-member',
-    '/reports' => '.admin-reports-screen',
-    '/settings' => '.admin-settings-page',
-    '/billing' => '.admin-billing',
-];
 
 beforeEach(function () {
     dropDemoSchemas();
@@ -305,7 +286,7 @@ it('keeps every screen of the admin no wider than a phone, a customer\'s page am
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
     $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
 
-    foreach (PHONE_SCREENS as $path => $drawn) {
+    foreach (Look::SCREENS as ['path' => $path, 'hook' => $drawn]) {
         $page->navigate(Admin::url('luna', $path))
             ->assertVisible($drawn)
             ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)

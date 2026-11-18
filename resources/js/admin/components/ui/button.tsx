@@ -19,11 +19,11 @@ const VARIANTS: Record<ButtonVariant, string> = {
     primary: 'bg-primary text-primary-foreground hover:bg-primary/85 px-3 h-8',
     secondary: 'border-border bg-background hover:bg-muted px-3 h-8',
     tertiary: 'hover:bg-muted px-3 h-8',
-    link: 'h-auto p-0 text-primary underline-offset-4 hover:underline',
+    link: 'h-auto p-0 text-primary-deep underline-offset-4 hover:underline',
 };
 
 const DESTRUCTIVE: Record<ButtonVariant, string> = {
-    primary: 'bg-destructive text-white hover:bg-destructive/85',
+    primary: 'bg-destructive text-destructive-foreground hover:bg-destructive/85',
     secondary: 'border-destructive/50 text-destructive hover:bg-destructive/10',
     tertiary: 'text-destructive hover:bg-destructive/10',
     link: 'text-destructive',
