@@ -66,6 +66,91 @@
 }
 
 /*
+ * The admin's type and shape scales, utilities its screens draw from. A text size carries its
+ * line and, where the scale sets them, its tracking and weight, so text-page-title is the whole
+ * title; a corner radius is named for what it rounds, rounded-tile to rounded-event; ease-soft
+ * is the one easing; max-w-page is the widest a page's content runs. The class joiner knows
+ * every name (lib/utils.ts), so a named size or radius is never read as a colour or kept beside
+ * another of its kind.
+ */
+@theme {
+    --text-page-title: 2.5rem;
+    --text-page-title--line-height: 1.05;
+    --text-page-title--letter-spacing: -0.04em;
+    --text-page-title--font-weight: 600;
+    --text-page-title-compact: 1.875rem;
+    --text-page-title-compact--line-height: 1.05;
+    --text-page-title-compact--letter-spacing: -0.04em;
+    --text-page-title-compact--font-weight: 600;
+    --text-detail-title: 2.125rem;
+    --text-detail-title--line-height: 1.05;
+    --text-detail-title--letter-spacing: -0.04em;
+    --text-detail-title--font-weight: 600;
+    --text-dialog-title: 1.75rem;
+    --text-dialog-title--line-height: 1.1;
+    --text-dialog-title--letter-spacing: -0.035em;
+    --text-dialog-title--font-weight: 600;
+    --text-section-title: 1.5rem;
+    --text-section-title--line-height: 1.15;
+    --text-section-title--letter-spacing: -0.03em;
+    --text-section-title--font-weight: 600;
+    --text-card-title: 1.375rem;
+    --text-card-title--line-height: 1.2;
+    --text-card-title--letter-spacing: -0.03em;
+    --text-card-title--font-weight: 600;
+    --text-tile-title: 1.3125rem;
+    --text-tile-title--line-height: 1.25;
+    --text-tile-title--letter-spacing: -0.03em;
+    --text-tile-title--font-weight: 600;
+    --text-body: 0.9375rem;
+    --text-body--line-height: 1.45;
+    --text-body--font-weight: 500;
+    --text-body-sm: 0.90625rem;
+    --text-body-sm--line-height: 1.45;
+    --text-label: 0.84375rem;
+    --text-label--line-height: 1.35;
+    --text-label--font-weight: 600;
+    --text-small: 0.8125rem;
+    --text-small--line-height: 1.4;
+    --text-eyebrow: 0.75rem;
+    --text-eyebrow--line-height: 1.3;
+    --text-eyebrow--letter-spacing: 0.08em;
+    --text-eyebrow--font-weight: 700;
+    --radius-tile: 2rem;
+    --radius-tile-compact: 1.75rem;
+    --radius-shell: 1.875rem;
+    --radius-inner: 1.375rem;
+    --radius-menu: 1.25rem;
+    --radius-notice: 1rem;
+    --radius-field: 0.875rem;
+    --radius-event: 0.75rem;
+    --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+    --container-page: 87.5rem;
+}
+
+/*
+ * The two faces and the shadows, inline because they read other properties, so a utility
+ * computes them on the element it lands on, inside whatever theme that element wears. A face
+ * falls back to the brand's system stack. A shadow is one geometry in both modes and takes its
+ * colour from the theme's near-black shade, or from the primary for the glow; the card's two
+ * strengths are the mode's, so a dark card's edge still reads, and the rest are fixed. The
+ * float, the dock and the dialog draw a line of the border's colour round their edge.
+ */
+@theme inline {
+    --font-display: "Geologica Variable", var(--brand-font);
+    --font-text: "Inter Variable", var(--brand-font);
+    --shadow-card:
+        0 0 0 1px color-mix(in oklab, var(--shade) var(--shadow-hairline), transparent),
+        0 14px 30px -20px color-mix(in oklab, var(--shade) var(--shadow-card-strength), transparent);
+    --shadow-glow: 0 10px 20px -10px color-mix(in oklab, var(--primary) 80%, transparent);
+    --shadow-glow-hover: 0 16px 26px -12px color-mix(in oklab, var(--primary) 85%, transparent);
+    --shadow-float: 0 0 0 1px var(--border), 0 20px 40px -14px color-mix(in oklab, var(--shade) 35%, transparent);
+    --shadow-dock: 0 0 0 1px var(--border), 0 16px 34px -12px color-mix(in oklab, var(--shade) 38%, transparent);
+    --shadow-modal: 0 0 0 1px var(--border), 0 40px 90px -20px color-mix(in oklab, var(--shade) 55%, transparent);
+    --shadow-drawer: 0 0 80px color-mix(in oklab, var(--shade) 40%, transparent);
+}
+
+/*
  * The root in light, then in dark: Neutral's primary, the text on it and the ring; the mode's
  * bases, with how much primary each colour of the one rule below takes; and the colours that mean
  * the same in every theme, attention amber, positive green, destructive red, the spark, the now
@@ -292,13 +377,13 @@
  * their shapes, the one rule mixes the scope's tints from that primary, and the admin, which
  * never enters the scope, keeps its theme unchanged. On the dark theme the primary is lightened
  * to read on the dark page and carries the brand's ink. The console's top bar carries the primary
- * as a rule along its top edge.
+ * as a rule along its top edge. The scope sets no type: each frame keeps its body's, the admin's
+ * faces in the console and the brand's system stack in the signup.
  */
 .brand-scope {
     --primary: var(--brand-primary);
     --primary-foreground: var(--brand-primary-contrast);
     --ring: var(--brand-primary);
-    font-family: var(--brand-font);
 }
 
 .dark .brand-scope {
@@ -331,6 +416,26 @@
         font-size: 21px;
         line-height: 26px;
         font-weight: 600;
+    }
+
+    /*
+     * The admin's and the console's type, set on the body by their two root views: the text face
+     * at the body's size and weight, with figures of one width so a column of times or amounts
+     * lines up, and the display face, drawn a little tighter, on the headings. The signup's root
+     * view leaves the class off, so the signup keeps the brand's system stack. Being base, both
+     * give way to a utility on the element.
+     */
+    .admin-face {
+        font-family: var(--font-text);
+        font-size: 0.9375rem;
+        font-weight: 500;
+        line-height: 1.45;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .admin-face :is(h1, h2, h3) {
+        font-family: var(--font-display);
+        letter-spacing: -0.03em;
     }
 }
 

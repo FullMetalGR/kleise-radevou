@@ -6,9 +6,12 @@
  * The tokens are the brand's own custom properties, every one named --brand-, so the admin's own
  * theme, its --primary and the rest, is never redefined here: the admin's stylesheet takes the
  * brand into its tokens inside the brand's scope alone (app.css). Each is also a Tailwind colour
- * or font, inline, for the site's views to spell as a utility. The type is a system font stack and
- * no web font: a font file is binary under the ASCII rule, and a hosted font is a third-party
- * request before consent.
+ * or font, inline, for the site's views to spell as a utility. The brand's type is a system font
+ * stack and no web font: a font file is binary under the ASCII rule, and a hosted font is a
+ * third-party request before consent. The site, the signup and the wordmark are set in it, and
+ * the site's stylesheet and the embed carry no font file. The admin and the console are set in
+ * two faces of their own instead, which only the admin's build carries, from their packages, and
+ * serves from this host (admin/app.tsx); this stack is what those faces fall back to.
  *
  * The primary carries white text at 7.1:1 and its hover at 9.2:1; the accent is a colour for the
  * mark and for shapes, never for text. The mark draws itself in the primary, the accent and the

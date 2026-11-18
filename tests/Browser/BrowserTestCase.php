@@ -38,6 +38,9 @@ abstract class BrowserTestCase extends TestCase
     use Browsable;
     use DatabaseTruncation;
 
+    /** The style element that switches every transition and animation off. */
+    private const string STILL = '<style>*, *::before, *::after, *::backdrop { transition: none !important; animation: none !important; }</style>';
+
     protected function setUp(): void
     {
         foreach ([RefreshDatabase::class, DatabaseTransactions::class] as $trait) {
@@ -72,6 +75,28 @@ abstract class BrowserTestCase extends TestCase
         Event::listen(RequestHandled::class, function (RequestHandled $handled): void {
             if (in_array($handled->response->getStatusCode(), [Response::HTTP_NO_CONTENT, Response::HTTP_RESET_CONTENT, Response::HTTP_NOT_MODIFIED], true)) {
                 $handled->response->headers->set('Connection', 'close');
+            }
+        });
+
+        // Motion is off in every page this suite serves, so what a test reads or saves is the
+        // state a change lands in and never a frame on the way there. The browser plugin has no
+        // reduced-motion switch, so every HTML answer carries a style element at the end of its
+        // head that leaves no transition and no animation on any element or pseudo-element.
+        // Only the tests are still: people using the admin see its motion.
+        //
+        // What that costs: a transition or an animation that never runs never ends, so the
+        // browser fires no transitionend and no animationend, and a part that starts one and
+        // waits to hear it finish waits for good. The calendar library is such a part: it glides
+        // a block back from a drop it refuses itself and ends the drag only when that glide's
+        // transition does. So a test here never drops on a target the calendar refuses and then
+        // waits for the calendar to settle.
+        Event::listen(RequestHandled::class, function (RequestHandled $handled): void {
+            $content = $handled->response->getContent();
+            $type = $handled->response->headers->get('Content-Type') ?? '';
+            $head = is_string($content) ? strpos($content, '</head>') : false;
+
+            if (str_starts_with($type, 'text/html') && is_string($content) && $head !== false) {
+                $handled->response->setContent(substr_replace($content, self::STILL, $head, 0));
             }
         });
     }

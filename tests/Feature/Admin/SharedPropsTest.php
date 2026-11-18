@@ -264,7 +264,7 @@ it('leaves the hosted page and the API outside the prefix answering as before', 
 it('renders a fresh tenant\'s admin with the neutral theme on its body, from the server, and hands the page the word', function () {
     $this->actingAs(lunaUser())->get(tenantUrl('luna', '/admin'))
         ->assertOk()
-        ->assertSee('<body data-theme="neutral">', false)
+        ->assertSee('<body class="admin-face" data-theme="neutral">', false)
         ->assertInertia(fn (Assert $page) => $page->where('theme', 'neutral'));
 });
 
@@ -273,12 +273,12 @@ it('renders the admin, inside the shell and on the sign-in page, in the theme th
 
     $this->actingAs(lunaUser())->get(tenantUrl('luna', '/admin/bookings'))
         ->assertOk()
-        ->assertSee('<body data-theme="violet">', false)
+        ->assertSee('<body class="admin-face" data-theme="violet">', false)
         ->assertInertia(fn (Assert $page) => $page->where('theme', 'violet'));
 
     auth()->logout();
 
     $this->get(tenantUrl('luna', '/admin/login'))
         ->assertOk()
-        ->assertSee('<body data-theme="violet">', false);
+        ->assertSee('<body class="admin-face" data-theme="violet">', false);
 });

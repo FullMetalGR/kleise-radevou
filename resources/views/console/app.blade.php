@@ -9,7 +9,7 @@
     @vite('resources/js/admin/app.tsx', \App\Http\Middleware\HandleInertiaRequests::BUILD_DIRECTORY)
     @inertiaHead
 </head>
-<body>
+<body class="admin-face">
     @inertia
 </body>
 </html>

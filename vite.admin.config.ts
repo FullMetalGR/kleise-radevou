@@ -13,8 +13,11 @@ import { ADMIN_BUILD_DIR, assertAscii, escapeKnownNonAscii } from './vite.shared
  * The ASCII assertion the embed's build makes covers this output too. Before it runs, the three
  * characters the calendar grid's library spells as \uXXXX in its source, which the minifier
  * writes out literally, are rewritten back to escapes in every chunk; any other non-ASCII
- * character in a chunk, and any at all in an asset, fails the build by name, so a dependency
- * bringing one in is looked at rather than escaped unread.
+ * character in a chunk, and any at all in a text asset, fails the build by name, so a dependency
+ * bringing one in is looked at rather than escaped unread. The one binary output is the admin's
+ * two font faces: the app imports them from their packages, and this build writes their files
+ * beside its own, never into the repository, so they are served from this host. The site's
+ * stylesheet, an entry of this build too, and the embed's build carry no font.
  *
  * The @ alias is the admin folder, which is what the copied shadcn components import through.
  * The booking app imports nothing through it.
@@ -37,6 +40,9 @@ function asciiOutput(): Plugin {
 
 export default defineConfig({
     publicDir: false,
+    // The path the web server serves the build directory at, which a URL the build writes into
+    // the stylesheet, a font file's, starts from; the root view links the entries by the manifest.
+    base: `/${ADMIN_BUILD_DIR.replace(/^public\//, '')}/`,
     resolve: {
         alias: { '@': fileURLToPath(new URL('./resources/js/admin', import.meta.url)) },
     },

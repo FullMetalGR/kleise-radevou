@@ -82,9 +82,13 @@ final class Help
             .join(','))()
         JS;
 
-    /** True when the panel covers the whole viewport, its width the box the document is laid out in. */
+    /**
+     * True when the panel covers the whole viewport, its width the box the document is laid out
+     * in. Read once the page's faces have loaded, as every reading of a size or a position here
+     * is, for the reason PhoneScripts gives.
+     */
     public const string PANEL_FILLS_SCREEN = <<<'JS'
-        (() => {
+        document.fonts.ready.then(() => {
             const panel = document.querySelector('.admin-help-panel');
             if (panel === null) {
                 return false;
@@ -92,7 +96,7 @@ final class Help
             const near = (a, b) => Math.abs(a - b) <= 1;
             const box = panel.getBoundingClientRect();
             return near(box.left, 0) && near(box.top, 0) && near(box.width, document.documentElement.clientWidth) && near(box.height, window.innerHeight);
-        })()
+        })
         JS;
 
     /** Where focus is, said as the element's tag and class, or "body". */
@@ -147,7 +151,7 @@ final class Help
      * it was drawn; what is read is the order things are painted in at that point.
      */
     public const string OVER_BUBBLE = <<<'JS'
-        (() => {
+        document.fonts.ready.then(() => {
             const bubble = document.querySelector('.admin-help-bubble');
             if (bubble === null) {
                 return { bubble: false };
@@ -165,17 +169,18 @@ final class Help
                 over: over === null ? null : String(over.className).split(' ')[0],
                 hidden: bubble.closest('[aria-hidden="true"], [inert]') !== null,
             };
-        })()
+        })
         JS;
 
     /**
      * The controls the screen shows under the bubble, at whatever width it is drawn, once the
      * window and every scroller inside it are at their ends, which is where the controls at the
      * foot of the screen come nearest the bubble. They are answered as the start of each one's
-     * markup: none, where the foot of the screen keeps clear of it.
+     * markup: none, where the foot of the screen keeps clear of it. The faces are in before
+     * anything is scrolled, so the ends the scrollers are taken to are the ends they keep.
      */
     public const string UNDER_BUBBLE = <<<'JS'
-        new Promise((resolve) => {
+        document.fonts.ready.then(() => new Promise((resolve) => {
             const scrollers = [document.scrollingElement, ...document.querySelectorAll('*')].filter((element) => {
                 if (element === null || element.scrollHeight <= element.clientHeight + 1) {
                     return false;
@@ -201,7 +206,7 @@ final class Help
                     })
                     .map((control) => control.outerHTML.slice(0, 120)));
             }));
-        })
+        }))
         JS;
 
     /**

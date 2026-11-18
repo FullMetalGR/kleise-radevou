@@ -25,6 +25,47 @@ use Tests\Support\LunaFixture;
  * which the rail counts.
  */
 
+/*
+ * What a probe added to the page with a second-long fade and a spinning animation of its own is
+ * left with: its transition's length and its animation's name, which the suite's motion switch
+ * brings to nothing.
+ */
+const LOOK_MOTION = <<<'JS'
+(() => {
+    const probe = document.createElement('div');
+    probe.style.transition = 'opacity 1s';
+    probe.style.animation = 'spin 1s linear infinite';
+    document.body.append(probe);
+    const style = getComputedStyle(probe);
+    const left = style.transitionDuration + ' ' + style.animationName;
+    probe.remove();
+    return left;
+})()
+JS;
+
+/*
+ * Whether, once the page's fonts have settled, the text face at the body's size and weight is
+ * ready to draw, each of the two faces has a loaded file covering Greek, and every font file the
+ * page fetched came from where its stylesheet did, at least one of them.
+ */
+const LOOK_FACES = <<<'JS'
+(async () => {
+    await document.fonts.ready;
+    const covers = (face, code) => face.unicodeRange.split(',').some((range) => {
+        const [from, to = from] = range.trim().replace(/^u\+/i, '').split('-').map((hex) => parseInt(hex, 16));
+        return code >= from && code <= to;
+    });
+    const greek = (family) => [...document.fonts].some((face) => face.family.replace(/"/g, '') === family && face.status === 'loaded' && covers(face, 0x3b1));
+    const sheet = new URL(document.querySelector('link[rel="stylesheet"]').href).origin;
+    const files = performance.getEntriesByType('resource').filter((entry) => new URL(entry.name).pathname.endsWith('.woff2'));
+    return document.fonts.check('500 15px "Inter Variable"')
+        && greek('Inter Variable')
+        && greek('Geologica Variable')
+        && files.length > 0
+        && files.every((entry) => new URL(entry.name).origin === sheet);
+})()
+JS;
+
 beforeEach(function () {
     dropDemoSchemas();
     $this->seed(DemoTenantsSeeder::class);
@@ -92,3 +133,14 @@ it('draws every screen of the admin at a tablet\'s width and a desktop\'s in the
         }
     }
 })->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('serves the admin with its motion off, its Greek text drawn in its own two faces, fetched from its own build', function () {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+
+    Admin::signedIn($this, 'luna', Admin::owner('luna'))
+        ->assertVisible(Admin::HOME)
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value)
+        ->assertScript(LOOK_MOTION, '0s none')
+        ->assertScript(LOOK_FACES, true)
+        ->assertNoJavaScriptErrors();
+});

@@ -22,9 +22,10 @@ function nameOf(character: string): string {
 }
 
 /**
- * Refuses non-ASCII output, whichever build wrote it. Every file in this repository is ASCII, the
- * build output included, and the minifier has no switch for it, so a dependency that brought a
- * non-ASCII byte in fails here, by name, rather than slipping into a served file.
+ * Refuses non-ASCII output, whichever build wrote it. Every text file in this repository is ASCII,
+ * the build output included, and the minifier has no switch for it, so a dependency that brought a
+ * non-ASCII byte in fails here, by name, rather than slipping into a served file. A binary asset,
+ * the admin build's font files, is bytes rather than text and is not read.
  */
 export function assertAscii(bundle: Output): void {
     for (const item of Object.values(bundle)) {

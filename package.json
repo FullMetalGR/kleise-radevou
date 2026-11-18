@@ -9,6 +9,8 @@
         "fallow": "php artisan lang:export booking && php artisan lang:export admin && (rm -f .fallow-report.sarif; fallow --ci --output-file .fallow-report.sarif; node bin/fallow-gate.mjs .fallow-report.sarif)"
     },
     "dependencies": {
+        "@fontsource-variable/geologica": "5.3.0",
+        "@fontsource-variable/inter": "5.3.0",
         "@fullcalendar/core": "6.1.21",
         "@fullcalendar/interaction": "6.1.21",
         "@fullcalendar/react": "6.1.21",
