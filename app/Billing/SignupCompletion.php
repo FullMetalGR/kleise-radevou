@@ -13,7 +13,7 @@ use Psr\Log\LoggerInterface;
  * names on a built tenant's row, the way back's checkout from the Billing screen. The signup
  * opens no checkout and builds its row on the verification link's click, so nothing here builds:
  * a completion that finds the row still provisioning, which no road in the product opens, writes
- * nothing and leaves a line at warning naming the row it found (P9F-50b), where one that finds no
+ * nothing and leaves a line at warning naming the row it found, where one that finds no
  * row at all leaves an error line, a customer having paid with no tenant to show.
  *
  * The pair has landed when the sync's write for it has: the refresh answered Applied, whatever

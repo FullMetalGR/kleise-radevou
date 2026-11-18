@@ -303,7 +303,7 @@ it('refuses a bad field with that field\'s own sentence at 400, read through the
     'online not a flag' => [['online' => 'sometimes'], ServiceRequest::ONLINE_FLAG, []],
 ]);
 
-it('holds the booking horizon at 365 days or fewer, P9F-L15-d: 365 is written, 366 refused with its own sentence', function () {
+it('holds the booking horizon at 365 days or fewer: 365 is written, 366 refused with its own sentence', function () {
     catalogWrite($this, catalogOwner(), 'PUT', '/services/'.haircut(), ['horizon_days' => 365])->assertRedirect(tenantUrl('luna', '/admin/services'));
 
     expect(DB::table('tenant_luna.services')->where('id', haircut())->value('horizon_days'))->toBe(365);

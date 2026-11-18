@@ -47,7 +47,7 @@ import { NO_TIMES } from './WhenStep';
  * The cards of My bookings (6.6) render the manage view's actions under the same classes, so the
  * same rows name them; the list's own block below drives them on the list, a dialog open on one
  * card disabling every other card's actions as well, an armed row's Yes and Keep on another card
- * among them (P9F-L17-c).
+ * among them.
  *
  * The strip of 1.4 is several controls under one class, so it has a table of its own: a step
  * renders disabled as the current one or one not reached yet, saying which in its own text, or,
@@ -557,7 +557,7 @@ describe('My bookings, the list mode of 6.6, whose forms disable nothing and who
         await press(onCard(0, said(RESCHEDULE_LABEL)));
     }
 
-    // The cross-card rule's other half (P9F-L17-c): the first card's row armed, then the second
+    // The cross-card rule's other half: the first card's row armed, then the second
     // card's dialog opened over the list, which disables the armed row's two pills as well.
     async function armedUnderDialog(): Promise<void> {
         await cardArmed();

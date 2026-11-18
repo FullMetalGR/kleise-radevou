@@ -50,7 +50,7 @@ return [
     // The trial's two notices: three days before the end and on its last day, each naming the end
     // in the tenant's clock, what the end pauses and what it leaves running, and the Billing
     // screen, with the zone named once at the foot. "Ends today" sent to a trial whose end has
-    // already passed, before the hourly lapse moved it (P9F-51a), reads ended and what_ended in
+    // already passed, before the hourly lapse moved it, reads ended and what_ended in
     // place of ends and what_ends, under ended_subject in place of its subject.
     'trial' => [
         'three_days' => [

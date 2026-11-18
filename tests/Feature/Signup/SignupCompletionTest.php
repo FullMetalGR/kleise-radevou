@@ -28,7 +28,7 @@ pest()->use(RefreshDatabase::class);
  * The checkout completion: the provider's completed checkout lands the subscription the session
  * names on a built tenant's row, the way back's checkout, and builds nothing; the signup opens no
  * checkout, so a row never built is met with a line at warning, never an error, and left as it
- * was (P9F-50b).
+ * was.
  */
 
 /**
@@ -90,7 +90,7 @@ it('is the checkout seam the container binds', function () {
     expect(get_class(app(CheckoutCompletion::class)))->toBe(SignupCompletion::class);
 });
 
-it('writes nothing on a row never built, asking the provider nothing, and leaves a warning line (P9F-50b)', function () {
+it('writes nothing on a row never built, asking the provider nothing, and leaves a warning line', function () {
     $log = new SeamLog;
     app()->instance(LoggerInterface::class, $log);
     completionReserved();
@@ -107,7 +107,7 @@ it('writes nothing on a row never built, asking the provider nothing, and leaves
         ]]);
 });
 
-it('marks a completed checkout delivered through the webhook for a row never built, writing nothing, asking the provider nothing, with one warning line (P9F-50b)', function () {
+it('marks a completed checkout delivered through the webhook for a row never built, writing nothing, asking the provider nothing, with one warning line', function () {
     $log = new SeamLog;
     app()->instance(LoggerInterface::class, $log);
     completionReserved();

@@ -51,7 +51,7 @@ final readonly class TrialDeadlines
     /**
      * Claims the notice for every tenant in trial whose end is ahead of the clock by no more than
      * the notice's lead and that has not been sent it, stamping it with the clock's now. A notice
-     * that reaches a past end (P9F-51a) drops the lower bound: a trial whose end has passed and
+     * that reaches a past end drops the lower bound: a trial whose end has passed and
      * that the lapse has not yet moved to canceled is claimed too, once, by the same stamp.
      *
      * @return list<TrialAccount>

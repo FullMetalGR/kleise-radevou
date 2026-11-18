@@ -216,7 +216,7 @@ final readonly class StaffRecords
      * answers whether the row existed. The implicit member's title and bio are
      * ignored, where its photo's routes answer not-found (takesPhoto): that row stands for the
      * business, which shows neither anywhere, so a body naming them writes the rest and leaves
-     * both as stored (P9F-L35-b). The flag is read in the same transaction; nothing writes it
+     * both as stored. The flag is read in the same transaction; nothing writes it
      * after provisioning.
      *
      * @param  array<string, mixed>  $columns

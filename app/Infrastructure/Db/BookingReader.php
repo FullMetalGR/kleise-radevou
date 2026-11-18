@@ -138,7 +138,7 @@ final readonly class BookingReader
      * address has none: the prefill of the booking flow's details step under a My bookings
      * session. Made last and not starting last, because what the customer typed most recently is
      * what they would type again; the row's id breaks a tie. A booking cancelled, rejected or
-     * expired is read past, BookingStatus::cameToNothing (P9F-L17-d), so a cancelled booking's
+     * expired is read past, BookingStatus::cameToNothing, so a cancelled booking's
      * details never win over the one before it. The address is compared as citext compares it,
      * as the list compares it, and the email answered is the one the booking carries.
      */

@@ -38,7 +38,7 @@ use DateTimeImmutable;
  * write tells it.
  *
  * Another booking removes a start; the hours and the closures only mark it, since the business
- * may land there once it accepts the warning (19a). The booking's current start is left out of a
+ * may land there once it accepts the warning. The booking's current start is left out of a
  * day's candidates where no segment changes member, as the customer's read leaves it out: a move
  * to where the booking already is would be written and announced as a move.
  */

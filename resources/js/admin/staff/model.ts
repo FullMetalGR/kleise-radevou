@@ -14,7 +14,7 @@ import type { StaffKey, StaffWords } from './words';
  * line. The photo is the member's own write on its own two routes, so it is read from the row and
  * never sits in the form or the patch. The implicit member, who stands for the business, has no
  * face and shows no title or bio: its patch carries neither of the two, as the server ignores both
- * for that row (P9F-L35-b).
+ * for that row.
  */
 
 /** A member's repeating pattern as stored, as Shifts reads it less the member and the minutes. */

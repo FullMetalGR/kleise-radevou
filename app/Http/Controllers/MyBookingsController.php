@@ -88,7 +88,7 @@ final readonly class MyBookingsController
 
     public const string SIGNED_OUT = 'pages.my_bookings.flashes.signed_out';
 
-    /** The link page's title, :business the business it names (P9F-L16-a). */
+    /** The link page's title, :business the business it names. */
     public const string OPEN_TITLE = 'pages.link.title';
 
     /**
@@ -165,7 +165,7 @@ final readonly class MyBookingsController
 
     /**
      * The link's page, GET /my-bookings/{token}: a live link renders one button and spends
-     * nothing, so a mail scanner's fetch leaves it live (P9F-L16-a); a used, lapsed or unknown
+     * nothing, so a mail scanner's fetch leaves it live; a used, lapsed or unknown
      * token goes on to the form with the sentence the POST answers it with.
      */
     public function linkPage(string $token, Request $request): SymfonyResponse

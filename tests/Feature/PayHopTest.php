@@ -612,7 +612,7 @@ it('lets a failure that is no race, at the hop\'s write and at the on-site settl
     'the on-site settlement' => [true],
 ]);
 
-it('leaves no credential in the sessions table, the database session writing a row for every request as it does on the host: a pay visit, the manage page it sends the customer to, the manage view\'s two reads and the payment link\'s status page each keep their URL out of the previous-URL slot (P9F-L16-b)', function () {
+it('leaves no credential in the sessions table, the database session writing a row for every request as it does on the host: a pay visit, the manage page it sends the customer to, the manage view\'s two reads and the payment link\'s status page each keep their URL out of the previous-URL slot', function () {
     config(['session.driver' => 'database']);
     connectPaymentFake();
     $held = hopHold($this);

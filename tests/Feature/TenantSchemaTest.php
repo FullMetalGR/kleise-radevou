@@ -753,7 +753,7 @@ it('accepts services.{column} at {value}, its bound', function (string $column, 
     ['approval_hold_hours', 1],
 ]);
 
-it('bounds services.horizon_days on both sides through one CHECK, migration 000027 and P9F-L15-d: 366 refused, 365 accepted', function () {
+it('bounds services.horizon_days on both sides through one CHECK, migration 000027: 366 refused, 365 accepted', function () {
     DB::table('tenant_acme.services')->insert(serviceRow('Cut', ['horizon_days' => 365]));
 
     expect(constraintDefinition('tenant_acme', 'services', 'services_horizon_days_check'))->toBe('CHECK (((horizon_days >= 0) AND (horizon_days <= 365)))')

@@ -30,7 +30,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * business and has no face, each route answers not-found and stores nothing. The file, the row
  * and the file the row let go are StaffRecords::swapPhoto's, under the member's row lock and the
  * staff photo lock, so a member deleted after the check is not-found with nothing stored, and a
- * file another member holds is never deleted under them (P9F-L13-a).
+ * file another member holds is never deleted under them.
  */
 final readonly class StaffPhotoController
 {

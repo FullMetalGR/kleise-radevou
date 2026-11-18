@@ -420,7 +420,7 @@ it('accepts the platform audit action {action}, each case of the vocabulary', fu
     expect(DB::table('platform_audit_log')->value('action'))->toBe($action);
 })->with(fn (): array => array_map(fn (PlatformAuditAction $action): string => $action->value, PlatformAuditAction::cases()));
 
-it('spells in the action CHECK the vocabulary\'s cases and nothing else, a literal the enum lacks being a row the Audit screen could not read (04b)', function () {
+it('spells in the action CHECK the vocabulary\'s cases and nothing else, a literal the enum lacks being a row the Audit screen could not read', function () {
     $definition = DB::scalar("select pg_get_constraintdef(oid) from pg_constraint where conname = 'platform_audit_log_action_check' and conrelid = 'platform_audit_log'::regclass");
     assert(is_string($definition));
     preg_match_all("/'([^']*)'/", $definition, $literals);

@@ -31,7 +31,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * is read as the framework decrypted it, never printed and never bound. The booking app sends it
  * only from the list mode on the tenant's own origin; the embed sends no cookie at all.
  *
- * The session is a same-site credential (P9F-L17-a): it is read on no request the browser marks
+ * The session is a same-site credential: it is read on no request the browser marks
  * cross-site in its Sec-Fetch-Site header. The cookie is SameSite Lax, so a top-level navigation
  * from another site carries it, and GET /pay/{uuid} writes (it opens a session at the provider,
  * records payment_ref, or settles on site); a page elsewhere linking to it must not act on the

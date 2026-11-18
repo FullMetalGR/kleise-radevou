@@ -15,7 +15,7 @@ use Tests\Browser\Support\FlowScripts;
 /*
  * My bookings in a real browser: a customer with two bookings at luna follows the header's link,
  * asks for a link with their address, opens it from the message the array mailer kept, presses
- * the link page's one button (P9F-L16-a; the page itself spends nothing), reads both bookings,
+ * the link page's one button (the page itself spends nothing), reads both bookings,
  * signs out, and reads the form.
  *
  * The bookings are rows, one ahead and one behind, dated relative to today on the system clock as
@@ -259,8 +259,8 @@ it('reschedules one booking and cancels another from the list with no token on t
 
     // Book again: the hosted page with the card's service and member, and the details step with
     // the name, email and phone of the most recent booking that did not come to nothing: the one
-    // just cancelled was made last and is read past, so the phone is the moved booking's
-    // (P9F-L17-d). 11:00 on the Monday is the time the cancel just gave back.
+    // just cancelled was made last and is read past, so the phone is the moved booking's.
+    // 11:00 on the Monday is the time the cancel just gave back.
     $page->click(mineCard(1).' .kr-booking__again')
         ->assertScript(FlowScripts::SETTLED, true)
         ->assertScript(FlowScripts::STEP, 'when');

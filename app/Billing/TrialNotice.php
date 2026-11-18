@@ -11,7 +11,7 @@ namespace App\Billing;
  *
  * The cases are in the order a tenant receives them, so a trial already shorter than three days
  * when the first run sees it is told both, the three days first. "Ends today" still reaches a
- * trial whose end has passed before the hourly lapse moved it (P9F-51a), its body worded for an
+ * trial whose end has passed before the hourly lapse moved it, its body worded for an
  * end already past; "three days left" never does.
  */
 enum TrialNotice: string

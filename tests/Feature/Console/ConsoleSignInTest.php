@@ -114,7 +114,7 @@ it('answers the sign-in POST 429 with the worded form past ten a minute from one
     $this->assertGuest('console');
 });
 
-it('words the limit\'s refusal and the sign-out in sentences of the console\'s own, apart from the admin\'s door (02e)', function () {
+it('words the limit\'s refusal and the sign-out in sentences of the console\'s own, apart from the admin\'s door', function () {
     expect(LoginController::TOO_MANY)->toBe('Too many sign-in attempts from this address. Please wait a minute and try again.')
         ->and(LoginController::SIGNED_OUT)->toBe('You have signed out.');
 });

@@ -68,7 +68,7 @@ it('carries the sentence a redirect flashed above the form', function () {
 });
 
 /*
- * The session: a link's page offers one button and spends nothing (P9F-L16-a), the button's POST
+ * The session: a link's page offers one button and spends nothing, the button's POST
  * opens the session once inside the link's fifteen minutes, the cookie names it, the page lists
  * its address's bookings, and the sign-out ends it. Every miss is the form.
  */

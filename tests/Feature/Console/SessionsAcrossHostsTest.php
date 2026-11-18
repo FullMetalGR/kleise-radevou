@@ -197,7 +197,7 @@ it('names nobody on a tenant host for the console guard\'s own key in the sessio
         ->assertRedirect(tenantUrl('acme', '/admin/login'));
 });
 
-it('names the user for the web guard\'s own key on a tenant host, the control for the case above (02c)', function () {
+it('names the user for the web guard\'s own key on a tenant host, the control for the case above', function () {
     provisionTenant('acme', ['ownerEmail' => 'owner@acme.example']);
 
     $answer = crossHostAnswer($this->withSession([crossHostSessionKey('web') => tenantUserId('owner@acme.example')])->get(tenantUrl('acme', '/admin')));
@@ -206,7 +206,7 @@ it('names the user for the web guard\'s own key on a tenant host, the control fo
         ->and($answer['status'])->toBeLessThan(400);
 });
 
-it('reads the web guard by name on a tenant host and never the default: a user of the tenant the console guard were to hold, made the default as acting as an operator makes it, is nobody there (02g)', function () {
+it('reads the web guard by name on a tenant host and never the default: a user of the tenant the console guard were to hold, made the default as acting as an operator makes it, is nobody there', function () {
     provisionTenant('acme', ['ownerEmail' => 'owner@acme.example']);
     $user = User::query()->where('email', 'owner@acme.example')->sole();
 

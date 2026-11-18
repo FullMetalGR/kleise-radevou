@@ -102,7 +102,7 @@ const USERS: TenantUser[] = [{ id: 11, name: 'Alex Owner', email: 'owner@luna.ex
 
 const CLOSURES: ClosureLine[] = [{ staff_id: null, date: '2026-12-25', until: null, start: null, end: null, reason: 'Christmas Day' }, { staff_id: null, date: '2026-12-31', until: null, start: '14:00', end: '18:00', reason: null }];
 
-/** The closures card's title without the feature, under the screen's heading (P8F-L05-a). */
+/** The closures card's title without the feature, under the screen's heading. */
 const CLOSED_DAYS = staff.text('page.closed_days');
 
 /** Elena's pattern as the read-only line spells it, every two weeks from its start. */

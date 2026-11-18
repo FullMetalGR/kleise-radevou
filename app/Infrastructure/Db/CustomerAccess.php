@@ -74,7 +74,7 @@ final readonly class CustomerAccess
 
     /**
      * Whether a presented token names a live, unused link: the question the link's page asks
-     * before it offers its one button (P9F-L16-a), answered by a read that writes nothing, so a
+     * before it offers its one button, answered by a read that writes nothing, so a
      * fetch of the link, a mail scanner's among them, spends nothing. A used, lapsed or unknown
      * token answers false, as openSession answers it null.
      */

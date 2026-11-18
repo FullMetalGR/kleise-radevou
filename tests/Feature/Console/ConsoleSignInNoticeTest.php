@@ -119,7 +119,7 @@ it('holds the console\'s zone in config/console.php, Europe/Athens by default, a
         ->and(app(ConsoleTime::class)->zone()->getName())->toBe('Europe/Athens');
 });
 
-it('refuses a zone the configuration misspells when the application boots, so the deploy fails rather than the door\'s first request (03f)', function () {
+it('refuses a zone the configuration misspells when the application boots, so the deploy fails rather than the door\'s first request', function () {
     config(['console.timezone' => 'Europe/Atlantis']);
     $provider = app()->getProvider(AppServiceProvider::class);
     assert($provider instanceof AppServiceProvider);

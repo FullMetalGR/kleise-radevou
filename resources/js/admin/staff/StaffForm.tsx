@@ -29,8 +29,8 @@ export const SHIFTS_PATH = '/admin/shifts';
  * member who can have a face: a new member has no id for the route and the implicit member stands
  * for the business, so for either the caller hands none and no Photo field renders. The implicit
  * member has no Title and no Bio either, which show nowhere for that row and which the server
- * ignores for it (P9F-L35-b); its Offered online help says instead what unticking does to the
- * business's own row (P9F-20b).
+ * ignores for it; its Offered online help says instead what unticking does to the
+ * business's own row.
  *
  * Every word is a key of the staff section, read through the screen's words; the constants below
  * hold keys and keep their names.

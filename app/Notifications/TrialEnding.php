@@ -29,7 +29,7 @@ use App\Tenancy\TenantUrls;
  *
  * The subjects hold whatever is left of the trial: a trial already shorter than three days when
  * the first run sees it is sent both, and "soon" is still true of it. A trial whose end is at or
- * behind the clock's now when "ends today" is sent, the lapse not having moved it yet (P9F-51a),
+ * behind the clock's now when "ends today" is sent, the lapse not having moved it yet,
  * reads two lines of its own in place of the end and what the end pauses, both in the past, under
  * a subject of its own saying the trial has ended, in the text and the HTML part alike: the end
  * the lapse counts as passed, at or before now, is the one the body says has passed.

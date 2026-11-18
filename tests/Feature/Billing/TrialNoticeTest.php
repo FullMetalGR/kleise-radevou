@@ -24,7 +24,7 @@ pest()->use(RefreshDatabase::class);
  * writes.
  *
  * A trial whose end has passed before the hourly lapse moved it is still sent "ends today", once,
- * its body worded for an end already past, and never "three days left" (P9F-51a); a row the lapse
+ * its body worded for an end already past, and never "three days left"; a row the lapse
  * has moved, a closing one and a suspended one are sent nothing.
  */
 
@@ -279,7 +279,7 @@ it('goes from the platform\'s address and name with no reply-to, through the sea
         ->and($message->getBody()->getMediaSubtype())->toBe('alternative');
 });
 
-it('sends the ends today notice once to a trial whose end passed before the lapse ran, its body true of an end already past, the end in the tenant\'s clock with the zone named, and never the three days one (P9F-51a)', function (string $endsAt, string $ended) {
+it('sends the ends today notice once to a trial whose end passed before the lapse ran, its body true of an end already past, the end in the tenant\'s clock with the zone named, and never the three days one', function (string $endsAt, string $ended) {
     $seam = noticeSeam();
     noticeTenant('luna', 'Luna Hair Studio', $endsAt, ['ada@luna.example' => 'owner']);
     $endedLine = siteSentence('mail.trial.ends_today.ended', SiteLanguage::English, ['business' => 'Luna Hair Studio', 'end' => $ended]);
@@ -326,7 +326,7 @@ it('sends the ends today notice once to a trial whose end passed before the laps
     'an end two days behind, whose lapse never ran' => ['2026-10-05 10:00:00+00', 'Monday 5 October 2026 at 13:00'],
 ]);
 
-it('tells a Greek row whose trial end has passed in Greek, the past end\'s three lines, its subject among them, read from lang/el through the translator, the end spelled by the formatter in the tenant\'s clock (P9F-51a)', function () {
+it('tells a Greek row whose trial end has passed in Greek, the past end\'s three lines, its subject among them, read from lang/el through the translator, the end spelled by the formatter in the tenant\'s clock', function () {
     $seam = noticeSeam();
     noticeTenant('luna', 'Luna Hair Studio', '2026-10-07 09:00:00+00', ['ada@luna.example' => 'owner']);
     billingSet(['timezone' => 'America/New_York', 'locale' => 'el']);

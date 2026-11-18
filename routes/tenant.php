@@ -169,7 +169,7 @@ TenantPages::register(function (): void {
  * mails a one-time link where the address has a booking here and always answers the same
  * sentence; the link's GET is a page with one button and spends nothing, since a mail scanner
  * fetches every link, and the button's POST to the same URI opens the session once and goes on to
- * the page, two methods on one URI as the decision links have (P9F-L16-a); the sign-out ends it.
+ * the page, two methods on one URI as the decision links have; the sign-out ends it.
  * Public, each judging the one credential it takes and answering a miss with the form, and never
  * gated by the subscription, as no customer's route is.
  *

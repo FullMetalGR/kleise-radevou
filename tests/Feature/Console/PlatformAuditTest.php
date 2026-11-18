@@ -109,7 +109,7 @@ it('records a sign-in at the door as sign_in, naming the operator by id and no t
         ->and($writes->getArrayCopy())->toBe([['session' => session()->getId(), 'operator' => $operator->id]]);
 });
 
-it('leaves a session no request can use where the sign_in row cannot be written: no instant and no fingerprint in it, no notice mailed, and the next request on it refused as run out (04c)', function () {
+it('leaves a session no request can use where the sign_in row cannot be written: no instant and no fingerprint in it, no notice mailed, and the next request on it refused as run out', function () {
     $seam = new RecordingPlatformMessages;
     app()->instance(PlatformMessenger::class, $seam);
     addOperator();
@@ -264,7 +264,7 @@ it('reads nothing where the table is gone or the test\'s transaction was aborted
     }],
 ]);
 
-it('throws a read that fails any other way, rather than passing the net over rows it never read (04d)', function () {
+it('throws a read that fails any other way, rather than passing the net over rows it never read', function () {
     // A savepoint before the read, rolled back to after it, so the failed read leaves the test's
     // transaction usable for putting the column back before the net over every test reads it.
     DB::statement('savepoint before_the_read');

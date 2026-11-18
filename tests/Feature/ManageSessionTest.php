@@ -378,7 +378,7 @@ it('sends a session\'s pay hop on to the provider with My bookings as the way ba
         ->and(DB::scalar('select manage_token_sealed is null from tenant_luna.bookings where uuid = ?', [$held['uuid']]))->toBeTrue();
 });
 
-it('reads no session on a request the browser marked cross-site: the cookie alone answers as a request carrying no credential, the malformed request\'s answer byte for byte, writing nothing, while a token on the same cross-site request is judged as ever (P9F-L17-a)', function (Closure $send, Closure $accepted) {
+it('reads no session on a request the browser marked cross-site: the cookie alone answers as a request carrying no credential, the malformed request\'s answer byte for byte, writing nothing, while a token on the same cross-site request is judged as ever', function (Closure $send, Closure $accepted) {
     $bySession = sgHold($this, FixtureDay::START);
     $byToken = sgHold($this, '2026-11-03 11:00');
     $live = sgSession(SG_CASEY);
@@ -399,7 +399,7 @@ it('reads no session on a request the browser marked cross-site: the cookie alon
     $accepted(sgSend($send, $this, $byToken['uuid'], $byToken['token'], '2026-11-04 16:00'), $byToken['uuid'], app(TenantUrls::class)->manageLink(Slug::of('luna'), $byToken['uuid'], $byToken['token']));
 })->with('the routes behind the guard');
 
-it('sends a session\'s pay hop on to the provider wherever the browser marks the request same-origin, same-site or typed in, or marks it not at all, and refuses it marked cross-site with the guard\'s 400 page, the provider never asked (P9F-L17-a)', function (?string $site, bool $admitted) {
+it('sends a session\'s pay hop on to the provider wherever the browser marks the request same-origin, same-site or typed in, or marks it not at all, and refuses it marked cross-site with the guard\'s 400 page, the provider never asked', function (?string $site, bool $admitted) {
     connectPaymentFake();
     $id = fn (string $table, string $name): mixed => DB::table('tenant_luna.'.$table)->where('name', $name)->value('id');
     $held = $this->postJson(tenantUrl('luna', '/api/v1/holds'), [
@@ -434,7 +434,7 @@ it('sends a session\'s pay hop on to the provider wherever the browser marks the
     'cross-site, a page on another site' => ['cross-site', false],
 ]);
 
-it('takes the minted link, the hold answer\'s checkout_url, on to the provider from a page on another site, the tenant\'s own site where the embed runs, with the My bookings cookie beside it or without it (P9F-L17-a)', function (bool $cookie) {
+it('takes the minted link, the hold answer\'s checkout_url, on to the provider from a page on another site, the tenant\'s own site where the embed runs, with the My bookings cookie beside it or without it', function (bool $cookie) {
     connectPaymentFake();
     $id = fn (string $table, string $name): mixed => DB::table('tenant_luna.'.$table)->where('name', $name)->value('id');
     $held = $this->postJson(tenantUrl('luna', '/api/v1/holds'), [

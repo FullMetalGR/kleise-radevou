@@ -73,7 +73,7 @@ final readonly class QueryAvailability
      * may not take, inside the lead time or past the horizon, are already gone from each read.
      *
      * The walk also reads no more than Chain::MAX_HORIZON_DAYS days from where it starts, whatever
-     * the chain's horizon says (P9F-L15-d), so its cost is bounded by that number even for a
+     * the chain's horizon says, so its cost is bounded by that number even for a
      * horizon no row may hold or a window long past. Counted from the window's end rather than
      * from today, a window starting today keeps a horizon of 365 days whole.
      */
