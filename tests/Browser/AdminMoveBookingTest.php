@@ -27,7 +27,8 @@ use Tests\Support\LunaFixture;
  * closed time the same drags open the warning first: on Day onto a closure of the business, named
  * with its window and reason, where Cancel puts the block back and writes nothing, then onto
  * Nikos's column over his own closure, moved on Move anyway; and on Week onto Elena's Saturday,
- * her day off, cancelled once and then moved.
+ * her day off, cancelled once and then moved. An owner who reads Greek is told the same closure
+ * as a Greek sentence, the day behind its article and the hours behind a comma.
  *
  * The booking is written straight to luna's rows on the next Wednesday in Athens, a day Elena
  * works 09:00-13:00 and 14:00-18:00, whole days from today, since the browser and the
@@ -116,7 +117,7 @@ function moveClosure(?string $staff, string $day, string $start, string $end, st
 function moveOn(string $day, string $start, string $end): string
 {
     $date = new DateTimeImmutable($day, new DateTimeZone('Europe/Athens'));
-    $named = adminLine('admin/bookings.move.confirm.day', ['weekday' => $date->format('l'), 'date' => $date->format('d/m/Y')]);
+    $named = adminLine('admin/bookings.move.confirm.days.'.strtolower($date->format('l')), ['date' => $date->format('d/m/Y')]);
 
     return adminLine('admin/bookings.move.confirm.on_day_window', ['day' => $named, 'start' => $start, 'end' => $end]);
 }
@@ -500,4 +501,27 @@ it('warns before a drag onto the member\'s day off on Week, leaves the chip wher
     moveChipDrawn($page, $uuid, $saturdays)->assertNoJavaScriptErrors();
 
     expect(moveWhenOf($uuid))->toBe($saturday.' 10:00');
+});
+
+it('says the closed-time warning to an owner who reads Greek as a sentence, the day behind its article and its hours behind a comma', function () {
+    $day = moveWednesday();
+    $uuid = moveBooking('Cora Cut', $day, '10:00');
+    moveClosure(null, $day, '11:00', '12:00', 'Holiday');
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+    $el = SiteLanguage::Greek;
+    $date = (new DateTimeImmutable($day, new DateTimeZone('Europe/Athens')))->format('d/m/Y');
+    $named = adminLine('admin/bookings.move.confirm.days.wednesday', ['date' => $date], $el);
+    $when = adminLine('admin/bookings.move.confirm.on_day_window', ['day' => $named, 'start' => '11:00', 'end' => '12:00'], $el);
+
+    $page = moveDay($this, $day);
+    moveDrag($page, $uuid, '10:00', moveColumn('Elena Papadaki', $day), '11:00');
+    $page->waitForText(adminLine('admin/bookings.move.confirm.closed_title', [], $el))
+        ->assertSeeIn('.admin-move-confirm__warning', adminLine('admin/bookings.move.confirm.business_closed_reason', ['when' => $when, 'reason' => 'Holiday'], $el))
+        // The day as a Greek reader says it: the article, the weekday, the date, then the hours.
+        ->assertSeeIn('.admin-move-confirm__warning', "\u{03C4}\u{03B7}\u{03BD} \u{03A4}\u{03B5}\u{03C4}\u{03AC}\u{03C1}\u{03C4}\u{03B7} ".$date.', 11:00 ')
+        ->click('.admin-move-confirm__keep')
+        ->assertNotPresent('.admin-move-confirm')
+        ->assertNoJavaScriptErrors();
+
+    expect(moveStartOf($uuid))->toBe('10:00');
 });

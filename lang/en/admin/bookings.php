@@ -37,8 +37,10 @@
  * asks before Move anyway and Cancel: a closure of the business or of a member (:when, with its
  * :reason where it has one), a member's hours that day (:hours, each a window, ICU's list), a
  * member off that weekday or the business closed on it (:weekdays, the weekday's plural with its
- * preposition), or the date taken off; :when is one of the day and run phrases, :day a weekday
- * and a date in the tenant's format, :start and :end times of day in its format.
+ * preposition), or the date taken off; :when is one of the day and run phrases, :day the line
+ * of its weekday (days, one for each of the seven, so a language that says a day behind an
+ * article keeps it there) with the :date in the tenant's format, :start and :end times of day in
+ * its format.
  *
  * dialog is the booking dialog: its title before the booking is read, the loading name, the load
  * error, the missing booking with Back to the list, Close, the facts' labels, What was booked with
@@ -164,7 +166,15 @@ return [
             'off_weekday' => ':staff is off :weekdays.',
             'business_weekday' => 'The business is closed :weekdays.',
             'off_date' => ':staff is not working :when.',
-            'day' => ':weekday :date',
+            'days' => [
+                'monday' => 'Monday :date',
+                'tuesday' => 'Tuesday :date',
+                'wednesday' => 'Wednesday :date',
+                'thursday' => 'Thursday :date',
+                'friday' => 'Friday :date',
+                'saturday' => 'Saturday :date',
+                'sunday' => 'Sunday :date',
+            ],
             'on_day' => 'on :day',
             'on_day_window' => 'on :day from :start to :end',
             'run' => 'from :day to :until',

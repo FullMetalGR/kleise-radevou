@@ -11,7 +11,10 @@
  * noun and a busy word the noun after "Ginetai"; the trail's actions are each a past form whole,
  * the values a whole line each, a removed member's line naming no gender. :services and :staff
  * are ICU's lists in Greek, :when a date and a time, :from and :to a time or a member's name,
- * :position the service's place counted from one.
+ * :position the service's place counted from one. A day of the closed-time warning is said
+ * behind its article, which follows the weekday (days: six feminine, Saturday neuter, the
+ * article's final n kept before k, p and t alone), so the sentence reads on from its verb with no
+ * colon; its hours follow behind a comma, and a run of days opens with its preposition.
  */
 
 return [
@@ -121,19 +124,27 @@ return [
             'sure' => 'Θέλετε σίγουρα να μεταφέρετε την κράτηση;',
             'move_anyway' => 'Μεταφορά παρ\' όλα αυτά',
             'cancel' => 'Ακύρωση',
-            'business_closed' => 'Η επιχείρηση είναι κλειστή: :when.',
-            'business_closed_reason' => 'Η επιχείρηση είναι κλειστή: :when (:reason).',
-            'staff_closed' => ':staff δεν δέχεται κρατήσεις: :when.',
-            'staff_closed_reason' => ':staff δεν δέχεται κρατήσεις: :when (:reason).',
+            'business_closed' => 'Η επιχείρηση είναι κλειστή :when.',
+            'business_closed_reason' => 'Η επιχείρηση είναι κλειστή :when (:reason).',
+            'staff_closed' => ':staff δεν δέχεται κρατήσεις :when.',
+            'staff_closed_reason' => ':staff δεν δέχεται κρατήσεις :when (:reason).',
             'outside_hours' => ':staff δεν εργάζεται αυτήν την ώρα. Το ωράριο εργασίας της ημέρας: :hours.',
             'off_weekday' => ':staff δεν εργάζεται :weekdays.',
             'business_weekday' => 'Η επιχείρηση είναι κλειστή :weekdays.',
-            'off_date' => ':staff δεν εργάζεται: :when.',
-            'day' => ':weekday :date',
+            'off_date' => ':staff δεν εργάζεται :when.',
+            'days' => [
+                'monday' => 'τη Δευτέρα :date',
+                'tuesday' => 'την Τρίτη :date',
+                'wednesday' => 'την Τετάρτη :date',
+                'thursday' => 'την Πέμπτη :date',
+                'friday' => 'την Παρασκευή :date',
+                'saturday' => 'το Σάββατο :date',
+                'sunday' => 'την Κυριακή :date',
+            ],
             'on_day' => ':day',
             'on_day_window' => ':day, :start έως :end',
-            'run' => ':day έως :until',
-            'run_window' => ':day έως :until, :start έως :end κάθε ημέρα',
+            'run' => 'από :day έως :until',
+            'run_window' => 'από :day έως :until, :start έως :end κάθε ημέρα',
             'window' => ':start έως :end',
             'weekdays' => [
                 'monday' => 'τις Δευτέρες',

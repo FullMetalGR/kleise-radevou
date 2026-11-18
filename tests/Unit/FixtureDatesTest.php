@@ -51,6 +51,7 @@ const FIXTURE_DATE_EXCEPTIONS = [
     'tests/Feature/BusinessRecipientsTest.php' => 'rows written straight to the tables for the recipient rule to read; no clock is asked',
     'tests/Feature/ConnectionZoneTest.php' => 'the framework\'s own clock moved by travelTo, to prove what the connection\'s zone does to a model timestamp; the Clock port is not in it',
     'tests/Feature/Language/BusinessMailLanguageTest.php' => 'the system clock on purpose: the decision links the approval request carries are minted and read against it, and its one LunaFixture::hold is handed a start from firstWindowDay',
+    'tests/Feature/Language/DayLinesTest.php' => 'a week of dates handed to the translator for the lines of their weekdays; no use case runs and no clock is asked',
     'tests/Feature/Language/DecisionPagesLanguageTest.php' => 'the system clock on purpose: the decision links are minted and read against it, and every LunaFixture::hold is handed a start from firstWindowDay',
     'tests/Feature/Language/PageTwinsTest.php' => 'the system clock on purpose: the My bookings, decision and payment links are minted and read against it, and every LunaFixture::booking and hold is handed a start from firstWindowDay',
     'tests/Feature/NoteSeamTest.php' => 'the system clock on purpose: the confirm queues a reminder the sync queue runs against the real clock, and every seamHold is handed a start from firstWindowDay',

@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type Mounted, press, settle } from '@/components/ui/harness';
-import { listOf, weekdayName } from '@/lib/names';
+import { listOf } from '@/lib/names';
 import { keyedBookings, keyedShell, WithBookings } from '@/testing/keyed';
 import { BookingDialog } from './BookingDialog';
 import type { Booking } from './model';
@@ -432,7 +432,7 @@ describe('the Move form', () => {
         await openMove();
         await toConfirmation(AFTER_HOURS);
 
-        const wednesday = words.text('move.confirm.day', { weekday: weekdayName(3, 'long', 'en'), date: '04/11/2026' });
+        const wednesday = words.text('move.confirm.days.wednesday', { date: '04/11/2026' });
 
         expect(one('.admin-move-confirm .admin-modal__title')?.textContent).toBe(words.text('move.confirm.closed_title'));
         expect([...document.body.querySelectorAll('.admin-move-confirm__crossing')].map((line) => line.textContent)).toEqual([

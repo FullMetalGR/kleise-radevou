@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type Mounted, press } from '@/components/ui/harness';
-import { listOf, weekdayName } from '@/lib/names';
+import { listOf } from '@/lib/names';
 import { stringsOf } from '@/lib/strings';
 import { keyedBookings, keyedShell, WithBookings } from '@/testing/keyed';
 import type { CrossingClosure, CrossingFacts } from '@/lib/visits';
@@ -70,8 +70,8 @@ const one = (selector: string) => document.body.querySelector(selector);
 const lines = () => [...document.body.querySelectorAll('.admin-move-confirm__crossing')].map((line) => line.textContent);
 
 /** Friday 20 November and Sunday 22 November 2026 as a reason names a day. */
-const FRIDAY = words.text('move.confirm.day', { weekday: weekdayName(5, 'long', 'en'), date: '20/11/2026' });
-const SUNDAY = words.text('move.confirm.day', { weekday: weekdayName(7, 'long', 'en'), date: '22/11/2026' });
+const FRIDAY = words.text('move.confirm.days.friday', { date: '20/11/2026' });
+const SUNDAY = words.text('move.confirm.days.sunday', { date: '22/11/2026' });
 
 /** Elena's Haircut crossing one closure. */
 function closure(closed: CrossingClosure): NamedCrossing {
@@ -211,7 +211,7 @@ describe('the move confirmation', () => {
             words.text('move.confirm.outside_hours', { staff: 'Elena Papadaki', hours: listOf(windows, 'en') }),
             words.text('move.confirm.off_weekday', { staff: 'Elena Papadaki', weekdays: words.text('move.confirm.weekdays.saturday') }),
             words.text('move.confirm.business_weekday', { weekdays: words.text('move.confirm.weekdays.sunday') }),
-            words.text('move.confirm.off_date', { staff: 'Elena Papadaki', when: words.text('move.confirm.on_day', { day: words.text('move.confirm.day', { weekday: weekdayName(2, 'long', 'en'), date: '24/11/2026' }) }) }),
+            words.text('move.confirm.off_date', { staff: 'Elena Papadaki', when: words.text('move.confirm.on_day', { day: words.text('move.confirm.days.tuesday', { date: '24/11/2026' }) }) }),
         ]);
     });
 
@@ -245,13 +245,20 @@ describe('the move confirmation', () => {
         expect(one('.admin-move-confirm__keep')?.textContent).toBe('Cancel');
     });
 
-    it('names the weekday in the viewer\'s language', () => {
-        show({ crossings: [hours('2026-11-24', { day_off: 'date' })], within: (children) => <WithBookings language="el">{children}</WithBookings> });
+    it('names a day by the line of its weekday, each of the seven its own, which a language that says a day behind an article fills with it', () => {
+        // Monday 23 to Sunday 29 November 2026, each a date the member took off.
+        const week = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+        const dayOfMonth = (index: number) => String(23 + index);
 
-        expect(lines()).toEqual([
-            keyedBookings('el').text('move.confirm.off_date', { staff: 'Elena Papadaki', when: keyedBookings('el').text('move.confirm.on_day', { day: keyedBookings('el').text('move.confirm.day', { weekday: weekdayName(2, 'long', 'el'), date: '24/11/2026' }) }) }),
-        ]);
-        expect(weekdayName(2, 'long', 'el')).not.toBe(weekdayName(2, 'long', 'en'));
+        show({ crossings: week.map((_, index) => hours(`2026-11-${dayOfMonth(index)}`, { day_off: 'date' })) });
+
+        expect(lines()).toEqual(
+            week.map((weekday, index) =>
+                words.text('move.confirm.off_date', { staff: 'Elena Papadaki', when: words.text('move.confirm.on_day', { day: words.text(`move.confirm.days.${weekday}`, { date: `${dayOfMonth(index)}/11/2026` }) }) }),
+            ),
+        );
+        expect(lines()[1]).toContain('move.confirm.days.tuesday 24/11/2026');
+        expect(lines()[5]).toContain('move.confirm.days.saturday 28/11/2026');
     });
 
     it('leaves the tick box out where the customer was erased, and tells nobody', () => {

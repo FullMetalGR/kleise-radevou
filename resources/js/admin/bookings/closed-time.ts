@@ -1,6 +1,6 @@
 import { isoWeekday } from '@/lib/day';
 import { formatDate, formatTimeOfDay, type TenantClock } from '@/lib/format';
-import { listOf, weekdayName } from '@/lib/names';
+import { listOf } from '@/lib/names';
 import type { CrossingClosure, CrossingFacts } from '@/lib/visits';
 import type { NamedCrossing } from './moving';
 import type { BookingsWords } from './words';
@@ -10,7 +10,9 @@ import type { BookingsWords } from './words';
  * read per crossing: a closure of the business or of the member, named by its day or its run of
  * days, its window and its reason; the member's hours that day; the member's weekday off or the
  * business closed that weekday; or the date taken off. Days read as a weekday and a date in the
- * tenant's format, times in its time format, and the weekday names in the viewer's language.
+ * tenant's format and times in its time format. A day's weekday is a line of the viewer's
+ * language, one for each of the seven, so a language that says a day behind an article, one
+ * that changes with the weekday, carries it there and the sentence reads whole.
  *
  * A crossing that carries no facts, names a member the move cannot read where the sentence needs
  * one, or has no hours that day and gives no reason this module knows, reads its plain line
@@ -120,14 +122,17 @@ function whenOf(closure: CrossingClosure, words: BookingsWords, clock: TenantClo
     return window === null ? words.text('move.confirm.run', { day, until }) : words.text('move.confirm.run_window', { day, until, ...window });
 }
 
-/** A date as a weekday and the date in the tenant's format. */
+/** A date as its weekday's line with the date in the tenant's format. */
 function dayOf(date: string, words: BookingsWords, clock: TenantClock): string {
-    return words.text('move.confirm.day', { weekday: weekdayName(isoWeekday(date), 'long', words.language), date: formatDate(date, clock) });
+    return words.text(`move.confirm.days.${weekdayOf(date)}`, { date: formatDate(date, clock) });
 }
 
 /** The weekday of a date as its plural, with its preposition, in the viewer's language. */
 function weekdaysOf(date: string, words: BookingsWords): string {
-    const weekday = WEEKDAYS[isoWeekday(date) - 1] ?? 'monday';
+    return words.text(`move.confirm.weekdays.${weekdayOf(date)}`);
+}
 
-    return words.text(`move.confirm.weekdays.${weekday}`);
+/** The weekday a date falls on, as the lines name it. */
+function weekdayOf(date: string): (typeof WEEKDAYS)[number] {
+    return WEEKDAYS[isoWeekday(date) - 1] ?? 'monday';
 }

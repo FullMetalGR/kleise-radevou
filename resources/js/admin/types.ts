@@ -545,7 +545,15 @@ export type BookingsStrings = {
             off_weekday: string;
             business_weekday: string;
             off_date: string;
-            day: string;
+            days: {
+                monday: string;
+                tuesday: string;
+                wednesday: string;
+                thursday: string;
+                friday: string;
+                saturday: string;
+                sunday: string;
+            };
             on_day: string;
             on_day_window: string;
             run: string;
