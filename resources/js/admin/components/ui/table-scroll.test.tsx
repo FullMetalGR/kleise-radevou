@@ -35,7 +35,7 @@ function sourcesUnder(directory: string): string[] {
 const count = (text: string, pattern: RegExp) => (text.match(pattern) ?? []).length;
 
 describe('the table scroller', () => {
-    it('wraps what it is handed in a full-width box that scrolls sideways', () => {
+    it('wraps what it is handed in a full-width box that scrolls sideways and is positioned, so it holds what a cell places out of the flow', () => {
         view.render(
             <TableScroll>
                 <table className="wide" />
@@ -45,7 +45,7 @@ describe('the table scroller', () => {
         const box = view.host.querySelector('.admin-table-scroll');
 
         expect(box?.querySelector('table.wide')).not.toBeNull();
-        expect([...(box?.classList ?? [])]).toEqual(expect.arrayContaining(['w-full', 'overflow-x-auto']));
+        expect([...(box?.classList ?? [])]).toEqual(expect.arrayContaining(['relative', 'w-full', 'overflow-x-auto']));
     });
 
     it('sets every head cell of its table at weight 600', () => {

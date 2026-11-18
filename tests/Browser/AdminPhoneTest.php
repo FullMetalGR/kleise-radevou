@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BookingActionController;
+use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -20,7 +21,10 @@ use Tests\Support\LunaFixture;
  * the drawer closed, and the others none where none is pending. A last walk reads the wizard,
  * Month, Services, Staff and Settings at the same width, none of them scrolling the page sideways,
  * Month's day its number and how many bookings it has with no chip, the whole cell its date menu,
- * whose Open day opens Day view on it. The rest of the suite stays on the plugin's desktop device.
+ * whose Open day opens Day view on it, and one more opens every screen of the admin, as an owner
+ * who reads English and as one who reads Greek, and reads that none is wider than the phone, the
+ * Team screen's table scrolling inside its card. The rest of the suite stays on the plugin's
+ * desktop device.
  *
  * The bookings are written straight to luna's rows, dated whole days from the tenant's today in
  * Athens on the real clock, which the browser and the application both read.
@@ -33,6 +37,26 @@ const PHONE_WEEK_NOTICE = 'admin/calendar.grid.week_needs_width';
 const PHONE_FOOTNOTE = 'admin/calendar.page.footnote';
 
 const PHONE_DRAWER = '.admin-modal__frame--drawer';
+
+/**
+ * Every screen of the admin the rail reaches, by its path, each with what shows it is drawn:
+ * Shifts by the edit control of its first member's first day and Team by a member's row, since
+ * each of those tables holds a line only a screen reader hears, placed out of the flow, and is
+ * read with it on the page.
+ */
+const PHONE_SCREENS = [
+    '' => '.admin-home-screen',
+    '/calendar' => '.admin-calendar-screen',
+    '/bookings' => '.admin-bookings-screen',
+    '/customers' => '.admin-customers-screen',
+    '/services' => '.admin-services-screen',
+    '/staff' => '.admin-staff-screen',
+    '/shifts' => '.admin-shifts__row:first-child .admin-shifts__cell:first-of-type .admin-shifts__edit',
+    '/team' => '.admin-team-member',
+    '/reports' => '.admin-reports-screen',
+    '/settings' => '.admin-settings-page',
+    '/billing' => '.admin-billing',
+];
 
 beforeEach(function () {
     dropDemoSchemas();
@@ -272,3 +296,33 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
         ->assertScript(PhoneScripts::SAVE_BAR_INSIDE, true)
         ->assertNoJavaScriptErrors();
 });
+
+it('keeps every screen of the admin no wider than a phone, a customer\'s page among them, the Team screen\'s table scrolling inside its card with the help bubble on screen', function (SiteLanguage $language) {
+    phoneBooking('Cora Cut', athensDaysOn(0, 10));
+    // A line longer in one language, on a control that does not wrap, widens a screen in that
+    // language alone, so the owner reads every screen in each. The language is the owner's before
+    // the sign-in: the server the walk drives keeps the signed-in user between requests.
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+
+    foreach (PHONE_SCREENS as $path => $drawn) {
+        $page->navigate(Admin::url('luna', $path))
+            ->assertVisible($drawn)
+            ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
+            ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    }
+
+    $page->navigate(Admin::url('luna', '/customers'))
+        ->click('.admin-customers__row:first-child .admin-customers__name')
+        ->assertVisible('.admin-customer-screen')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+
+    // The members table is wider than the phone: its frame scrolls and the page does not, so the
+    // bubble fixed to the screen's corner stays on it.
+    $page->navigate(Admin::url('luna', '/team'))
+        ->assertVisible('.admin-team-member')
+        ->assertScript(PhoneScripts::TEAM_TABLE_SCROLLS, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(PhoneScripts::BUBBLE_INSIDE, true)
+        ->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);

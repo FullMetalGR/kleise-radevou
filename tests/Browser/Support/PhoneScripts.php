@@ -7,18 +7,32 @@ namespace Tests\Browser\Support;
 /**
  * The scripts the admin's phone walks evaluate in the page, in one place for the reason
  * FlowScripts gives. A length the layout computes can be a fraction of a pixel, so every
- * comparison allows one.
+ * comparison allows one. A width is held against the box the document is laid out in and never
+ * against the window's own: a phone zooms out to fit a page that is too wide and the window then
+ * reports the wider figure, under which anything on that page would pass.
  */
 final class PhoneScripts
 {
-    /** True while nothing on the page reaches past the right edge of the screen, so the page never scrolls sideways. */
-    public const string NO_SIDEWAYS_SCROLL = 'document.documentElement.scrollWidth <= window.innerWidth + 1';
+    /**
+     * True while nothing on the page reaches past the right edge of the screen, so the page never
+     * scrolls sideways: the document is no wider than the box it is laid out in.
+     */
+    public const string NO_SIDEWAYS_SCROLL = 'document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1';
+
+    /** The Team screen's members table wider than its frame, which scrolls sideways and holds it. */
+    public const string TEAM_TABLE_SCROLLS = "(() => { const frame = document.querySelector('.admin-team-members .admin-table-scroll'); return frame !== null && frame.scrollWidth > frame.clientWidth && getComputedStyle(frame).overflowX === 'auto'; })()";
+
+    /** True when the help bubble stands whole inside the screen's width. */
+    public const string BUBBLE_INSIDE = "(() => { const bubble = document.querySelector('".Help::BUBBLE."'); if (bubble === null) { return false; } const box = bubble.getBoundingClientRect(); return box.left >= 0 && box.right <= document.documentElement.clientWidth + 1; })()";
 
     /** Day's member columns wider than their row, which scrolls sideways. */
     public const string DAY_COLUMNS_SCROLL = "(() => { const row = document.querySelector('.admin-calendar-columns__row'); return row !== null && row.scrollWidth > row.clientWidth && getComputedStyle(row).overflowX === 'auto'; })()";
 
     /** The viewport's width, to read that the walk runs on a phone. */
     public const string VIEWPORT_WIDTH = 'window.innerWidth';
+
+    /** The language the page says it is in. */
+    public const string PAGE_LANGUAGE = "document.documentElement.getAttribute('lang')";
 
     /**
      * True when the open dialog's frame covers the whole viewport, its body is the one scroller,
@@ -36,7 +50,7 @@ final class PhoneScripts
             const box = frame.getBoundingClientRect();
             const foot = footer.getBoundingClientRect();
             const scroller = getComputedStyle(body).overflowY === 'auto';
-            return near(box.left, 0) && near(box.top, 0) && near(box.width, window.innerWidth) && near(box.height, window.innerHeight)
+            return near(box.left, 0) && near(box.top, 0) && near(box.width, document.documentElement.clientWidth) && near(box.height, window.innerHeight)
                 && scroller && foot.bottom <= window.innerHeight + 1 && foot.top >= 0;
         })()
         JS;
@@ -96,7 +110,7 @@ final class PhoneScripts
             const top = footer === null ? window.innerHeight : footer.getBoundingClientRect().top;
             return toasts.length > 0 && toasts.every((toast) => {
                 const box = toast.getBoundingClientRect();
-                return box.left >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= top;
+                return box.left >= 0 && box.right <= document.documentElement.clientWidth + 1 && box.bottom <= top;
             });
         })()
         JS;
@@ -109,7 +123,7 @@ final class PhoneScripts
                 return false;
             }
             const box = drawer.getBoundingClientRect();
-            return Math.abs(box.left) <= 1 && Math.abs(box.top) <= 1 && Math.abs(box.height - window.innerHeight) <= 1 && box.width < window.innerWidth;
+            return Math.abs(box.left) <= 1 && Math.abs(box.top) <= 1 && Math.abs(box.height - window.innerHeight) <= 1 && box.width < document.documentElement.clientWidth;
         })()
         JS;
 
@@ -124,7 +138,7 @@ final class PhoneScripts
                 return false;
             }
             const box = bar.getBoundingClientRect();
-            return box.bottom <= window.innerHeight + 1 && box.left >= 0 && box.right <= window.innerWidth + 1;
+            return box.bottom <= window.innerHeight + 1 && box.left >= 0 && box.right <= document.documentElement.clientWidth + 1;
         })()
         JS;
 }

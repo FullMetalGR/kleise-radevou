@@ -82,7 +82,7 @@ final class Help
             .join(','))()
         JS;
 
-    /** True when the panel covers the whole viewport. */
+    /** True when the panel covers the whole viewport, its width the box the document is laid out in. */
     public const string PANEL_FILLS_SCREEN = <<<'JS'
         (() => {
             const panel = document.querySelector('.admin-help-panel');
@@ -91,7 +91,7 @@ final class Help
             }
             const near = (a, b) => Math.abs(a - b) <= 1;
             const box = panel.getBoundingClientRect();
-            return near(box.left, 0) && near(box.top, 0) && near(box.width, window.innerWidth) && near(box.height, window.innerHeight);
+            return near(box.left, 0) && near(box.top, 0) && near(box.width, document.documentElement.clientWidth) && near(box.height, window.innerHeight);
         })()
         JS;
 

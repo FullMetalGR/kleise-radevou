@@ -1377,6 +1377,18 @@ describe('Payments with nothing connected', () => {
         expect(texts('.admin-payments-platform')).toEqual([payments.text('buttons.platform', { provider: 'Tillpoint' })]);
     });
 
+    it('holds a mode\'s button to its row and lets its label wrap below the desktop breakpoint, so a label wider than a phone never widens the page', () => {
+        render(propsWith({ payments: { providers: [TWO_SECRETS, offered(THREE_FIELDS, { percent: '1.5', fixed_minor: 25, currency: 'EUR' })], connection: null } }));
+
+        const buttons = Array.from(document.querySelectorAll('.admin-payments-own, .admin-payments-platform'));
+
+        expect(buttons).toHaveLength(3);
+
+        for (const button of buttons) {
+            expect([...button.classList]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
+        }
+    });
+
     it('states each mode\'s cost in one rule, the platform taking nothing at a zero fee and the figure where it is not zero, the provider\'s own processing rate linked to the rate it publishes', () => {
         render(propsWith({ payments: { providers: [offered(TWO_SECRETS, { percent: '0', fixed_minor: null, currency: 'EUR' }), offered(THREE_FIELDS, { percent: '1.5', fixed_minor: 25, currency: 'EUR' })], connection: null } }));
 
@@ -1961,6 +1973,12 @@ describe('Payments with a connection', () => {
         expect(text('.admin-payments-state__sentence')).toBe(payments.text('states.restricted', { provider: 'Tillpoint' }));
         expect(text('.admin-payments-reason')).toBe(JSON.stringify(outstanding));
         expect(document.querySelector('.admin-payments-state .admin-payments-reason')?.tagName).toBe('Q');
+    });
+
+    it('lets the button that resumes an onboarding wrap below the desktop breakpoint, held to its row as a mode\'s button is', () => {
+        render(propsWith({ payments: platformRow({ state: 'restricted', last_check_ok: false, requirements: { outstanding: ['bank_account'] } }) }));
+
+        expect([...(document.querySelector('.admin-payments-resume')?.classList ?? [])]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
     });
 
     it('resumes the onboarding of a restricted row, busy alone with every other write held, and words the 404 where nothing is left to resume', () => {

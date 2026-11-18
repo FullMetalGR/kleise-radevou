@@ -219,6 +219,14 @@ function ProviderList({ providers, held, open, onOpen, platform, onPlatform, for
 type ModeProps = { mode: PaymentMode; provider: PaymentProvider; disabled: boolean; onOwn: () => void; platform: Control; onPlatform: () => void };
 
 /**
+ * A button with a long label below the admin's breakpoint: held to the row's width, its label
+ * wrapping. A mode's button names the provider and the one that resumes an onboarding says so in
+ * full, and in a language of longer words each is wider than a phone, where a button that keeps to
+ * one line would push the whole page sideways.
+ */
+const PHONE_BUTTON = 'max-desktop:h-auto max-desktop:min-h-8 max-desktop:max-w-full max-desktop:py-1 max-desktop:whitespace-normal';
+
+/**
  * One mode of one provider: how it connects, what it costs as the prop states it with the
  * provider's own processing rate linked to the rate it publishes, and its control. A mode the
  * prop does not offer reads as not offered. Own mode opens the credential form; platform mode's
@@ -245,11 +253,11 @@ function ModeRow({ mode, provider, disabled, onOwn, platform, onPlatform }: Mode
             {!mode.offered ? (
                 <span className="admin-payments-mode__unoffered text-sm text-muted-foreground">{words.text(NOT_OFFERED)}</span>
             ) : mode.mode === 'own' ? (
-                <Button className="admin-payments-own" disabled={disabled} onClick={onOwn}>
+                <Button className={`admin-payments-own ${PHONE_BUTTON}`} disabled={disabled} onClick={onOwn}>
                     {words.text('buttons.own', { provider: provider.name })}
                 </Button>
             ) : (
-                <Button variant="primary" className="admin-payments-platform" {...platform} busyLabel={words.text('buttons.opening')} onClick={onPlatform}>
+                <Button variant="primary" className={`admin-payments-platform ${PHONE_BUTTON}`} {...platform} busyLabel={words.text('buttons.opening')} onClick={onPlatform}>
                     {words.text('buttons.platform', { provider: provider.name })}
                 </Button>
             )}
@@ -430,7 +438,7 @@ function ConnectionControls({ connection, provider, control, visit, post, open, 
     return (
         <div className="admin-payments-controls flex flex-wrap items-center gap-3">
             {resumable && (
-                <Button variant="primary" className="admin-payments-resume" {...control('resume')} busyLabel={words.text('buttons.opening')} onClick={post('resume', `${onboarding}/resume`)}>
+                <Button variant="primary" className={`admin-payments-resume ${PHONE_BUTTON}`} {...control('resume')} busyLabel={words.text('buttons.opening')} onClick={post('resume', `${onboarding}/resume`)}>
                     {words.text('buttons.resume')}
                 </Button>
             )}
