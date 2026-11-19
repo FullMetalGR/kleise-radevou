@@ -276,7 +276,7 @@ it('renders the values the form edits, no logo, the hosted URL, the snippet carr
             ->where('roster.0.name', 'Luna Hair Studio')
             ->has('roster.0.windows', 5)
             ->where('roster.0.windows.0', ['weekday' => 1, 'start' => '09:00', 'end' => '17:00'])
-            ->where('nav.9', ['label' => navLabel('settings'), 'url' => '/admin/settings', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true]));
+            ->where('nav.9', ['key' => 'settings', 'label' => navLabel('settings'), 'url' => '/admin/settings', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true]));
 
     expect($active)->toContain('Elena Papadaki');
 });

@@ -8,12 +8,13 @@ import { AdminLayout, ConsoleLayout, consoleZoneLine, pageLayout } from './layou
 
 /*
  * The shell's frame: the top bar's one control is the New booking button, rendered for
- * manageBookings alone, and it opens the wizard over whatever page is showing. The brand: a small
- * wordmark beside the business's name in the admin's top bar and nothing else of the brand there,
- * the wordmark in place of the console's name on the console's shell, which wears the brand's
- * scope, and the brand's scope around the signup's pages and the console's door. The name is the
- * brand prop's, never one compiled into the bundle. The frames render inside the shell's keyed
- * table, as a page renders inside the shell's words, and read what they expect through it.
+ * manageBookings alone, and it opens the wizard over whatever page is showing. The brand: the
+ * platform's mark with the site's name beside the business's name in the admin's top bar and
+ * nothing else of the brand there, the wordmark in place of the console's name on the console's
+ * shell, which wears the brand's scope, and the brand's scope around the signup's pages and the
+ * console's door. The name is the brand prop's, never one compiled into the bundle. The frames
+ * render inside the shell's keyed table, as a page renders inside the shell's words, and read what
+ * they expect through it.
  */
 
 const shell = keyedShell();
@@ -57,7 +58,7 @@ const PROPS: SharedProps = {
     subscription: { state: 'active' },
     free: false,
     settings: { granularity: 5, week_start: 1, date_format: 'd/m/Y', time_format: 'H:i', colour_by: 'staff', messages: [] },
-    nav: [{ label: KEYED_SHELL.nav.settings, url: '/admin/settings', group: KEYED_SHELL.nav.groups.business, pending: null, current: true }],
+    nav: [{ key: 'settings', label: KEYED_SHELL.nav.settings, url: '/admin/settings', group: KEYED_SHELL.nav.groups.business, pending: null, current: true }],
     catalog: { services: [{ id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, staff: [2] }], staff: [{ id: 2, name: 'Elena Papadaki' }], members: 2 },
     wizard: KEYED_WIZARD,
 };
@@ -106,15 +107,17 @@ describe('the top bar\'s New booking button', () => {
 });
 
 describe('the admin\'s top bar and the brand', () => {
-    it('carries a small wordmark naming the brand prop\'s name beside the business\'s name', () => {
+    it('carries the platform\'s mark naming the brand prop\'s name beside the business\'s name, and no wordmark of the brand', () => {
         render(PROPS);
 
         const bar = document.querySelector('.admin-topbar');
-        const wordmark = bar?.querySelector('.brand-wordmark');
+        const mark = bar?.querySelector('.admin-mark');
 
-        expect(wordmark?.classList.contains('brand-wordmark--small')).toBe(true);
-        expect(wordmark?.querySelector('.brand-wordmark__name')?.textContent).toBe('Example Bookings');
-        expect(wordmark?.nextElementSibling?.classList.contains('admin-business')).toBe(true);
+        expect(bar?.querySelector('.brand-wordmark')).toBeNull();
+        expect(mark?.querySelector('img')?.getAttribute('alt')).toBe('');
+        expect(mark?.querySelector('.admin-mark__name')?.textContent).toBe('Example Bookings');
+        expect(mark?.querySelector('.admin-mark__name')?.classList.contains('sr-only')).toBe(false);
+        expect(mark?.nextElementSibling?.classList.contains('admin-business')).toBe(true);
         expect(bar?.querySelector('.admin-business')?.textContent).toBe('Luna');
     });
 
@@ -128,7 +131,7 @@ describe('the admin\'s top bar and the brand', () => {
     it('names whatever the server names, nothing compiled in', () => {
         render({ ...PROPS, brand: { name: 'Another Name' } });
 
-        expect(document.querySelector('.admin-topbar .brand-wordmark__name')?.textContent).toBe('Another Name');
+        expect(document.querySelector('.admin-topbar .admin-mark__name')?.textContent).toBe('Another Name');
     });
 });
 
@@ -322,9 +325,10 @@ describe('the console\'s shell', () => {
 
         const business = document.querySelector('.admin-topbar .admin-business');
 
-        expect(business?.querySelector('.brand-wordmark:not(.brand-wordmark--small) .brand-wordmark__name')?.textContent).toBe('Another Name');
+        expect(business?.querySelector('.brand-wordmark .brand-wordmark__name')?.textContent).toBe('Another Name');
         expect(business?.querySelector('.admin-console-label')?.textContent).toBe('console');
         expect(document.querySelector('.admin-shell')?.classList.contains('brand-scope')).toBe(true);
+        expect(document.querySelector('.admin-mark')).toBeNull();
     });
 
     it('names the console\'s zone once, in the top bar, as the shared prop names it', () => {
@@ -352,8 +356,8 @@ describe('the console\'s shell', () => {
             ...CONSOLE,
             operator: 'Pat Operator',
             nav: [
-                { label: 'Tenants', url: '/', group: 'Platform', pending: null, current: false },
-                { label: 'Audit', url: '/audit', group: 'Platform', pending: null, current: true },
+                { key: 'tenants', label: 'Tenants', url: '/', group: 'Platform', pending: null, current: false },
+                { key: 'audit', label: 'Audit', url: '/audit', group: 'Platform', pending: null, current: true },
             ],
         });
 

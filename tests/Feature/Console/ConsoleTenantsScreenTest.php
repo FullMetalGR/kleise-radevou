@@ -437,10 +437,10 @@ it('reads a page in two statements over tenants left join subscriptions, the cou
 
 it('carries Tenants first on the rail, lit on the list, with Messages, Tickets and Audit after it', function () {
     tenantsScreen($this, addOperator())->assertInertia(fn (Assert $page) => $page->where('nav', [
-        ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
-        ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
-        ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
-        ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'tenants', 'label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
+        ['key' => 'messages', 'label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'tickets', 'label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'audit', 'label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
     ]));
 });
 

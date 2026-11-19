@@ -50,17 +50,17 @@ it('hands every page the tenant, the user, the support session as null for a use
             ->has('settings.messages', 17)
             ->where('settings.messages.0', ['key' => 'acknowledged', 'label' => adminLine(MessageKey::Acknowledged->labelKey()), 'audience' => 'customer', 'owners_alone' => false, 'locked' => false])
             ->where('nav', [
-                ['label' => navLabel('home'), 'url' => '/admin', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true],
-                ['label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('bookings'), 'url' => '/admin/bookings', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('shifts'), 'url' => '/admin/shifts', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('services'), 'url' => '/admin/services', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('staff'), 'url' => '/admin/staff', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('customers'), 'url' => '/admin/customers', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('reports'), 'url' => '/admin/reports', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('team'), 'url' => '/admin/team', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('settings'), 'url' => '/admin/settings', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('billing'), 'url' => '/admin/billing', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'home', 'label' => navLabel('home'), 'url' => '/admin', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true],
+                ['key' => 'calendar', 'label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
+                ['key' => 'bookings', 'label' => navLabel('bookings'), 'url' => '/admin/bookings', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
+                ['key' => 'shifts', 'label' => navLabel('shifts'), 'url' => '/admin/shifts', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
+                ['key' => 'services', 'label' => navLabel('services'), 'url' => '/admin/services', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'staff', 'label' => navLabel('staff'), 'url' => '/admin/staff', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'customers', 'label' => navLabel('customers'), 'url' => '/admin/customers', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'reports', 'label' => navLabel('reports'), 'url' => '/admin/reports', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'team', 'label' => navLabel('team'), 'url' => '/admin/team', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'settings', 'label' => navLabel('settings'), 'url' => '/admin/settings', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'billing', 'label' => navLabel('billing'), 'url' => '/admin/billing', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
             ])
             ->where('flash', null)
             ->where('brand', ['name' => siteName()]));
@@ -85,7 +85,7 @@ it('derives permissions from the role on the server and filters the nav by them'
             ->where('auth.user.role', 'staff')
             ->where('permissions', ['viewOwnCalendar', 'approveBookings'])
             ->where('nav', [
-                ['label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true],
+                ['key' => 'calendar', 'label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true],
             ]));
 });
 
@@ -96,16 +96,16 @@ it('answers the floor from the row on a tenant whose row holds the empty set, Cl
         ->assertInertia(fn (Assert $page) => $page
             ->where('entitlements', [])
             ->where('nav', [
-                ['label' => navLabel('home'), 'url' => '/admin', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true],
-                ['label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('bookings'), 'url' => '/admin/bookings', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('services'), 'url' => '/admin/services', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('closures'), 'url' => '/admin/staff', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('customers'), 'url' => '/admin/customers', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('reports'), 'url' => '/admin/reports', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('team'), 'url' => '/admin/team', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('settings'), 'url' => '/admin/settings', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
-                ['label' => navLabel('billing'), 'url' => '/admin/billing', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'home', 'label' => navLabel('home'), 'url' => '/admin', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true],
+                ['key' => 'calendar', 'label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
+                ['key' => 'bookings', 'label' => navLabel('bookings'), 'url' => '/admin/bookings', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false],
+                ['key' => 'services', 'label' => navLabel('services'), 'url' => '/admin/services', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'closures', 'label' => navLabel('closures'), 'url' => '/admin/staff', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'customers', 'label' => navLabel('customers'), 'url' => '/admin/customers', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'reports', 'label' => navLabel('reports'), 'url' => '/admin/reports', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'team', 'label' => navLabel('team'), 'url' => '/admin/team', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'settings', 'label' => navLabel('settings'), 'url' => '/admin/settings', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
+                ['key' => 'billing', 'label' => navLabel('billing'), 'url' => '/admin/billing', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => false],
             ]));
 });
 
@@ -119,7 +119,7 @@ it('shows a staff user without the feature the Calendar alone, the Closures entr
             ->where('entitlements', [])
             ->where('permissions', ['viewOwnCalendar', 'approveBookings'])
             ->where('nav', [
-                ['label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true],
+                ['key' => 'calendar', 'label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true],
             ]));
 });
 
@@ -133,7 +133,7 @@ it('lights the Staff screen\'s one entry on its list and on a member\'s page rea
         ->assertInertia(fn (Assert $page) => $page
             ->component('Staff')
             ->has('nav', $entries)
-            ->where('nav.'.$at, ['label' => navLabel($entry), 'url' => '/admin/staff', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true])
+            ->where('nav.'.$at, ['key' => $entry, 'label' => navLabel($entry), 'url' => '/admin/staff', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true])
             ->where('nav', fn (Collection $nav): bool => $nav->where('current', true)->count() === 1));
 })->with([
     'the list with the feature' => ['{staff}', 'staff', false, 11, 5],

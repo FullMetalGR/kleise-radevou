@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { LanguageChoice } from '../types';
 
 /*
@@ -10,6 +11,10 @@ import type { LanguageChoice } from '../types';
  * lives on the user's row, unlike the theme, which stays in the browser. The server shares the
  * choices to a signed-in user alone, never to a support session, so the shell renders this only
  * where it has them.
+ *
+ * The two sit in one pill on the card's fill with a line inside its edge, each a small round
+ * button, the pressed one in the primary fill so the page's language reads at a glance, unchanged
+ * under the pointer as pressing it does nothing.
  */
 
 type Props = {
@@ -23,12 +28,13 @@ type Props = {
 
 export function LanguageControl({ choices, current, choosing, onChoose }: Props) {
     return (
-        <div className="admin-language flex items-center gap-1">
+        <div className="admin-language inline-flex items-center gap-0.5 rounded-full bg-card p-1 inset-ring inset-ring-border">
             {choices.map((choice) => (
                 <Button
                     key={choice.value}
                     variant="tertiary"
-                    className="admin-language__choice"
+                    size="small"
+                    className={cn('admin-language__choice', choice.value === current && 'bg-primary text-primary-foreground enabled:hover:bg-primary')}
                     lang={choice.value}
                     aria-pressed={choice.value === current}
                     busy={choosing === choice.value}

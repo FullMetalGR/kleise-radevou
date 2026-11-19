@@ -9,19 +9,22 @@ import {
     CreditCard,
     Hourglass,
     Info as InfoIcon,
+    LogOut,
+    Moon as MoonIcon,
     Plus as PlusIcon,
     StickyNote,
+    Sun as SunIcon,
     Timer,
     TriangleAlert,
     X,
 } from 'lucide-react';
 
 /*
- * The admin's small glyphs, the Calendar's and Shifts', the notice's and the status chip's, drawn
- * by the one icon set every screen draws from, as inline SVG in the text's colour: the admin's
- * build refuses a character outside ASCII in a built asset, so a caret, a chevron, a plus, a tick,
- * a cross or an alert is never a glyph of a font. Each is decoration, hidden from assistive
- * technology; the control or the words it sits beside carry the name.
+ * The admin's small glyphs, the Calendar's and Shifts', the notice's, the top bar's and the status
+ * chip's, drawn by the one icon set every screen draws from, as inline SVG in the text's colour:
+ * the admin's build refuses a character outside ASCII in a built asset, so a caret, a chevron, a
+ * plus, a tick, a cross, an alert, a moon or a sun is never a glyph of a font. Each is decoration,
+ * hidden from assistive technology; the control or the words it sits beside carry the name.
  */
 
 /** The caret of a control that opens a list under it. */
@@ -79,6 +82,21 @@ export function Warning() {
 /** The circled tick a notice of something done starts with. */
 export function Success() {
     return <CircleCheck className="size-4 shrink-0" aria-hidden="true" />;
+}
+
+/** The moon on the theme switch while the page is light, the dark theme it switches to. */
+export function Moon() {
+    return <MoonIcon className="size-5" aria-hidden="true" />;
+}
+
+/** The sun on the theme switch while the page is dark, the light theme it switches to. */
+export function Sun() {
+    return <SunIcon className="size-5" aria-hidden="true" />;
+}
+
+/** The door with an arrow leaving it, beside Sign out. */
+export function SignOut() {
+    return <LogOut className="size-4.5" aria-hidden="true" />;
 }
 
 /*

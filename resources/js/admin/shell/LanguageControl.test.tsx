@@ -7,7 +7,9 @@ import { LanguageControl } from './LanguageControl';
  * The top bar's language control: each language labelled by its own name as the server hands it,
  * here the keyed names in brackets, each carrying its language as its lang; the page's language
  * pressed; a press on the other choosing it, a press on the pressed one or any press while a write
- * is in flight choosing nothing; the language being written busy under its own name.
+ * is in flight choosing nothing; the language being written busy under its own name. The two sit in
+ * one pill on the card's fill with a line inside its edge, each a small round button, the pressed one
+ * in the primary fill.
  */
 
 const CHOICES: LanguageChoice[] = [
@@ -66,5 +68,16 @@ describe('LanguageControl', () => {
         press(choice('en'));
 
         expect(onChoose).not.toHaveBeenCalled();
+    });
+
+    it('sets the two in one pill on the card\'s fill, each a small button, the pressed one alone in the primary fill', () => {
+        render('el', null);
+
+        const group = mounted.host.querySelector('.admin-language');
+
+        expect(['rounded-full', 'bg-card', 'inset-ring'].map((name) => group?.classList.contains(name))).toEqual([true, true, true]);
+        expect([choice('en'), choice('el')].map((button) => button?.classList.contains('admin-button--small'))).toEqual([true, true]);
+        expect([choice('en'), choice('el')].map((button) => button?.classList.contains('bg-primary'))).toEqual([false, true]);
+        expect(choice('el')?.classList.contains('text-primary-foreground')).toBe(true);
     });
 });

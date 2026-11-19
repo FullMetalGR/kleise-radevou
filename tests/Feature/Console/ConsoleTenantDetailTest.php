@@ -452,10 +452,10 @@ it('lights Tenants on the rail on a tenant\'s detail', function () {
     provisionTenant('luna');
 
     detailScreen($this, addOperator(), 'luna')->assertInertia(fn (Assert $page) => $page->where('nav', [
-        ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
-        ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
-        ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
-        ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'tenants', 'label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
+        ['key' => 'messages', 'label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'tickets', 'label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'audit', 'label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
     ]));
 });
 

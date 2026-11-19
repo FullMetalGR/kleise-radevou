@@ -15,9 +15,9 @@ const MARK = MARK_FILE.trim();
 /** What the console is called after the wordmark in its top bar and on its door. */
 export const CONSOLE_LABEL = 'console';
 
-export function Wordmark({ name, small = false }: { name: string; small?: boolean }) {
+export function Wordmark({ name }: { name: string }) {
     return (
-        <span className={small ? 'brand-wordmark brand-wordmark--small' : 'brand-wordmark'}>
+        <span className="brand-wordmark">
             <span className="brand-wordmark__mark" dangerouslySetInnerHTML={{ __html: MARK }} />
             <span className="brand-wordmark__name">{name}</span>
         </span>

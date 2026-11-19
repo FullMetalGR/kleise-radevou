@@ -147,7 +147,7 @@ export default function Home() {
     const shown = staffShown(props.entitlements, props.members, null);
     const opening = useOpenedDetail(props.detail, bookingsWords);
     const { opened, stale, failed, acts } = opening;
-    const pending = props.nav.find((entry) => entry.url === '/admin/bookings')?.pending ?? 0;
+    const pending = props.nav.find((entry) => entry.key === 'bookings')?.pending ?? 0;
     const ranging = usePartialRead(RANGE_PROPS);
 
     useEffect(() => {

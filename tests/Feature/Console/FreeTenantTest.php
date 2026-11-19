@@ -505,10 +505,10 @@ it('renders the form inside the console\'s shell with the kinds of business, the
             ->where('centralHost', app(TenantUrls::class)->centralHost())
             ->where('features', ConsoleFeatures::choices())
             ->where('nav', [
-                ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
-                ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
-                ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
-                ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
+                ['key' => 'tenants', 'label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => true],
+                ['key' => 'messages', 'label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
+                ['key' => 'tickets', 'label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null, 'current' => false],
+                ['key' => 'audit', 'label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
             ]));
 
     expect(ConsoleFeatures::choices())->toBe([['value' => 'staff', 'label' => 'Staff', 'help' => ConsoleFeatures::STAFF_HELP]]);

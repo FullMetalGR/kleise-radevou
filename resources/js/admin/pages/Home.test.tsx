@@ -740,7 +740,7 @@ describe('Home\'s feeds', () => {
 
     it('lists Awaiting approval with Decide by on the tenant\'s clock, the rail\'s pending number in the attention chip and See all requests to the Approval inbox', () => {
         inertia.props = propsWith({
-            nav: [{ label: 'Bookings', url: '/admin/bookings', group: 'Schedule', pending: 7, current: false }],
+            nav: [{ key: 'bookings', label: 'Bookings', url: '/admin/bookings', group: 'Schedule', pending: 7, current: false }],
             awaiting: [feedRow('r1', { status: 'awaiting_approval', starts_at: '2026-11-05T08:00:00+00:00', hold_expires_at: '2026-11-03T16:00:00+00:00' })],
         });
         renderHome();
@@ -764,7 +764,7 @@ describe('Home\'s feeds', () => {
 
     it('lets the Awaiting approval strip give way on a narrow phone, the title first, then the link, the chip\'s label last, and its card go no wider than its column', () => {
         inertia.props = propsWith({
-            nav: [{ label: 'Bookings', url: '/admin/bookings', group: 'Schedule', pending: 7, current: false }],
+            nav: [{ key: 'bookings', label: 'Bookings', url: '/admin/bookings', group: 'Schedule', pending: 7, current: false }],
             awaiting: [feedRow('r1', { status: 'awaiting_approval', starts_at: '2026-11-05T08:00:00+00:00', hold_expires_at: '2026-11-03T16:00:00+00:00' })],
         });
         renderHome();

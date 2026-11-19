@@ -210,10 +210,10 @@ it('reads the rows in one statement whatever a page holds, the operator and the 
 
 it('hands the console\'s rail, Audit lit on the Audit screen and dark elsewhere, and an empty one at the door', function () {
     $pat = addOperator();
-    $tenants = ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null];
-    $messages = ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null];
-    $tickets = ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null];
-    $audit = ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null];
+    $tenants = ['key' => 'tenants', 'label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null];
+    $messages = ['key' => 'messages', 'label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null];
+    $tickets = ['key' => 'tickets', 'label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null];
+    $audit = ['key' => 'audit', 'label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null];
 
     auditScreen($this, $pat)->assertInertia(fn (Assert $page) => $page->where('nav', [[...$tenants, 'current' => false], [...$messages, 'current' => false], [...$tickets, 'current' => false], [...$audit, 'current' => true]]));
 

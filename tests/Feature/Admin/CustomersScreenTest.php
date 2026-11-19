@@ -370,7 +370,7 @@ it('renders the list through the payload class with the query read back from the
                     'bookings' => 2, 'upcoming' => 1, 'completed' => 0, 'no_shows' => 0, 'cancelled' => 1, 'url' => '/admin/customers/casey%40example.com', 'tags' => [], 'blocked' => false,
                 ],
             ])
-            ->where('nav.6', ['label' => navLabel('customers'), 'url' => '/admin/customers', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true])
+            ->where('nav.6', ['key' => 'customers', 'label' => navLabel('customers'), 'url' => '/admin/customers', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true])
             ->where('nav', fn (Collection $nav): bool => $nav->where('current', true)->count() === 1));
 
     $this->get(tenantUrl('luna', '/admin/customers?search=casey%40&page=1'))
@@ -466,7 +466,7 @@ it('renders an address\'s page as citext matches it, headed by the most recent n
             ->where('bookings.rows.1.items.1.start', '2026-11-10T07:45:00+00:00')
             ->where('members', DB::table('tenant_luna.staff')->count())
             ->where('detail', null)
-            ->where('nav.6', ['label' => navLabel('customers'), 'url' => '/admin/customers', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true])
+            ->where('nav.6', ['key' => 'customers', 'label' => navLabel('customers'), 'url' => '/admin/customers', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true])
             ->where('nav', fn (Collection $nav): bool => $nav->where('current', true)->count() === 1));
 
     $this->get(tenantUrl('luna', '/admin/customers/casey%40example.com?page=2'))

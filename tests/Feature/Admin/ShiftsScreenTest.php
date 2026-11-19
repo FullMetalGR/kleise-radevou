@@ -492,7 +492,7 @@ it('lights the Shifts entry after Bookings on its page for a holder of manageSet
     $this->actingAs(shiftsOwner())->get(tenantUrl('luna', '/admin/shifts'))->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('nav.2.label', navLabel('bookings'))
-            ->where('nav.3', ['label' => navLabel('shifts'), 'url' => '/admin/shifts', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true])
+            ->where('nav.3', ['key' => 'shifts', 'label' => navLabel('shifts'), 'url' => '/admin/shifts', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true])
             ->where('nav', fn (Collection $nav): bool => $nav->where('current', true)->count() === 1));
 
     DB::table('tenants')->where('slug', 'luna')->update(['entitlements' => '{}']);

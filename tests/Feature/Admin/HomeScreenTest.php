@@ -135,8 +135,8 @@ it('answers Home at /admin to a viewBookings holder with the home section beside
             ->missing('strings.setup')
             ->where('strings.home', __('admin/home', [], 'en'))
             ->where('strings.bookings', __('admin/bookings', [], 'en'))
-            ->where('nav.0', ['label' => navLabel('home'), 'url' => '/admin', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true])
-            ->where('nav.1', ['label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false]));
+            ->where('nav.0', ['key' => 'home', 'label' => navLabel('home'), 'url' => '/admin', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true])
+            ->where('nav.1', ['key' => 'calendar', 'label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => false]));
 });
 
 it('sends a viewer without viewBookings asking for /admin to the Calendar, which answers them there', function () {

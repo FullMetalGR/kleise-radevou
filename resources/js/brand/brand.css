@@ -47,8 +47,7 @@
 /*
  * The wordmark: the mark, inlined from its one source, beside the public name set in the brand's
  * type. The name takes the colour of the text around it, so it reads on the site's white and on
- * the admin's dark theme alike; the mark keeps its own colours. The small one is the admin's top
- * bar's, beside the business's name.
+ * the admin's dark theme alike; the mark keeps its own colours.
  */
 @layer components {
     .brand-wordmark {
@@ -70,10 +69,5 @@
     .brand-wordmark__mark > svg {
         width: 1.5em;
         height: 1.5em;
-    }
-
-    .brand-wordmark--small {
-        font-size: 0.8125rem;
-        font-weight: 600;
     }
 }

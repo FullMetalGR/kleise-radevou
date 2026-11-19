@@ -264,10 +264,10 @@ it('reads a page in two statements, the count and the messages, whatever it hold
 
 it('hands the console\'s rail as Tenants, Messages, Tickets, Audit, Messages lit on the messages screen', function () {
     $pat = addOperator();
-    $tenants = ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null];
-    $messages = ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null];
-    $tickets = ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null];
-    $audit = ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null];
+    $tenants = ['key' => 'tenants', 'label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null];
+    $messages = ['key' => 'messages', 'label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null];
+    $tickets = ['key' => 'tickets', 'label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => null];
+    $audit = ['key' => 'audit', 'label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null];
 
     messagesScreen($this, $pat)->assertInertia(fn (Assert $page) => $page->where('nav', [
         [...$tenants, 'current' => false],

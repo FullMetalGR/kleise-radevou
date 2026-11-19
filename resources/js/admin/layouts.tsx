@@ -5,7 +5,8 @@ import { LanguageControl } from './shell/LanguageControl';
 import { NarrowedBanner } from './shell/NarrowedBanner';
 import { Shell } from './shell/Shell';
 import { SupportBanner } from './shell/SupportBanner';
-import { ConsoleWordmark, Wordmark } from './shell/Wordmark';
+import { Mark } from './shell/Mark';
+import { ConsoleWordmark } from './shell/Wordmark';
 import { applyTheme, readTheme, type Theme, writeTheme } from './theme';
 import { FlashToast, useToasts } from './toast/toasts';
 import type { ConsoleProps, GuestProps, SharedProps } from './types';
@@ -22,11 +23,11 @@ import { NewBookingProvider, useNewBooking } from './wizard/NewBooking';
  * consumes the flash prop into a toast. They are Inertia persistent layouts, so a shell's own
  * state, the theme and a sign-out in flight, lives across visits.
  *
- * The brand: the admin's top bar carries a small wordmark beside the business's name and nothing
- * else of the brand, so the admin's theme applies to all of it; the console's shell carries the
- * wordmark in place of the console's name and wears the brand's scope, and so do the signup's
- * pages, inside the central host's frame, and the console's door, each keeping the admin's
- * primitives. Every wordmark names the brand prop's public name.
+ * The brand: the admin's top bar carries the platform's mark with the site's name beside the
+ * business's name and nothing else of the brand, so the admin's theme applies to all of it; the
+ * console's shell carries the wordmark in place of the console's name and wears the brand's scope,
+ * and so do the signup's pages, inside the central host's frame, and the console's door, each
+ * keeping the admin's primitives. The mark and every wordmark name the brand prop's public name.
  *
  * The admin's banner slot holds two notices, the support session's first and the narrowing
  * record's under it; each renders nothing while it has nothing to say. The support banner's End
@@ -160,7 +161,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <Shell
                 route={page.url}
                 nav={page.props.nav}
-                wordmark={<Wordmark name={page.props.brand.name} small />}
+                wordmark={<Mark name={page.props.brand.name} />}
                 business={page.props.tenant.name}
                 userName={page.props.auth.user?.name ?? ''}
                 theme={theme}

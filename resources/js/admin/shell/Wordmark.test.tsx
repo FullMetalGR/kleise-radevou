@@ -39,19 +39,12 @@ describe('the wordmark', () => {
         expect(wordmark?.querySelector('.brand-wordmark__mark > svg.brand-mark')?.outerHTML).toBe(markAsSerialized());
         expect(wordmark?.querySelector('.brand-wordmark__name')?.textContent).toBe('Example Bookings');
         expect(wordmark?.textContent).toBe('Example Bookings');
-        expect(wordmark?.classList.contains('brand-wordmark--small')).toBe(false);
     });
 
     it('hides the mark from assistive technology, the name being the wordmark\'s text', () => {
         mounted.render(<Wordmark name="Example Bookings" />);
 
         expect(mounted.host.querySelector('svg.brand-mark')?.getAttribute('aria-hidden')).toBe('true');
-    });
-
-    it('sets the small one the admin\'s top bar carries beside the business\'s name', () => {
-        mounted.render(<Wordmark name="Example Bookings" small />);
-
-        expect(mounted.host.querySelector('.brand-wordmark')?.classList.contains('brand-wordmark--small')).toBe(true);
     });
 });
 

@@ -227,7 +227,7 @@ it('opens on the tenant\'s today as one day, the day the screen opens on, not th
             ->has('options.services', DB::table('tenant_luna.services')->count())
             ->where('nav.0.label', navLabel('home'))
             ->where('nav.0.current', false)
-            ->where('nav.1', ['label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true]));
+            ->where('nav.1', ['key' => 'calendar', 'label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true]));
 });
 
 it('reads the window a link opens on: the day its date names, the week of it under view=week from the tenant\'s week start, the six-week grid of its month under view=month, and today\'s week under view=week alone', function () {

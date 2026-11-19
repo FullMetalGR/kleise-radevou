@@ -65,7 +65,6 @@ describe('the brand\'s tokens in both built stylesheets', () => {
         for (const css of [ADMIN, SITE]) {
             expect(css).toContain('.brand-wordmark{');
             expect(css).toContain('.brand-wordmark__mark{');
-            expect(css).toContain('.brand-wordmark--small{');
         }
     });
 });

@@ -214,7 +214,7 @@ it('puts Billing in an owner\'s rail under Business, current on its own screen, 
     $this->actingAs(billingOwner())->get(tenantUrl('luna', '/admin/billing'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Billing')
-            ->where('nav', fn (mixed $nav): bool => in_array(['label' => navLabel('billing'), 'url' => '/admin/billing', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true], billingRail($nav), true)));
+            ->where('nav', fn (mixed $nav): bool => in_array(['key' => 'billing', 'label' => navLabel('billing'), 'url' => '/admin/billing', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true], billingRail($nav), true)));
 
     $manager = addTenantUser('manager@luna.example', 'manager');
 

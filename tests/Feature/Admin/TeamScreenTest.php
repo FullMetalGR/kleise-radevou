@@ -107,7 +107,7 @@ it('puts Team on an owner\'s rail between Reports and Settings, lit on its own p
     $rail('manager@luna.example')->assertInertia(fn (Assert $page) => $page->where('nav', fn (Collection $nav): bool => ! in_array(navLabel('team'), $nav->pluck('label')->all(), true)));
 
     $this->actingAs(teamOwner())->get(tenantUrl('luna', '/admin/team'))
-        ->assertInertia(fn (Assert $page) => $page->where('nav.8', ['label' => navLabel('team'), 'url' => '/admin/team', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true]));
+        ->assertInertia(fn (Assert $page) => $page->where('nav.8', ['key' => 'team', 'label' => navLabel('team'), 'url' => '/admin/team', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true]));
 });
 
 it('refuses every route of the screen to a {role} with a 403, writing nothing and mailing nothing', function (string $role) {

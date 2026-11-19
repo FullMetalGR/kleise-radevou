@@ -18,7 +18,7 @@ import { MENU_LABEL, Shell } from './Shell';
  * in its aside and no control. The framework's link is stood in for by an anchor that makes no
  * visit, as the real one makes its own. The shell renders inside the keyed table, its own words
  * read here through it, and the rail's labels are the server's, handed as the keyed table
- * spells them.
+ * spells them. A skip link to the page's content is the first thing the keyboard reaches.
  */
 
 const shell = keyedShell();
@@ -57,8 +57,8 @@ afterEach(() => {
 });
 
 const NAV: NavEntry[] = [
-    { label: N.calendar, url: '/admin', group: N.groups.schedule, pending: null, current: true },
-    { label: N.bookings, url: '/admin/bookings', group: N.groups.schedule, pending: null, current: false },
+    { key: 'calendar', label: N.calendar, url: '/admin', group: N.groups.schedule, pending: null, current: true },
+    { key: 'bookings', label: N.bookings, url: '/admin/bookings', group: N.groups.schedule, pending: null, current: false },
 ];
 
 function Broken(): never {
@@ -164,6 +164,54 @@ describe('the shell', () => {
     });
 });
 
+describe('the skip link', () => {
+    const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+    it('is the first thing the keyboard reaches, pointing at the page\'s content, which takes focus from a script alone', () => {
+        render('/admin', <h1>The page</h1>);
+
+        const skip = host.querySelector(FOCUSABLE);
+        const main = host.querySelector('main');
+
+        expect(skip?.matches('a.admin-skip')).toBe(true);
+        expect(skip?.getAttribute('href')).toBe('#admin-main');
+        expect(skip?.textContent).toBe(shell.text('nav.skip'));
+        expect(main?.id).toBe('admin-main');
+        expect(main?.getAttribute('tabindex')).toBe('-1');
+    });
+
+    it('is shown on focus alone', () => {
+        render('/admin', <h1>The page</h1>);
+
+        const skip = host.querySelector('.admin-skip');
+
+        expect(skip?.classList.contains('sr-only')).toBe(true);
+        expect(skip?.classList.contains('focus:not-sr-only')).toBe(true);
+    });
+
+    it('moves the focus to the page\'s content on a press, leaving the address as it was', () => {
+        render('/admin', <h1>The page</h1>);
+
+        const before = window.location.href;
+        press(host.querySelector('.admin-skip'));
+
+        expect(document.activeElement).toBe(host.querySelector('main'));
+        expect(window.location.href).toBe(before);
+    });
+
+    it('comes first below the breakpoint too, before the menu\'s control', () => {
+        const undo = onPhone();
+
+        try {
+            render('/admin', <h1>The page</h1>);
+
+            expect(host.querySelector(FOCUSABLE)?.matches('a.admin-skip')).toBe(true);
+        } finally {
+            undo();
+        }
+    });
+});
+
 describe('at or above the breakpoint', () => {
     it('keeps the rail in its aside beside the page and puts no control in the top bar', () => {
         render('/admin', <h1>The page</h1>);
@@ -217,8 +265,8 @@ describe('below the breakpoint', () => {
 
     it('carries the pending count the rail shows on the control, so a request waiting is seen with the drawer closed, and none for none', () => {
         const pending: NavEntry[] = [
-            { label: N.calendar, url: '/admin', group: N.groups.schedule, pending: null, current: true },
-            { label: N.bookings, url: '/admin/bookings', group: N.groups.schedule, pending: 3, current: false },
+            { key: 'calendar', label: N.calendar, url: '/admin', group: N.groups.schedule, pending: null, current: true },
+            { key: 'bookings', label: N.bookings, url: '/admin/bookings', group: N.groups.schedule, pending: 3, current: false },
         ];
         act(() =>
             root.render(

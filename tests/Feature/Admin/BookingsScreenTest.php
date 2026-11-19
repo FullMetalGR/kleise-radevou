@@ -177,7 +177,7 @@ it('renders the list with the dialog open at the booking\'s own route, and the n
             ->where('detail.trail.2.name', bookingsOwner()->name)
             ->where('detail.trail.2.at', '2026-10-02T08:00:00+00:00')
             ->where('detail.trail.2.facts', ['status_from' => 'awaiting_approval', 'status_to' => 'rejected'])
-            ->where('nav.2', ['label' => navLabel('bookings'), 'url' => '/admin/bookings', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true]));
+            ->where('nav.2', ['key' => 'bookings', 'label' => navLabel('bookings'), 'url' => '/admin/bookings', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true]));
 
     $this->get(tenantUrl('luna', '/admin/bookings/'.Str::uuid()))
         ->assertInertia(fn (Assert $page) => $page->where('detail.state', 'missing'));
@@ -301,7 +301,7 @@ it('puts Bookings on the rail for viewBookings and leaves a staff user the Calen
     $command->assertExitCode(0)->run();
 
     $this->actingAs(User::query()->where('email', 'sam@luna.example')->sole())->get(tenantUrl('luna', '/admin/calendar'))
-        ->assertInertia(fn (Assert $page) => $page->where('nav', [['label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true]]));
+        ->assertInertia(fn (Assert $page) => $page->where('nav', [['key' => 'calendar', 'label' => navLabel('calendar'), 'url' => '/admin/calendar', 'group' => navLabel('groups.schedule'), 'pending' => null, 'current' => true]]));
     $this->get(tenantUrl('luna', '/admin/bookings'))->assertForbidden();
 });
 

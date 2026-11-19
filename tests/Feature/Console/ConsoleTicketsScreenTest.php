@@ -442,10 +442,10 @@ it('hands the rail with Tickets between Messages and Audit, lit on the list and 
     deskTicket($luna, 'Answered', '2026-11-16 10:00:00', 'platform');
     deskTicket($luna, 'Closed', '2026-11-16 11:00:00', 'business', 'closed');
     $rail = fn (bool $lit): array => [
-        ['label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => false],
-        ['label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
-        ['label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => 2, 'current' => $lit],
-        ['label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'tenants', 'label' => 'Tenants', 'url' => '/', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'messages', 'label' => 'Messages', 'url' => '/messages', 'group' => 'Platform', 'pending' => null, 'current' => false],
+        ['key' => 'tickets', 'label' => 'Tickets', 'url' => '/tickets', 'group' => 'Platform', 'pending' => 2, 'current' => $lit],
+        ['key' => 'audit', 'label' => 'Audit', 'url' => '/audit', 'group' => 'Platform', 'pending' => null, 'current' => false],
     ];
 
     deskScreen($this, $pat)->assertInertia(fn (Assert $page) => $page->where('nav', $rail(true)));

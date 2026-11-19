@@ -6,8 +6,9 @@ namespace App\Http;
 
 /**
  * The console's rail, in one place on the server: AdminNav's twin with no permissions and no gates,
- * since an operator holds every power and the console sells nothing. Each entry names its label,
- * its URL on the console's host, its group and the route it belongs to; the rail an operator
+ * since an operator holds every power and the console sells nothing. Each entry names its key, the
+ * one word the client chooses its icon by, its label, its URL on the console's host, its group and
+ * the route it belongs to; the rail an operator
  * receives is every entry, the current one marked, and the client renders it verbatim, as the
  * admin's rail is rendered.
  *
@@ -47,15 +48,15 @@ final readonly class ConsoleNav
     private const string TICKETS = 'console.tickets';
 
     /**
-     * @return list<array{label: string, url: string, group: string, route: string}>
+     * @return list<array{key: string, label: string, url: string, group: string, route: string}>
      */
     private static function entries(): array
     {
         return [
-            ['label' => self::TENANTS_LABEL, 'url' => '/', 'group' => self::PLATFORM, 'route' => 'console.tenants'],
-            ['label' => self::MESSAGES_LABEL, 'url' => '/messages', 'group' => self::PLATFORM, 'route' => 'console.messages'],
-            ['label' => self::TICKETS_LABEL, 'url' => '/tickets', 'group' => self::PLATFORM, 'route' => self::TICKETS],
-            ['label' => self::AUDIT_LABEL, 'url' => '/audit', 'group' => self::PLATFORM, 'route' => 'console.audit'],
+            ['key' => 'tenants', 'label' => self::TENANTS_LABEL, 'url' => '/', 'group' => self::PLATFORM, 'route' => 'console.tenants'],
+            ['key' => 'messages', 'label' => self::MESSAGES_LABEL, 'url' => '/messages', 'group' => self::PLATFORM, 'route' => 'console.messages'],
+            ['key' => 'tickets', 'label' => self::TICKETS_LABEL, 'url' => '/tickets', 'group' => self::PLATFORM, 'route' => self::TICKETS],
+            ['key' => 'audit', 'label' => self::AUDIT_LABEL, 'url' => '/audit', 'group' => self::PLATFORM, 'route' => 'console.audit'],
         ];
     }
 
@@ -63,11 +64,12 @@ final readonly class ConsoleNav
      * The rail as the nav prop carries it, in the admin rail's shape, the count on Tickets alone.
      *
      * @param  int  $awaiting  the help tickets awaiting a reply, App\Help\HelpDesk::awaiting
-     * @return list<array{label: string, url: string, group: string, pending: int|null, current: bool}>
+     * @return list<array{key: string, label: string, url: string, group: string, pending: int|null, current: bool}>
      */
     public static function for(?string $route, int $awaiting): array
     {
         return array_map(fn (array $entry): array => [
+            'key' => $entry['key'],
             'label' => $entry['label'],
             'url' => $entry['url'],
             'group' => $entry['group'],

@@ -267,7 +267,7 @@ it('reads the shell, the rail and the server\'s words in Greek where a Greek lin
         ->assertInertia(fn (Assert $page) => $page
             ->where('language', 'el')
             ->where('strings.shell.top_bar.sign_out', 'GREEK sign out')
-            ->where('nav.1', ['label' => 'GREEK calendar', 'url' => '/admin/calendar', 'group' => 'GREEK schedule', 'pending' => null, 'current' => false]));
+            ->where('nav.1', ['key' => 'calendar', 'label' => 'GREEK calendar', 'url' => '/admin/calendar', 'group' => 'GREEK schedule', 'pending' => null, 'current' => false]));
 
     $this->post(tenantUrl('luna', '/admin/logout'))
         ->assertSessionHas('flash', ['kind' => 'success', 'message' => 'GREEK signed out']);

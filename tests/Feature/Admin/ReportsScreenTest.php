@@ -320,7 +320,7 @@ it('puts Reports on the rail of an owner and a manager after Customers and befor
     $rail = fn (string $email, array $labels) => $this->actingAs(User::query()->where('email', $email)->sole())->get(tenantUrl('luna', '/admin/reports'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('nav', fn (Collection $nav): bool => $nav->pluck('label')->all() === $labels)
-            ->where('nav.7', ['label' => navLabel('reports'), 'url' => '/admin/reports', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true])
+            ->where('nav.7', ['key' => 'reports', 'label' => navLabel('reports'), 'url' => '/admin/reports', 'group' => navLabel('groups.business'), 'pending' => null, 'current' => true])
             ->where('nav', fn (Collection $nav): bool => $nav->where('current', true)->count() === 1));
 
     $rail('owner@luna.example', [navLabel('home'), navLabel('calendar'), navLabel('bookings'), navLabel('shifts'), navLabel('services'), navLabel('staff'), navLabel('customers'), navLabel('reports'), navLabel('team'), navLabel('settings'), navLabel('billing')]);

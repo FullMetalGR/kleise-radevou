@@ -12,12 +12,12 @@ use Illuminate\Contracts\Translation\Translator;
 /**
  * The rail, in one place on the server.
  *
- * Each entry names its label, its URL, its group, the route it belongs to, the permissions that
- * show it, any one of them admitting as the route's own declaration does, and its feature gate, if
- * any. The rail a principal receives is this table filtered by their permissions, and the tenant's
- * entitlements, and the client renders it verbatim with no second gate: a gate in two places
- * disagrees with itself eventually, and the copy here is the one the route's own declaration
- * agrees with.
+ * Each entry names its key, the one word the client knows it by and chooses its icon by, its
+ * label, its URL, its group, the route it belongs to, the permissions that show it, any one of them
+ * admitting as the route's own declaration does, and its feature gate, if any. The rail a principal
+ * receives is this table filtered by their permissions, and the tenant's entitlements, and the
+ * client renders it verbatim with no second gate: a gate in two places disagrees with itself
+ * eventually, and the copy here is the one the route's own declaration agrees with.
  *
  * A gate is of one of two kinds: with(feature) shows the entry while the tenant has the feature,
  * without(feature) while it lacks it. The Staff screen is one place in the rail under two labels
@@ -57,35 +57,35 @@ final readonly class AdminNav
     public const string NO_ENTRY = 'admin.nav.no-entry';
 
     /**
-     * @return list<array{label: string, url: string, group: string, route: string, permission: list<Permission>, gate: array{feature: Feature, present: bool}|null}>
+     * @return list<array{key: string, label: string, url: string, group: string, route: string, permission: list<Permission>, gate: array{feature: Feature, present: bool}|null}>
      */
     private static function entries(): array
     {
         return [
             // Home, the landing of every viewBookings holder.
-            ['label' => 'admin/shell.nav.home', 'url' => AdminSession::PREFIX, 'group' => self::SCHEDULE, 'route' => 'admin.home', 'permission' => [Permission::ViewBookings], 'gate' => null],
+            ['key' => 'home', 'label' => 'admin/shell.nav.home', 'url' => AdminSession::PREFIX, 'group' => self::SCHEDULE, 'route' => 'admin.home', 'permission' => [Permission::ViewBookings], 'gate' => null],
             // One Calendar for every role, a viewer holding viewOwnCalendar alone pinned there to
             // their own row, and their landing.
-            ['label' => 'admin/shell.nav.calendar', 'url' => AdminSession::PREFIX.'/calendar', 'group' => self::SCHEDULE, 'route' => 'admin.calendar', 'permission' => [Permission::ViewBookings, Permission::ViewOwnCalendar], 'gate' => null],
-            ['label' => 'admin/shell.nav.bookings', 'url' => AdminSession::PREFIX.'/bookings', 'group' => self::SCHEDULE, 'route' => self::BOOKINGS, 'permission' => [Permission::ViewBookings], 'gate' => null],
+            ['key' => 'calendar', 'label' => 'admin/shell.nav.calendar', 'url' => AdminSession::PREFIX.'/calendar', 'group' => self::SCHEDULE, 'route' => 'admin.calendar', 'permission' => [Permission::ViewBookings, Permission::ViewOwnCalendar], 'gate' => null],
+            ['key' => 'bookings', 'label' => 'admin/shell.nav.bookings', 'url' => AdminSession::PREFIX.'/bookings', 'group' => self::SCHEDULE, 'route' => self::BOOKINGS, 'permission' => [Permission::ViewBookings], 'gate' => null],
             // Who works when, week by week, with the staff feature alone: a floor's hours are
             // Settings' Opening hours.
-            ['label' => 'admin/shell.nav.shifts', 'url' => AdminSession::PREFIX.'/shifts', 'group' => self::SCHEDULE, 'route' => 'admin.shifts', 'permission' => [Permission::ManageSettings], 'gate' => self::with(Feature::Staff)],
-            ['label' => 'admin/shell.nav.services', 'url' => AdminSession::PREFIX.'/services', 'group' => self::BUSINESS, 'route' => 'admin.services', 'permission' => [Permission::ViewBookings], 'gate' => null],
-            ['label' => 'admin/shell.nav.staff', 'url' => AdminSession::PREFIX.'/staff', 'group' => self::BUSINESS, 'route' => 'admin.staff', 'permission' => [Permission::ViewBookings], 'gate' => self::with(Feature::Staff)],
+            ['key' => 'shifts', 'label' => 'admin/shell.nav.shifts', 'url' => AdminSession::PREFIX.'/shifts', 'group' => self::SCHEDULE, 'route' => 'admin.shifts', 'permission' => [Permission::ManageSettings], 'gate' => self::with(Feature::Staff)],
+            ['key' => 'services', 'label' => 'admin/shell.nav.services', 'url' => AdminSession::PREFIX.'/services', 'group' => self::BUSINESS, 'route' => 'admin.services', 'permission' => [Permission::ViewBookings], 'gate' => null],
+            ['key' => 'staff', 'label' => 'admin/shell.nav.staff', 'url' => AdminSession::PREFIX.'/staff', 'group' => self::BUSINESS, 'route' => 'admin.staff', 'permission' => [Permission::ViewBookings], 'gate' => self::with(Feature::Staff)],
             // The same screen without the feature, labelled by what the tenant can still change
             // there: a floor's screen is headed Closures too, a roster with other rows keeps Staff.
-            ['label' => 'admin/shell.nav.closures', 'url' => AdminSession::PREFIX.'/staff', 'group' => self::BUSINESS, 'route' => 'admin.staff', 'permission' => [Permission::ViewBookings], 'gate' => self::without(Feature::Staff)],
+            ['key' => 'closures', 'label' => 'admin/shell.nav.closures', 'url' => AdminSession::PREFIX.'/staff', 'group' => self::BUSINESS, 'route' => 'admin.staff', 'permission' => [Permission::ViewBookings], 'gate' => self::without(Feature::Staff)],
             // Every address the bookings know, read-only, under the permission the CONTACT rule
             // reads, since each row links its address.
-            ['label' => self::CUSTOMERS_LABEL, 'url' => AdminSession::PREFIX.'/customers', 'group' => self::BUSINESS, 'route' => 'admin.customers', 'permission' => [Permission::ManageBookings], 'gate' => null],
+            ['key' => 'customers', 'label' => self::CUSTOMERS_LABEL, 'url' => AdminSession::PREFIX.'/customers', 'group' => self::BUSINESS, 'route' => 'admin.customers', 'permission' => [Permission::ManageBookings], 'gate' => null],
             // The figures over a range, computed when asked.
-            ['label' => self::REPORTS_LABEL, 'url' => AdminSession::PREFIX.'/reports', 'group' => self::BUSINESS, 'route' => 'admin.reports', 'permission' => [Permission::ViewBookings], 'gate' => null],
+            ['key' => 'reports', 'label' => self::REPORTS_LABEL, 'url' => AdminSession::PREFIX.'/reports', 'group' => self::BUSINESS, 'route' => 'admin.reports', 'permission' => [Permission::ViewBookings], 'gate' => null],
             // Who signs in and as what, the owner's alone.
-            ['label' => 'admin/shell.nav.team', 'url' => AdminSession::PREFIX.'/team', 'group' => self::BUSINESS, 'route' => 'admin.team', 'permission' => [Permission::ManageBilling], 'gate' => null],
-            ['label' => 'admin/shell.nav.settings', 'url' => AdminSession::PREFIX.'/settings', 'group' => self::BUSINESS, 'route' => 'admin.settings', 'permission' => [Permission::ManageSettings], 'gate' => null],
+            ['key' => 'team', 'label' => 'admin/shell.nav.team', 'url' => AdminSession::PREFIX.'/team', 'group' => self::BUSINESS, 'route' => 'admin.team', 'permission' => [Permission::ManageBilling], 'gate' => null],
+            ['key' => 'settings', 'label' => 'admin/shell.nav.settings', 'url' => AdminSession::PREFIX.'/settings', 'group' => self::BUSINESS, 'route' => 'admin.settings', 'permission' => [Permission::ManageSettings], 'gate' => null],
             // Never filtered by the subscription state: this is the way back.
-            ['label' => 'admin/shell.nav.billing', 'url' => AdminSession::PREFIX.'/billing', 'group' => self::BUSINESS, 'route' => 'admin.billing', 'permission' => [Permission::ManageBilling], 'gate' => null],
+            ['key' => 'billing', 'label' => 'admin/shell.nav.billing', 'url' => AdminSession::PREFIX.'/billing', 'group' => self::BUSINESS, 'route' => 'admin.billing', 'permission' => [Permission::ManageBilling], 'gate' => null],
         ];
     }
 
@@ -120,7 +120,7 @@ final readonly class AdminNav
      *
      * @param  list<Permission>  $permissions
      * @param  int  $pending  the requests the owner can still decide, BookingRecords::pendingCount
-     * @return list<array{label: string, url: string, group: string, pending: int|null, current: bool}>
+     * @return list<array{key: string, label: string, url: string, group: string, pending: int|null, current: bool}>
      */
     public static function for(array $permissions, Entitlements $entitlements, ?string $route, int $pending, Translator $translator): array
     {
@@ -128,6 +128,7 @@ final readonly class AdminNav
 
         foreach (self::visible($permissions, $entitlements) as $entry) {
             $rail[] = [
+                'key' => $entry['key'],
                 'label' => self::words($translator, $entry['label']),
                 'url' => $entry['url'],
                 'group' => self::words($translator, $entry['group']),
@@ -165,7 +166,7 @@ final readonly class AdminNav
 
     /**
      * @param  list<Permission>  $permissions
-     * @return list<array{label: string, url: string, group: string, route: string, permission: list<Permission>, gate: array{feature: Feature, present: bool}|null}>
+     * @return list<array{key: string, label: string, url: string, group: string, route: string, permission: list<Permission>, gate: array{feature: Feature, present: bool}|null}>
      */
     private static function visible(array $permissions, Entitlements $entitlements): array
     {

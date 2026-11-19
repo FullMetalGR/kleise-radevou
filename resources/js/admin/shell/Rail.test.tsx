@@ -11,7 +11,8 @@ import { RAIL_LABEL, Rail } from './Rail';
  * handed to whoever opened it, so the drawer closes on a choice. The framework's link is stood in
  * for by an anchor that makes no visit, as the real one makes its own. The labels and groups are
  * the server's, handed here as the keyed table spells them; the rail's own name is the shell's,
- * read through the same table.
+ * read through the same table. Each entry carries the one word the server names it by, which
+ * chooses its icon and keys its row.
  */
 
 const N = KEYED_SHELL.nav;
@@ -45,8 +46,8 @@ afterEach(() => {
     host.remove();
 });
 
-function entry(label: string, url: string, group: string, current = false, pending: number | null = null): NavEntry {
-    return { label, url, group, pending, current };
+function entry(key: string, label: string, url: string, group: string, current = false, pending: number | null = null): NavEntry {
+    return { key, label, url, group, pending, current };
 }
 
 function render(nav: NavEntry[], onChoose?: () => void): void {
@@ -64,9 +65,9 @@ const labels = () => [...host.querySelectorAll('a')].map((link) => link.querySel
 describe('the rail', () => {
     it('renders group headings when more than one group exists', () => {
         render([
-            entry(N.calendar, '/admin', N.groups.schedule, true),
-            entry(N.bookings, '/admin/bookings', N.groups.schedule, false, 3),
-            entry(N.services, '/admin/services', 'Setup'),
+            entry('calendar', N.calendar, '/admin', N.groups.schedule, true),
+            entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule, false, 3),
+            entry('services', N.services, '/admin/services', 'Setup'),
         ]);
 
         expect([...host.querySelectorAll('h2')].map((heading) => heading.textContent)).toEqual([N.groups.schedule, 'Setup']);
@@ -74,7 +75,7 @@ describe('the rail', () => {
     });
 
     it('renders no heading when there is one group', () => {
-        render([entry(N.calendar, '/admin', N.groups.schedule, true), entry(N.bookings, '/admin/bookings', N.groups.schedule)]);
+        render([entry('calendar', N.calendar, '/admin', N.groups.schedule, true), entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule)]);
 
         expect(host.querySelectorAll('h2')).toHaveLength(0);
         expect(labels()).toEqual([N.calendar, N.bookings]);
@@ -82,7 +83,7 @@ describe('the rail', () => {
     });
 
     it('marks exactly the entry the server marked current with aria-current="page"', () => {
-        render([entry(N.calendar, '/admin', N.groups.schedule), entry(N.bookings, '/admin/bookings', N.groups.schedule, true)]);
+        render([entry('calendar', N.calendar, '/admin', N.groups.schedule), entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule, true)]);
 
         const current = host.querySelectorAll('[aria-current="page"]');
 
@@ -91,7 +92,7 @@ describe('the rail', () => {
     });
 
     it('renders a staff user\'s rail as the Calendar alone, with no heading', () => {
-        render([entry(N.calendar, '/admin', N.groups.schedule, true)]);
+        render([entry('calendar', N.calendar, '/admin', N.groups.schedule, true)]);
 
         expect(labels()).toEqual([N.calendar]);
         expect(host.querySelectorAll('h2')).toHaveLength(0);
@@ -99,13 +100,13 @@ describe('the rail', () => {
     });
 
     it('shows a pending count where the entry carries one and none where it is null', () => {
-        render([entry(N.calendar, '/admin', N.groups.schedule, true), entry(N.bookings, '/admin/bookings', N.groups.schedule, false, 4)]);
+        render([entry('calendar', N.calendar, '/admin', N.groups.schedule, true), entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule, false, 4)]);
 
         expect([...host.querySelectorAll('.admin-rail-pending')].map((badge) => badge.textContent)).toEqual(['4']);
     });
 
     it('renders every entry it is handed, adding no gate of its own', () => {
-        render([entry(N.billing, '/admin/billing', 'Account', true)]);
+        render([entry('billing', N.billing, '/admin/billing', 'Account', true)]);
 
         expect(labels()).toEqual([N.billing]);
     });
@@ -113,7 +114,7 @@ describe('the rail', () => {
     it('hands a press on any entry to onChoose, the current one included, once each', () => {
         const chose = vi.fn();
 
-        render([entry(N.calendar, '/admin', N.groups.schedule, true), entry(N.bookings, '/admin/bookings', N.groups.schedule)], chose);
+        render([entry('calendar', N.calendar, '/admin', N.groups.schedule, true), entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule)], chose);
 
         press(host.querySelector('a[href="/admin/bookings"]'));
         expect(chose).toHaveBeenCalledOnce();
@@ -123,8 +124,36 @@ describe('the rail', () => {
     });
 
     it('needs no onChoose where the rail stands in its aside', () => {
-        render([entry(N.calendar, '/admin', N.groups.schedule, true)]);
+        render([entry('calendar', N.calendar, '/admin', N.groups.schedule, true)]);
 
         expect(() => press(host.querySelector('a'))).not.toThrow();
+    });
+
+    it('draws each entry\'s icon before its label, hidden from assistive technology, a plain circle for a word it does not know', () => {
+        render([
+            entry('calendar', N.calendar, '/admin', N.groups.schedule, true),
+            entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule, false, 2),
+            entry('later', 'Later', '/admin/later', N.groups.schedule),
+        ]);
+
+        const links = [...host.querySelectorAll('a')];
+        const icons = links.map((link) => link.firstElementChild);
+
+        expect(icons.map((icon) => icon?.classList.contains('admin-rail-entry__icon'))).toEqual([true, true, true]);
+        expect(icons.map((icon) => icon?.tagName.toLowerCase())).toEqual(['svg', 'svg', 'svg']);
+        expect([icons[0]?.classList.contains('lucide-calendar'), icons[1]?.classList.contains('lucide-list'), icons[2]?.classList.contains('lucide-circle')]).toEqual([true, true, true]);
+        expect(icons.map((icon) => icon?.getAttribute('aria-hidden'))).toEqual(['true', 'true', 'true']);
+        expect(icons.map((icon) => icon?.nextElementSibling?.textContent)).toEqual([N.calendar, N.bookings, 'Later']);
+        expect(links.map((link) => link.textContent)).toEqual([N.calendar, `${N.bookings}2`, 'Later']);
+    });
+
+    it('keys each row by the entry\'s word, so two entries at one address stand side by side', () => {
+        const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        render([entry('staff', N.staff, '/admin/staff', N.groups.business), entry('closures', N.closures, '/admin/staff', N.groups.business)]);
+
+        expect(labels()).toEqual([N.staff, N.closures]);
+        expect(report).not.toHaveBeenCalled();
+        report.mockRestore();
     });
 });

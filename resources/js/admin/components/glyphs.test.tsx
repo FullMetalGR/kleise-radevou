@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Caret, ChipAlert, ChipCard, ChipClock, Chevron, ChipCross, ChipHourglass, ChipTick, ChipTimer, Cross, Info, NoteSheet, Plus, Success, Tick, Warning } from './glyphs';
+import { Caret, ChipAlert, ChipCard, ChipClock, Chevron, ChipCross, ChipHourglass, ChipTick, ChipTimer, Cross, Info, Moon, NoteSheet, Plus, SignOut, Success, Sun, Tick, Warning } from './glyphs';
 import { mount, type Mounted } from './ui/harness';
 
 /*
@@ -37,6 +37,9 @@ describe('the glyphs', () => {
             [<ChipCross key="chip-cross" />, 'lucide-x'],
             [<ChipAlert key="chip-alert" />, 'lucide-circle-alert'],
             [<ChipTimer key="chip-timer" />, 'lucide-timer'],
+            [<Moon key="moon" />, 'lucide-moon'],
+            [<Sun key="sun" />, 'lucide-sun'],
+            [<SignOut key="sign-out" />, 'lucide-log-out'],
         ];
 
         for (const [glyph, name] of drawn) {

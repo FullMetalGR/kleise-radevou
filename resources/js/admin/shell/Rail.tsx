@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { useShell } from '@/lib/strings';
 import type { NavEntry } from '../types';
+import { navIcon } from './icons';
 
 /*
  * The rail, rendered verbatim from the nav prop. The server has already filtered it by permission
@@ -8,7 +9,10 @@ import type { NavEntry } from '../types';
  * entries and nothing else, never the role and never the permissions. Groups are headings only
  * when more than one exists, so a one-entry rail has none. In the drawer of 1.6 a press on an
  * entry, the current one included, is handed to onChoose, which closes it. The entries' labels
- * and groups arrive in the page's language; the rail's own name is the shell's.
+ * and groups arrive in the page's language; the rail's own name is the shell's. Each entry's icon
+ * is chosen by the one word the server names it by, the same word that keys its row, as two
+ * entries may share an address; the icon is decoration beside the label, hidden from assistive
+ * technology.
  */
 
 function groupsOf(nav: NavEntry[]): { group: string; entries: NavEntry[] }[] {
@@ -41,19 +45,24 @@ export function Rail({ nav, onChoose }: { nav: NavEntry[]; onChoose?: () => void
                 <div key={group} className="flex flex-col gap-1">
                     {headed && <h2 className="admin-rail-group px-2 text-xs font-semibold text-muted-foreground uppercase">{group}</h2>}
                     <ul className="flex flex-col gap-1">
-                        {entries.map((entry) => (
-                            <li key={entry.url}>
-                                <Link
-                                    href={entry.url}
-                                    aria-current={entry.current ? 'page' : undefined}
-                                    onClick={onChoose}
-                                    className="admin-rail-entry flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted aria-[current=page]:bg-muted aria-[current=page]:font-semibold"
-                                >
-                                    <span>{entry.label}</span>
-                                    {entry.pending !== null && <span className="admin-rail-pending rounded-full bg-primary px-2 text-xs text-primary-foreground">{entry.pending}</span>}
-                                </Link>
-                            </li>
-                        ))}
+                        {entries.map((entry) => {
+                            const Icon = navIcon(entry.key);
+
+                            return (
+                                <li key={entry.key}>
+                                    <Link
+                                        href={entry.url}
+                                        aria-current={entry.current ? 'page' : undefined}
+                                        onClick={onChoose}
+                                        className="admin-rail-entry flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted aria-[current=page]:bg-muted aria-[current=page]:font-semibold"
+                                    >
+                                        <Icon className="admin-rail-entry__icon size-4.5 shrink-0" aria-hidden="true" />
+                                        <span className="min-w-0 flex-1">{entry.label}</span>
+                                        {entry.pending !== null && <span className="admin-rail-pending rounded-full bg-primary px-2 text-xs text-primary-foreground">{entry.pending}</span>}
+                                    </Link>
+                                </li>
+                            );
+                        })}
                     </ul>
                 </div>
             ))}

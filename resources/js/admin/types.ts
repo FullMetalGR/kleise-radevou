@@ -14,6 +14,8 @@ export type Brand = {
 };
 
 export type NavEntry = {
+    /** The one word the server names the entry by, which chooses its icon. */
+    key: string;
     label: string;
     url: string;
     group: string;
@@ -61,6 +63,7 @@ export type ShellStrings = {
         billing: string;
         main: string;
         menu: string;
+        skip: string;
     };
     login: { title: string; heading: string; email: string; password: string; submit: string; submitting: string };
     set_password: {

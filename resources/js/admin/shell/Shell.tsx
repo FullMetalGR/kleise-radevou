@@ -19,6 +19,11 @@ import { TopBar } from './TopBar';
  * with the focus in the search field and its in-flight state, where a new path is a new route and
  * mounts afresh. The shell paints its own ground and ink, so a brand scope on its root, the
  * console's, shows the page tint mixed from the brand's primary and not the body's.
+ *
+ * The first thing the keyboard reaches on every screen is a link past the rail and the top bar to
+ * the page's content, unseen until it takes the focus. A press hands the focus to the content
+ * itself, which takes it from a script alone, and leaves the address as it was, so no hash lands
+ * in the history or the router.
  */
 
 function routeKey(url: string): string {
@@ -78,11 +83,25 @@ type Props = {
     children: ReactNode;
 };
 
+/** The content's id, the skip link's target. */
+const CONTENT = 'admin-main';
+
 export function Shell({ route, nav, wordmark, business, userName, theme, onToggleTheme, signingOut, onSignOut, actions, language, banner, className, children }: Props) {
+    const shell = useShell();
     const desktop = useDesktop();
 
     return (
         <div className={cn('admin-shell flex min-h-screen bg-background text-foreground', className)}>
+            <a
+                href={`#${CONTENT}`}
+                className="admin-skip focus-ring sr-only rounded-full bg-foreground font-bold text-background focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[55] focus:px-4 focus:py-2"
+                onClick={(event) => {
+                    event.preventDefault();
+                    document.getElementById(CONTENT)?.focus();
+                }}
+            >
+                {shell.text('nav.skip')}
+            </a>
             {desktop && (
                 <aside className="admin-aside w-56 shrink-0 border-r p-3">
                     <Rail nav={nav} />
@@ -101,7 +120,7 @@ export function Shell({ route, nav, wordmark, business, userName, theme, onToggl
                     language={language}
                     menu={desktop ? undefined : <RailDrawer nav={nav} />}
                 />
-                <main className="admin-page flex-1 p-4 desktop:p-6">
+                <main id={CONTENT} tabIndex={-1} className="admin-page flex-1 p-4 outline-none desktop:p-6">
                     {banner}
                     <RouteBoundary key={routeKey(route)}>{children}</RouteBoundary>
                 </main>
