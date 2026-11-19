@@ -12,14 +12,17 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * The admin's one breakpoint: at or above it the desktop layout, below it the phone layout, the
- * rail behind a control in the top bar. It is the desktop: and max-desktop: variants, and static
- * so the root carries it for lib/viewport.ts to read by name where the branch is React's; no
- * component spells its number. 48rem keeps every width the desktop layout served before it, a
- * tablet held upright included, on that layout.
+ * The admin's two breakpoints, each with one job. The desktop one: at or above it the desktop
+ * layout, below it the phone layout, the rail behind a control in the top bar. 48rem keeps every
+ * width the desktop layout served before it, a tablet held upright included, on that layout. The
+ * wide one: below it the compact layout, where cards take a smaller radius and less room. They
+ * are the desktop:, max-desktop:, wide: and max-wide: variants, and static so the root carries
+ * them for lib/viewport.ts to read by name where the branch is React's; no component spells
+ * their numbers. Any other width a part answers to is its own box's, by a container query.
  */
 @theme static {
     --breakpoint-desktop: 48rem;
+    --breakpoint-wide: 56.25rem;
 }
 
 @theme inline {

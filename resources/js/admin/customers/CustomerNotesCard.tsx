@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Confirm } from '@/components/ui/confirm';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
@@ -52,7 +53,7 @@ export function CustomerNotesCard({ url, notes, clock }: Props) {
         );
 
     return (
-        <section className="admin-card admin-customer-notes flex flex-col gap-3 rounded-xl border p-4 text-sm" aria-labelledby="customer-notes-head">
+        <Card className="admin-card admin-customer-notes flex flex-col gap-3 text-sm" aria-labelledby="customer-notes-head">
             <h2 id="customer-notes-head">
                 {words.text('notes.title')}
             </h2>
@@ -98,6 +99,6 @@ export function CustomerNotesCard({ url, notes, clock }: Props) {
             >
                 <p className="admin-note-remove__body">{words.text('notes.confirm_body')}</p>
             </Confirm>
-        </section>
+        </Card>
     );
 }

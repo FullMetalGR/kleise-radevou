@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
@@ -72,7 +73,7 @@ export function FilterCard({ range, filters, options, clock, weekStart, loading,
     const error = problem === null ? null : problem === 'to_before_from' ? words.text('filters.to_before_from') : words.text('filters.too_long', { count: formatCount(MOST_DAYS, words.locale) });
 
     return (
-        <section className="admin-reports-filters flex flex-col gap-3 rounded-xl border bg-card p-4">
+        <Card className="admin-reports-filters flex flex-col gap-3">
             <div className="flex flex-wrap items-end gap-3">
                 <Field id="reports-range" label={words.text('filters.range')} className="w-44">
                     {(control) => <Select {...control} className="admin-reports-range-word w-full" options={RANGE_WORDS.map((value) => ({ value, label: words.text(`filters.words.${value}`) }))} value={word} onChange={chooseWord} />}
@@ -124,6 +125,6 @@ export function FilterCard({ range, filters, options, clock, weekStart, loading,
                     {words.text('filters.loading')}
                 </p>
             )}
-        </section>
+        </Card>
     );
 }

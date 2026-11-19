@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { type FormEvent, Fragment, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Field, useFocusFirstFailing } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
 import { useShell } from '@/lib/strings';
@@ -199,7 +200,7 @@ export default function Ticket() {
                         {open ? CLOSE : REOPEN}
                     </Button>
                 </div>
-                <section className="admin-card admin-ticket rounded-xl border" aria-labelledby="ticket-messages-head">
+                <Card flush className="admin-card admin-ticket" aria-labelledby="ticket-messages-head">
                     <header className="px-4 py-3">
                         <h2 id="ticket-messages-head" className="font-semibold">
                             Messages
@@ -211,7 +212,7 @@ export default function Ticket() {
                         ))}
                     </ol>
                     <ReplyBox busy={busy === 'messages'} onSend={(reply, sent, refused) => post('messages', { body: reply }, sent, (errors) => refused(errors.body ?? ''))} />
-                </section>
+                </Card>
             </div>
         </>
     );

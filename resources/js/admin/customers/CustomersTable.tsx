@@ -1,4 +1,5 @@
 import { Pagination } from '@/components/pagination';
+import { Card } from '@/components/ui/card';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { formatInstant, type TenantClock } from '@/lib/format';
 import { inPage } from '@/lib/in-page';
@@ -53,7 +54,7 @@ export function CustomersTable({ rows, total, page, pageSize, clock, onSelect, o
     const words = useCustomers();
 
     return (
-        <section className="admin-card admin-customers rounded-xl border" aria-labelledby="customers-head">
+        <Card flush className="admin-card admin-customers" aria-labelledby="customers-head">
             <header className="flex items-center justify-between border-b px-4 py-3">
                 <h2 id="customers-head" className="font-semibold">
                     {words.text(CUSTOMERS_TITLE)}
@@ -104,6 +105,6 @@ export function CustomersTable({ rows, total, page, pageSize, clock, onSelect, o
                 </table>
             </TableScroll>
             <Pagination page={page} total={total} pageSize={pageSize} onPage={onPage} />
-        </section>
+        </Card>
     );
 }

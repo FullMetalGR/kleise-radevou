@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Confirm } from '@/components/ui/confirm';
 import { Modal } from '@/components/ui/modal';
+import { Section } from '@/components/ui/section';
 import { useShell } from '@/lib/strings';
 import { owning, owningFailure } from '@/lib/visits';
 import { useToasts } from '@/toast/toasts';
@@ -84,17 +85,14 @@ export function CustomerDangerZone({ url, bookings, erasure }: Props) {
 
     return (
         <>
-            <section className="admin-section admin-section--danger admin-customer-danger rounded-xl border border-destructive/50 p-4" aria-labelledby="customer-danger">
-                <h2 id="customer-danger" className="mb-3 font-semibold">
-                    {words.text('erasure.title')}
-                </h2>
+            <Section id="danger" title={words.text('erasure.title')} wide danger className="admin-customer-danger">
                 <div className="flex flex-col gap-3">
                     <p className="admin-customer-danger__what text-sm text-muted-foreground">{words.text(ERASE_WHAT)}</p>
                     <Button destructive className="admin-customer-erase self-start" onClick={() => setOpen(true)}>
                         {words.text('erasure.erase')}
                     </Button>
                 </div>
-            </section>
+            </Section>
             {erasure.refusal === null ? (
                 <Confirm
                     open={open}

@@ -62,7 +62,7 @@ export function ImageSlot({ block, words, preview, control, image, uploading, re
     const held = wait !== null;
 
     return (
-        <div className={`${block} flex flex-col gap-2 sm:col-span-2`}>
+        <div className={`${block} flex flex-col gap-2 @xl:col-span-2`}>
             {image === null ? (
                 <HelpLine className={`${block}__none`}>{words.none}</HelpLine>
             ) : (

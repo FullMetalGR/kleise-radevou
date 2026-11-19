@@ -662,10 +662,10 @@ describe('the screen\'s words', () => {
         const price = words.text('plan.price', { amount: formatAmount(2495, 'EUR', words.locale) });
 
         expect(text('.admin-billing h1')).toBe(words.text('title'));
-        expect(text('#billing-plan')).toBe(words.text('plan.title'));
+        expect(text('#section-billing-plan')).toBe(words.text('plan.title'));
         expect(text('.admin-billing__change p')).toBe(words.text('change.add_line', { plan: 'Team', price }));
         expect(text('.admin-billing__change-button')).toBe(words.text('change.add'));
-        expect(text('#billing-payment')).toBe(words.text('payment.title'));
+        expect(text('#section-billing-payment')).toBe(words.text('payment.title'));
         expect(text('.admin-billing__payment p')).toBe(words.text('payment.sentence'));
         expect(text('.admin-billing__portal')).toBe(words.text('payment.button'));
     });

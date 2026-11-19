@@ -1234,7 +1234,7 @@ describe('Emails', () => {
         const tags = Object.fromEntries(Array.from(document.querySelectorAll('.admin-settings-email')).map((row) => [row.querySelector('.admin-settings-email__tick')?.id.replace('settings-email-', ''), row.querySelector('.admin-settings-email__audience')?.textContent]));
 
         expect(Object.keys(tags)).toHaveLength(17);
-        expect(document.querySelector('.admin-settings-emails')?.className).toContain('sm:grid-cols-2');
+        expect(document.querySelector('.admin-settings-emails')?.className).toContain('@xl:grid-cols-2');
         expect(tags).toEqual(Object.fromEntries(MESSAGES.map((message) => [message.key, emails.text(message.key === 'late_payment' ? 'audience.owners' : message.audience === 'business' ? 'audience.business' : 'audience.customer')])));
     });
 
@@ -2094,7 +2094,7 @@ describe('Danger zone', () => {
         expect(button?.textContent).toBe(billing.text(EXPORT_EVERYTHING));
         expect(button?.className).toContain('admin-button--secondary');
         expect(button?.className).not.toContain('admin-button--destructive');
-        expect(document.querySelector('.admin-settings-danger')?.className).toContain('border-destructive');
+        expect(document.querySelector('.admin-settings-danger')?.className).toContain('ring-destructive/40');
         expect(fetched).not.toHaveBeenCalled();
 
         render(propsWith({ permissions: ['viewBookings', 'manageBookings'] }));

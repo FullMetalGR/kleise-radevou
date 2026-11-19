@@ -48,12 +48,12 @@ export function GalleryPhotos({ control, gallery, capacity, adding, removing, wa
     const fullId = `${control.id}-full`;
 
     return (
-        <div className="admin-settings-gallery flex flex-col gap-2 sm:col-span-2">
+        <div className="admin-settings-gallery flex flex-col gap-2 @xl:col-span-2">
             <p className="admin-settings-gallery__count text-sm text-muted-foreground">
                 {words.text('gallery.count', { count: String(count), capacity: String(capacity.count) })}
             </p>
             {count > 0 && (
-                <ul className="admin-settings-gallery__grid grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <ul className="admin-settings-gallery__grid grid grid-cols-2 gap-3 @xl:grid-cols-4">
                     {gallery.map((photo, index) => {
                         const mine = removing && pressed === photo.name;
 

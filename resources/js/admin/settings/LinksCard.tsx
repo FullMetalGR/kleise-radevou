@@ -76,7 +76,7 @@ export function LinksCard({ links, snippet }: Props) {
     const words = useSettings();
 
     return (
-        <section className="admin-settings-links flex flex-col gap-3 rounded-lg border p-3 sm:col-span-2" aria-labelledby="settings-links-head">
+        <section className="admin-settings-links flex flex-col gap-3 rounded-lg border p-3 @xl:col-span-2" aria-labelledby="settings-links-head">
             <h3 id="settings-links-head" className="font-semibold">
                 {words.text(LINKS_TITLE)}
             </h3>

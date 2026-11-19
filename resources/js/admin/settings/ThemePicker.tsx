@@ -33,7 +33,7 @@ export function ThemePicker({ value, onChange }: Props) {
     const words = useSettings();
 
     return (
-        <div className="admin-field flex flex-col gap-1 sm:col-span-2">
+        <div className="admin-field flex flex-col gap-1 @xl:col-span-2">
             <span id="settings-theme-label" className="admin-field__label text-sm font-medium">
                 {words.text('booking_page.theme')}
             </span>

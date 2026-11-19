@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { usePartialRead } from '@/lib/partial-read';
 import type { ConsoleProps } from '@/types';
@@ -172,7 +173,7 @@ export default function Audit() {
                         </div>
                     }
                 >
-                    <section className="admin-card admin-audit rounded-xl border" aria-labelledby="audit-head">
+                    <Card flush className="admin-card admin-audit" aria-labelledby="audit-head">
                         <header className="flex items-center justify-between border-b px-4 py-3">
                             <h2 id="audit-head" className="font-semibold">
                                 {AUDIT_TITLE}
@@ -218,7 +219,7 @@ export default function Audit() {
                             </table>
                         </TableScroll>
                         <Pagination page={props.entries.page} total={props.entries.total} pageSize={props.entries.page_size} onPage={(page) => load(tenant, page)} />
-                    </section>
+                    </Card>
                 </SettledList>
             </div>
         </>

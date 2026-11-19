@@ -74,7 +74,7 @@ function textField<F extends ProfileField>({ form, problems, set, words }: Parts
 
 function areaField<F extends ProfileField>({ form, problems, set, words }: Parts<F>, field: F, label: SettingsKey, help: SettingsKey) {
     return (
-        <Field id={fieldId(field)} label={words.text(label)} help={words.text(help)} error={problems[field] ?? null} className="sm:col-span-2">
+        <Field id={fieldId(field)} label={words.text(label)} help={words.text(help)} error={problems[field] ?? null} className="@xl:col-span-2">
             {(control) => <Textarea {...control} rows={4} value={form[field]} onChange={(event) => set(field)(event.target.value)} />}
         </Field>
     );

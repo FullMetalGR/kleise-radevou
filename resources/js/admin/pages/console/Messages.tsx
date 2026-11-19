@@ -3,6 +3,7 @@ import { Fragment, useState } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/segmented';
 import { usePartialRead } from '@/lib/partial-read';
 import { useShell } from '@/lib/strings';
@@ -215,7 +216,7 @@ export default function Messages() {
                         </div>
                     }
                 >
-                    <section className="admin-card admin-messages rounded-xl border" aria-labelledby="messages-head">
+                    <Card flush className="admin-card admin-messages" aria-labelledby="messages-head">
                         <header className="flex items-center justify-between px-4 py-3">
                             <h2 id="messages-head" className="font-semibold">
                                 {VIEW_HEADINGS[current]}
@@ -230,7 +231,7 @@ export default function Messages() {
                             ))}
                         </ul>
                         <Pagination page={props.messages.page} total={props.messages.total} pageSize={props.messages.page_size} onPage={(page) => load(current, page)} />
-                    </section>
+                    </Card>
                 </SettledList>
             </div>
         </>

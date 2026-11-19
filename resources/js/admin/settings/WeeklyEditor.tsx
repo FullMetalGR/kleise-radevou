@@ -40,7 +40,7 @@ export function WeeklyEditor({ rules, onChange, clock, granularity, idPrefix = '
     const shell = useShell();
 
     return (
-        <div className="admin-weekly grid gap-3 sm:col-span-2 desktop:grid-cols-2 lg:grid-cols-3">
+        <div className="admin-weekly grid gap-3 @xl:col-span-2 desktop:grid-cols-2 lg:grid-cols-3">
             {ISO_WEEKDAYS.map((weekday) => {
                 const rows = rules.map((rule, index) => ({ rule, index })).filter(({ rule }) => rule.weekday === weekday);
 

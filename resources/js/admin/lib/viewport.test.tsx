@@ -6,7 +6,7 @@ import { desktopWidth, mount, type Mounted, onPhone } from '@/components/ui/harn
 import { BREAKPOINT, useDesktop } from './viewport';
 
 /*
- * The admin's one breakpoint: a token the stylesheet declares once, read off the root by its
+ * The admin's desktop breakpoint: a token the stylesheet declares once, read off the root by its
  * name, never a number spelled in a component. At or above it the admin is the desktop layout it
  * always was; below it, the phone layout. Where the token cannot be read or the environment
  * answers no media query, the answer is the desktop, so nothing that cannot measure the viewport
@@ -137,13 +137,19 @@ function sourcesUnder(directory: string): string[] {
     });
 }
 
+/*
+ * The stylesheet's two breakpoints: the phone switch the hook reads, and the wide switch below
+ * which the page takes its compact layout.
+ */
+const BREAKPOINTS = [BREAKPOINT, '--breakpoint-wide'];
+
 describe('the token', () => {
-    it('is declared once, in the stylesheet\'s static theme block, so the root carries it for the hook to read', () => {
+    it.each(BREAKPOINTS)('each breakpoint is declared once, in the stylesheet\'s static theme block, so the root carries it: %s', (token) => {
         const css = readFileSync(join(ADMIN, 'app.css'), 'utf8');
-        const declared = css.match(new RegExp(`${BREAKPOINT}\\s*:`, 'g')) ?? [];
+        const declared = css.match(new RegExp(`${token}\\s*:`, 'g')) ?? [];
 
         expect(declared).toHaveLength(1);
-        expect(css).toMatch(new RegExp(`@theme static \\{[^}]*${BREAKPOINT}\\s*:`));
+        expect(css).toMatch(new RegExp(`@theme static \\{[^}]*${token}\\s*:`));
     });
 
     it('is the only width any admin source asks a media query about: no arbitrary breakpoint variant, no media query of its own', () => {
@@ -164,5 +170,27 @@ describe('the token', () => {
         expect(VIEWPORT_QUESTION.test('@media (min-width: 900px)')).toBe(true);
         expect(VIEWPORT_QUESTION.test('@max-[220px]:sr-only')).toBe(false);
         expect(VIEWPORT_QUESTION.test('@min-[220px]:inline')).toBe(false);
+    });
+});
+
+/*
+ * The sources whose fields sit in a form section's grid. The section is a size container, and
+ * its grid splits into two columns by the card's own width. A field there spans or splits by
+ * the card too: a span asked of the window would open a second column inside a card too narrow
+ * for one, and a split asked of the window would ignore the card it sits in.
+ */
+const SECTION_GRIDS = [
+    join('pages', 'Settings.tsx'),
+    join('services', 'ServiceForm.tsx'),
+    join('staff', 'StaffForm.tsx'),
+    join('staff', 'StaffView.tsx'),
+    ...['GalleryPhotos', 'ImageSlot', 'LinksCard', 'MapLine', 'OpeningHours', 'PaymentsSection', 'ProfileFields', 'ThemePicker', 'WeeklyEditor'].map((name) => join('settings', `${name}.tsx`)),
+];
+
+describe('the form grids', () => {
+    it('a form inside a section asks its card, not the window: no source of a section\'s fields spans or splits by a window breakpoint', () => {
+        const offenders = SECTION_GRIDS.filter((path) => /\bsm:(?:col-span|grid-cols)-/.test(readFileSync(join(ADMIN, path), 'utf8')));
+
+        expect(offenders).toEqual([]);
     });
 });

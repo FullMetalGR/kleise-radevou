@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 /*
- * The admin's one breakpoint. The stylesheet declares it once, as a theme token Tailwind turns
+ * The admin's desktop breakpoint. The stylesheet declares it once, as a theme token Tailwind turns
  * into the desktop: and max-desktop: variants and writes onto the root, and this reads it off
  * the root by its name, so no component spells its number. At or above it the admin is the
  * desktop layout; below it, the phone layout, where a branch is React's to take rather than a

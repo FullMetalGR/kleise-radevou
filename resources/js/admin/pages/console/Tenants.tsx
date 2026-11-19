@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
@@ -171,7 +172,7 @@ export default function Tenants() {
                         {NEW_TENANT}
                     </Link>
                 </div>
-                <section className="admin-filter-bar admin-tenants-filters flex flex-col gap-3 rounded-xl border p-4" aria-label="Filters">
+                <Card className="admin-filter-bar admin-tenants-filters flex flex-col gap-3" aria-label="Filters">
                     <div className="admin-filter-bar__fields grid grid-cols-1 gap-3 desktop:grid-cols-3 xl:grid-cols-6">
                         <Field id="tenants-search" label="Search">
                             {(control) => <TextInput {...control} type="search" value={filters.search} placeholder="Slug or name" onChange={(event) => set({ search: event.target.value })} />}
@@ -199,7 +200,7 @@ export default function Tenants() {
                             </Button>
                         </div>
                     )}
-                </section>
+                </Card>
                 <SettledList
                     count={rows.length}
                     state={{ loading: list.loading, error: list.error }}
@@ -217,7 +218,7 @@ export default function Tenants() {
                         </div>
                     }
                 >
-                    <section className="admin-card admin-tenants rounded-xl border" aria-labelledby="tenants-head">
+                    <Card flush className="admin-card admin-tenants" aria-labelledby="tenants-head">
                         <header className="flex items-center justify-between border-b px-4 py-3">
                             <h2 id="tenants-head" className="font-semibold">
                                 {TENANTS_TITLE}
@@ -256,7 +257,7 @@ export default function Tenants() {
                             </table>
                         </TableScroll>
                         <Pagination page={props.tenants.page} total={props.tenants.total} pageSize={props.tenants.page_size} onPage={(page) => load(filters, page)} />
-                    </section>
+                    </Card>
                 </SettledList>
             </div>
         </>

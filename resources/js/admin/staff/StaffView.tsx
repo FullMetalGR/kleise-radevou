@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
+import { Section } from '@/components/ui/section';
 import { StatusChip } from '@/components/ui/status-chip';
 import type { TenantClock } from '@/lib/format';
 import { blackoutLabel } from './BlackoutsCard';
 import { type CatalogService, type StaffMember, statusWord, type TenantUser, userLabel } from './model';
-import { PatternSummary, Section } from './StaffForm';
+import { PatternSummary } from './StaffForm';
 import { useStaff } from './words';
 
 /*
@@ -129,11 +130,11 @@ function Presentation({ member }: { member: StaffMember }) {
                 <dt className="text-muted-foreground">{words.text('view.title')}</dt>
                 <dd className="admin-staff-view__title">{member.title ?? none}</dd>
             </dl>
-            <dl className="grid gap-1 text-sm sm:col-span-2">
+            <dl className="grid gap-1 text-sm @xl:col-span-2">
                 <dt className="text-muted-foreground">{words.text('view.bio')}</dt>
                 <dd className="admin-staff-view__bio whitespace-pre-line">{member.bio ?? none}</dd>
             </dl>
-            <dl className="grid gap-1 text-sm sm:col-span-2">
+            <dl className="grid gap-1 text-sm @xl:col-span-2">
                 <dt className="text-muted-foreground">{words.text('view.photo')}</dt>
                 <dd className="admin-staff-view__photo flex items-center gap-3">
                     {member.photo === null ? (

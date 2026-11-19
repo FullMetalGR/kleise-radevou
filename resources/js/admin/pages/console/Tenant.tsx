@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Confirm } from '@/components/ui/confirm';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
@@ -297,14 +298,14 @@ function Fact({ label, className, children }: { label: string; className: string
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
     return (
-        <section className={`admin-card admin-tenant-${id} rounded-xl border`} aria-labelledby={`tenant-${id}-head`}>
+        <Card flush className={`admin-card admin-tenant-${id}`} aria-labelledby={`tenant-${id}-head`}>
             <header className="border-b px-4 py-3">
                 <h2 id={`tenant-${id}-head`} className="font-semibold">
                     {title}
                 </h2>
             </header>
             <div className="p-4">{children}</div>
-        </section>
+        </Card>
     );
 }
 

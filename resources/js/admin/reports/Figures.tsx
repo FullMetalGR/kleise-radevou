@@ -4,10 +4,10 @@ import { TableScroll } from '@/components/ui/table-scroll';
 import { formatAmount, formatCount, type TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
 import { Strip } from '@/figures/kit';
-import { Card } from './Card';
 import { channelLabel, formatRate, type MoneyLine, noShowRate, type Report, type ReportRow, sourceLabel, statusRows } from './model';
 import { OccupancyByStaff } from './Occupancy';
 import { OverTime } from './OverTime';
+import { ReportCard } from './ReportCard';
 import type { ReportsWords } from './words';
 
 /*
@@ -51,7 +51,7 @@ function Breakdown({ name, title, head, rows, words }: { name: string; title: st
     const id = `reports-${name}-head`;
 
     return (
-        <Card name={name} labelledBy={id}>
+        <ReportCard name={name} labelledBy={id}>
             <Strip titleId={id} title={title} />
             <TableScroll>
                 <table className="admin-table w-full text-sm">
@@ -75,7 +75,7 @@ function Breakdown({ name, title, head, rows, words }: { name: string; title: st
                     </tbody>
                 </table>
             </TableScroll>
-        </Card>
+        </ReportCard>
     );
 }
 
@@ -84,12 +84,12 @@ function StatusCard({ name, title, children }: { name: string; title: string; ch
     const id = `reports-${name}-head`;
 
     return (
-        <Card name={name} labelledBy={id} padded>
+        <ReportCard name={name} labelledBy={id} padded>
             <h2 id={id} className="font-semibold">
                 {title}
             </h2>
             {children}
-        </Card>
+        </ReportCard>
     );
 }
 

@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Confirm } from '@/components/ui/confirm';
+import { Section } from '@/components/ui/section';
 import { useDownload } from '@/lib/download';
 import { useShell } from '@/lib/strings';
 import { owning, owningFailure } from '@/lib/visits';
@@ -124,10 +125,7 @@ export function DangerZone({ close, zone, closable }: Props) {
     };
 
     return (
-        <section className="admin-section admin-section--danger admin-settings-danger rounded-xl border border-destructive/50 p-4" aria-labelledby="section-danger">
-            <h2 id="section-danger" className="mb-3 font-semibold">
-                {words.text('danger.title')}
-            </h2>
+        <Section id="danger" title={words.text('danger.title')} wide danger className="admin-settings-danger">
             <div className="flex flex-col gap-3">
                 <p className="admin-settings-danger__what text-sm text-muted-foreground">{words.text(EXPORT_WHAT)}</p>
                 <Button className="admin-settings-export self-start" busy={download.busy} busyLabel={words.text('danger.export.busy')} onClick={() => download.start(EXPORT_PATH)}>
@@ -169,6 +167,6 @@ export function DangerZone({ close, zone, closable }: Props) {
                     </div>
                 </Confirm>
             )}
-        </section>
+        </Section>
     );
 }

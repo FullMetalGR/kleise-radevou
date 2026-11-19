@@ -1,3 +1,4 @@
+import { Card } from '@/components/ui/card';
 import { RowSelectButton } from '@/components/ui/row-select-button';
 import { StatusChip } from '@/components/ui/status-chip';
 import { TableScroll } from '@/components/ui/table-scroll';
@@ -32,7 +33,7 @@ export function ServicesTable({ rows, onSelect }: Props) {
     const words = useServices();
 
     return (
-        <section className="admin-card admin-services rounded-xl border" aria-labelledby="services-head">
+        <Card flush className="admin-card admin-services" aria-labelledby="services-head">
             <header className="flex items-center justify-between border-b px-4 py-3">
                 <h2 id="services-head" className="font-semibold">
                     {words.text('table.title')}
@@ -73,6 +74,6 @@ export function ServicesTable({ rows, onSelect }: Props) {
                     </tbody>
                 </table>
             </TableScroll>
-        </section>
+        </Card>
     );
 }

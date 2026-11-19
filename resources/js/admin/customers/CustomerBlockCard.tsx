@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Confirm } from '@/components/ui/confirm';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
@@ -45,7 +46,7 @@ export function CustomerBlockCard({ url, block, clock }: Props) {
     const unblock = () => write.visit('unblock', failed, () => undefined, (options) => router.delete(`${url}/block`, options));
 
     return (
-        <section className="admin-card admin-customer-block flex flex-col gap-3 rounded-xl border p-4 text-sm" aria-labelledby="customer-block-head">
+        <Card className="admin-card admin-customer-block flex flex-col gap-3 text-sm" aria-labelledby="customer-block-head">
             <h2 id="customer-block-head">
                 {words.text('block.title')}
             </h2>
@@ -85,6 +86,6 @@ export function CustomerBlockCard({ url, block, clock }: Props) {
                     </div>
                 </>
             )}
-        </section>
+        </Card>
     );
 }

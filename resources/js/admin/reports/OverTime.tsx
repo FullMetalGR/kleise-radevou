@@ -2,8 +2,8 @@ import { TableScroll } from '@/components/ui/table-scroll';
 import { formatAmount, formatCount, formatDate, formatDayMonth, type TenantClock } from '@/lib/format';
 import { monthName } from '@/lib/names';
 import { Strip } from '@/figures/kit';
-import { Card } from './Card';
 import { CHART, chartBars, currencyName, type OverTimeRow, type OverTimeUnit, type Report } from './model';
+import { ReportCard } from './ReportCard';
 import type { ReportsWords } from './words';
 
 /*
@@ -93,7 +93,7 @@ export function OverTime({ overTime, clock, words }: { overTime: Report['over_ti
     const range = { from: formatDate(rows[0]?.from ?? '', clock), to: formatDate(rows[rows.length - 1]?.to ?? '', clock) };
 
     return (
-        <Card name="over-time" labelledBy="reports-over-time-head">
+        <ReportCard name="over-time" labelledBy="reports-over-time-head">
             <Strip titleId="reports-over-time-head" title={words.text('over_time.title')} />
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(400px,100%),1fr))] gap-4 px-4 py-3">
                 <Chart
@@ -142,6 +142,6 @@ export function OverTime({ overTime, clock, words }: { overTime: Report['over_ti
                     </table>
                 </TableScroll>
             </div>
-        </Card>
+        </ReportCard>
     );
 }

@@ -263,7 +263,7 @@ describe('the detail page', () => {
     it('renders the sections in order, Status and the Danger zone absent on the create route, the hold fields only once approval is required', () => {
         render(propsWith({ kind: 'create' }, [HAIRCUT]));
 
-        expect([...document.querySelectorAll('.admin-section')].map((section) => section.className.split(' ')[1])).toEqual([
+        expect([...document.querySelectorAll('.admin-section')].flatMap((section) => [...section.classList].filter((name) => name.startsWith('admin-section--')))).toEqual([
             'admin-section--basics', 'admin-section--timing', 'admin-section--staff', 'admin-section--rules', 'admin-section--payment',
         ]);
         expect(text('.admin-breadcrumb__current')).toBe(words.text('page.new'));

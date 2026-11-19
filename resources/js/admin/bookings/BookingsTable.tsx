@@ -1,4 +1,5 @@
 import { Pagination } from '@/components/pagination';
+import { Card } from '@/components/ui/card';
 import { RowSelectButton } from '@/components/ui/row-select-button';
 import { StatusChip } from '@/components/ui/status-chip';
 import { TableScroll } from '@/components/ui/table-scroll';
@@ -36,7 +37,7 @@ export function BookingsTable({ rows, total, page, pageSize, staffShown, plainNa
     const words = useBookings();
 
     return (
-        <section className="admin-card admin-bookings rounded-xl border" aria-labelledby="bookings-head">
+        <Card flush className="admin-card admin-bookings" aria-labelledby="bookings-head">
             <header className="flex items-center justify-between border-b px-4 py-3">
                 <h2 id="bookings-head" className="font-semibold">
                     {words.text('table.title')}
@@ -85,6 +86,6 @@ export function BookingsTable({ rows, total, page, pageSize, staffShown, plainNa
                 </table>
             </TableScroll>
             <Pagination page={page} total={total} pageSize={pageSize} onPage={onPage} />
-        </section>
+        </Card>
     );
 }

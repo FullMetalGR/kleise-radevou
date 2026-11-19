@@ -28,7 +28,8 @@ describe('a range tile', () => {
 
         const tile = q('section.admin-figure-tile.admin-figure-tile--bookings');
 
-        expect(tile?.className.split(' ')).toEqual(expect.arrayContaining(['flex', 'flex-col', 'gap-1', 'rounded-xl', 'border', 'bg-card', 'p-4']));
+        expect(tile?.className.split(' ')).toEqual(expect.arrayContaining(['flex', 'flex-col', 'gap-1', 'bg-card', 'rounded-tile', 'shadow-card', 'p-6.5', 'max-wide:rounded-tile-compact', 'max-wide:p-5']));
+        expect(tile?.className.split(' ')).not.toContain('border');
         expect([...(tile?.children ?? [])].map((el) => [el.tagName, el.textContent])).toEqual([
             ['H2', 'tile-title-token'],
             ['P', '23'],

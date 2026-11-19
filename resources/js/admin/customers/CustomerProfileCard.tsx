@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
@@ -47,7 +48,7 @@ export function CustomerProfileCard({ url, profile, earliest, clock, weekStart }
         );
 
     return (
-        <section className="admin-card admin-customer-profile flex flex-col gap-3 rounded-xl border p-4" aria-labelledby="customer-profile-head">
+        <Card className="admin-card admin-customer-profile flex flex-col gap-3" aria-labelledby="customer-profile-head">
             <h2 id="customer-profile-head" className="font-semibold">
                 {words.text('profile.title')}
             </h2>
@@ -79,6 +80,6 @@ export function CustomerProfileCard({ url, profile, earliest, clock, weekStart }
                     {words.text(SAVE)}
                 </Button>
             </div>
-        </section>
+        </Card>
     );
 }

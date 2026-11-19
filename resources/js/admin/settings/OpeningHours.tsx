@@ -54,7 +54,7 @@ export function OpeningHours({ branch, week, roster, clock, granularity, saving,
 
     if (branch === 'roster') {
         return (
-            <div className="admin-settings-roster flex flex-col gap-3 sm:col-span-2">
+            <div className="admin-settings-roster flex flex-col gap-3 @xl:col-span-2">
                 <Notice kind="info" className="admin-settings-roster__notice">
                     {words.text(ROSTER_SENTENCE)}
                 </Notice>
@@ -81,7 +81,7 @@ export function OpeningHours({ branch, week, roster, clock, granularity, saving,
     }
 
     return (
-        <div className="admin-settings-hours flex flex-col gap-3 sm:col-span-2">
+        <div className="admin-settings-hours flex flex-col gap-3 @xl:col-span-2">
             <p className="text-sm text-muted-foreground">{words.text('hours.intro')}</p>
             <WeeklyEditor rules={rules} onChange={setRules} clock={clock} granularity={granularity} idPrefix="opening" />
             <div className="flex items-center gap-3">

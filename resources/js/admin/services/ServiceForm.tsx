@@ -4,6 +4,7 @@ import { CHECK_BOX, CheckField } from '@/components/ui/check-field';
 import { Field } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { Section } from '@/components/ui/section';
 import { Select } from '@/components/ui/select';
 import { StatusChip } from '@/components/ui/status-chip';
 import { formatTimeOfDay, type TenantClock } from '@/lib/format';
@@ -71,20 +72,6 @@ type NumberKey = { [K in keyof Form]: Form[K] extends string ? K : never }[keyof
 
 const GAP_HELP = 'form.gap_help' satisfies ServicesKey;
 
-function Section({ id, title, meta, children }: { id: string; title: string; meta?: string; children: ReactNode }) {
-    return (
-        <section className={`admin-section admin-section--${id} rounded-xl border p-4`} aria-labelledby={`section-${id}`}>
-            <header className="mb-3 flex items-baseline justify-between">
-                <h2 id={`section-${id}`} className="font-semibold">
-                    {title}
-                </h2>
-                {meta !== undefined && <p className="admin-section__meta text-sm text-muted-foreground">{meta}</p>}
-            </header>
-            <div className="grid gap-4 sm:grid-cols-2">{children}</div>
-        </section>
-    );
-}
-
 export function ServiceForm({ form, onChange, creating, categories, title, status, currency, granularity, clock, staff, staged, onStage, busy, onSave, onBack, listHref, danger, copyLink }: Props) {
     const words = useServices();
     const set = <K extends keyof Form>(key: K) => (value: Form[K]) => onChange({ ...form, [key]: value });
@@ -131,7 +118,7 @@ export function ServiceForm({ form, onChange, creating, categories, title, statu
                         {(control) => <Select {...control} options={optionsIn(STATUSES, words)} value={form.status} onChange={set('status')} />}
                     </Field>
                 )}
-                <Field id="service-description" label={words.text('form.description')} help={words.text('form.description_help')} className="sm:col-span-2">
+                <Field id="service-description" label={words.text('form.description')} help={words.text('form.description_help')} className="@xl:col-span-2">
                     {(control) => <Textarea {...control} rows={3} value={form.description} onChange={(event) => set('description')(event.target.value)} />}
                 </Field>
                 <Field id="service-category" label={words.text('form.category')} help={words.text(CATEGORY_HELP)}>
@@ -159,7 +146,7 @@ export function ServiceForm({ form, onChange, creating, categories, title, statu
                 {number('horizon_days', 'form.horizon', words.text('form.horizon_help'), undefined, HORIZON_MAX_DAYS)}
                 {number('cancel_window_hours', 'form.cancel_window', words.text('form.cancel_window_help'))}
                 {number('reschedule_window_hours', 'form.reschedule_window', words.text('form.reschedule_window_help'))}
-                <div className="admin-approval flex items-center gap-2 sm:col-span-2">
+                <div className="admin-approval flex items-center gap-2 @xl:col-span-2">
                     <input type="checkbox" id="service-requires-approval" className={`admin-approval__tick ${CHECK_BOX}`} checked={form.requires_approval} onChange={(event) => set('requires_approval')(event.target.checked)} />
                     <label htmlFor="service-requires-approval">{words.text('form.approval')}</label>
                 </div>
@@ -219,7 +206,7 @@ function StaffChecklist({ staff, staged, onStage, clock }: ChecklistProps) {
 
     return (
         <Section id="staff" title={words.text('staff.title')} meta={staff.loading ? undefined : words.choice('staff.ticked', staff.members.length, { ticked: String(staged.length) })}>
-            <ul className="admin-staff-checklist flex flex-col gap-2 sm:col-span-2">
+            <ul className="admin-staff-checklist flex flex-col gap-2 @xl:col-span-2">
                 {staff.members.map((member) => (
                     <li key={member.id} className="admin-staff-checklist__row flex flex-wrap items-baseline gap-3">
                         <input
@@ -243,9 +230,9 @@ function StaffChecklist({ staff, staged, onStage, clock }: ChecklistProps) {
                     </li>
                 ))}
             </ul>
-            {!staff.editable && <p className="admin-staff-checklist__readonly text-sm text-muted-foreground sm:col-span-2">{words.text(READ_ONLY)}</p>}
+            {!staff.editable && <p className="admin-staff-checklist__readonly text-sm text-muted-foreground @xl:col-span-2">{words.text(READ_ONLY)}</p>}
             {staff.shifts && (
-                <p className="text-sm sm:col-span-2">
+                <p className="text-sm @xl:col-span-2">
                     <a href={SHIFTS_HREF} className="admin-staff-checklist__link underline">
                         {words.text(staff.editable ? 'staff.edit_hours' : 'staff.see_hours')}
                     </a>
@@ -272,10 +259,7 @@ export function DangerZone({ conflict, deleting, deactivating, onDelete, onDeact
     const words = useServices();
 
     return (
-        <section className="admin-section admin-section--danger rounded-xl border border-destructive/50 p-4" aria-labelledby="section-danger">
-            <h2 id="section-danger" className="mb-3 font-semibold">
-                {words.text('danger.title')}
-            </h2>
+        <Section id="danger" title={words.text('danger.title')} wide danger>
             <div className="flex flex-col gap-3">
                 <Button destructive className="admin-service-delete self-start" busy={deleting} busyLabel={words.text('danger.deleting')} onClick={onDelete}>
                     {words.text('danger.delete')}
@@ -289,6 +273,6 @@ export function DangerZone({ conflict, deleting, deactivating, onDelete, onDeact
                     </Notice>
                 )}
             </div>
-        </section>
+        </Section>
     );
 }

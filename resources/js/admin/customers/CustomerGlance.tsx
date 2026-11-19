@@ -1,3 +1,4 @@
+import { Card } from '@/components/ui/card';
 import { formatAmount, formatCount, formatInstantDay, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
 import { placed } from '@/lib/strings';
@@ -41,7 +42,7 @@ export function CustomerGlance({ customer, spent, clock }: { customer: Customer;
     );
 
     return (
-        <section className="admin-card admin-customer-glance flex flex-col gap-3 rounded-xl border p-4" aria-labelledby="customer-glance-head">
+        <Card className="admin-card admin-customer-glance flex flex-col gap-3" aria-labelledby="customer-glance-head">
             <h2 id="customer-glance-head" className="font-semibold">
                 {words.text(GLANCE_TITLE)}
             </h2>
@@ -60,6 +61,6 @@ export function CustomerGlance({ customer, spent, clock }: { customer: Customer;
                 )}{' '}
                 {words.text(BOOK_NOW_HELP)}
             </p>
-        </section>
+        </Card>
     );
 }

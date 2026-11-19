@@ -3,6 +3,7 @@ import { type ReactNode, useId, useState } from 'react';
 import { Chevron } from '@/components/glyphs';
 import { Initials } from '@/components/initials';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { isoWeekday } from '@/lib/day';
@@ -347,7 +348,7 @@ export default function Shifts() {
                 {props.members.length === 0 ? (
                     <p className="admin-shifts__empty text-muted-foreground">{words.text('page.empty')}</p>
                 ) : (
-                    <section className="admin-card admin-shifts rounded-xl border">
+                    <Card flush className="admin-card admin-shifts">
                         <TableScroll>
                             <table className="admin-table w-full min-w-[54rem] table-fixed border-collapse text-sm">
                                 <thead>
@@ -384,7 +385,7 @@ export default function Shifts() {
                             </table>
                         </TableScroll>
                         <Legend words={words} clock={clock} />
-                    </section>
+                    </Card>
                 )}
             </div>
             {props.editable && <Editors props={props} dates={dates} editing={editing} patterning={patterning} words={words} clock={clock} onClose={close} />}

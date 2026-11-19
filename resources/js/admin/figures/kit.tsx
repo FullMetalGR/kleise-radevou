@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Card } from '@/components/ui/card';
 
 /*
  * The figures kit Home and Reports share: the range tile, the kit's card holding its title,
@@ -12,14 +13,14 @@ const LINE = 'text-xs leading-4 text-muted-foreground';
 /** A range tile: the title, the figure where there is one, the comparison where there is one, then its lines. */
 export function FigureTile({ id, title, value, change, children }: { id: string; title: string; value?: ReactNode; change?: string | null; children?: ReactNode }) {
     return (
-        <section className={`admin-figure-tile admin-figure-tile--${id} flex flex-col gap-1 rounded-xl border bg-card p-4`} aria-labelledby={`figure-tile-${id}`}>
+        <Card className={`admin-figure-tile admin-figure-tile--${id} flex flex-col gap-1`} aria-labelledby={`figure-tile-${id}`}>
             <h2 id={`figure-tile-${id}`} className="admin-figure-tile__title text-sm font-medium text-muted-foreground">
                 {title}
             </h2>
             {value !== undefined && <p className="admin-figure-tile__value text-2xl leading-8 font-semibold">{value}</p>}
             {change !== undefined && change !== null && <p className={`admin-figure-tile__change ${LINE}`}>{change}</p>}
             {children}
-        </section>
+        </Card>
     );
 }
 

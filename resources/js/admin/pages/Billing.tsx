@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { Section } from '@/components/ui/section';
 import { namedFeatures } from '@/lib/features';
 import { clockOf, formatAmount, formatInstant, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
@@ -285,10 +286,7 @@ function Payment({ busy, disabled, onPress, vat, taxId }: ControlProps & { vat: 
     const words = useBilling();
 
     return (
-        <section className="admin-section admin-billing__payment rounded-xl border p-4" aria-labelledby="billing-payment">
-            <h2 id="billing-payment" className="mb-3 font-semibold">
-                {words.text('payment.title')}
-            </h2>
+        <Section id="billing-payment" title={words.text('payment.title')} wide className="admin-billing__payment">
             <div className="flex flex-col items-start gap-2">
                 <p className="text-sm">{words.text('payment.sentence')}</p>
                 {vat !== null && <p className="admin-billing__vat text-sm">{vat}</p>}
@@ -297,7 +295,7 @@ function Payment({ busy, disabled, onPress, vat, taxId }: ControlProps & { vat: 
                     {words.text('payment.button')}
                 </Button>
             </div>
-        </section>
+        </Section>
     );
 }
 
@@ -367,17 +365,14 @@ export default function Billing() {
                 />
 
                 {planSectionHolds(billing, narrowed) && (
-                    <section className="admin-section admin-billing__plan rounded-xl border p-4" aria-labelledby="billing-plan">
-                        <h2 id="billing-plan" className="mb-3 font-semibold">
-                            {words.text('plan.title')}
-                        </h2>
+                    <Section id="billing-plan" title={words.text('plan.title')} wide className="admin-billing__plan">
                         <div className="flex flex-col gap-3">
                             {billing.plan !== null && <PlanSummary plan={billing.plan} />}
                             {narrowed.length > 0 && <p className="admin-billing__narrowed text-sm">{words.text('plan.narrowed', { features: listOf(narrowed, shell.language) })}</p>}
                             {billing.unavailable !== null && <p className="admin-billing__unavailable text-sm text-muted-foreground">{billing.unavailable}</p>}
                             {change !== null && <ChangeControl change={change} busy={inFlight === 'plan'} disabled={othersBusy(inFlight, 'plan')} onPress={() => send('plan', PLAN_PATH, { plan: change.plan })} />}
                         </div>
-                    </section>
+                    </Section>
                 )}
 
                 {billing.portal && (

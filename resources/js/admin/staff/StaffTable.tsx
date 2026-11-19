@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { Card } from '@/components/ui/card';
 import { StatusChip } from '@/components/ui/status-chip';
 import { TableScroll } from '@/components/ui/table-scroll';
 import type { TenantClock } from '@/lib/format';
@@ -32,7 +33,7 @@ export function StaffTable({ rows, clock, onSelect }: Props) {
     const words = useStaff();
 
     return (
-        <section className="admin-card admin-staff rounded-xl border" aria-labelledby="staff-head">
+        <Card flush className="admin-card admin-staff" aria-labelledby="staff-head">
             <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
                 <h2 id="staff-head" className="font-semibold">
                     {words.text('table.title')}
@@ -84,6 +85,6 @@ export function StaffTable({ rows, clock, onSelect }: Props) {
                     </tbody>
                 </table>
             </TableScroll>
-        </section>
+        </Card>
     );
 }

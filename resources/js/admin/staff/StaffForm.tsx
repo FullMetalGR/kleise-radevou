@@ -6,6 +6,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { Field, type FieldControl } from '@/components/ui/field';
 import { Textarea, TextInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { Section } from '@/components/ui/section';
 import { Select } from '@/components/ui/select';
 import { StatusChip } from '@/components/ui/status-chip';
 import type { TenantClock } from '@/lib/format';
@@ -116,17 +117,6 @@ export function PatternSummary({ pattern, clock }: { pattern: StaffPattern | nul
                 {words.text('pattern.link')}
             </Link>
         </p>
-    );
-}
-
-export function Section({ id, title, children, wide = false }: { id: string; title: string; children: ReactNode; wide?: boolean }) {
-    return (
-        <section className={`admin-section admin-section--${id} rounded-xl border p-4`} aria-labelledby={`section-${id}`}>
-            <h2 id={`section-${id}`} className="mb-3 font-semibold">
-                {title}
-            </h2>
-            <div className={wide ? 'grid gap-4' : 'grid gap-4 sm:grid-cols-2'}>{children}</div>
-        </section>
     );
 }
 
@@ -242,7 +232,7 @@ function Basics({ form, set, users, implicit, photo, photoLimit }: BasicsProps) 
                     <Field id="staff-title" label={words.text('form.title')} help={words.text(TITLE_HELP)}>
                         {(control) => <TextInput {...control} maxLength={TITLE_LIMIT} value={form.title} onChange={(event) => set('title')(event.target.value)} />}
                     </Field>
-                    <Field id="staff-bio" label={words.text('form.bio')} help={words.text(BIO_HELP)} className="sm:col-span-2">
+                    <Field id="staff-bio" label={words.text('form.bio')} help={words.text(BIO_HELP)} className="@xl:col-span-2">
                         {(control) => (
                             <>
                                 <Textarea {...control} aria-describedby={[control['aria-describedby'], BIO_COUNT].filter((id) => id !== undefined).join(' ')} rows={4} value={form.bio} onChange={(event) => set('bio')(event.target.value)} />
@@ -255,7 +245,7 @@ function Basics({ form, set, users, implicit, photo, photoLimit }: BasicsProps) 
                 </>
             )}
             {photo !== null && (
-                <Field id="staff-photo" label={words.text('form.photo')} help={words.choice(PHOTO_HELP, photoLimit.megabytes, { n: photoLimit.spelled })} className="sm:col-span-2">
+                <Field id="staff-photo" label={words.text('form.photo')} help={words.choice(PHOTO_HELP, photoLimit.megabytes, { n: photoLimit.spelled })} className="@xl:col-span-2">
                     {photo}
                 </Field>
             )}
@@ -287,20 +277,14 @@ export function StaffDangerZone({ implicit, conflict, deleting, deactivating, on
 
     if (implicit) {
         return (
-            <section className="admin-section admin-section--danger rounded-xl border border-destructive/50 p-4" aria-labelledby="section-danger">
-                <h2 id="section-danger" className="mb-3 font-semibold">
-                    {words.text('danger.title')}
-                </h2>
+            <Section id="danger" title={words.text('danger.title')} wide danger>
                 <p className="admin-staff-implicit text-sm text-muted-foreground">{words.text(IMPLICIT_KEPT)}</p>
-            </section>
+            </Section>
         );
     }
 
     return (
-        <section className="admin-section admin-section--danger rounded-xl border border-destructive/50 p-4" aria-labelledby="section-danger">
-            <h2 id="section-danger" className="mb-3 font-semibold">
-                {words.text('danger.title')}
-            </h2>
+        <Section id="danger" title={words.text('danger.title')} wide danger>
             <div className="flex flex-col gap-3">
                 <Button destructive className="admin-staff-delete self-start" busy={deleting} busyLabel={words.text('danger.deleting')} onClick={onDelete}>
                     {words.text('danger.delete')}
@@ -314,6 +298,6 @@ export function StaffDangerZone({ implicit, conflict, deleting, deactivating, on
                     </Notice>
                 )}
             </div>
-        </section>
+        </Section>
     );
 }

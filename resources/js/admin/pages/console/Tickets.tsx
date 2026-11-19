@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
+import { Card } from '@/components/ui/card';
 import { StatusChip } from '@/components/ui/status-chip';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { usePartialRead } from '@/lib/partial-read';
@@ -127,7 +128,7 @@ export default function Tickets() {
                         </div>
                     }
                 >
-                    <section className="admin-card admin-tickets rounded-xl border" aria-labelledby="tickets-head">
+                    <Card flush className="admin-card admin-tickets" aria-labelledby="tickets-head">
                         <header className="flex items-center justify-between border-b px-4 py-3">
                             <h2 id="tickets-head" className="font-semibold">
                                 {TICKETS_TITLE}
@@ -155,7 +156,7 @@ export default function Tickets() {
                             </table>
                         </TableScroll>
                         <Pagination page={props.tickets.page} total={props.tickets.total} pageSize={props.tickets.page_size} onPage={(page) => list.read(TICKETS, ticketsQuery(page))} />
-                    </section>
+                    </Card>
                 </SettledList>
             </div>
         </>

@@ -15,9 +15,9 @@ use Tests\Support\LunaFixture;
  * at the widths the layout fits, which Look::UNFITTED leaves the tablet's out of. A line longer in
  * one language widens a screen in that language alone, so the owner reads every screen in each. A
  * screen is loaded afresh at each width, so its first paint is the layout that width is given.
- * One more case opens the staff form at the tablet's width in Greek, where its fields stand two
- * abreast beside the rail and are at their narrowest, and holds Clear, beside a member's linked
- * sign-in, inside its field and its card.
+ * One more case opens the staff form in Greek at the narrowest width at which its fields stand
+ * two abreast beside the rail, where a field is at its narrowest, and holds Clear, beside a
+ * member's linked sign-in, inside its field and its card.
  *
  * With LOOK_SHOTS naming a run the walk also stops at a phone's width and saves each screen at
  * each stop in each theme of Look::themes() and each mode, as
@@ -151,23 +151,24 @@ it('serves the admin with its motion off, its Greek text drawn in its own two fa
         ->assertNoJavaScriptErrors();
 });
 
-it('keeps Clear, beside a member\'s linked sign-in on the staff form, inside its field and its card in Greek at a tablet\'s width, where the form\'s fields stand two abreast', function () {
-    // Clear shows only while a sign-in is linked, and its label is longer in Greek. Two abreast
-    // beside the rail a field is at its narrowest, and an input that will not shrink there pushes
-    // Clear out of the end of its field. The member is linked to the owner's own sign-in, a user
-    // of the tenant the form's list offers.
+it('keeps Clear, beside a member\'s linked sign-in on the staff form, inside its field and its card in Greek at the narrowest width at which the form\'s fields stand two abreast beside the rail', function () {
+    // Clear shows only while a sign-in is linked, and its label is longer in Greek. A section
+    // stands its fields two abreast once its own card is 576px wide, which beside the rail is a
+    // window of 848px. This one is 4px wider, so the card is 580 and a field 258, its narrowest,
+    // and an input that will not shrink there pushes Clear out of the end of its field. The
+    // member is linked to the owner's own sign-in, a user of the tenant the form's list offers.
     $owner = DB::table('users')->where('email', Admin::owner('luna'));
     $member = LunaFixture::id('staff', 'Elena Papadaki');
     DB::table('tenant_luna.staff')->where('id', $member)->update(['user_id' => $owner->value('id')]);
     $owner->update(['locale' => SiteLanguage::Greek->value]);
 
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
-    $page->resize(800, 900);
+    $page->resize(852, 900);
     $page->navigate(Admin::url('luna', '/staff/'.$member))
         ->assertVisible('.admin-staff-user .admin-combobox__clear')
         ->assertSeeIn('.admin-staff-user .admin-combobox__clear', adminLine('admin/shell.kit.combobox.clear', [], SiteLanguage::Greek))
         ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value)
-        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 800)
+        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 852)
         ->assertScript(LOOK_SIGN_IN_COLUMNS, 2)
         ->assertScript(PhoneScripts::COMBOBOX_CLEAR_INSIDE, true)
         ->assertNoJavaScriptErrors();

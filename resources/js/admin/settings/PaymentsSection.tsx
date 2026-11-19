@@ -159,7 +159,7 @@ export function PaymentsSection({ payments, clock, inFlight, wait, visit: page, 
         ) : null;
 
     return (
-        <div className="admin-payments flex flex-col gap-4 sm:col-span-2">
+        <div className="admin-payments flex flex-col gap-4 @xl:col-span-2">
             {refusal !== null && (
                 <Notice kind="warning" className="admin-payments__refusal">
                     {refusal}

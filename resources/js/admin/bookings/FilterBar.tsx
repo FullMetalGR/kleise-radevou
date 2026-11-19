@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
@@ -48,7 +49,7 @@ export function FilterBar({ filters, options, staffShown, clock, weekStart, onCh
     const searchHint = options.searchable.includes('customer_email') ? words.text('filters.search_name_email') : words.text('filters.search_name');
 
     return (
-        <section className="admin-filter-bar flex flex-col gap-3 rounded-xl border p-4" aria-label={words.text('filters.label')}>
+        <Card className="admin-filter-bar flex flex-col gap-3" aria-label={words.text('filters.label')}>
             <div className="admin-filter-bar__gestures flex items-center gap-3">
                 <Button variant={inbox ? 'primary' : 'secondary'} className="admin-approval-inbox" onClick={() => set({ status: AWAITING_APPROVAL })}>
                     {words.text('filters.inbox')}
@@ -88,6 +89,6 @@ export function FilterBar({ filters, options, staffShown, clock, weekStart, onCh
                     {(control) => <TextInput {...control} type="search" value={filters.search} placeholder={searchHint} onChange={(event) => set({ search: event.target.value })} />}
                 </Field>
             </div>
-        </section>
+        </Card>
     );
 }

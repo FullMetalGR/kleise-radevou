@@ -653,14 +653,17 @@ describe('the cards and tables', () => {
         for (const name of ['statuses', 'revenue', 'no-show', 'cancelled-by']) {
             const card = q(`.admin-reports-${name}`);
 
-            expect(card?.className.split(' ')).toEqual(expect.arrayContaining(['rounded-xl', 'border', 'bg-card', 'p-4', 'gap-2']));
+            expect(card?.className.split(' ')).toEqual(expect.arrayContaining(['bg-card', 'rounded-tile', 'shadow-card', 'p-6.5', 'gap-2']));
+            expect(card?.className.split(' ')).not.toContain('border');
             expect(card?.querySelector(':scope > h2')).not.toBeNull();
         }
 
         for (const name of ['over-time', 'services', 'staff', 'sources', 'channels']) {
             const card = q(`.admin-reports-${name}`);
 
-            expect(card?.className.split(' ')).toEqual(expect.arrayContaining(['rounded-xl', 'border', 'bg-card']));
+            expect(card?.className.split(' ')).toEqual(expect.arrayContaining(['bg-card', 'rounded-tile', 'shadow-card', 'overflow-hidden']));
+            expect(card?.className.split(' ')).not.toContain('border');
+            expect(card?.className.split(' ')).not.toContain('p-6.5');
             expect(card?.querySelector(':scope > header.admin-card-strip.border-b > h2')).not.toBeNull();
             expect(card?.querySelector('table')?.closest('.admin-table-scroll')).not.toBeNull();
         }

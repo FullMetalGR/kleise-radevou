@@ -1,7 +1,7 @@
 import { TableScroll } from '@/components/ui/table-scroll';
 import { Strip } from '@/figures/kit';
-import { Card } from './Card';
 import { formatOccupancy, hoursOf, type Report } from './model';
+import { ReportCard } from './ReportCard';
 import type { ReportsWords } from './words';
 
 /*
@@ -14,7 +14,7 @@ import type { ReportsWords } from './words';
 
 export function OccupancyByStaff({ rows, words }: { rows: Report['occupancy']; words: ReportsWords }) {
     return (
-        <Card name="occupancy" labelledBy="reports-occupancy-head">
+        <ReportCard name="occupancy" labelledBy="reports-occupancy-head">
             <Strip titleId="reports-occupancy-head" title={words.text('occupancy.title')} />
             <TableScroll>
                 <table className="admin-table w-full text-sm">
@@ -38,6 +38,6 @@ export function OccupancyByStaff({ rows, words }: { rows: Report['occupancy']; w
                     </tbody>
                 </table>
             </TableScroll>
-        </Card>
+        </ReportCard>
     );
 }

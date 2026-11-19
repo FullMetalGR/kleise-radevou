@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { CHECK_BOX } from '@/components/ui/check-field';
 import { Field, type FieldControl, HelpLine } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
+import { Section } from '@/components/ui/section';
 import { Select } from '@/components/ui/select';
 import { useCopy } from '@/lib/copy';
 import { useShell } from '@/lib/strings';
@@ -123,17 +124,6 @@ function waitsOf(words: SettingsWords, payments: PaymentsWords): Record<Action, 
 /** A refusal in the envelope's sentence, or the write's own fallback where no answer came. */
 function plainly(fallback: string): (failure: Failure) => string {
     return (failure) => failure.sentence ?? fallback;
-}
-
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-    return (
-        <section className={`admin-section admin-section--${id} rounded-xl border p-4`} aria-labelledby={`section-${id}`}>
-            <h2 id={`section-${id}`} className="mb-3 font-semibold">
-                {title}
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">{children}</div>
-        </section>
-    );
 }
 
 export default function Settings() {
@@ -359,7 +349,7 @@ function Editor({ seed, initial, settings, urls, links, limits, countries, langu
 
             <Section id="booking-page" title={words.text('sections.booking_page')}>
                 <ThemePicker value={form.theme} onChange={set('theme')} />
-                <Field id="settings-logo" label={words.text('booking_page.logo')} help={words.choice(LOGO_HELP, limits.logo.megabytes, { n: limits.logo.spelled })} className="sm:col-span-2">
+                <Field id="settings-logo" label={words.text('booking_page.logo')} help={words.choice(LOGO_HELP, limits.logo.megabytes, { n: limits.logo.spelled })} className="@xl:col-span-2">
                     {logo}
                 </Field>
                 <LinksCard
@@ -383,10 +373,10 @@ function Editor({ seed, initial, settings, urls, links, limits, countries, langu
                     }
                 />
                 <ProfileFields form={form} problems={problems} set={set} map={map} countries={countries} />
-                <Field id="settings-cover" label={words.text('booking_page.cover')} help={words.choice(COVER_HELP, limits.cover.megabytes, { n: limits.cover.spelled })} className="sm:col-span-2">
+                <Field id="settings-cover" label={words.text('booking_page.cover')} help={words.choice(COVER_HELP, limits.cover.megabytes, { n: limits.cover.spelled })} className="@xl:col-span-2">
                     {cover}
                 </Field>
-                <Field id="settings-gallery" label={words.text('booking_page.gallery')} help={words.choice(GALLERY_HELP, limits.gallery.megabytes, { n: limits.gallery.spelled, capacity: limits.capacity.spelled })} className="sm:col-span-2">
+                <Field id="settings-gallery" label={words.text('booking_page.gallery')} help={words.choice(GALLERY_HELP, limits.gallery.megabytes, { n: limits.gallery.spelled, capacity: limits.capacity.spelled })} className="@xl:col-span-2">
                     {gallery}
                 </Field>
             </Section>
@@ -404,7 +394,7 @@ function Editor({ seed, initial, settings, urls, links, limits, countries, langu
             {payments}
 
             <Section id="emails" title={words.text('sections.emails')}>
-                <ul className="admin-settings-emails grid gap-x-6 gap-y-3 sm:col-span-2 sm:grid-cols-2">
+                <ul className="admin-settings-emails grid gap-x-6 gap-y-3 @xl:col-span-2 @xl:grid-cols-2">
                     {settings.messages.map((message) => (
                         <li key={message.key} className="admin-settings-email flex flex-wrap items-center gap-x-2 gap-y-1" data-audience={message.audience}>
                             <input
