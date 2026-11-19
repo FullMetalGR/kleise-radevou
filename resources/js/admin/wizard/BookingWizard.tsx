@@ -113,6 +113,7 @@ export function BookingWizard({ prefill, catalog, clock, granularity, weekStart,
             variant="filling"
             className="admin-wizard max-w-4xl"
             onClose={onClose}
+            busy={creating}
             footer={
                 <>
                     {state.step > 0 && (

@@ -141,6 +141,9 @@ return [
         'confirm' => [
             'keep' => 'Διατήρηση',
         ],
+        'modal' => [
+            'close' => 'Κλείσιμο',
+        ],
         'pagination' => [
             'previous' => 'Προηγούμενη',
             'next' => 'Επόμενη',

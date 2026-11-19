@@ -215,7 +215,7 @@ export function PatternEditor({ member, pattern, weekdays, weekFrom, clock, week
     );
 
     return (
-        <Modal open title={words.text('pattern.title', { name: member.name })} onClose={busy ? nothing : onClose} footer={footer} className="admin-shift-pattern max-w-2xl">
+        <Modal open title={words.text('pattern.title', { name: member.name })} onClose={busy ? nothing : onClose} busy={busy} footer={footer} className="admin-shift-pattern max-w-2xl">
             <div className="flex flex-col gap-3 text-sm">
                 <p className="admin-shift-pattern__note text-xs text-muted-foreground">{words.text('pattern.note')}</p>
                 <div className="grid gap-3 desktop:grid-cols-3">

@@ -3,12 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Button } from './button';
 import { drag, key, mount, press, settle, type Mounted } from './harness';
 import { Modal } from './modal';
+import { keyedShell } from '@/testing/keyed';
 
 /*
  * The modal, and Escape across stacked dialogs. The modal is a backdrop and a frame with the
  * dialog role, aria-modal and a title; an optional footer pins its actions outside the scrolling
- * body; focus moves into the frame on open and back to the opener on close; Escape closes; a
- * backdrop press closes only when it both starts and ends on the backdrop. Stacked, a parent
+ * body; focus moves into the frame on open and back to the opener on close; Escape closes, and so
+ * does the round close control, which comes last in the frame so focus never lands on it first; a
+ * backdrop press closes only when it both starts and ends on the backdrop; the page behind is
+ * hidden from assistive technology and Tab never leaves the frame. Stacked, a parent
  * ignores close requests while a nested overlay is up, so one Escape peels exactly one layer: a
  * nested modal is a layer of its own in the primitive's stack. A popover inside a modal is proven
  * in the popover's own suite. Focus goes back once the primitive's focus scope has let go, a task
@@ -73,6 +76,7 @@ function Stacked() {
 const dialogs = () => [...document.querySelectorAll('[role="dialog"]')];
 const frame = () => document.querySelector('.admin-modal__frame');
 const backdrop = () => document.querySelector('.admin-modal__backdrop');
+const classesOf = (element: Element | null) => [...(element?.classList ?? [])];
 
 function openSingle(onClose?: () => void): HTMLElement {
     view.render(<Single onClose={onClose} />);
@@ -200,17 +204,98 @@ describe('the modal', () => {
         openSingle();
 
         const reason = document.querySelector<HTMLElement>('.reason');
-        const confirm = document.querySelector<HTMLElement>('.confirm');
+        const last = document.querySelector<HTMLElement>('.admin-modal__close');
 
-        confirm?.focus();
-        key(confirm, 'Tab');
+        last?.focus();
+        key(last, 'Tab');
         expect(frame()?.contains(document.activeElement)).toBe(true);
-        expect(document.activeElement).not.toBe(confirm);
+        expect(document.activeElement).not.toBe(last);
 
         reason?.focus();
         key(reason, 'Tab', { shiftKey: true });
         key(document.activeElement, 'Tab', { shiftKey: true });
         expect(frame()?.contains(document.activeElement)).toBe(true);
+    });
+
+    it('hides the page behind an open dialog from assistive technology and turns Tab round inside the frame, from the close control to the first field and back', () => {
+        view.render(
+            <>
+                <main className="behind">
+                    <button type="button" className="behind-button">
+                        Bookings
+                    </button>
+                </main>
+                <Single />
+            </>,
+        );
+        press(view.host.querySelector('.opener'));
+
+        const close = document.querySelector<HTMLElement>('.admin-modal__close');
+        const reason = document.querySelector<HTMLElement>('.reason');
+
+        expect(document.querySelector('.behind')?.closest('[aria-hidden="true"]')).not.toBeNull();
+        expect(frame()?.closest('[aria-hidden="true"]')).toBeNull();
+
+        close?.focus();
+        key(close, 'Tab');
+        expect(document.activeElement).toBe(reason);
+
+        key(reason, 'Tab', { shiftKey: true });
+        expect(document.activeElement).toBe(close);
+    });
+
+    it('closes from a round, named close control set after the footer, so focus still lands first in the body', async () => {
+        const onClose = vi.fn();
+        const opener = openSingle(onClose);
+        const close = document.querySelector('.admin-modal__close');
+
+        expect(document.activeElement).toBe(document.querySelector('.reason'));
+        expect(close?.tagName).toBe('BUTTON');
+        expect(close?.textContent).toBe(keyedShell().text('kit.modal.close'));
+        expect(classesOf(close)).toEqual(expect.arrayContaining(['admin-button--icon-only', 'rounded-full', 'size-10', 'absolute']));
+        expect(close?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+        expect(frame()?.lastElementChild).toBe(close);
+
+        press(close);
+        await settle();
+
+        expect(onClose).toHaveBeenCalledOnce();
+        expect(dialogs()).toHaveLength(0);
+        expect(document.activeElement).toBe(opener);
+    });
+
+    it('draws the close control at 40 pixels and takes a press 2 pixels past each of its sides, a touch area of 44', () => {
+        openSingle();
+
+        const close = classesOf(document.querySelector('.admin-modal__close'));
+
+        expect(close).toEqual(expect.arrayContaining(['absolute', 'size-10', 'after:absolute', 'after:-inset-0.5']));
+        expect(close.some((name) => name.startsWith('size-') && name !== 'size-10')).toBe(false);
+    });
+
+    it('disables the close control while its owner is busy, as the footer\'s buttons are, and leaves it live otherwise', () => {
+        const onClose = vi.fn();
+        const close = () => document.querySelector<HTMLButtonElement>('.admin-modal__close');
+
+        view.render(
+            <Modal open title="Saving the week" busy onClose={onClose}>
+                <p />
+            </Modal>,
+        );
+
+        expect(close()?.disabled).toBe(true);
+        press(close());
+        expect(onClose).not.toHaveBeenCalled();
+
+        view.render(
+            <Modal open title="Saving the week" busy={false} onClose={onClose}>
+                <p />
+            </Modal>,
+        );
+
+        expect(close()?.disabled).toBe(false);
+        press(close());
+        expect(onClose).toHaveBeenCalledOnce();
     });
 });
 
@@ -270,15 +355,18 @@ describe('the document listener', () => {
 
 /*
  * The modal's shapes. jsdom lays nothing out, so the classes are what is read here and the
- * geometry is proven at 390 pixels in the browser suite: the default is the centred frame;
- * filling is that frame at or above the breakpoint and the whole viewport below it, the footer
+ * geometry is proven in the browser suite at 390 pixels and across the breakpoint: the default
+ * is the centred frame, a card on the card's fill no wider than 780 pixels with the shell's
+ * radius and the dialog's shadow, which below the breakpoint is a sheet at the bottom edge, the
+ * screen's width, rounded at the top alone and never taller than 94 percent of the screen;
+ * filling is that card at or above the breakpoint and the whole viewport below it, the footer
  * still pinned and the body still the one scroller; full is the whole viewport at every width,
  * the footer pinned and the body the one scroller; the drawer is pinned to the start edge at the
- * viewport's full height, and closes as any modal does. Beside the title, an aside shares its row.
+ * viewport's full height, and closes as any modal does. Every backdrop is the scrim, blurred.
+ * A frame changes shape by its classes alone, so crossing the breakpoint never remounts it, and
+ * it rises into place only where motion is welcome. Beside the title, an aside shares its row.
  */
 describe('the shapes', () => {
-    const classesOf = (element: Element | null) => [...(element?.classList ?? [])];
-
     function Shaped({ variant }: { variant: 'filling' | 'full' | 'drawer' }) {
         const [open, setOpen] = useState(true);
 
@@ -289,23 +377,129 @@ describe('the shapes', () => {
         );
     }
 
-    it('keeps the centred frame as the default, bounded to the viewport at every width', () => {
+    const CARD = ['bg-card', 'text-card-foreground', 'max-h-[calc(100dvh-3rem)]', 'max-w-[780px]', 'rounded-shell', 'shadow-modal'];
+
+    it('draws the centred frame by default as a card on the card\'s fill, and below the breakpoint as a sheet at the bottom edge, over a blurred scrim', () => {
         openSingle();
 
-        expect(classesOf(frame())).toEqual(expect.arrayContaining(['max-h-[85vh]', 'max-w-lg', 'rounded-xl']));
-        expect(classesOf(frame()).some((name) => name.startsWith('max-desktop:'))).toBe(false);
-        expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['items-center', 'justify-center', 'p-4']));
+        expect(classesOf(frame())).toEqual(
+            expect.arrayContaining([
+                'admin-modal__frame--centred',
+                ...CARD,
+                'max-desktop:self-end',
+                'max-desktop:max-w-none',
+                'max-desktop:max-h-[94dvh]',
+                'max-desktop:rounded-t-[1.75rem]',
+                'max-desktop:rounded-b-none',
+            ]),
+        );
+        expect(classesOf(frame())).not.toContain('bg-background');
+        expect(classesOf(frame()).some((name) => name.startsWith('max-desktop:h-'))).toBe(false);
+        expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['bg-scrim', 'backdrop-blur-[3px]', 'items-center', 'justify-center', 'p-6', 'max-desktop:p-0']));
     });
 
-    it('fills the viewport below the breakpoint when filling, the centred frame above it, the footer pinned outside the scrolling body', () => {
+    it('keeps a consumer\'s cap on the centred card, and the sheet still the screen\'s width', () => {
+        view.render(
+            <Modal open title="Narrow" className="max-w-lg" onClose={() => {}}>
+                <p />
+            </Modal>,
+        );
+
+        expect(classesOf(frame())).toContain('max-w-lg');
+        expect(classesOf(frame())).not.toContain('max-w-[780px]');
+        expect(classesOf(frame())).toContain('max-desktop:max-w-none');
+    });
+
+    it('rises into place under motion-safe alone, a sheet from further down, the scrim fading in', () => {
+        openSingle();
+
+        const moving = (element: Element | null) => classesOf(element).filter((name) => /starting:|transition|duration-|ease-/.test(name));
+
+        expect(classesOf(frame())).toEqual(
+            expect.arrayContaining([
+                'motion-safe:duration-400',
+                'motion-safe:ease-soft',
+                'motion-safe:starting:translate-y-3.5',
+                'motion-safe:starting:scale-[0.985]',
+                'max-desktop:motion-safe:starting:translate-y-10',
+            ]),
+        );
+        expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['motion-safe:transition-opacity', 'motion-safe:starting:opacity-0']));
+        expect([...moving(frame()), ...moving(backdrop())].every((name) => name.startsWith('motion-safe:') || name.startsWith('max-desktop:motion-safe:'))).toBe(true);
+    });
+
+    it('sets the title at the dialog\'s size, a step down below the breakpoint, and a prompt\'s a step down at every width', () => {
+        openSingle();
+
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toEqual(expect.arrayContaining(['text-dialog-title', 'max-desktop:text-section-title']));
+
+        view.render(
+            <Modal open title="Remove this note?" prompt onClose={() => {}}>
+                <p />
+            </Modal>,
+        );
+
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toContain('text-section-title');
+        expect(classesOf(document.querySelector('.admin-modal__title'))).not.toContain('text-dialog-title');
+        expect(classesOf(document.querySelector('.admin-modal__body'))).toContain('text-body');
+    });
+
+    it('lets a title of one long unbroken word break anywhere, so it wraps short of the close control instead of running under it', () => {
+        openSingle();
+
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toContain('wrap-anywhere');
+
+        view.render(
+            <Modal open title="With aside" onClose={() => {}} aside={<span className="aside" />}>
+                <p />
+            </Modal>,
+        );
+
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toContain('wrap-anywhere');
+    });
+
+    it.each(['centred', 'filling'] as const)('gives the %s frame\'s title, body and footer the phone\'s narrower room below the breakpoint, the close control moving in with them and still clear of the title', (variant) => {
+        view.render(
+            <Modal open title="Shaped" variant={variant} onClose={() => {}} footer={<Button className="close">Close</Button>}>
+                <p />
+            </Modal>,
+        );
+
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toEqual(
+            expect.arrayContaining(['px-6.5', 'pt-5.5', 'pb-3', 'pr-18', 'max-desktop:px-4.5', 'max-desktop:pt-4.5', 'max-desktop:pb-2', 'max-desktop:pr-16']),
+        );
+        expect(classesOf(document.querySelector('.admin-modal__body'))).toEqual(expect.arrayContaining(['px-6.5', 'pt-1', 'pb-5.5', 'max-desktop:px-4.5', 'max-desktop:pb-4.5']));
+        expect(classesOf(document.querySelector('.admin-modal__footer'))).toEqual(expect.arrayContaining(['px-6.5', 'py-3.5', 'max-desktop:px-4.5', 'max-desktop:py-3']));
+        expect(classesOf(document.querySelector('.admin-modal__close'))).toEqual(expect.arrayContaining(['top-4.5', 'right-5', 'max-desktop:top-3', 'max-desktop:right-3']));
+    });
+
+    it('keeps the end of a row shared with an aside clear of the close control at both widths, and the drawer\'s room its own', () => {
+        view.render(
+            <Modal open title="With aside" onClose={() => {}} aside={<span className="aside" />}>
+                <p />
+            </Modal>,
+        );
+
+        expect(classesOf(document.querySelector('.admin-modal__head'))).toEqual(expect.arrayContaining(['pr-18', 'max-desktop:pr-16']));
+        expect(classesOf(document.querySelector('.admin-modal__head'))).not.toContain('pr-3');
+
+        view.render(<Shaped key="drawer" variant="drawer" />);
+
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toEqual(expect.arrayContaining(['px-5', 'py-3']));
+        expect([...classesOf(document.querySelector('.admin-modal__title')), ...classesOf(document.querySelector('.admin-modal__body'))].some((name) => name.startsWith('max-desktop:'))).toBe(false);
+    });
+
+    it('fills the viewport below the breakpoint when filling, the card above it, the footer pinned outside the scrolling body', () => {
         view.render(<Shaped variant="filling" />);
 
         expect(classesOf(frame())).toEqual(
-            expect.arrayContaining(['admin-modal__frame--filling', 'max-h-[85vh]', 'max-w-lg', 'rounded-xl', 'max-desktop:h-full', 'max-desktop:max-h-none', 'max-desktop:max-w-none', 'max-desktop:rounded-none', 'max-desktop:border-0']),
+            expect.arrayContaining(['admin-modal__frame--filling', ...CARD, 'max-desktop:h-full', 'max-desktop:max-h-none', 'max-desktop:max-w-none', 'max-desktop:rounded-none', 'max-desktop:shadow-none']),
         );
-        expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['items-center', 'justify-center', 'p-4', 'max-desktop:p-0']));
+        expect(classesOf(frame())).not.toContain('max-desktop:self-end');
+        expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['bg-scrim', 'items-center', 'justify-center', 'p-6', 'max-desktop:p-0']));
         expect(document.querySelector('.admin-modal__body')?.contains(document.querySelector('.long'))).toBe(true);
         expect(document.querySelector('.admin-modal__footer')?.contains(document.querySelector('.close'))).toBe(true);
+        expect(document.querySelector('.admin-modal__close')).not.toBeNull();
     });
 
     it('keeps a consumer\'s width above the breakpoint and still fills below it', () => {
@@ -316,19 +510,21 @@ describe('the shapes', () => {
         );
 
         expect(classesOf(frame())).toContain('max-w-2xl');
-        expect(classesOf(frame())).not.toContain('max-w-lg');
+        expect(classesOf(frame())).not.toContain('max-w-[780px]');
         expect(classesOf(frame())).toContain('max-desktop:max-w-none');
     });
 
-    it('fills the viewport at every width when full, no breakpoint variant on it, the footer pinned outside the scrolling body', () => {
+    it('fills the viewport at every width when full, on the card\'s fill with no breakpoint variant, edge or shadow, the footer pinned outside the scrolling body', () => {
         view.render(<Shaped variant="full" />);
 
-        expect(classesOf(frame())).toEqual(expect.arrayContaining(['admin-modal__frame--full', 'h-full', 'max-h-none', 'max-w-none', 'rounded-none', 'border-0']));
+        expect(classesOf(frame())).toEqual(expect.arrayContaining(['admin-modal__frame--full', 'bg-card', 'h-full', 'max-h-none', 'max-w-none', 'rounded-none']));
         expect(classesOf(frame()).some((name) => name.startsWith('max-desktop:') || name.startsWith('desktop:'))).toBe(false);
+        expect(classesOf(frame()).some((name) => name === 'border' || name.startsWith('shadow-'))).toBe(false);
         expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['items-stretch', 'justify-stretch']));
-        expect(classesOf(backdrop())).not.toContain('p-4');
+        expect(classesOf(backdrop())).not.toContain('p-6');
         expect(document.querySelector('.admin-modal__body')?.contains(document.querySelector('.long'))).toBe(true);
         expect(document.querySelector('.admin-modal__footer')?.contains(document.querySelector('.close'))).toBe(true);
+        expect(document.querySelector('.admin-modal__close')).toBeNull();
     });
 
     it('sets an aside on the title\'s row after it, the title still what labels the dialog, and keeps the title on its own row without one', () => {
@@ -353,10 +549,12 @@ describe('the shapes', () => {
     it('opens as a drawer pinned to the start edge at the viewport\'s full height, a dialog titled as any modal is', () => {
         view.render(<Shaped variant="drawer" />);
 
-        expect(classesOf(frame())).toEqual(expect.arrayContaining(['admin-modal__frame--drawer', 'h-full', 'max-w-72', 'rounded-none']));
+        expect(classesOf(frame())).toEqual(expect.arrayContaining(['admin-modal__frame--drawer', 'bg-card', 'text-card-foreground', 'h-full', 'max-w-72', 'rounded-none', 'border-r']));
         expect(classesOf(frame()).some((name) => name.startsWith('max-h-'))).toBe(false);
-        expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['items-stretch', 'justify-start']));
-        expect(classesOf(backdrop())).not.toContain('p-4');
+        expect(classesOf(frame())).not.toContain('bg-background');
+        expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['bg-scrim', 'items-stretch', 'justify-start']));
+        expect(classesOf(backdrop())).not.toContain('p-6');
+        expect(document.querySelector('.admin-modal__close')).toBeNull();
         expect(dialogs()).toHaveLength(1);
         expect(dialogs()[0]?.getAttribute('aria-modal')).toBe('true');
         expect(document.querySelector('.admin-modal__title')?.textContent).toBe('Shaped');

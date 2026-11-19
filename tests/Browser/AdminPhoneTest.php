@@ -19,7 +19,10 @@ use Tests\Support\LunaFixture;
  * its confirm to the toast, inside the screen and clear of the dialog's actions. Each walk opens
  * the rail from the control and reaches another screen through it. The dialog of a confirmed
  * booking is opened once more by an owner who reads Greek, where its three actions are wider than
- * its footer, and each stands inside the dialog. A walk reads the Menu control
+ * its footer, and each stands inside the dialog. The confirm over the dialog rises from the bottom
+ * edge as a sheet; one more walk opens a request's Reject at a tablet's width, types a reason, and
+ * narrows the window to the phone's and widens it back, the confirm a card, then a sheet, then a
+ * card again, the reason and the focus kept throughout. A walk reads the Menu control
  * carrying the pending count the rail's Bookings entry carries, so a request waiting is seen with
  * the drawer closed, and the others none where none is pending. A last walk reads the wizard,
  * Month, Services, Staff and Settings at the same width, none of them scrolling the page sideways,
@@ -167,8 +170,10 @@ it('opens the dialog from a row of Bookings on a phone, the table without Servic
         ->assertSeeIn('.admin-booking-items', 'Elena Papadaki')
         ->assertScript(PhoneScripts::ITEMS_CELLS_APART, true)
         ->assertScript(PhoneScripts::DIALOG_FILLS_SCREEN, true)
-        ->assertScript(PhoneScripts::DIALOG_BODY_SCROLLS, true)
-        ->click('.admin-booking-close')
+        ->assertScript(PhoneScripts::DIALOG_BODY_SCROLLS, true);
+    Look::shot($page, 'booking-dialog-390');
+
+    $page->click('.admin-booking-close')
         ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']))
         ->assertPathIs('/admin/bookings');
 
@@ -195,6 +200,7 @@ it('cancels a booking from the dialog on a phone through its confirm to the toas
         ->assertScript(PhoneScripts::DIALOG_FILLS_SCREEN, true)
         ->click('.admin-booking-action--cancel')
         ->waitForText(adminLine('admin/bookings.cancel.warning'))
+        ->assertScript(PhoneScripts::SHEET_AT_BOTTOM, true)
         ->click('.admin-cancel-prompt__confirm')
         ->waitForText(adminLine(BookingActionController::CANCELLED))
         ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.cancelled'))
@@ -213,7 +219,7 @@ it('cancels a booking from the dialog on a phone through its confirm to the toas
         ->assertNoJavaScriptErrors();
 });
 
-it('keeps the actions of a confirmed booking\'s dialog inside the dialog on a phone in Greek, where Cancel, Move and Close are wider than its footer', function () {
+it('keeps the actions of a confirmed booking\'s dialog inside the dialog on a phone in Greek, where Cancel, Move and Close are wider than its footer, and those of its cancel confirm inside the sheet', function () {
     phoneBooking('Greta Greek', athensDaysOn(64));
     // The labels are longer in Greek, and a footer sets its actions against its end edge, so a
     // row of them too wide runs out of the start edge, where the page never scrolls. The language
@@ -233,8 +239,56 @@ it('keeps the actions of a confirmed booking\'s dialog inside the dialog on a ph
         ->assertSeeIn('.admin-booking-close', adminLine('admin/bookings.dialog.close', [], SiteLanguage::Greek))
         ->assertScript(PhoneScripts::DIALOG_FILLS_SCREEN, true)
         ->assertScript(PhoneScripts::DIALOG_FOOTER_BUTTONS_INSIDE, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+
+    // The cancel confirm over it is a sheet at the bottom edge, its two Greek actions inside it
+    // too; it is closed by its own way out, so nothing is cancelled.
+    $page->click('.admin-booking-action--cancel')
+        ->waitForText(adminLine('admin/bookings.cancel.warning', [], SiteLanguage::Greek))
+        ->assertScript(PhoneScripts::SHEET_AT_BOTTOM, true)
+        ->assertScript(PhoneScripts::DIALOG_FOOTER_BUTTONS_INSIDE, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->click('.admin-cancel-prompt__keep')
+        ->assertMissing('.admin-cancel-prompt')
+        ->assertVisible('.admin-booking-action--cancel')
         ->assertNoJavaScriptErrors();
+});
+
+it('keeps a confirm\'s typed reason and its focus as the window narrows to a phone and widens back, the confirm a card in the middle, then a sheet at the bottom edge, then a card again at every width above the breakpoint', function () {
+    phoneBooking('Rhea Request', athensDaysOn(65), request: true);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1024, 768);
+    $page->navigate(Admin::url('luna', '/bookings'))
+        ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']));
+
+    $page->click('Rhea Request')
+        ->waitForText(adminLine('admin/bookings.dialog.items.title'))
+        ->click('.admin-booking-action--reject')
+        ->waitForText(adminLine('admin/bookings.reject.reason'))
+        ->type('#reject-reason', 'Fully booked that week')
+        ->assertScript(Admin::focusIsOn('#reject-reason'), true)
+        ->assertScript(PhoneScripts::CARD_IN_MIDDLE, true);
+    Look::shot($page, 'confirm-over-dialog-1024');
+
+    $page->resize(390, 844)
+        ->assertScript(PhoneScripts::SHEET_AT_BOTTOM, true)
+        ->assertValue('#reject-reason', 'Fully booked that week')
+        ->assertScript(Admin::focusIsOn('#reject-reason'), true);
+    Look::shot($page, 'confirm-over-dialog-390');
+
+    $page->resize(1024, 768)
+        ->assertScript(PhoneScripts::CARD_IN_MIDDLE, true)
+        ->assertValue('#reject-reason', 'Fully booked that week')
+        ->assertScript(Admin::focusIsOn('#reject-reason'), true);
+
+    // A card just above the breakpoint, and on a wide desktop.
+    $page->resize(800, 900)->assertScript(PhoneScripts::CARD_IN_MIDDLE, true);
+    Look::shot($page, 'confirm-over-dialog-800');
+
+    $page->resize(1440, 900)
+        ->assertScript(PhoneScripts::CARD_IN_MIDDLE, true)
+        ->assertNoJavaScriptErrors();
+    Look::shot($page, 'confirm-over-dialog-1440');
 });
 
 it('carries the pending count on the Menu control with the drawer closed, the count the rail\'s Bookings entry carries inside it', function () {

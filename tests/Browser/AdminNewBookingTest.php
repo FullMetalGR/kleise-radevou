@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\NewBookingController;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Look;
 use Tests\Support\LunaFixture;
 
 /*
@@ -58,6 +59,7 @@ it('books two services for a customer from the top bar, sees the toast, finds th
         ->assertSeeIn('.admin-wizard-strip', adminChoice('admin/customers.wizard.first_more', 1, ['service' => 'Haircut']))
         ->click('.admin-wizard-continue')
         ->waitForText(adminLine('admin/customers.wizard.zone', ['zone' => 'Europe/Athens']));
+    Look::shot($page, 'booking-wizard-1728');
 
     for ($month = 0; $month < $months; $month++) {
         $page->click(sprintf('.admin-day-calendar button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next')));

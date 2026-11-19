@@ -539,6 +539,8 @@ function Disconnect({ name, control, visit, refusal }: { name: string; control: 
                 open={confirming}
                 title={words.text('disconnect.title', { provider: name })}
                 onClose={control.busy ? nothing : () => setConfirming(false)}
+                prompt
+                busy={control.busy}
                 className="admin-payments-confirm"
                 footer={
                     <>
@@ -612,6 +614,8 @@ function WebhookUrl({ url, name, control, visit, refusal }: WebhookProps) {
                 open={confirming}
                 title={words.text('webhook.confirm_title')}
                 onClose={control.busy ? nothing : () => setConfirming(false)}
+                prompt
+                busy={control.busy}
                 className="admin-payments-rotate-confirm"
                 footer={
                     <>

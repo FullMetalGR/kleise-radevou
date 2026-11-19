@@ -1,5 +1,8 @@
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { createContext, useContext, useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
+import { Cross } from '../glyphs';
+import { Button } from './button';
+import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
 
 /*
@@ -10,7 +13,16 @@ import { cn } from '@/lib/utils';
  * them wider than a phone would run out of the start edge, where no scroll reaches: below the
  * admin's breakpoint the row wraps, every line still ending at the end edge.
  * Focus moves into the frame on open, stays there under Tab and Shift+Tab, and goes back on close
- * to whatever held it at open. Escape closes.
+ * to whatever held it at open. Escape closes. The page behind is hidden from assistive technology
+ * while the frame is up, which the primitive does for a modal dialog.
+ *
+ * A dialog drawn as a card carries a round close control at the end of its title's row. It comes
+ * last in the frame and is placed over the row, so focus still lands first on the body's own field
+ * or the footer's first action, and it closes as Escape does, through the same close request. It
+ * is drawn at 40 pixels and takes a press 2 pixels past each side, a touch area of 44. A dialog
+ * whose act is in flight says it is busy, and the control is then disabled, as the footer's
+ * buttons are, so it never stands live over a close request its owner would swallow; what Escape
+ * and a backdrop press do meanwhile is still the owner's own.
  *
  * Two edits to the primitive. A backdrop press closes only when it both starts and ends on the
  * backdrop, so releasing a text selection outside the frame cannot dismiss it and throw away what
@@ -32,29 +44,68 @@ import { cn } from '@/lib/utils';
  */
 
 /*
- * Four shapes, every one the same dialog with the same layers and closes. The centred frame is
- * the default, bounded to the viewport at every width. Filling is that frame at or above the
- * admin's breakpoint and the whole viewport below it, the footer still pinned and the body still
- * the one scroller: the booking dialog and the wizard on a phone. Full is the whole viewport at
- * every width, the footer pinned and the body the one scroller: the setup wizard, which is a
- * screen of its own while it is up. The drawer is pinned to the start edge at the viewport's full
- * height: the rail behind the top bar's control.
+ * Four shapes, every one the same dialog with the same layers and closes, over the scrim, blurred.
+ * The centred frame is the default: a card no wider than 780 pixels, kept 24 pixels clear of the
+ * viewport's edges, and below the admin's breakpoint a sheet at the bottom edge, the screen's
+ * width, rounded at the top alone and never taller than 94 percent of the screen, so a small
+ * dialog such as a confirm sits under the thumb. Filling is that card at or above the breakpoint
+ * and the whole viewport below it, the footer still pinned and the body still the one scroller:
+ * the booking dialog and the wizard on a phone. Full is the whole viewport at every width, the
+ * footer pinned and the body the one scroller: the setup wizard, which is a screen of its own
+ * while it is up. The drawer is pinned to the start edge at the viewport's full height: the rail
+ * behind the top bar's control. A caller's own width cap wins over the card's.
+ *
+ * A frame changes shape by its classes alone, so a window crossing the breakpoint with a dialog
+ * up keeps the same frame, what was typed in it and the focus. Every frame is on the card's fill.
+ * A card rises a little and grows from just under its size as it opens, a sheet from further down,
+ * and the scrim fades in, each only where motion is welcome.
  */
 type ModalVariant = 'centred' | 'filling' | 'full' | 'drawer';
 
 const BACKDROP: Record<ModalVariant, string> = {
-    centred: 'items-center justify-center p-4',
-    filling: 'items-center justify-center p-4 max-desktop:p-0',
+    centred: 'items-center justify-center p-6 max-desktop:p-0',
+    filling: 'items-center justify-center p-6 max-desktop:p-0',
     full: 'items-stretch justify-stretch',
     drawer: 'items-stretch justify-start',
 };
 
+/** The card both the centred and the filling frame are at or above the breakpoint. */
+const CARD = 'max-h-[calc(100dvh-3rem)] max-w-[780px] rounded-shell shadow-modal';
+
+/** A card's rise into place as it opens. */
+const RISE = 'motion-safe:transition-[translate,scale] motion-safe:duration-400 motion-safe:ease-soft motion-safe:starting:translate-y-3.5 motion-safe:starting:scale-[0.985]';
+
 const FRAME: Record<ModalVariant, string> = {
-    centred: 'max-h-[85vh] max-w-lg rounded-xl',
-    filling: 'admin-modal__frame--filling max-h-[85vh] max-w-lg rounded-xl max-desktop:h-full max-desktop:max-h-none max-desktop:max-w-none max-desktop:rounded-none max-desktop:border-0',
-    full: 'admin-modal__frame--full h-full max-h-none max-w-none rounded-none border-0',
-    drawer: 'admin-modal__frame--drawer h-full max-w-72 rounded-none border-y-0 border-l-0',
+    centred: `admin-modal__frame--centred ${CARD} ${RISE} max-desktop:max-h-[94dvh] max-desktop:max-w-none max-desktop:self-end max-desktop:rounded-t-[1.75rem] max-desktop:rounded-b-none max-desktop:motion-safe:starting:translate-y-10`,
+    filling: `admin-modal__frame--filling ${CARD} ${RISE} max-desktop:h-full max-desktop:max-h-none max-desktop:max-w-none max-desktop:rounded-none max-desktop:shadow-none`,
+    full: 'admin-modal__frame--full h-full max-h-none max-w-none rounded-none',
+    drawer: 'admin-modal__frame--drawer h-full max-w-72 rounded-none border-r shadow-lg',
 };
+
+/**
+ * Each part's room in a frame: a card's, the full frame's with it, set wide with the title at the
+ * dialog's size, and below the breakpoint 18 pixels at the sides with the title a step down, so a
+ * phone's width goes to the body; a prompt's title that step down at every width, as it asks one
+ * short question; and the drawer's, which keeps its own.
+ */
+const ROOM = {
+    card: {
+        title: 'px-6.5 pt-5.5 pb-3 max-desktop:px-4.5 max-desktop:pt-4.5 max-desktop:pb-2',
+        type: 'text-dialog-title max-desktop:text-section-title',
+        prompt: 'text-section-title',
+        body: 'px-6.5 pt-1 pb-5.5 max-desktop:px-4.5 max-desktop:pb-4.5',
+        footer: 'px-6.5 py-3.5 max-desktop:px-4.5 max-desktop:py-3',
+    },
+    drawer: { title: 'border-b px-5 py-3', type: 'text-lg font-semibold', prompt: 'text-lg font-semibold', body: 'px-5 py-4', footer: 'px-5 py-3' },
+};
+
+/**
+ * The close control's place over the end of the title's row, and the room the row leaves it: the
+ * control and 12 pixels between it and the title, both moving in with the sides below the
+ * breakpoint. Its touch area is a layer of its own reaching 2 pixels past each side.
+ */
+const CLOSE = 'absolute top-4.5 right-5 size-10 after:absolute after:-inset-0.5 max-desktop:top-3 max-desktop:right-3';
+const CLEAR_OF_CLOSE = 'pr-18 max-desktop:pr-16';
 
 type Enclosure = {
     register: () => () => void;
@@ -91,25 +142,34 @@ type Props = {
     aside?: ReactNode;
     /** The frame's shape; the centred frame unless told. */
     variant?: ModalVariant;
+    /** A confirm's frame, which asks one short question: its title a step down at every width. */
+    prompt?: boolean;
+    /** Whether the owner's act is in flight, when the close control is disabled; it is not unless told. */
+    busy?: boolean;
     className?: string;
     children: ReactNode;
 };
 
-/** The title on its own row, or with the aside after it on a shared one. */
-function Heading({ title, aside }: { title: string; aside: ReactNode }) {
+/**
+ * The title on its own row, or with the aside after it on a shared one; either leaves the end of
+ * the row clear where the close control is set over it. A title breaks anywhere, so one long
+ * unbroken word wraps inside its row instead of running under the control.
+ */
+function Heading({ title, aside, className, closable }: { title: string; aside: ReactNode; className: string; closable: boolean }) {
     if (aside === undefined) {
-        return <DialogPrimitive.Title className="admin-modal__title shrink-0 border-b px-5 py-3 text-lg font-semibold">{title}</DialogPrimitive.Title>;
+        return <DialogPrimitive.Title className={cn('admin-modal__title shrink-0 wrap-anywhere', className, closable && CLEAR_OF_CLOSE)}>{title}</DialogPrimitive.Title>;
     }
 
     return (
-        <div className="admin-modal__head flex shrink-0 items-center gap-2 border-b py-1.5 pr-3">
-            <DialogPrimitive.Title className="admin-modal__title min-w-0 flex-1 px-5 py-1.5 text-lg font-semibold">{title}</DialogPrimitive.Title>
+        <div className={cn('admin-modal__head flex shrink-0 items-center gap-2 pr-3', closable && CLEAR_OF_CLOSE)}>
+            <DialogPrimitive.Title className={cn('admin-modal__title min-w-0 flex-1 wrap-anywhere', className)}>{title}</DialogPrimitive.Title>
             {aside}
         </div>
     );
 }
 
-export function Modal({ open, title, onClose, footer, aside, variant = 'centred', className, children }: Props) {
+export function Modal({ open, title, onClose, footer, aside, variant = 'centred', prompt = false, busy = false, className, children }: Props) {
+    const shell = useShell();
     const nested = useRef(0);
     const opener = useRef<Element | null>(null);
     const downOnBackdrop = useRef(false);
@@ -122,6 +182,9 @@ export function Modal({ open, title, onClose, footer, aside, variant = 'centred'
             };
         },
     });
+
+    const room = variant === 'drawer' ? ROOM.drawer : ROOM.card;
+    const closable = variant === 'centred' || variant === 'filling';
 
     const escape = (event: KeyboardEvent) => {
         if (event.isComposing) {
@@ -155,11 +218,18 @@ export function Modal({ open, title, onClose, footer, aside, variant = 'centred'
         <DialogPrimitive.Root open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
             <DialogPrimitive.Portal>
                 <Enclosing.Provider value={enclosure.current}>
-                    <DialogPrimitive.Overlay className={cn('admin-modal__backdrop fixed inset-0 z-50 flex bg-black/40', BACKDROP[variant])} onPointerDown={down} onPointerUp={up}>
+                    <DialogPrimitive.Overlay
+                        className={cn(
+                            'admin-modal__backdrop fixed inset-0 z-50 flex bg-scrim backdrop-blur-[3px] motion-safe:transition-opacity motion-safe:duration-300 motion-safe:ease-soft motion-safe:starting:opacity-0',
+                            BACKDROP[variant],
+                        )}
+                        onPointerDown={down}
+                        onPointerUp={up}
+                    >
                         <DialogPrimitive.Content
                             aria-modal="true"
                             aria-describedby={undefined}
-                            className={cn('admin-modal__frame flex w-full flex-col border bg-background text-foreground shadow-lg outline-none', FRAME[variant], className)}
+                            className={cn('admin-modal__frame relative flex w-full flex-col bg-card text-card-foreground outline-none', FRAME[variant], className)}
                             onOpenAutoFocus={() => {
                                 opener.current = document.activeElement;
                             }}
@@ -167,9 +237,14 @@ export function Modal({ open, title, onClose, footer, aside, variant = 'centred'
                             onEscapeKeyDown={escape}
                             onInteractOutside={(event) => event.preventDefault()}
                         >
-                            <Heading title={title} aside={aside} />
-                            <div className="admin-modal__body min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
-                            {footer !== undefined && <div className="admin-modal__footer flex shrink-0 justify-end gap-2 border-t px-5 py-3 max-desktop:flex-wrap">{footer}</div>}
+                            <Heading title={title} aside={aside} className={cn(room.title, prompt ? room.prompt : room.type)} closable={closable} />
+                            <div className={cn('admin-modal__body min-h-0 flex-1 overflow-y-auto text-body', room.body)}>{children}</div>
+                            {footer !== undefined && <div className={cn('admin-modal__footer flex shrink-0 justify-end gap-2 border-t max-desktop:flex-wrap', room.footer)}>{footer}</div>}
+                            {closable && (
+                                <Button iconOnly icon={<Cross />} className={`admin-modal__close ${CLOSE}`} disabled={busy} onClick={onClose}>
+                                    {shell.text('kit.modal.close')}
+                                </Button>
+                            )}
                         </DialogPrimitive.Content>
                     </DialogPrimitive.Overlay>
                 </Enclosing.Provider>

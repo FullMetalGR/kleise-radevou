@@ -665,6 +665,21 @@ describe('the day editor', () => {
         expect(q('.admin-shift-day')).toBeNull();
     });
 
+    it('disables the dialog\'s close control while a write is in flight, and leaves it live before one and once a refusal is in', () => {
+        render();
+        edit(3, '2026-12-02');
+        expect(q('.admin-shift-day .admin-modal__close')?.hasAttribute('disabled')).toBe(false);
+
+        press(q('.admin-shift-day__save'));
+        const [, , visit] = lastVisit(inertia.put);
+
+        start(visit);
+        expect(q('.admin-shift-day .admin-modal__close')?.hasAttribute('disabled')).toBe(true);
+
+        fail(visit, { status: 400, data: { code: 'invalid_request', data: { detail: KEYED_SHIFTS.validation.day_overlap } } });
+        expect(q('.admin-shift-day .admin-modal__close')?.hasAttribute('disabled')).toBe(false);
+    });
+
     it('closes on Cancel, writing nothing', () => {
         render();
         edit(3, '2026-12-02');
@@ -840,6 +855,21 @@ describe('the pattern editor', () => {
         fail(visit);
 
         expect(texts('.admin-toast').join(' ')).toContain(words.text('pattern.not_saved'));
+    });
+
+    it('disables the dialog\'s close control while a save is in flight, and leaves it live before one and once a refusal is in', () => {
+        render();
+        openPatternEditor(3);
+        expect(q('.admin-shift-pattern .admin-modal__close')?.hasAttribute('disabled')).toBe(false);
+
+        press(q('.admin-shift-pattern__save'));
+        const [, , visit] = lastVisit(inertia.put);
+
+        start(visit);
+        expect(q('.admin-shift-pattern .admin-modal__close')?.hasAttribute('disabled')).toBe(true);
+
+        fail(visit, { status: 400, data: { code: 'invalid_request', data: { detail: KEYED_SHIFTS.validation.ends_on } } });
+        expect(q('.admin-shift-pattern .admin-modal__close')?.hasAttribute('disabled')).toBe(false);
     });
 
     it('closes on Cancel, writing nothing', () => {

@@ -7,9 +7,11 @@ import { keyedShell } from '@/testing/keyed';
 /*
  * The confirm, the one the booking dialog's Reject and Cancel, the console's Suspend and its
  * Resume all open: a modal holding its body, Keep it and the confirm, focus landing on the first
- * control, which is never the confirm. Keep it, Escape and a backdrop press dismiss it and fire
- * nothing; the confirm fires once. While its confirm is in flight no path dismisses it, and Keep
- * it says why in text beside it. The confirm is destructive unless the confirm says otherwise.
+ * control, which is never the confirm. Its title is a step smaller than a dialog's, the question
+ * at the body's size, and the actions sit at the foot with the confirm last. Keep it, the close
+ * control, Escape and a backdrop press dismiss it and fire nothing; the confirm fires once. While
+ * its confirm is in flight no path dismisses it, and Keep it says why in text beside it. The
+ * confirm is the solid destructive button unless the confirm says otherwise.
  */
 
 let view: Mounted;
@@ -72,8 +74,22 @@ describe('the confirm', () => {
         expect(document.activeElement).toBe(one('.test-prompt__keep'));
     });
 
+    it('sets its title a step smaller than a dialog\'s at every width, the question at the body\'s size and the confirm last at the foot', () => {
+        opened();
+
+        const title = [...(one('.test-prompt .admin-modal__title')?.classList ?? [])];
+
+        expect(title).toContain('text-section-title');
+        expect(title).not.toContain('text-dialog-title');
+        expect(title.some((name) => name.startsWith('max-desktop:text-'))).toBe(false);
+        expect(one('.test-prompt .admin-modal__body')?.contains(one('.test-prompt__warning'))).toBe(true);
+        expect(one('.test-prompt .admin-modal__body')?.classList.contains('text-body')).toBe(true);
+        expect(one('.test-prompt .admin-modal__footer')?.lastElementChild).toBe(one('.test-prompt__confirm'));
+    });
+
     it.each([
         ['Keep it', () => press(one('.test-prompt__keep'))],
+        ['the close control', () => press(one('.test-prompt .admin-modal__close'))],
         ['Escape', () => key(one('.test-prompt'), 'Escape')],
         [
             'a backdrop press',
@@ -101,7 +117,7 @@ describe('the confirm', () => {
         expect(onDismiss).not.toHaveBeenCalled();
     });
 
-    it('refuses every dismissal while its confirm is in flight, Keep it saying why beside it, the confirm busy', () => {
+    it('refuses every dismissal while its confirm is in flight, Keep it and the close control disabled, Keep it saying why beside it, the confirm busy', () => {
         const { onConfirm, onDismiss } = opened({ busy: true });
 
         press(one('.test-prompt__keep'));
@@ -116,6 +132,7 @@ describe('the confirm', () => {
 
         const keep = one('.test-prompt__keep');
         expect(keep?.hasAttribute('disabled')).toBe(true);
+        expect(one('.test-prompt .admin-modal__close')?.hasAttribute('disabled')).toBe(true);
         expect(document.getElementById(keep?.getAttribute('aria-describedby') ?? '')?.textContent).toBe('The resumption has been sent. This closes once the server answers.');
         expect(one('.test-prompt__confirm')?.textContent).toBe('Resuming');
         expect(one('.test-prompt__confirm')?.getAttribute('aria-busy')).toBe('true');
@@ -138,6 +155,8 @@ describe('the confirm', () => {
         const plain = one('.test-prompt__confirm')?.className;
 
         expect(destructive).toContain('bg-destructive');
+        expect(destructive).toContain('admin-button--primary');
+        expect(destructive).toContain('admin-button--destructive');
         expect(plain).not.toContain('bg-destructive');
         expect(plain).toContain('bg-primary');
     });

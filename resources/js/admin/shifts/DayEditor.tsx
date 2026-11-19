@@ -107,7 +107,7 @@ export function DayEditor({ member, date, windows, source, patternWindows, clock
     );
 
     return (
-        <Modal open title={words.text('editor.title', { name: member.name, weekday: weekdayName(isoWeekday(date), 'long', shell.language), date: formatDate(date, clock) })} onClose={busy ? nothing : onClose} footer={footer} className="admin-shift-day max-w-lg">
+        <Modal open title={words.text('editor.title', { name: member.name, weekday: weekdayName(isoWeekday(date), 'long', shell.language), date: formatDate(date, clock) })} onClose={busy ? nothing : onClose} busy={busy} footer={footer} className="admin-shift-day max-w-lg">
             <div className="flex flex-col gap-3 text-sm">
                 <p className="admin-shift-day__help text-xs text-muted-foreground">{words.text('editor.help')}</p>
                 {edited.map((window, at) => (

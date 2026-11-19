@@ -99,6 +99,48 @@ final class PhoneScripts
         JS;
 
     /**
+     * True when the topmost open centred dialog is a sheet at the bottom edge: its bottom the
+     * screen's, as wide as the screen, rounded at the top and square at the foot, its top below
+     * the screen's and its height no more than 94 percent of the screen's.
+     */
+    public const string SHEET_AT_BOTTOM = <<<'JS'
+        document.fonts.ready.then(() => {
+            const frame = Array.from(document.querySelectorAll('.admin-modal__frame--centred')).at(-1);
+            if (!frame) {
+                return false;
+            }
+            const near = (a, b) => Math.abs(a - b) <= 1;
+            const box = frame.getBoundingClientRect();
+            const style = getComputedStyle(frame);
+            return near(box.bottom, window.innerHeight) && near(box.left, 0) && near(box.width, document.documentElement.clientWidth)
+                && box.top > 1 && box.height <= window.innerHeight * 0.94 + 1
+                && parseFloat(style.borderTopLeftRadius) > 0 && parseFloat(style.borderBottomLeftRadius) === 0;
+        })
+        JS;
+
+    /**
+     * True when the topmost open centred dialog is a card in the middle of the screen: no wider
+     * than 780 pixels, as far from either side, clear of the top and the bottom edge by the
+     * backdrop's 24 pixels and as far from the one as from the other, so a card resting at the
+     * foot of that room does not pass, and rounded at the foot as at the top.
+     */
+    public const string CARD_IN_MIDDLE = <<<'JS'
+        document.fonts.ready.then(() => {
+            const frame = Array.from(document.querySelectorAll('.admin-modal__frame--centred')).at(-1);
+            if (!frame) {
+                return false;
+            }
+            const near = (a, b) => Math.abs(a - b) <= 1;
+            const box = frame.getBoundingClientRect();
+            const width = document.documentElement.clientWidth;
+            const style = getComputedStyle(frame);
+            return box.width <= 781 && near(box.left, width - box.right) && box.top >= 23 && box.bottom <= window.innerHeight - 23
+                && Math.abs(box.top - (window.innerHeight - box.bottom)) <= 2
+                && parseFloat(style.borderBottomLeftRadius) > 0 && near(parseFloat(style.borderBottomLeftRadius), parseFloat(style.borderTopLeftRadius));
+        })
+        JS;
+
+    /**
      * True when, in every row of the open dialog's items table, each cell's text stands at least
      * half a rem clear of the next cell's, so two columns at the phone's width never read as one.
      */

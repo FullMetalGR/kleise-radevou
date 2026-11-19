@@ -164,6 +164,9 @@ return [
         'confirm' => [
             'keep' => 'Keep it',
         ],
+        'modal' => [
+            'close' => 'Close',
+        ],
         'pagination' => [
             'previous' => 'Previous',
             'next' => 'Next',

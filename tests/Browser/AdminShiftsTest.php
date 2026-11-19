@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Look;
 
 /*
  * Shifts in a real browser, on the sample salon demo:reset builds: in the week of the reset Maria
@@ -115,8 +116,10 @@ it('walks the sample week, moves a week, gives a day two windows and sets it bac
     $page->click(shiftsWalkCell($katerina, $thursday).' .admin-shifts__edit')
         ->assertVisible('.admin-shift-day')
         ->click('.admin-shift-day__add')
-        ->assertSeeIn('.admin-shift-day__hours', adminLine('admin/shifts.editor.hours', ['hours' => '9h']))
-        ->click('.admin-shift-day__save')
+        ->assertSeeIn('.admin-shift-day__hours', adminLine('admin/shifts.editor.hours', ['hours' => '9h']));
+    Look::shot($page, 'shift-day-editor-1728');
+
+    $page->click('.admin-shift-day__save')
         ->waitForText(adminLine('admin/shifts.flashes.day_saved'))
         ->click('.admin-toast-dismiss')
         ->assertMissing('.admin-shift-day')

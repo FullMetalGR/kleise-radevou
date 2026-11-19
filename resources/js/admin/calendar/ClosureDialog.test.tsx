@@ -423,13 +423,16 @@ describe('the closure dialog over bookings', () => {
 
     it('stays open while the add or an answer is in flight, whatever asks it to close, and closes as before once nothing is', () => {
         dialog();
+        expect(one<HTMLButtonElement>('.admin-modal__close')?.disabled).toBe(false);
         press(one('.admin-closure__add'));
         act(() => lastPost().visit.onStart?.());
         dismiss();
 
         expect(closed).toBe(0);
+        expect(one<HTMLButtonElement>('.admin-modal__close')?.disabled).toBe(true);
 
         inside();
+        expect(one<HTMLButtonElement>('.admin-modal__close')?.disabled).toBe(false);
         press(one('.admin-inside__keep'));
         const { visit } = lastPost();
         act(() => visit.onStart?.());
@@ -437,8 +440,10 @@ describe('the closure dialog over bookings', () => {
 
         expect(closed).toBe(0);
         expect(all('.admin-inside__row')).toHaveLength(2);
+        expect(one<HTMLButtonElement>('.admin-modal__close')?.disabled).toBe(true);
 
         act(() => visit.onFinish?.());
+        expect(one<HTMLButtonElement>('.admin-modal__close')?.disabled).toBe(false);
         key(document.activeElement, 'Escape');
 
         expect(closed).toBe(1);

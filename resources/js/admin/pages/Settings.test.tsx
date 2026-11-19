@@ -1693,6 +1693,9 @@ describe('Payments with a connection', () => {
         press(document.querySelector('.admin-payments-rotate'));
         expect(document.querySelector('.admin-payments-rotate-confirm')?.getAttribute('role')).toBe('dialog');
         expect(text('.admin-payments-rotate-confirm .admin-modal__title')).toBe(payments.text('webhook.confirm_title'));
+        expect([...(document.querySelector('.admin-payments-rotate-confirm .admin-modal__title')?.classList ?? [])]).toContain('text-section-title');
+        expect([...(document.querySelector('.admin-payments-rotate-confirm .admin-modal__title')?.classList ?? [])]).not.toContain('text-dialog-title');
+        expect(document.querySelector<HTMLButtonElement>('.admin-payments-rotate-confirm .admin-modal__close')?.disabled).toBe(false);
         expect(text('.admin-payments-rotate-confirm__body')).toBe(
             payments.text('webhook.confirm_body', { provider: 'Tillpoint' }),
         );
@@ -1715,6 +1718,7 @@ describe('Payments with a connection', () => {
         expect(document.querySelector('.admin-payments-rotate-confirm__change')?.getAttribute('aria-busy')).toBe('true');
         expect(text('.admin-payments-rotate-confirm__change')).toContain(payments.text('webhook.changing'));
         expect(document.querySelector<HTMLButtonElement>('.admin-payments-rotate-confirm__keep')?.disabled).toBe(true);
+        expect(document.querySelector<HTMLButtonElement>('.admin-payments-rotate-confirm .admin-modal__close')?.disabled).toBe(true);
         expect(text('.admin-payments__wait')).toBe(payments.text(PAYMENT_WAIT.rotate));
         expect(reason()).toBe(payments.text(PAYMENT_WAIT.rotate));
         for (const other of ['.admin-payments-test', '.admin-payments-disable', '.admin-payments-replace', '.admin-payments-disconnect']) {
@@ -1818,6 +1822,9 @@ describe('Payments with a connection', () => {
 
         press(document.querySelector('.admin-payments-disconnect'));
         expect(document.querySelector('.admin-payments-confirm')?.getAttribute('role')).toBe('dialog');
+        expect([...(document.querySelector('.admin-payments-confirm .admin-modal__title')?.classList ?? [])]).toContain('text-section-title');
+        expect([...(document.querySelector('.admin-payments-confirm .admin-modal__title')?.classList ?? [])]).not.toContain('text-dialog-title');
+        expect(document.querySelector<HTMLButtonElement>('.admin-payments-confirm .admin-modal__close')?.disabled).toBe(false);
         expect(text('.admin-payments-confirm__body')).toBe(
             payments.text('disconnect.body'),
         );
@@ -1832,6 +1839,7 @@ describe('Payments with a connection', () => {
         start(visit);
         expect(document.querySelector('.admin-payments-confirm__disconnect')?.getAttribute('aria-busy')).toBe('true');
         expect(document.querySelector<HTMLButtonElement>('.admin-payments-confirm__keep')?.disabled).toBe(true);
+        expect(document.querySelector<HTMLButtonElement>('.admin-payments-confirm .admin-modal__close')?.disabled).toBe(true);
 
         land(visit, propsWith());
         expect(document.querySelector('.admin-payments-confirm')).toBeNull();

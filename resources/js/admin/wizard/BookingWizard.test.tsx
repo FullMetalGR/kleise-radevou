@@ -385,7 +385,7 @@ describe('step 2 and the submission, 4.4', () => {
         expect([...dialog().querySelectorAll('.admin-wizard-summary__service')].map((line) => line.textContent)).toEqual(['Haircut']);
     });
 
-    it('sends the customer, the ordered segments and the exact start the answer carried, shows busy, and closes on success', async () => {
+    it('sends the customer, the ordered segments and the exact start the answer carried, shows busy with Cancel and the close control disabled, and closes on success', async () => {
         const onClose = render();
         await toCustomer();
         type('.admin-wizard-name', 'Ada North');
@@ -397,9 +397,13 @@ describe('step 2 and the submission, 4.4', () => {
         expect(url).toBe(CREATE_URL);
         expect(body).toEqual({ customer_name: 'Ada North', customer_email: 'not-an-email', customer_phone: '', items: [{ service_id: 1, staff_id: null }], start: '2026-11-03T08:00:00+00:00', same_staff: false });
 
+        expect(dialog().querySelector<HTMLButtonElement>('.admin-modal__close')?.disabled).toBe(false);
+
         act(() => options.onStart?.());
         expect(dialog().querySelector('.admin-wizard-create')?.getAttribute('aria-busy')).toBe('true');
         expect(dialog().querySelector('.admin-wizard-create')?.textContent).toContain(wiz.text('creating'));
+        expect(dialog().querySelector<HTMLButtonElement>('.admin-wizard-cancel')?.disabled).toBe(true);
+        expect(dialog().querySelector<HTMLButtonElement>('.admin-modal__close')?.disabled).toBe(true);
 
         act(() => options.onSuccess?.());
         act(() => options.onFinish?.());

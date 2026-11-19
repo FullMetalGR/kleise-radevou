@@ -6,14 +6,18 @@ import { Modal } from './modal';
 /*
  * The confirm, on the modal: a body, Keep it, and the confirm, in that order, so focus lands on
  * the first control and it is never the confirm, the body's own field where it has one and Keep it
- * where it has none. Keep it, Escape and a backdrop press dismiss it, firing nothing. One confirm
+ * where it has none. It asks one short question, so its title stands a step smaller than a
+ * dialog's at every width, the question reads at the body's size, and the two actions sit at the
+ * foot with the confirm last, solid red where it destroys. Keep it, the modal's close control,
+ * Escape and a backdrop press dismiss it, firing nothing. One confirm
  * serves every overlay that asks before it acts: the booking dialog's Reject and Cancel, and the
  * console's Suspend and Resume.
  *
  * Nothing is optimistic. While the confirm is in flight no path dismisses it, the modal's close
  * request answered with nothing, so the overlay closes only when the screen hands back the visit's
- * end; Keep it is disabled and says why in text beside it, as every disabled control does, and the
- * confirm shows its busy state. The confirm is destructive unless the overlay says otherwise:
+ * end; Keep it is disabled and says why in text beside it, as every disabled control does, the
+ * modal's close control is disabled with it, and the confirm shows its busy state. The confirm is
+ * destructive unless the overlay says otherwise:
  * undoing a suspension is no destructive act. Keep it is the kit's, from the strings the confirm
  * is given, unless the overlay names its own way out (keepLabel); every other word is the
  * overlay's.
@@ -49,6 +53,8 @@ export function Confirm({ open, title, name, confirmLabel, keepLabel, busyLabel,
             open={open}
             title={title}
             onClose={busy ? nothing : onDismiss}
+            prompt
+            busy={busy}
             className={name}
             footer={
                 <>

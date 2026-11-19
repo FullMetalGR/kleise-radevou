@@ -215,7 +215,7 @@ export function ClosureDialog({ onClose, members, clock, weekStart, granularity,
     // The list step is the same dialog, its place and its type kept, so that it stays the one that was opened.
     if (adding.asked !== null) {
         return (
-            <Modal open title={words.text(CLOSURE_TITLE)} onClose={close} footer={<InsideChoices adding={adding} />} className="admin-closure max-w-lg">
+            <Modal open title={words.text(CLOSURE_TITLE)} onClose={close} busy={busy} footer={<InsideChoices adding={adding} />} className="admin-closure max-w-lg">
                 <InsideList asked={adding.asked} staffShown={staffShown} clock={clock} reasonTyped={draft.reason !== null} />
             </Modal>
         );
@@ -233,7 +233,7 @@ export function ClosureDialog({ onClose, members, clock, weekStart, granularity,
     );
 
     return (
-        <Modal open title={words.text(CLOSURE_TITLE)} onClose={close} footer={footer} className="admin-closure max-w-lg">
+        <Modal open title={words.text(CLOSURE_TITLE)} onClose={close} busy={busy} footer={footer} className="admin-closure max-w-lg">
             <ClosureFields typed={typed} onChange={change} onDates={redate} untilError={untilError} refusals={refusals} members={members} clock={clock} weekStart={weekStart} granularity={granularity} />
         </Modal>
     );

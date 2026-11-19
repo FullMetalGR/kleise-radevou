@@ -107,6 +107,7 @@ export type ShellStrings = {
         month_grid: { previous: string; next: string; month: string; year: string };
         combobox: { clear: string; no_matches: string };
         confirm: { keep: string };
+        modal: { close: string };
         pagination: { previous: string; next: string; page: string };
         notice: { dismiss: string };
     };
