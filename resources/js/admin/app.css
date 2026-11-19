@@ -245,7 +245,8 @@
  * out on the element that declares it and inherited finished, so a mix declared on the root alone
  * would carry the root's Neutral primary into every theme; the rule is declared on every scope
  * that sets a primary instead, the root, the body a theme is keyed on and the brand's scope, and
- * computes afresh in each. The void status reads the secondary ink, so it follows the theme too.
+ * computes afresh in each. The held statuses' hue is the primary and the void status's the
+ * tertiary ink, so both follow the theme too.
  *
  * The page and the card are mixed into the surfaces' base, which is the mode's grey here and the
  * theme's own colour in the supports rule after this one. A grey near-black only lightens a dark
@@ -281,7 +282,8 @@
     --input: var(--border);
     --shade: color-mix(in oklab, var(--primary) 15%, black);
     --scrim: color-mix(in oklab, var(--shade) 55%, transparent);
-    --admin-status-void: var(--muted-foreground);
+    --admin-status-provisional: var(--primary);
+    --admin-status-void: var(--ink-tertiary);
 }
 
 @supports (color: oklch(from red 0.5 calc(c * 0.5) h)) {
@@ -472,57 +474,99 @@
 }
 
 /*
- * Each status chip family's hue, one token each: the chips below paint with them, and the
- * calendar colours a block and a legend swatch by status with the same tokens (calendar/model.ts
- * statusHueOf), so a hue is spelled here alone. Past has no hue on its chip, a flat grey tag, and
- * keeps a lighter grey than void's on the calendar. Void is the secondary ink, which follows the
- * theme, so it is declared in the one rule with the other colours that do.
+ * Each status chip family's hue, one token each, which the calendar colours a block and a legend
+ * swatch by (calendar/model.ts statusHueOf), so a hue is spelled here alone: live the positive
+ * green, attention the amber and past the neutral mark, each reading a colour that has its own
+ * value per mode, so the calendar's status hues change with the mode. Provisional is the theme
+ * colour and void the tertiary ink, which follow the theme, so those two are declared in the one
+ * rule with the other colours that do. The chips below paint with the same families' colours.
  */
 :root {
-    --admin-status-live: var(--color-emerald-700);
-    --admin-status-attention: var(--color-amber-500);
-    --admin-status-provisional: var(--color-sky-600);
-    --admin-status-past: var(--color-neutral-400);
+    --admin-status-live: var(--positive);
+    --admin-status-attention: var(--attention);
+    --admin-status-past: var(--neutral-mark);
 }
 
 /*
- * The status chips, separated by shape first with colour agreeing, so nine statuses read apart
- * without hue. Live is a solid pill; attention is a solid pill with a heavy ring and bold type,
- * the only one allowed to shout; provisional is a dashed outline, the slot only held; void is an
- * outline with the label struck through; past is a flat square tag. An unrecognised status keeps
- * the base chip alone.
+ * The status chips: a pill of 13px bold type with the status's icon before its label, so no state
+ * rests on its colour. The base chip's 1px edge is counted in its padding, 3px by 11px round the
+ * label and 8px before an icon; an unrecognised status keeps the base chip alone, a line round
+ * its raw value.
+ *
+ * Each family has a look, which the chips a screen spells by hand wear: live the green, attention
+ * the amber with its line, provisional the dashed ring of the theme colour, the slot only held,
+ * past the soft ground, void the grey ring with the words struck through. A status chip wears the
+ * look of its own status, keyed by data-status, which outweighs the family's class: rejected is
+ * red, and expired, a past status, takes the grey ring of the statuses that ended without the
+ * visit. The grey ring is the tertiary ink at full strength, so it holds as an outline. Those four
+ * strike the label alone, never the icon, and a counted chip's figure stays clear of the strike.
  */
 @layer components {
     .admin-chip {
-        @apply inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs whitespace-nowrap text-foreground;
+        @apply inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-small leading-[1.35] font-bold whitespace-nowrap text-foreground;
     }
 
-    .admin-chip--live {
-        @apply border-(--admin-status-live) bg-(--admin-status-live) text-white;
+    .admin-chip:has(> .admin-chip__icon) {
+        @apply pl-1.75;
     }
 
-    .admin-chip--attention {
-        @apply border-(--admin-status-attention) bg-amber-400 font-bold text-black ring-2 ring-(--admin-status-attention)/60;
+    .admin-chip__icon {
+        @apply inline-flex shrink-0;
     }
 
-    .admin-chip--provisional {
-        @apply border-dashed border-(--admin-status-provisional) text-sky-700 dark:text-sky-300;
+    .admin-chip--live,
+    .admin-chip[data-status="confirmed"],
+    .admin-chip[data-status="active"] {
+        @apply border-transparent bg-positive-soft text-positive-ink;
     }
 
-    .admin-chip--void {
-        @apply border-(--admin-status-void)/60 text-muted-foreground line-through;
+    .admin-chip--attention,
+    .admin-chip[data-status="awaiting_approval"] {
+        @apply border-attention-line bg-attention-soft-strong text-attention-ink;
     }
 
-    .admin-chip--past {
-        @apply rounded-sm border-transparent bg-muted text-muted-foreground;
+    .admin-chip--provisional,
+    .admin-chip[data-status="pending"],
+    .admin-chip[data-status="awaiting_payment"] {
+        @apply border-transparent bg-transparent text-primary-deep outline-[1.5px] -outline-offset-[1.5px] outline-primary outline-dashed;
+    }
+
+    .admin-chip--past,
+    .admin-chip[data-status="completed"],
+    .admin-chip[data-status="inactive"] {
+        @apply border-transparent bg-muted text-muted-foreground;
+    }
+
+    .admin-chip--void,
+    .admin-chip[data-status="cancelled"],
+    .admin-chip[data-status="no_show"],
+    .admin-chip[data-status="expired"] {
+        @apply border-ink-tertiary bg-transparent text-ink-tertiary;
+    }
+
+    .admin-chip[data-status="rejected"] {
+        @apply border-transparent bg-destructive-soft text-destructive;
+    }
+
+    .admin-chip--void:not([data-status]),
+    .admin-chip[data-status="cancelled"] .admin-chip__label,
+    .admin-chip[data-status="no_show"] .admin-chip__label,
+    .admin-chip[data-status="expired"] .admin-chip__label,
+    .admin-chip[data-status="rejected"] .admin-chip__label {
+        @apply line-through decoration-1;
     }
 
     /*
      * The compact chip, a counted one's: a booking status's figure stands where its counted
-     * line places it, an unknown status's before the label; the label giving way first.
+     * line places it, an unknown status's before the label; the label giving way first. Its type
+     * is the admin's least, 12px.
      */
     .admin-chip--compact {
-        @apply max-w-full gap-1 px-1.5 py-0 text-[11px] leading-4;
+        @apply max-w-full gap-1 px-2 py-0 text-xs leading-4.5;
+    }
+
+    .admin-chip--compact:has(> .admin-chip__icon) {
+        @apply pl-1.5;
     }
 
     .admin-chip__count {

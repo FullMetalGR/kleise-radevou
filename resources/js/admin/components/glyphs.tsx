@@ -1,11 +1,27 @@
-import { Check, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Plus as PlusIcon, StickyNote } from 'lucide-react';
+import {
+    Check,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    CircleAlert,
+    CircleCheck,
+    Clock,
+    CreditCard,
+    Hourglass,
+    Info as InfoIcon,
+    Plus as PlusIcon,
+    StickyNote,
+    Timer,
+    TriangleAlert,
+    X,
+} from 'lucide-react';
 
 /*
- * The admin's small glyphs, the Calendar's and Shifts', drawn by the one icon set every screen
- * draws from, as inline SVG in the text's colour: the admin's build refuses a character outside
- * ASCII in a built asset, so a caret, a chevron, a plus, a tick or an alert is never a glyph of a
- * font. Each is decoration, hidden from assistive technology; the control it sits in carries the
- * name.
+ * The admin's small glyphs, the Calendar's and Shifts', the notice's and the status chip's, drawn
+ * by the one icon set every screen draws from, as inline SVG in the text's colour: the admin's
+ * build refuses a character outside ASCII in a built asset, so a caret, a chevron, a plus, a tick,
+ * a cross or an alert is never a glyph of a font. Each is decoration, hidden from assistive
+ * technology; the control or the words it sits beside carry the name.
  */
 
 /** The caret of a control that opens a list under it. */
@@ -43,4 +59,59 @@ export function NoteSheet() {
 /** The plus of a control that adds a row, a pattern day's second window. */
 export function Plus() {
     return <PlusIcon className="size-4" aria-hidden="true" />;
+}
+
+/** The cross of a control that closes or dismisses what it sits in. */
+export function Cross() {
+    return <X className="size-4 shrink-0" aria-hidden="true" />;
+}
+
+/** The circled i a notice that informs starts with. */
+export function Info() {
+    return <InfoIcon className="size-4 shrink-0" aria-hidden="true" />;
+}
+
+/** The warning triangle a notice that warns starts with. */
+export function Warning() {
+    return <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />;
+}
+
+/** The circled tick a notice of something done starts with. */
+export function Success() {
+    return <CircleCheck className="size-4 shrink-0" aria-hidden="true" />;
+}
+
+/*
+ * A status chip's marks, drawn at 13px to sit beside the chip's 13px label, a size under the
+ * glyphs above: the clock of a booking awaiting the operator, the tick of one confirmed or done,
+ * the card of one awaiting payment, the hourglass of one held, the cross of one cancelled or
+ * rejected, the alert of a no-show and the timer of one that ran out.
+ */
+
+export function ChipClock() {
+    return <Clock className="size-3.25 shrink-0" aria-hidden="true" />;
+}
+
+export function ChipTick() {
+    return <Check className="size-3.25 shrink-0" aria-hidden="true" />;
+}
+
+export function ChipCard() {
+    return <CreditCard className="size-3.25 shrink-0" aria-hidden="true" />;
+}
+
+export function ChipHourglass() {
+    return <Hourglass className="size-3.25 shrink-0" aria-hidden="true" />;
+}
+
+export function ChipCross() {
+    return <X className="size-3.25 shrink-0" aria-hidden="true" />;
+}
+
+export function ChipAlert() {
+    return <CircleAlert className="size-3.25 shrink-0" aria-hidden="true" />;
+}
+
+export function ChipTimer() {
+    return <Timer className="size-3.25 shrink-0" aria-hidden="true" />;
 }

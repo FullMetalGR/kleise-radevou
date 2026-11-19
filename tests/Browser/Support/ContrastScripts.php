@@ -19,7 +19,8 @@ final class ContrastScripts
 {
     /**
      * Each pair as text token, ground token and floor: 4.5 to 1 for text, 3 to 1 for the primary
-     * as an outline or a large mark and for the void status's outline.
+     * as an outline or a large mark, for the void status's outline and for the past status's mark,
+     * the neutral one the calendar draws a completed booking's edge and swatch in.
      *
      * @var list<array{string, string, float}>
      */
@@ -52,6 +53,8 @@ final class ContrastScripts
         ['--primary', '--card', 3.0],
         ['--admin-status-void', '--card', 3.0],
         ['--admin-status-void', '--background', 3.0],
+        ['--neutral-mark', '--card', 3.0],
+        ['--neutral-mark', '--background', 3.0],
     ];
 
     /** The page's own ground as the body paints it, to read that a theme reaches it. */

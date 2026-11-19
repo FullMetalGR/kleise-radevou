@@ -162,7 +162,7 @@ const BASE = '--surface-base';
 const BASE_PLAIN = squeezed('var(--mode-base)');
 const BASE_TINTED = squeezed('oklch(from var(--primary) var(--mode-base-lightness) calc(c * var(--mode-base-tint)) h)');
 
-/** The colours worked out from the theme's primary, the surfaces' base and the page's tint to the scrim, and the void status, which reads the secondary ink. */
+/** The colours worked out from the theme's primary, the surfaces' base and the page's tint to the scrim, and the provisional and void statuses, which read the theme colour and the tertiary ink. */
 const FOLLOWING = [
     BASE,
     '--background',
@@ -184,6 +184,7 @@ const FOLLOWING = [
     '--input',
     '--shade',
     '--scrim',
+    '--admin-status-provisional',
     '--admin-status-void',
 ];
 
@@ -265,6 +266,13 @@ describe('the admin\'s own theme', () => {
             }
 
             expect(declarationCount(ADMIN_SOURCE, token)).toBe(token === BASE ? 2 : 1);
+        }
+    });
+
+    it('hues a held status in the theme colour and an ended one in the tertiary ink, both in the one rule, so each follows the theme it sits in', () => {
+        for (const css of [ADMIN, ADMIN_SOURCE]) {
+            expect(valuesOf(css, '--admin-status-provisional')).toEqual(['var(--primary)']);
+            expect(valuesOf(css, '--admin-status-void')).toEqual(['var(--ink-tertiary)']);
         }
     });
 

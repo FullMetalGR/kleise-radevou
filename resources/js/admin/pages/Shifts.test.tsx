@@ -332,14 +332,14 @@ describe('the week grid', () => {
     it('rings a member who picked a colour on the Staff screen in it, the others in the spread', () => {
         render(propsWith({ colours: [{ id: 3, colour: 'purple' }] }));
 
-        expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([`0 0 0 2px ${hueOf(2, [])}`, '0 0 0 2px #cc79a7']);
+        expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([`inset 0 0 0 2px ${hueOf(2, [])}`, 'inset 0 0 0 2px #cc79a7']);
     });
 
     it('heads each row with the initials, the name linking to the staff page and the week\'s hours with the cadence', () => {
         render(propsWith({ members: [...(propsWith().members as object[]), { id: 4, name: 'Maria', is_implicit: false }] }));
 
         expect(texts('.admin-shifts__initials')).toEqual(['EP', 'NG', 'M']);
-        expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([2, 3, 4].map((id) => `0 0 0 2px ${hueOf(id, [])}`));
+        expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([2, 3, 4].map((id) => `inset 0 0 0 2px ${hueOf(id, [])}`));
         expect(q('.admin-shifts__row[data-staff="2"] .admin-shifts__member > div')?.lastElementChild?.classList.contains('admin-shifts__pattern')).toBe(true);
         expect(q('.admin-shifts__row[data-staff="2"] .admin-shifts__pattern')?.classList.contains('admin-button--small')).toBe(true);
         expect([...document.querySelectorAll('.admin-shifts__name')].map((link) => [link.textContent, link.getAttribute('href')])).toEqual([

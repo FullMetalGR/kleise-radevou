@@ -1,21 +1,26 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
+import { Alert, Cross, Info, Success, Warning } from '../glyphs';
+import { Button } from './button';
 
 /*
  * The notice: info, warning, error and success. An error notice takes the alert role; the rest
- * take status. A dismissible notice removes itself on its control and tells its owner, which may
- * forget whatever put it there. The control is named by the kit's words, from the strings the
- * notice is given.
+ * take status. Each kind starts with its icon, so the kind never rests on its colour, and sits on
+ * the soft ground of its family, its words in that family's ink: the tint for info, the amber, the
+ * red and the green, each with a line of its own round the edge. A dismissible notice removes
+ * itself on its control, a small round icon button, and tells its owner, which may forget
+ * whatever put it there. The control is named by the kit's words, from the strings the notice is
+ * given.
  */
 
 export type NoticeKind = 'info' | 'warning' | 'error' | 'success';
 
-const TONE: Record<NoticeKind, string> = {
-    info: 'border-border bg-muted',
-    warning: 'border-amber-500/50 bg-amber-500/10',
-    error: 'border-destructive/50 bg-destructive/10 text-destructive',
-    success: 'border-emerald-600/50 bg-emerald-600/10',
+const KINDS: Record<NoticeKind, { readonly tone: string; readonly icon: ComponentType }> = {
+    info: { tone: 'border-border bg-muted text-foreground', icon: Info },
+    warning: { tone: 'border-attention-line bg-attention-soft text-attention-ink', icon: Warning },
+    error: { tone: 'border-destructive/40 bg-destructive-soft text-destructive', icon: Alert },
+    success: { tone: 'border-positive/40 bg-positive-soft text-positive-ink', icon: Success },
 };
 
 type Props = {
@@ -39,13 +44,19 @@ export function Notice({ kind, dismissible = false, onDismiss, className, childr
         onDismiss?.();
     };
 
+    const { tone, icon: Icon } = KINDS[kind];
+    const name = shell.text('kit.notice.dismiss');
+
     return (
-        <div role={kind === 'error' ? 'alert' : 'status'} className={cn('admin-notice flex items-start gap-3 rounded-lg border px-3 py-2 text-sm', `admin-notice--${kind}`, TONE[kind], className)}>
-            <div className="admin-notice__body flex-1">{children}</div>
+        <div role={kind === 'error' ? 'alert' : 'status'} className={cn('admin-notice flex items-start gap-2.5 rounded-notice border px-4 py-3 text-body-sm font-semibold', `admin-notice--${kind}`, tone, className)}>
+            <span className="admin-notice__icon mt-0.5 inline-flex shrink-0">
+                <Icon />
+            </span>
+            <div className="admin-notice__body min-w-0 flex-1 wrap-anywhere">{children}</div>
             {dismissible && (
-                <button type="button" className="admin-notice__dismiss text-muted-foreground hover:text-foreground" aria-label={shell.text('kit.notice.dismiss')} onClick={dismiss}>
-                    x
-                </button>
+                <Button variant="tertiary" size="small" iconOnly icon={<Cross />} className="admin-notice__dismiss -my-1.5 -mr-2 text-current" aria-label={name} onClick={dismiss}>
+                    {name}
+                </Button>
             )}
         </div>
     );

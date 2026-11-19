@@ -167,7 +167,7 @@ export default function Home() {
                 <ToMark list={props.to_mark} manage={props.permissions.includes('manageBookings')} clock={clock} words={words} staffShown={shown} onOpen={opening.open} />
                 <RangeCard range={props.range_figures.range} clock={clock} words={words} busy={ranging.loading} failed={ranging.error} onChoose={(word) => ranging.read(PATH, word === 'week' ? {} : { range: word })} />
                 <Tiles figures={props.range_figures} words={words} />
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <NextUp rows={props.next_up} clock={clock} words={words} staffShown={shown} onOpen={opening.open} />
                     <Awaiting rows={props.awaiting} clock={clock} words={words} staffShown={shown} onOpen={opening.open} pending={pending} />
                 </div>

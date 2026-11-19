@@ -576,8 +576,9 @@ export function categoryHueOf(category: string | null, categories: readonly stri
 
 /**
  * The status chips' hues, one per chip family, status-chip.tsx's mapping: the stylesheet's tokens
- * the chips paint with (app.css, --admin-status-*), live emerald, attention amber, provisional
- * sky, void and past two greys, each spelled there alone.
+ * (app.css, --admin-status-*), live the positive green, attention the amber, provisional the theme
+ * colour, void the tertiary ink and past the neutral mark, the colours the chips paint with, each
+ * spelled there alone and each with its own value in dark mode.
  */
 const SHAPE_HUES: Record<ChipShape, string> = {
     live: 'var(--admin-status-live)',

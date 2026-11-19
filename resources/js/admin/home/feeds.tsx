@@ -61,9 +61,9 @@ export function customerOf(customer: string | null, words: HomeWords): string {
     return customer ?? words.text('customer_erased');
 }
 
-function Feed({ id, title, aside, children }: { id: string; title: string; aside?: ReactNode; children: ReactNode }) {
+function Feed({ id, title, aside, className = '', children }: { id: string; title: string; aside?: ReactNode; className?: string; children: ReactNode }) {
     return (
-        <section className={`admin-home-feed admin-home-${id} rounded-xl border`} aria-labelledby={`home-${id}-title`}>
+        <section className={`admin-home-feed admin-home-${id} rounded-xl border ${className}`.trimEnd()} aria-labelledby={`home-${id}-title`}>
             <Strip titleId={`home-${id}-title`} title={title} aside={aside} />
             {children}
         </section>
@@ -141,17 +141,20 @@ export function NextUp({ rows, clock, words, staffShown, onOpen }: BookingFeed) 
 }
 
 export function Awaiting({ rows, clock, words, staffShown, onOpen, pending }: BookingFeed & { pending: number }) {
+    // Where the strip is short of room its parts give way in turn: the title wraps first, then
+    // the link, which takes what the chip leaves and never less than its longest word, and the
+    // chip last, its label cut with an ellipsis while its icon and its figure stay.
     const aside = (
-        <span className="flex items-center gap-3">
-            {pending > 0 && <StatusChip status="awaiting_approval" count={pending} className="admin-home-awaiting__count" />}
-            <Link href={APPROVAL_INBOX} className="admin-home-awaiting__all text-sm underline">
+        <span className="admin-home-awaiting__aside flex min-w-0 items-center gap-3">
+            {pending > 0 && <StatusChip status="awaiting_approval" count={pending} className="admin-home-awaiting__count min-w-0" />}
+            <Link href={APPROVAL_INBOX} className="admin-home-awaiting__all grow basis-0 text-sm underline">
                 {words.text('awaiting.see_all')}
             </Link>
         </span>
     );
 
     return (
-        <Feed id="awaiting" title={words.text('awaiting.title')} aside={aside}>
+        <Feed id="awaiting" title={words.text('awaiting.title')} aside={aside} className="[&>header>h2]:shrink-[9999]">
             {rows.length === 0 ? (
                 <Empty id="awaiting">{words.text('awaiting.empty')}</Empty>
             ) : (

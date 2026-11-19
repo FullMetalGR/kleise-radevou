@@ -56,6 +56,45 @@ describe('the segmented control', () => {
         expect(pressed()).toEqual(['day-token:false', 'week-token:false', 'month-token:true']);
     });
 
+    it('fills the chosen segment dark, the pressed one alone, and says so to a screen reader', () => {
+        view.render(<Harness />);
+
+        const options = [...view.host.querySelectorAll('.admin-segmented__option')];
+        const filled = (option: Element) => option.classList.contains('bg-foreground') && option.classList.contains('text-background');
+
+        expect(options.map((option) => [option.getAttribute('aria-pressed'), filled(option)])).toEqual([
+            ['false', false],
+            ['true', true],
+            ['false', false],
+        ]);
+    });
+
+    it('is a rounded group on the card with a line ring, each segment a 38px pill in 600 at 14.5px with the focus ring', () => {
+        view.render(<Harness />);
+
+        const group = view.host.querySelector('.admin-segmented');
+
+        expect(['rounded-inner', 'bg-card', 'p-1', 'inset-ring', 'inset-ring-border'].filter((name) => !group?.classList.contains(name))).toEqual([]);
+        expect([...(group?.classList ?? [])].filter((name) => name.startsWith('rounded-'))).toEqual(['rounded-inner']);
+
+        for (const option of view.host.querySelectorAll('.admin-segmented__option')) {
+            expect(['h-9.5', 'rounded-full', 'px-4.5', 'text-body-sm', 'font-semibold', 'focus-ring'].filter((name) => !option.classList.contains(name))).toEqual([]);
+        }
+    });
+
+    it('wraps its segments onto a second row where one row does not fit, each segment\'s words on one line, and never scrolls inside itself', () => {
+        view.render(<Harness />);
+
+        const group = view.host.querySelector('.admin-segmented');
+
+        expect(group?.classList.contains('flex-wrap')).toBe(true);
+        expect([...(group?.classList ?? [])].filter((name) => name.startsWith('overflow-'))).toEqual([]);
+
+        for (const option of view.host.querySelectorAll('.admin-segmented__option')) {
+            expect(option.classList.contains('whitespace-nowrap')).toBe(true);
+        }
+    });
+
     it('holds its buttons out of any form submission', () => {
         view.render(<Harness />);
 

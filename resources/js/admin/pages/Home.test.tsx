@@ -762,6 +762,27 @@ describe('Home\'s feeds', () => {
         expect(view.host.querySelector('.admin-home-awaiting__all')?.textContent).toBe(home.text('awaiting.see_all'));
     });
 
+    it('lets the Awaiting approval strip give way on a narrow phone, the title first, then the link, the chip\'s label last, and its card go no wider than its column', () => {
+        inertia.props = propsWith({
+            nav: [{ label: 'Bookings', url: '/admin/bookings', group: 'Schedule', pending: 7, current: false }],
+            awaiting: [feedRow('r1', { status: 'awaiting_approval', starts_at: '2026-11-05T08:00:00+00:00', hold_expires_at: '2026-11-03T16:00:00+00:00' })],
+        });
+        renderHome();
+
+        const card = view.host.querySelector('.admin-home-awaiting');
+        const aside = view.host.querySelector('header .admin-home-awaiting__aside');
+        const has = (element: Element | null | undefined, names: string[]) => names.filter((name) => !element?.classList.contains(name));
+
+        expect(has(card, ['[&>header>h2]:shrink-[9999]'])).toEqual([]);
+        expect(card?.querySelector(':scope > header > h2')?.id).toBe('home-awaiting-title');
+        expect(has(aside, ['flex', 'min-w-0'])).toEqual([]);
+        expect([...(aside?.children ?? [])].map((child) => child.className.split(' ').find((name) => name.startsWith('admin-home-awaiting__')))).toEqual(['admin-home-awaiting__count', 'admin-home-awaiting__all']);
+        expect(has(aside?.querySelector('.admin-home-awaiting__count'), ['min-w-0', 'admin-chip--compact'])).toEqual([]);
+        expect(has(aside?.querySelector('.admin-home-awaiting__all'), ['grow', 'basis-0'])).toEqual([]);
+        expect(has(card?.parentElement, ['grid', 'grid-cols-1', 'lg:grid-cols-2'])).toEqual([]);
+        expect(view.host.querySelector('.admin-home-next')?.classList.contains('[&>header>h2]:shrink-[9999]')).toBe(false);
+    });
+
     it('spells each Recent activity row as its one whole sentence with the names filled, when on the tenant\'s clock and the booking\'s start, a row with no booking opening nothing', () => {
         inertia.props = propsWith({
             activity: [

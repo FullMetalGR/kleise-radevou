@@ -428,7 +428,7 @@ describe('Colour by', () => {
         expect(statusHueOf('teleported')).toBe(NEUTRAL);
     });
 
-    it('reads each status hue off a token the stylesheet defines once, the chips painting with the same tokens', () => {
+    it('reads each status hue off a token the stylesheet defines once, on the colours the chips paint with, which have a value per mode', () => {
         const css = readFileSync(resolve(process.cwd(), 'resources/js/admin/app.css'), 'utf8');
         const tokens = ['confirmed', 'awaiting_approval', 'pending', 'cancelled', 'completed'].map((status) => statusHueOf(status).match(/^var\((--admin-status-[a-z]+)\)$/)?.[1]);
 
@@ -438,8 +438,16 @@ describe('Colour by', () => {
             expect(css.split(`${token ?? ''}:`)).toHaveLength(2);
         }
 
-        expect(css).not.toMatch(/#047857|#f59e0b|#0284c7/);
-        expect(css).toContain('bg-(--admin-status-live)');
+        expect(css).not.toMatch(/#047857|#f59e0b|#0284c7|var\(--color-(emerald|amber|sky|neutral)-/);
+        expect(css).toContain('--admin-status-live: var(--positive);');
+        expect(css).toContain('--admin-status-attention: var(--attention);');
+        expect(css).toContain('--admin-status-provisional: var(--primary);');
+        expect(css).toContain('--admin-status-void: var(--ink-tertiary);');
+        expect(css).toContain('--admin-status-past: var(--neutral-mark);');
+
+        const confirmed = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((rule) => (rule[1] ?? '').split(',').some((selector) => selector.trim() === '.admin-chip[data-status="confirmed"]'));
+
+        expect(confirmed.map((rule) => (rule[2] ?? '').trim())).toEqual(['@apply border-transparent bg-positive-soft text-positive-ink;']);
     });
 
     it('picks the block hue by the choice, the Staff choice grey where the staff choice is not real', () => {
