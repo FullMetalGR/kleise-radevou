@@ -43,6 +43,14 @@ describe('the row select button', () => {
         expect(button()?.classList.contains('admin-button--link')).toBe(true);
     });
 
+    it('shows the focus outline from the keyboard and the soft fill under the pointer, its name kept in line with the column', () => {
+        view.render(table(false, () => {}));
+
+        for (const name of ['focus-ring', 'enabled:hover:bg-muted', '-mx-1.5', 'px-1.5']) {
+            expect(button()?.classList.contains(name)).toBe(true);
+        }
+    });
+
     it('is marked current when its row is selected, and not otherwise', () => {
         view.render(table(true, () => {}));
         expect(button()?.getAttribute('aria-current')).toBe('true');

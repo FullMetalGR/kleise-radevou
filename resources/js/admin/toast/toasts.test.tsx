@@ -69,6 +69,51 @@ describe('toasts', () => {
         expect(messages()).toEqual([]);
     });
 
+    it('draws a toast as an ink message rounded to hold two lines, its dismiss an icon button named Dismiss', () => {
+        renderFlash({ kind: 'success', message: 'Saved.' });
+
+        const toast = host.querySelector('.admin-toast');
+        const dismiss = host.querySelector('.admin-toast-dismiss');
+
+        expect(toast?.classList.contains('bg-foreground')).toBe(true);
+        expect(toast?.classList.contains('text-background')).toBe(true);
+        expect(toast?.classList.contains('rounded-inner')).toBe(true);
+        expect(dismiss?.tagName).toBe('BUTTON');
+        expect(dismiss?.classList.contains('admin-button--icon-only')).toBe(true);
+        expect(dismiss?.querySelector('svg.lucide-x')?.getAttribute('aria-hidden')).toBe('true');
+        expect(dismiss?.querySelector('.sr-only')?.textContent).toBe(keyedShell().text(DISMISS));
+        // The focus outline reads in the message's own ink, since the theme colour can be as dark as the fill.
+        expect(dismiss?.classList.contains('focus-ring')).toBe(true);
+        expect(dismiss?.classList.contains('focus-visible:outline-background')).toBe(true);
+    });
+
+    it('lets a long unbroken value break inside the message, so the dismiss button stays in the toast', () => {
+        renderFlash({ kind: 'error', message: 'averyveryverylongunbrokenaddress@example.com' });
+
+        const message = host.querySelector('.admin-toast p');
+
+        expect(['min-w-0', 'flex-1', 'wrap-anywhere'].filter((name) => !message?.classList.contains(name))).toEqual([]);
+    });
+
+    it('marks an error toast by the alert glyph as well as its role, never by colour alone', () => {
+        renderFlash({ kind: 'error', message: 'Nope.' });
+        expect(host.querySelector('.admin-toast svg.lucide-circle-alert')?.getAttribute('aria-hidden')).toBe('true');
+
+        act(() => host.querySelector<HTMLButtonElement>('.admin-toast-dismiss')?.click());
+        renderFlash({ kind: 'success', message: 'Saved.' });
+        expect(host.querySelector('.admin-toast svg.lucide-circle-alert')).toBeNull();
+    });
+
+    it('keeps the toaster where it stands: bottom right at a fixed width, across the top below the breakpoint, over every dialog', () => {
+        renderFlash({ kind: 'success', message: 'Saved.' });
+
+        const toaster = host.querySelector('.admin-toaster');
+
+        for (const name of ['fixed', 'right-4', 'bottom-4', 'w-80', 'z-[60]', 'flex-col', 'gap-2', 'max-desktop:top-4', 'max-desktop:bottom-auto', 'max-desktop:left-4', 'max-desktop:w-auto']) {
+            expect(toaster?.classList.contains(name)).toBe(true);
+        }
+    });
+
     it('shows a kind it does not recognise as given and clears it like any non-error', () => {
         renderFlash({ kind: 'celebration', message: 'Welcome back' });
 

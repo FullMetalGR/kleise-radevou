@@ -169,7 +169,8 @@ describe('the customers screen', () => {
         // The sentence in the body face, a date in mono.
         expect(view.host.querySelectorAll('.admin-customers__last')[0]?.classList.contains('font-mono')).toBe(false);
         expect(view.host.querySelectorAll('.admin-customers__last')[1]?.classList.contains('font-mono')).toBe(true);
-        expect(q('.admin-pagination__page')?.classList.contains('text-muted-foreground')).toBe(true);
+        expect(q('.admin-pagination__page')?.classList.contains('bg-foreground')).toBe(true);
+        expect(q('.admin-pagination__page')?.classList.contains('text-background')).toBe(true);
         expect(view.host.querySelectorAll('.admin-customers__bookings')[1]?.textContent).toBe('3');
         expect(q('.admin-customers-empty')).toBeNull();
         expect(q('#customers-search')?.getAttribute('placeholder')).toBe(words.text(SEARCH_HINT_CONTACT));

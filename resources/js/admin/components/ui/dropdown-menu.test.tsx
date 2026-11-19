@@ -129,6 +129,58 @@ describe('the dropdown menu', () => {
         expect(document.activeElement).toBe(items()[0]);
     });
 
+    it('opens on the menu surface at least 230px wide, its items 44px rows at a field\'s rounding in the heavier weight', async () => {
+        render();
+        trigger()?.focus();
+        key(trigger(), 'Enter');
+        await settle();
+
+        for (const name of ['bg-popover', 'rounded-menu', 'shadow-float', 'border-0', 'p-1.5', 'min-w-[max(14.375rem,var(--radix-dropdown-menu-trigger-width))]']) {
+            expect(menu()?.classList.contains(name)).toBe(true);
+        }
+
+        for (const name of ['border', 'bg-background', 'rounded-md', 'shadow-md']) {
+            expect(menu()?.classList.contains(name)).toBe(false);
+        }
+
+        expect(items()).toHaveLength(3);
+
+        for (const item of items()) {
+            for (const name of ['min-h-11', 'rounded-field', 'text-body', 'font-semibold', 'data-highlighted:bg-accent']) {
+                expect(item.classList.contains(name)).toBe(true);
+            }
+        }
+
+        // The description under a label keeps the lighter weight, so the label leads.
+        expect(document.querySelector('.close .admin-menu__description')?.classList.contains('font-medium')).toBe(true);
+    });
+
+    it('keeps every item its full height where a short window squeezes the list, so the list scrolls and no two-line item gives', async () => {
+        render();
+        trigger()?.focus();
+        key(trigger(), 'Enter');
+        await settle();
+
+        // The list is a column that scrolls under its height limit, and a row with a least height of its own would shrink to it before the scroll starts.
+        for (const name of ['flex', 'flex-col', 'overflow-y-auto', 'max-h-(--radix-dropdown-menu-content-available-height)']) {
+            expect(menu()?.classList.contains(name)).toBe(true);
+        }
+
+        expect(items()).toHaveLength(3);
+        expect(items().filter((item) => !item.classList.contains('shrink-0'))).toEqual([]);
+    });
+
+    it('fills the item the keyboard is on and no other', async () => {
+        render();
+        trigger()?.focus();
+        key(trigger(), 'Enter');
+        await settle();
+        key(document.activeElement, 'ArrowDown');
+        await settle();
+
+        expect(items().map((item) => item.hasAttribute('data-highlighted'))).toEqual([false, true, false]);
+    });
+
     it('opens from the keyboard on the first item, and the arrows move between the items', async () => {
         render();
         trigger()?.focus();

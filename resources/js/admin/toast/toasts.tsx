@@ -1,4 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Alert, Cross } from '@/components/glyphs';
+import { Button } from '@/components/ui/button';
 import { useShell } from '@/lib/strings';
 import type { Flash } from '../types';
 
@@ -95,6 +97,14 @@ export function useToasts(): Toasts {
  * admin's breakpoint, it spans the screen between the two side margins at the top, since a dialog
  * filling the screen pins its actions to the bottom, and an error toast, which stays until
  * dismissed, would sit over them there.
+ *
+ * Each toast is a message in the ink fill, rounded to hold a second line, with a small round
+ * button at its end to dismiss it, named Dismiss and showing a cross. The message may narrow below
+ * its longest word and break inside it, so a long unbroken value, an address say, wraps rather
+ * than pushing the button out of the toast. An error toast starts with the alert mark, since a
+ * red word on the ink would be too faint to read and the role alone is not seen. The button's
+ * focus outline takes the message's own ink, as the theme colour it otherwise reads can be as dark
+ * as the fill.
  */
 function Toaster({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number) => void }) {
     const shell = useShell();
@@ -106,12 +116,20 @@ function Toaster({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number) =
                     key={toast.id}
                     role={toast.kind === 'error' ? 'alert' : 'status'}
                     data-kind={toast.kind}
-                    className={`admin-toast pointer-events-auto flex items-start gap-3 rounded-lg border bg-card p-3 text-sm text-card-foreground shadow-md ${toast.kind === 'error' ? 'border-destructive text-destructive' : ''}`}
+                    className="admin-toast pointer-events-auto flex items-center gap-2 rounded-inner bg-foreground py-2 pr-2 pl-4 text-body-sm font-semibold text-background shadow-float"
                 >
-                    <p className="flex-1">{toast.message}</p>
-                    <button type="button" className="admin-toast-dismiss text-muted-foreground underline" onClick={() => dismiss(toast.id)}>
+                    {toast.kind === 'error' && <Alert />}
+                    <p className="min-w-0 flex-1 py-2 wrap-anywhere">{toast.message}</p>
+                    <Button
+                        variant="tertiary"
+                        size="small"
+                        iconOnly
+                        icon={<Cross />}
+                        className="admin-toast-dismiss text-background focus-visible:outline-background enabled:hover:bg-background/15"
+                        onClick={() => dismiss(toast.id)}
+                    >
                         {shell.text(DISMISS)}
-                    </button>
+                    </Button>
                 </div>
             ))}
         </div>

@@ -109,6 +109,19 @@ describe('the popover', () => {
         expect(surface()?.classList.contains('overflow-y-auto')).toBe(true);
     });
 
+    it('opens on the menu surface: the popover fill, the menu\'s rounding and the floating shadow, whose hairline stands in for a border', () => {
+        view.render(<Picker />);
+        press(trigger());
+
+        for (const name of ['bg-popover', 'text-popover-foreground', 'rounded-menu', 'shadow-float', 'border-0', 'p-1.5']) {
+            expect(surface()?.classList.contains(name)).toBe(true);
+        }
+
+        for (const name of ['border', 'bg-background', 'rounded-md', 'shadow-md']) {
+            expect(surface()?.classList.contains(name)).toBe(false);
+        }
+    });
+
     it('closes on Escape and hands focus back to the trigger', async () => {
         view.render(<Picker />);
         trigger()?.focus();

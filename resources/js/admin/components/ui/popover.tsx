@@ -12,7 +12,8 @@ import { NestedOverlay } from './modal';
  * below runs out, clamped inside the viewport, and following scroll and resize through its own
  * update. The content is at least the trigger's width and no taller than the room on its side,
  * through the variables the library exposes, so a long list scrolls inside it. It is portaled,
- * the library's default, so a scrolled modal body cannot clip it.
+ * the library's default, so a scrolled modal body cannot clip it. It opens on the menu surface
+ * below, as the dropdown menu does, so every list and panel that opens over a page looks alike.
  *
  * Dismissal is the library's layer stack: Escape reaches the top layer alone, so inside a modal
  * one press peels the popover and the next the modal. An Escape that is composing text is
@@ -32,6 +33,23 @@ export const PopoverTrigger = PopoverPrimitive.Trigger;
 
 export const PopoverAnchor = PopoverPrimitive.Anchor;
 
+/**
+ * The surface every popover and dropdown menu opens on: the popover fill, the menu's rounding and
+ * the floating shadow, whose own hairline stands in for a border, with a little room inside the
+ * edge so a row's own rounding shows. A content that wants more room inside says so.
+ */
+export const MENU_SURFACE = 'rounded-menu border-0 bg-popover p-1.5 text-popover-foreground shadow-float';
+
+/**
+ * A row of a pick list: 44px, rounded as a field is, the soft fill on the keyboard's active row
+ * alone. The lists move that row by the keyboard and never by the pointer, so a fill under the
+ * pointer as well would show two filled rows at once. The chosen row is heavier and carries a tick
+ * at its end, the tick alone telling it apart once a row is also active. A dropdown menu's items
+ * wear the same row, all of them heavier; there the library moves the active row with the pointer
+ * too, so the one fill follows the pointer as it follows the arrows.
+ */
+export const MENU_OPTION = 'flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-field px-3.5 text-body data-highlighted:bg-accent aria-selected:font-semibold';
+
 export function PopoverContent({ className, align = 'start', sideOffset = 4, collisionPadding = 8, onEscapeKeyDown, children, ...rest }: ComponentProps<typeof PopoverPrimitive.Content>) {
     return (
         <PopoverPrimitive.Portal>
@@ -39,10 +57,7 @@ export function PopoverContent({ className, align = 'start', sideOffset = 4, col
                 align={align}
                 sideOffset={sideOffset}
                 collisionPadding={collisionPadding}
-                className={cn(
-                    'admin-popover z-50 max-h-(--radix-popover-content-available-height) min-w-(--radix-popover-trigger-width) overflow-y-auto rounded-md border bg-background text-foreground shadow-md outline-none',
-                    className,
-                )}
+                className={cn('admin-popover z-50 max-h-(--radix-popover-content-available-height) min-w-(--radix-popover-trigger-width) overflow-y-auto outline-none', MENU_SURFACE, className)}
                 onEscapeKeyDown={(event) => {
                     if (event.isComposing) {
                         event.preventDefault();
@@ -58,19 +73,3 @@ export function PopoverContent({ className, align = 'start', sideOffset = 4, col
         </PopoverPrimitive.Portal>
     );
 }
-
-/**
- * The menu surface a pick list opens on, the combobox's, the date field's and the time field's:
- * the popover fill, the menu's rounding and the floating shadow in place of a line, with a little
- * room inside the edge so a row's own rounding shows. The calendar toolbar's popovers keep the
- * plain surface above.
- */
-export const MENU_SURFACE = 'rounded-menu border-0 bg-popover p-1.5 text-popover-foreground shadow-float';
-
-/**
- * A row of a pick list: 44px, rounded as a field is, the soft fill on the keyboard's active row
- * alone. The lists move that row by the keyboard and never by the pointer, so a fill under the
- * pointer as well would show two filled rows at once. The chosen row is heavier and carries a tick
- * at its end, the tick alone telling it apart once a row is also active.
- */
-export const MENU_OPTION = 'flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-field px-3.5 text-body data-highlighted:bg-accent aria-selected:font-semibold';

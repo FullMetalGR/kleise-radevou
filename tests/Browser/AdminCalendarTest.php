@@ -10,6 +10,7 @@ use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Api\Webpage;
 use Pest\Browser\Playwright\Page;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Look;
 use Tests\Support\LunaFixture;
 
 /*
@@ -502,8 +503,9 @@ it('shows Week as a row per member: a day\'s first six bookings and how many mor
     calendarPress($page, $full, $margin);
     $page->assertScript(calendarListAbout($full, $margin), 'under')
         ->assertSeeIn('.admin-menu__title', $title)
-        ->assertCount('.admin-menu__item', 3)
-        ->keys('.admin-menu', 'Escape')
+        ->assertCount('.admin-menu__item', 3);
+    Look::shot($page, 'menu-week-row-date');
+    $page->keys('.admin-menu', 'Escape')
         ->assertMissing('.admin-menu')
         ->assertScript(Admin::focusIsOn($full), true);
     $height = calendarPlaywright($page)->locator($bare)->boundingBox()['height'] ?? 0;
@@ -559,8 +561,9 @@ it('adds a member\'s closure from the Add menu beside the title and shows it on 
         ->assertSeeIn('#calendar-who', adminLine('admin/calendar.who.all'))
         ->assertPresent('.admin-new-booking')
         ->click('.admin-calendar-add')
-        ->assertSeeIn('.admin-menu', adminLine('admin/calendar.page.add_booking'))
-        ->click('.admin-calendar-add__closure')
+        ->assertSeeIn('.admin-menu', adminLine('admin/calendar.page.add_booking'));
+    Look::shot($page, 'menu-calendar-add');
+    $page->click('.admin-calendar-add__closure')
         ->waitForText(adminLine('admin/calendar.closure.title'))
         ->assertSeeIn('.admin-closure .admin-modal__title', adminLine('admin/calendar.closure.title'))
         ->select('#closure-who', (string) $elena)

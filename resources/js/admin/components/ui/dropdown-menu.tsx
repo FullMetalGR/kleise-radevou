@@ -2,6 +2,7 @@ import { DropdownMenu as MenuPrimitive } from 'radix-ui';
 import type { ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 import { NestedOverlay } from './modal';
+import { MENU_OPTION, MENU_SURFACE } from './popover';
 
 /*
  * The dropdown menu, the kit's first, on Radix's DropdownMenu as the popover stands on its
@@ -26,6 +27,10 @@ import { NestedOverlay } from './modal';
  *
  * Open or closed is the library's to hold, a press or a key on the trigger changing it, unless a
  * caller holds it: one that opens its menu on more than those hands `open` and hears every change.
+ *
+ * It opens on the popover's menu surface, at least 230px wide so a short trigger still opens a
+ * list its labels fit, and each item is a pick list's 44px row, its label in the heavier weight
+ * and a description under it in the lighter one.
  */
 
 export type MenuItem = {
@@ -56,13 +61,16 @@ type Props = {
 function Body({ item }: { item: MenuItem }) {
     return (
         <>
-            <span className="admin-menu__label font-medium">{item.label}</span>
-            {item.description !== undefined && <span className="admin-menu__description text-xs text-muted-foreground">{item.description}</span>}
+            <span className="admin-menu__label">{item.label}</span>
+            {item.description !== undefined && <span className="admin-menu__description text-small font-medium text-muted-foreground">{item.description}</span>}
         </>
     );
 }
 
-const ITEM = 'admin-menu__item flex cursor-default flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left text-sm outline-none select-none data-[highlighted]:bg-accent';
+// A row never shrinks: its least height stands in for the height of its words, so in a list
+// squeezed by a short window a two-line row would otherwise give down to one line's room before
+// the list scrolls.
+const ITEM = cn(MENU_OPTION, 'admin-menu__item shrink-0 flex-col items-start justify-center gap-0.5 py-2 text-left font-semibold outline-none select-none');
 
 export function DropdownMenu({ trigger, label, items, title, note, align = 'start', open, onOpenChange, className }: Props) {
     return (
@@ -77,7 +85,8 @@ export function DropdownMenu({ trigger, label, items, title, note, align = 'star
                     sideOffset={4}
                     collisionPadding={8}
                     className={cn(
-                        'admin-menu z-50 flex max-h-(--radix-dropdown-menu-content-available-height) min-w-(--radix-dropdown-menu-trigger-width) flex-col overflow-y-auto rounded-md border bg-background p-1 text-foreground shadow-md outline-none',
+                        'admin-menu z-50 flex max-h-(--radix-dropdown-menu-content-available-height) min-w-[max(14.375rem,var(--radix-dropdown-menu-trigger-width))] flex-col overflow-y-auto outline-none',
+                        MENU_SURFACE,
                         className,
                     )}
                     onEscapeKeyDown={(event) => {
@@ -87,7 +96,7 @@ export function DropdownMenu({ trigger, label, items, title, note, align = 'star
                     }}
                 >
                     <NestedOverlay />
-                    {title !== undefined && <MenuPrimitive.Label className="admin-menu__title px-3 pt-1.5 pb-1 text-xs font-semibold text-muted-foreground">{title}</MenuPrimitive.Label>}
+                    {title !== undefined && <MenuPrimitive.Label className="admin-menu__title px-3.5 pt-2 pb-1.5 text-label text-muted-foreground">{title}</MenuPrimitive.Label>}
                     {items.map((item) =>
                         item.href !== undefined ? (
                             <MenuPrimitive.Item key={item.key} asChild className={cn(ITEM, item.className)}>
@@ -103,8 +112,8 @@ export function DropdownMenu({ trigger, label, items, title, note, align = 'star
                     )}
                     {note !== undefined && (
                         <>
-                            <MenuPrimitive.Separator className="admin-menu__separator my-1 border-t" />
-                            <p className="admin-menu__note px-3 py-1.5 text-xs text-muted-foreground">{note}</p>
+                            <MenuPrimitive.Separator className="admin-menu__separator my-1.5 border-t" />
+                            <p className="admin-menu__note px-3.5 py-1.5 text-small text-muted-foreground">{note}</p>
                         </>
                     )}
                 </MenuPrimitive.Content>

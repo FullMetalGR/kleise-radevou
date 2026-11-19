@@ -200,6 +200,7 @@ it('cancels a booking from the dialog on a phone through its confirm to the toas
         ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.cancelled'))
         ->assertCount('.admin-booking-actions', 0)
         ->assertScript(PhoneScripts::TOASTS_INSIDE, true);
+    Look::shot($page, 'toast-over-filling-dialog-390');
 
     $page->click('.admin-booking-close')->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']));
 
