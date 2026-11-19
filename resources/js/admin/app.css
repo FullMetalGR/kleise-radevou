@@ -461,6 +461,17 @@
 }
 
 /*
+ * The same outline for a field, held 1px off it: a field already draws its own ring inside its
+ * edge, so the outline sits close against it rather than leaving a gap the width of a button's.
+ */
+@utility focus-ring-field {
+    &:focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 1px;
+    }
+}
+
+/*
  * Each status chip family's hue, one token each: the chips below paint with them, and the
  * calendar colours a block and a legend swatch by status with the same tokens (calendar/model.ts
  * statusHueOf), so a hue is spelled here alone. Past has no hue on its chip, a flat grey tag, and
@@ -526,33 +537,36 @@
 /*
  * The day calendar, behind the date field and the day step, over react-day-picker: the
  * library's stylesheet is imported once above, into the components layer so the kit's utilities
- * still win, and its own variables are mapped here onto the theme's tokens, the days the kit's
- * size, the chosen day the primary fill, today underlined.
+ * still win, and its own variables are mapped here onto the theme's tokens. Each day is a 40px
+ * circle, the chosen day filled with the primary, today ringed in it, and the month's title set
+ * in the display face. The figures are the body face's fixed-width numerals, which the admin
+ * sets everywhere, so a column of days lines up without the monospace face.
  */
 @layer components {
     .admin-day-calendar {
         --rdp-accent-color: var(--primary);
         --rdp-accent-background-color: var(--accent);
-        --rdp-day-height: 2.25rem;
-        --rdp-day-width: 2.25rem;
-        --rdp-day_button-height: 2rem;
-        --rdp-day_button-width: 2rem;
-        --rdp-day_button-border-radius: var(--radius-md);
+        --rdp-day-height: 2.5rem;
+        --rdp-day-width: 2.5rem;
+        --rdp-day_button-height: 2.5rem;
+        --rdp-day_button-width: 2.5rem;
+        --rdp-day_button-border-radius: 50%;
         --rdp-selected-border: 2px solid transparent;
-        --rdp-nav-height: 2.25rem;
-        --rdp-nav_button-height: 2rem;
-        --rdp-nav_button-width: 2rem;
-        font-size: var(--text-sm);
+        --rdp-nav-height: 2.5rem;
+        --rdp-nav_button-height: 2.25rem;
+        --rdp-nav_button-width: 2.25rem;
+        font-size: var(--text-body);
 
         .rdp-month_caption {
-            font-size: var(--text-sm);
+            font-family: var(--font-display);
+            font-size: 1rem;
             font-weight: 600;
             align-items: center;
         }
 
         .rdp-button_previous,
         .rdp-button_next {
-            border-radius: var(--radius-md);
+            border-radius: 50%;
         }
 
         .rdp-button_previous:hover,
@@ -570,10 +584,6 @@
             opacity: 1;
         }
 
-        .rdp-day_button {
-            font-family: var(--font-mono);
-        }
-
         .rdp-selected {
             font-size: inherit;
             font-weight: inherit;
@@ -586,7 +596,7 @@
         }
 
         .admin-day-calendar__today:not(.rdp-outside) .rdp-day_button {
-            text-decoration: underline;
+            box-shadow: inset 0 0 0 1.5px var(--primary);
         }
     }
 }

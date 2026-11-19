@@ -1,5 +1,6 @@
 import { type KeyboardEvent, type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import { Field } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -206,7 +207,7 @@ function WhoField({ filters, options, own, pinned, shown, colours, onChange }: O
                                     <legend className="admin-calendar-who__heading px-2 py-1.5 text-xs text-muted-foreground">{words.text(WHO_PICK)}</legend>
                                     {options.staff.map((member: Member) => (
                                         <label key={member.id} className="admin-calendar-who__member flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted" data-staff-id={member.id}>
-                                            <input type="checkbox" className="size-4 accent-primary" checked={ticked.includes(member.id)} onChange={(event) => toggle(member.id, event.target.checked)} />
+                                            <input type="checkbox" className={CHECK_BOX} checked={ticked.includes(member.id)} onChange={(event) => toggle(member.id, event.target.checked)} />
                                             <Initials name={member.name} hue={hueOf(member.id, colours)} size="list" />
                                             <span className="admin-calendar-who__name truncate">{member.name}</span>
                                         </label>
@@ -247,7 +248,7 @@ export function Filters({ filters, options, staffShown, own, pinned, shown, colo
                 {(control) => (
                     <Select
                         {...control}
-                        className="admin-calendar-status"
+                        className="admin-calendar-status h-9"
                         options={[{ value: '', label: words.text('filters.any_status') }, ...options.statuses.map((status) => ({ value: status, label: statusLabel(status, shell) }))]}
                         value={filters.status}
                         onChange={(status) => set({ status })}
@@ -258,7 +259,7 @@ export function Filters({ filters, options, staffShown, own, pinned, shown, colo
                 {(control) => (
                     <Select
                         {...control}
-                        className="admin-calendar-service"
+                        className="admin-calendar-service h-9"
                         options={[
                             { value: '', label: words.text('filters.all_services') },
                             ...options.services.map((service: Choice) => ({ value: String(service.id), label: service.active ? service.name : words.text('filters.inactive_service', { service: service.name }) })),
@@ -272,7 +273,7 @@ export function Filters({ filters, options, staffShown, own, pinned, shown, colo
                 {(control) => (
                     <Select
                         {...control}
-                        className="admin-calendar-colour-by"
+                        className="admin-calendar-colour-by h-9"
                         title={words.text(colourBy.allowed ? COLOUR_BY_NOTE : COLOUR_BY_LOCKED)}
                         options={COLOUR_BY_CHOICES.map((choice) => ({ value: choice.value, label: words.text(choice.label) }))}
                         value={colourBy.value}

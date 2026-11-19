@@ -26,8 +26,10 @@ use Tests\Support\LunaFixture;
  * Month's day its number and how many bookings it has with no chip, the whole cell its date menu,
  * whose Open day opens Day view on it, and one more opens every screen of the admin, as an owner
  * who reads English and as one who reads Greek, and reads that none is wider than the phone, the
- * Team screen's table scrolling inside its card. The rest of the suite stays on the plugin's
- * desktop device.
+ * Team screen's table scrolling inside its card. A walk in Greek holds a field's control to its
+ * place: the selects of Bookings' filters, listing a member and a service whose names run to sixty
+ * characters, stand inside their fields with the page not scrolling sideways. The rest of the
+ * suite stays on the plugin's desktop device.
  *
  * The bookings are written straight to luna's rows, dated whole days from the tenant's today in
  * Athens on the real clock, which the browser and the application both read.
@@ -301,6 +303,27 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
         ->waitForText(adminLine('admin/staff.form.weekly'))
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertScript(PhoneScripts::SAVE_BAR_INSIDE, true)
+        ->assertNoJavaScriptErrors();
+});
+
+it('keeps each select of Bookings\' filters inside its field on a phone in Greek, the page not scrolling sideways, where a member and a service carry names of sixty characters', function () {
+    // A select is as wide as its longest option unless its frame holds it to the field, and the
+    // filters list every member and every service by name.
+    $member = 'Elena Konstantina Papadaki-Triantafyllopoulou of Luna Studio';
+    $service = 'Haircut with a wash, long layers, a blow-dry and a hand wave';
+    expect([strlen($member), strlen($service)])->toBe([60, 60]);
+    DB::table('tenant_luna.staff')->where('id', LunaFixture::id('staff', 'Elena Papadaki'))->update(['name' => $member]);
+    DB::table('tenant_luna.services')->where('id', LunaFixture::id('services', 'Haircut'))->update(['name' => $service]);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/bookings'))
+        ->assertVisible('#bookings-service')
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value)
+        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)
+        ->assertScript(PhoneScripts::SELECTS_WITH_LONG_OPTION, 2)
+        ->assertScript(PhoneScripts::SELECTS_INSIDE_FIELDS, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
 });
 

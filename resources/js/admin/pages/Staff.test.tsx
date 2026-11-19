@@ -248,6 +248,11 @@ describe('the list', () => {
         expect(Array.from(document.querySelectorAll('.admin-staff__email')).map((cell) => cell.textContent)).toEqual(['', 'elena@luna.example']);
         expect(text('.admin-staff-toggle label')).toBe(staff.text('page.show_inactive', { count: formatCount(1, staff.locale) }));
         expect(text('.admin-staff')).toContain('Luna Hair Studio');
+        // The toggle's box is as tall as the search field beside it, so the two stand level, and its
+        // tick is the check field's box.
+        expect(document.querySelector('.admin-staff-toggle')?.classList.contains('h-11.5')).toBe(true);
+        expect(document.querySelector('.admin-staff-search')?.classList.contains('h-11.5')).toBe(true);
+        expect(['size-5', 'accent-primary', 'focus-ring-field'].every((look) => document.querySelector('.admin-staff-toggle__tick')?.classList.contains(look))).toBe(true);
 
         act(() => document.querySelector<HTMLInputElement>('#staff-show-inactive')?.click());
         expect(document.querySelectorAll('.admin-staff__row')).toHaveLength(3);

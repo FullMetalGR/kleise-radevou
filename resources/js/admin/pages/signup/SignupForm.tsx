@@ -1,7 +1,8 @@
 import { type FormEvent, Fragment } from 'react';
 import { tagged } from '../../../booking/tagged';
 import { Button } from '@/components/ui/button';
-import { Field, useFocusFirstFailing } from '@/components/ui/field';
+import { CHECK_BOX } from '@/components/ui/check-field';
+import { ErrorLine, Field, useFocusFirstFailing } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { Select } from '@/components/ui/select';
@@ -136,7 +137,7 @@ export function SignupForm({ data, strings, categories, timezones, centralHost, 
                         type="checkbox"
                         id="signup-terms"
                         name="terms"
-                        className="admin-check-field__tick mt-0.5"
+                        className={`admin-check-field__tick ${CHECK_BOX}`}
                         checked={data.terms === TERMS_TICKED}
                         aria-invalid={terms === '' ? undefined : true}
                         aria-describedby={terms === '' ? undefined : 'signup-terms-error'}
@@ -148,11 +149,7 @@ export function SignupForm({ data, strings, categories, timezones, centralHost, 
                         ))}
                     </label>
                 </div>
-                {terms !== '' && (
-                    <p id="signup-terms-error" className="admin-field__error text-destructive text-sm">
-                        {terms}
-                    </p>
-                )}
+                {terms !== '' && <ErrorLine id="signup-terms-error">{terms}</ErrorLine>}
             </div>
             {turnstile !== null && (
                 <div
@@ -165,11 +162,7 @@ export function SignupForm({ data, strings, categories, timezones, centralHost, 
                     aria-describedby={check === '' ? undefined : 'signup-turnstile_token-error'}
                 >
                     <Turnstile key={attempt} siteKey={turnstile.siteKey} script={turnstile.script} onToken={(token) => onChange('turnstile_token', token)} />
-                    {check !== '' && (
-                        <p id="signup-turnstile_token-error" className="admin-field__error text-destructive text-sm">
-                            {check}
-                        </p>
-                    )}
+                    {check !== '' && <ErrorLine id="signup-turnstile_token-error">{check}</ErrorLine>}
                 </div>
             )}
             {notice !== null && (

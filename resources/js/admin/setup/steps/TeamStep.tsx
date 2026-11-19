@@ -1,7 +1,8 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Field } from '@/components/ui/field';
+import { CHECK_BOX } from '@/components/ui/check-field';
+import { ErrorLine, Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { useOneWrite } from '@/lib/one-write';
 import { type KeysOf, type Strings, useShell } from '@/lib/strings';
@@ -163,7 +164,7 @@ function TeamPanel({ data, words, next, staff, closed }: PanelProps) {
                         <ul className="admin-staff-services flex flex-col gap-2">
                             {data.services.map((service) => (
                                 <li key={service.id} className="admin-staff-services__row flex items-center gap-3">
-                                    <input type="checkbox" id={`staff-service-${service.id}`} className="admin-staff-services__tick" checked={draft.service_ids.includes(service.id)} onChange={(event) => tick(service.id, event.target.checked)} />
+                                    <input type="checkbox" id={`staff-service-${service.id}`} className={`admin-staff-services__tick ${CHECK_BOX}`} checked={draft.service_ids.includes(service.id)} onChange={(event) => tick(service.id, event.target.checked)} />
                                     <label htmlFor={`staff-service-${service.id}`} className="admin-staff-services__name text-sm">
                                         {service.status === 'inactive' ? staff.text('form.inactive_service', { service: service.name }) : service.name}
                                     </label>
@@ -171,11 +172,7 @@ function TeamPanel({ data, words, next, staff, closed }: PanelProps) {
                             ))}
                         </ul>
                     )}
-                    {refused.service_ids !== undefined && (
-                        <p id="staff-services-error" className="admin-field__error text-sm text-destructive">
-                            {refused.service_ids}
-                        </p>
-                    )}
+                    {refused.service_ids !== undefined && <ErrorLine id="staff-services-error">{refused.service_ids}</ErrorLine>}
                 </fieldset>
                 <div className="flex flex-wrap items-center gap-3">
                     <Button type="submit" className="admin-setup-team__add" disabled={!canSave(draft)} busy={adding} busyLabel={words.text('adding')}>

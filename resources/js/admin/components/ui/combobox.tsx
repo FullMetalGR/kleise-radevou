@@ -1,7 +1,10 @@
 import { useId, useRef, useState, type ComponentProps, type KeyboardEvent } from 'react';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverAnchor, PopoverContent } from './popover';
+import { Tick } from '../glyphs';
+import { Button } from './button';
+import { FIELD, FIELD_HEIGHT, TYPED } from './input';
+import { MENU_OPTION, MENU_SURFACE, Popover, PopoverAnchor, PopoverContent } from './popover';
 
 /*
  * The combobox, the one control with no native counterpart: it shows a person's name and returns
@@ -22,7 +25,9 @@ import { Popover, PopoverAnchor, PopoverContent } from './popover';
  * the input and its Clear, which open it themselves, so a press on them is not a press outside;
  * focus stays in the input both ways. Escape reaches the popover alone as the top layer, so inside
  * a modal it closes the list and leaves the modal open. Clear and the empty list's line are the
- * kit's words, from the strings the control is given.
+ * kit's words, from the strings the control is given. The input wears the field's look and the
+ * list the menu's, the chosen option ticked at the end of its row as well as set heavier, since
+ * the soft fill marks the active row and not the chosen one.
  */
 
 type ComboboxOption<T> = { readonly value: T; readonly label: string };
@@ -84,7 +89,7 @@ export function Combobox<T extends string | number>({ options, value, onChange, 
     return (
         <Popover open={open} onOpenChange={(next) => (next ? undefined : abandon())}>
             <PopoverAnchor asChild>
-                <div ref={anchor} className={cn('admin-combobox flex items-center gap-1', className)}>
+                <div ref={anchor} className={cn('admin-combobox flex items-center gap-2', className)}>
                     <input
                         type="text"
                         role="combobox"
@@ -93,7 +98,7 @@ export function Combobox<T extends string | number>({ options, value, onChange, 
                         aria-expanded={open}
                         aria-controls={listId}
                         aria-activedescendant={active === undefined ? undefined : `${listId}-${String(active.value)}`}
-                        className="admin-combobox__input admin-input h-8 w-full rounded-md border bg-background px-3 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                        className={cn('admin-combobox__input admin-input min-w-0', FIELD, TYPED, FIELD_HEIGHT)}
                         disabled={disabled}
                         value={open ? query : (chosen?.label ?? '')}
                         onChange={(event) => {
@@ -107,15 +112,15 @@ export function Combobox<T extends string | number>({ options, value, onChange, 
                         {...rest}
                     />
                     {value !== null && !disabled && (
-                        <button type="button" className="admin-combobox__clear shrink-0 rounded-md px-2 py-1 text-sm text-muted-foreground hover:text-foreground" onClick={() => onChange(null)}>
+                        <Button variant="tertiary" size="small" className="admin-combobox__clear" onClick={() => onChange(null)}>
                             {shell.text('kit.combobox.clear')}
-                        </button>
+                        </Button>
                     )}
                 </div>
             </PopoverAnchor>
             <PopoverContent
                 role="presentation"
-                className="max-h-[min(18rem,var(--radix-popover-content-available-height))]"
+                className={cn(MENU_SURFACE, 'max-h-[min(18rem,var(--radix-popover-content-available-height))]')}
                 onOpenAutoFocus={(event) => event.preventDefault()}
                 onCloseAutoFocus={(event) => event.preventDefault()}
                 onInteractOutside={(event) => {
@@ -145,11 +150,11 @@ type OptionsProps<T> = {
  */
 function Options<T extends string | number>({ listId, shown, value, active, emptyLabel, onChoose }: OptionsProps<T>) {
     if (shown.length === 0) {
-        return <p className="admin-combobox__empty px-3 py-2 text-sm text-muted-foreground">{emptyLabel}</p>;
+        return <p className="admin-combobox__empty px-3.5 py-2.5 text-body text-muted-foreground">{emptyLabel}</p>;
     }
 
     return (
-        <ul role="listbox" id={listId} className="admin-combobox__list py-1">
+        <ul role="listbox" id={listId} className="admin-combobox__list">
             {shown.map((option) => (
                 <li
                     key={String(option.value)}
@@ -157,13 +162,14 @@ function Options<T extends string | number>({ listId, shown, value, active, empt
                     role="option"
                     aria-selected={option.value === value}
                     data-highlighted={option === active ? '' : undefined}
-                    className="admin-combobox__option cursor-pointer px-3 py-1.5 text-sm data-highlighted:bg-accent aria-selected:font-semibold"
+                    className={cn('admin-combobox__option', MENU_OPTION)}
                     onMouseDown={(event) => {
                         event.preventDefault();
                         onChoose(option);
                     }}
                 >
                     {option.label}
+                    {option.value === value && <Tick />}
                 </li>
             ))}
         </ul>

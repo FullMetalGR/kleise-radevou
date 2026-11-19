@@ -222,6 +222,9 @@ describe('the free tenant\'s form', () => {
         expect(one('#new-tenant-locale-error')?.textContent).toBe('Choose the language from the list.');
         expect(one('#new-tenant-locale')?.getAttribute('aria-invalid')).toBe('true');
         expect(one('#new-tenant-features-error')?.textContent).toBe('Choose the features from the list.');
+        // The boxes' refusal is drawn as a field's own error, behind the alert icon.
+        expect(one('#new-tenant-features-error')?.className).toBe(one('#new-tenant-name-error')?.className);
+        expect(one('#new-tenant-features-error svg')?.getAttribute('aria-hidden')).toBe('true');
         expect(one('#new-tenant-features')?.getAttribute('aria-describedby')).toBe('new-tenant-features-error');
         expect(document.activeElement?.id).toBe('new-tenant-slug');
     });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useBookings } from '@/bookings/words';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import { Confirm } from '@/components/ui/confirm';
 import { Strip } from '@/figures/kit';
 import { isoWeekday } from '@/lib/day';
@@ -92,7 +93,7 @@ function DayTick({ uuids, selection, label, describedBy }: { uuids: string[]; se
         <input
             ref={box}
             type="checkbox"
-            className="admin-home-to-mark__day-tick size-4 shrink-0 accent-primary"
+            className={`admin-home-to-mark__day-tick ${CHECK_BOX}`}
             checked={ticked === uuids.length}
             aria-label={label}
             aria-describedby={describedBy}
@@ -127,7 +128,7 @@ function Row({ booking, manage, clock, words, staffShown, onOpen, selection, mar
             {manage && (
                 <input
                     type="checkbox"
-                    className="admin-home-to-mark__tick size-4 shrink-0 accent-primary"
+                    className={`admin-home-to-mark__tick ${CHECK_BOX}`}
                     checked={selection.has(booking.uuid)}
                     aria-label={label}
                     onChange={(event) => selection.set([booking.uuid], event.target.checked)}

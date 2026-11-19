@@ -95,6 +95,8 @@ describe('the closures card', () => {
         expect(added).toEqual({ staff_id: null, date: '2026-12-24', until: null, start: null, end: null, reason: null });
 
         const tick = document.querySelector<HTMLInputElement>('.admin-blackouts__all-day-tick');
+        // The all-day tick is the check field's box.
+        expect(['size-5', 'accent-primary', 'focus-ring-field'].every((look) => tick?.classList.contains(look))).toBe(true);
         act(() => tick?.click());
         expect(document.querySelector('.admin-blackouts__start')?.getAttribute('value')).toBe('09:00');
         expect(document.querySelector('.admin-blackouts__end')?.getAttribute('value')).toBe('17:00');

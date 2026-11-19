@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import type { WizardKey, WizardWords } from '@/customers/words';
 import { DayCalendar } from '@/components/ui/day-calendar';
 import { Field } from '@/components/ui/field';
@@ -244,7 +245,7 @@ function Services({ state, catalog, staffReal, onChange, words }: StepProps) {
                 </Button>
                 {many && (
                     <label className="admin-wizard-same-staff flex items-center gap-2 text-sm">
-                        <input type="checkbox" className="admin-wizard-same-staff__tick" checked={state.sameStaff} onChange={() => onChange(toggleSameStaff(state))} />
+                        <input type="checkbox" className={`admin-wizard-same-staff__tick ${CHECK_BOX}`} checked={state.sameStaff} onChange={() => onChange(toggleSameStaff(state))} />
                         {words.text('same_staff')}
                     </label>
                 )}

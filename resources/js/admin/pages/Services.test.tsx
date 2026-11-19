@@ -203,6 +203,8 @@ describe('the catalog', () => {
         expect(text('.admin-services__duration')).toBe(words.text('table.minutes', { n: '45' }));
         expect(text('.admin-services__count')).toBe(words.choice('table.count', 2));
         expect(text('label[for="services-show-inactive"]')).toBe(words.text('page.show_inactive', { count: '1' }));
+        // The toggle's tick is the check field's box.
+        expect(['size-5', 'accent-primary', 'focus-ring-field'].every((look) => document.querySelector('#services-show-inactive')?.classList.contains(look))).toBe(true);
 
         press(document.querySelector('#services-show-inactive'));
 

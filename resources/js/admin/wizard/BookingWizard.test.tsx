@@ -320,6 +320,8 @@ describe('step 1, 4.3', () => {
 
         press(dialog().querySelector('.admin-wizard-slot[value="2026-11-03T08:00:00+00:00"]'));
         press(steps()[0] ?? null);
+        // The same-staff tick is the check field's box.
+        expect(['size-5', 'accent-primary', 'focus-ring-field'].every((look) => dialog().querySelector('.admin-wizard-same-staff__tick')?.classList.contains(look))).toBe(true);
         press(dialog().querySelector('.admin-wizard-same-staff__tick'));
         await toWhen();
 

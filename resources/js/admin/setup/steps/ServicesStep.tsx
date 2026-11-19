@@ -149,7 +149,7 @@ function ServicesPanel({ rows, words, next, services, currency, granularity }: P
                     {(control) => <TextInput {...control} type="number" min={0} step={granularity} value={draft.duration_min} onChange={(event) => set('duration_min')(event.target.value)} />}
                 </Field>
                 <Field id="service-price" label={services.text('form.price', { currency })} help={services.text('form.price_help')} error={refused.price ?? null}>
-                    {(control) => <TextInput {...control} inputMode="decimal" className="font-mono" value={draft.price} onChange={(event) => set('price')(event.target.value)} />}
+                    {(control) => <TextInput {...control} inputMode="decimal" className="tabular-nums" value={draft.price} onChange={(event) => set('price')(event.target.value)} />}
                 </Field>
                 <div className="flex flex-wrap items-center gap-3">
                     <Button type="submit" className="admin-setup-services__add" disabled={!canSave(draft)} busy={adding} busyLabel={words.text('adding')}>

@@ -76,10 +76,25 @@ function pressMovingFocus(element: HTMLElement | null): void {
 }
 
 describe('the date field', () => {
-    it('stands 32px high, the text input\'s height', () => {
+    it('stands 46px high in the field\'s ring, its figures in fixed-width numerals of the body face', () => {
         view.render(<From initial="2026-11-03" />);
 
-        expect(trigger()?.classList.contains('h-8')).toBe(true);
+        for (const look of ['h-11.5', 'rounded-field', 'bg-card', 'inset-ring-[1.5px]', 'inset-ring-border', 'focus-ring-field', 'tabular-nums', 'enabled:hover:not-aria-invalid:inset-ring-ink-tertiary']) {
+            expect(trigger()?.classList.contains(look)).toBe(true);
+        }
+        expect(trigger()?.classList.contains('font-mono')).toBe(false);
+        expect(trigger()?.className).not.toContain('focus-visible:ring');
+    });
+
+    it('opens the calendar on the menu surface, its Clear a small button', () => {
+        view.render(<From initial="2026-11-03" />);
+
+        open();
+
+        for (const look of ['rounded-menu', 'bg-popover', 'shadow-float']) {
+            expect(popover()?.classList.contains(look)).toBe(true);
+        }
+        expect(document.querySelector('.admin-date-field__clear')?.classList.contains('admin-button--small')).toBe(true);
     });
 
     it('renders an empty trigger for the empty value', () => {

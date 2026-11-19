@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState, type ComponentProps, type KeyboardEvent } from 'react';
 import { formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { Tick } from '../glyphs';
+import { FIELD, FIELD_HEIGHT, FIGURES_LOOK, PRESSED_HOVER } from './input';
+import { MENU_OPTION, MENU_SURFACE, Popover, PopoverContent, PopoverTrigger } from './popover';
 
 /*
  * The time field. The value in and out is a machine time, HH:MM or HH:MM:SS, empty meaning none;
@@ -21,7 +23,9 @@ import { Popover, PopoverContent, PopoverTrigger } from './popover';
  * two in the afternoon, and last the machine values without their leading zero, so "9" on a
  * twenty-four-hour tenant lands on 09:00. The listbox takes focus as it opens; Escape or a pick
  * closes it and focus goes back to the trigger. Escape reaches the popover alone as the top
- * layer, so inside a modal one press peels the list and leaves the modal open.
+ * layer, so inside a modal one press peels the list and leaves the modal open. The trigger wears
+ * the field's look and the list the menu's, the figures in fixed-width numerals, the chosen time
+ * ticked at the end of its row as well as set heavier, since the soft fill marks the active row.
  */
 
 const TIME = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/;
@@ -138,17 +142,14 @@ export function TimeField({ value, onChange, clock, granularity, className, disa
                     value={value}
                     aria-haspopup="listbox"
                     disabled={disabled}
-                    className={cn(
-                        'admin-time-field__trigger admin-input admin-input--figures h-8 w-full rounded-md border bg-background px-3 py-1 text-left font-mono text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive disabled:cursor-not-allowed disabled:opacity-60',
-                        className,
-                    )}
+                    className={cn('admin-time-field__trigger admin-input text-left', FIELD, PRESSED_HOVER, FIELD_HEIGHT, FIGURES_LOOK, className)}
                     {...rest}
                 >
                     {value === '' ? '' : formatTimeOfDay(value, clock)}
                 </button>
             </PopoverTrigger>
-            <PopoverContent role="presentation" className="admin-time-field__popover max-h-[min(18rem,var(--radix-popover-content-available-height))]">
-                <ul role="listbox" id={listId} tabIndex={0} aria-label={rest['aria-label']} aria-activedescendant={optionId(highlight)} className="admin-time-field__list py-1 outline-none" onKeyDown={keys}>
+            <PopoverContent role="presentation" className={cn('admin-time-field__popover', MENU_SURFACE, 'max-h-[min(18rem,var(--radix-popover-content-available-height))]')}>
+                <ul role="listbox" id={listId} tabIndex={0} aria-label={rest['aria-label']} aria-activedescendant={optionId(highlight)} className="admin-time-field__list outline-none" onKeyDown={keys}>
                     {times.map((time, at) => (
                         <li
                             key={time}
@@ -157,10 +158,11 @@ export function TimeField({ value, onChange, clock, granularity, className, disa
                             data-value={time}
                             aria-selected={time === value}
                             data-highlighted={at === highlight ? '' : undefined}
-                            className="admin-time-field__option cursor-pointer px-3 py-1 font-mono text-sm data-highlighted:bg-accent aria-selected:font-semibold"
+                            className={cn('admin-time-field__option tabular-nums', MENU_OPTION)}
                             onClick={() => pick(time)}
                         >
                             {labels[at]}
+                            {time === value && <Tick />}
                         </li>
                     ))}
                 </ul>

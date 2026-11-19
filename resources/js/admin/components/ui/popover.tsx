@@ -58,3 +58,19 @@ export function PopoverContent({ className, align = 'start', sideOffset = 4, col
         </PopoverPrimitive.Portal>
     );
 }
+
+/**
+ * The menu surface a pick list opens on, the combobox's, the date field's and the time field's:
+ * the popover fill, the menu's rounding and the floating shadow in place of a line, with a little
+ * room inside the edge so a row's own rounding shows. The calendar toolbar's popovers keep the
+ * plain surface above.
+ */
+export const MENU_SURFACE = 'rounded-menu border-0 bg-popover p-1.5 text-popover-foreground shadow-float';
+
+/**
+ * A row of a pick list: 44px, rounded as a field is, the soft fill on the keyboard's active row
+ * alone. The lists move that row by the keyboard and never by the pointer, so a fill under the
+ * pointer as well would show two filled rows at once. The chosen row is heavier and carries a tick
+ * at its end, the tick alone telling it apart once a row is also active.
+ */
+export const MENU_OPTION = 'flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-field px-3.5 text-body data-highlighted:bg-accent aria-selected:font-semibold';

@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { ListDetail, SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import { type BookingLink, copyLinkOf } from '@/lib/booking-link';
 import { clockOf, type TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
@@ -198,7 +199,7 @@ export default function Services() {
                         </Button>
                     </div>
                     <div className="admin-services-toggle flex items-center gap-2 text-sm">
-                        <input type="checkbox" id="services-show-inactive" className="admin-services-toggle__tick" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
+                        <input type="checkbox" id="services-show-inactive" className={`admin-services-toggle__tick ${CHECK_BOX}`} checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
                         <label htmlFor="services-show-inactive">{words.text('page.show_inactive', { count: String(inactive) })}</label>
                     </div>
                     <SettledList

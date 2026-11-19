@@ -263,6 +263,8 @@ describe('the closure dialog over bookings', () => {
 
     it('returns to the fields as typed on Back and posts nothing', () => {
         dialog();
+        // The all-day tick is the check field's box.
+        expect(['size-5', 'accent-primary', 'focus-ring-field'].every((look) => one('.admin-closure__all-day')?.classList.contains(look))).toBe(true);
         type('.admin-closure__reason', 'Inspection');
         press(one('.admin-closure__all-day'));
         press(one('.admin-closure__add'));

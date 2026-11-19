@@ -79,10 +79,22 @@ function mousedown(element: Element | undefined): boolean {
 }
 
 describe('the combobox', () => {
-    it('stands 32px high, the text input\'s height', () => {
+    it('stands 46px high in the field\'s ring, the focus outline the field\'s own', () => {
+        view.render(<Linked />);
+
+        for (const look of ['h-11.5', 'rounded-field', 'bg-card', 'inset-ring-[1.5px]', 'inset-ring-border', 'focus-ring-field']) {
+            expect(input()?.classList.contains(look)).toBe(true);
+        }
+        expect(input()?.className).not.toContain('focus-visible:ring');
+    });
+
+    it('lets its input shrink beside Clear, so Clear stays inside a narrow column', () => {
         view.render(<Linked initial={9} />);
 
-        expect(input()?.classList.contains('h-8')).toBe(true);
+        expect(input()?.parentElement?.classList.contains('flex')).toBe(true);
+        expect(input()?.classList.contains('w-full')).toBe(true);
+        expect(input()?.classList.contains('min-w-0')).toBe(true);
+        expect(clear()?.parentElement).toBe(input()?.parentElement);
     });
 
     it('is a combobox showing the chosen label while closed', () => {
@@ -162,6 +174,37 @@ describe('the combobox', () => {
 
         expect(highlighted()).toBe('Nikos Georgiou');
         expect(document.querySelector('[aria-selected="true"]')?.textContent).toBe('Nikos Georgiou');
+    });
+
+    it('lists on the menu surface in 44px rows, the chosen option ticked as well as heavier', () => {
+        view.render(<Linked initial={9} />);
+
+        key(input(), 'ArrowDown');
+
+        const chosen = document.querySelector('[aria-selected="true"]');
+        const other = options().find((option) => option !== chosen);
+
+        for (const look of ['rounded-menu', 'bg-popover', 'shadow-float']) {
+            expect(chosen?.closest('.admin-popover')?.classList.contains(look)).toBe(true);
+        }
+        expect(chosen?.classList.contains('min-h-11')).toBe(true);
+        expect(chosen?.classList.contains('rounded-field')).toBe(true);
+        expect(chosen?.classList.contains('aria-selected:font-semibold')).toBe(true);
+        expect(chosen?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+        expect(chosen?.lastElementChild?.tagName.toLowerCase()).toBe('svg');
+        expect(other?.querySelector('svg')).toBeNull();
+    });
+
+    it('fills the keyboard\'s active row alone, never the row under the pointer, so one row is filled at a time', () => {
+        view.render(<Linked initial={9} />);
+
+        press(input());
+
+        expect(options().length).toBeGreaterThan(1);
+        for (const option of options()) {
+            expect(option.classList.contains('data-highlighted:bg-accent')).toBe(true);
+            expect([...option.classList].filter((name) => name.includes('hover:'))).toEqual([]);
+        }
     });
 
     it('closes on Escape and clears the query, leaving the value', () => {
@@ -252,6 +295,7 @@ describe('the combobox', () => {
         key(input(), 'ArrowDown');
         key(input(), 'Enter');
         expect(clear()?.textContent).toBe(keyedShell().text('kit.combobox.clear'));
+        expect(clear()?.classList.contains('admin-button--small')).toBe(true);
 
         press(clear());
 

@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
@@ -223,7 +224,7 @@ export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity,
                         </>
                     )}
                     <div className="admin-blackouts__all-day flex items-center gap-2 text-sm">
-                        <input type="checkbox" id={`${idPrefix}-all-day`} className="admin-blackouts__all-day-tick size-4 accent-primary" checked={allDay} onChange={(event) => setAllDay(event.target.checked)} />
+                        <input type="checkbox" id={`${idPrefix}-all-day`} className={`admin-blackouts__all-day-tick ${CHECK_BOX}`} checked={allDay} onChange={(event) => setAllDay(event.target.checked)} />
                         <label htmlFor={`${idPrefix}-all-day`}>{words.text('closures.all_day')}</label>
                     </div>
                     <div className="flex justify-end">

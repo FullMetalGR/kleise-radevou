@@ -97,10 +97,44 @@ describe('the times of a day', () => {
 });
 
 describe('the time field', () => {
-    it('stands 32px high, the text input\'s height', () => {
+    it('stands 46px high in the field\'s ring, its figures in fixed-width numerals of the body face', () => {
         view.render(<Start initial="" />);
 
-        expect(trigger()?.classList.contains('h-8')).toBe(true);
+        for (const look of ['h-11.5', 'rounded-field', 'bg-card', 'inset-ring-[1.5px]', 'inset-ring-border', 'focus-ring-field', 'tabular-nums', 'enabled:hover:not-aria-invalid:inset-ring-ink-tertiary']) {
+            expect(trigger()?.classList.contains(look)).toBe(true);
+        }
+        expect(trigger()?.classList.contains('font-mono')).toBe(false);
+        expect(trigger()?.className).not.toContain('focus-visible:ring');
+    });
+
+    it('lists the times on the menu surface, 44px rows in fixed-width numerals, the chosen one ticked as well as heavier', () => {
+        view.render(<Start initial="09:00" />);
+
+        press(trigger());
+
+        for (const look of ['rounded-menu', 'bg-popover', 'shadow-float']) {
+            expect(listbox()?.closest('.admin-popover')?.classList.contains(look)).toBe(true);
+        }
+        expect(option('09:00')?.classList.contains('min-h-11')).toBe(true);
+        expect(option('09:00')?.classList.contains('rounded-field')).toBe(true);
+        expect(option('09:00')?.classList.contains('tabular-nums')).toBe(true);
+        expect(option('09:00')?.classList.contains('font-mono')).toBe(false);
+        expect(option('09:00')?.classList.contains('aria-selected:font-semibold')).toBe(true);
+        expect(option('09:00')?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+        expect(option('09:00')?.lastElementChild?.tagName.toLowerCase()).toBe('svg');
+        expect(option('09:05')?.querySelector('svg')).toBeNull();
+        expect(option('09:00')?.textContent).toBe('09:00');
+    });
+
+    it('fills the keyboard\'s active row alone, never the row under the pointer, so one row is filled at a time', () => {
+        view.render(<Start initial="09:00" />);
+
+        press(trigger());
+
+        for (const time of ['09:00', '09:05']) {
+            expect(option(time)?.classList.contains('data-highlighted:bg-accent')).toBe(true);
+            expect([...(option(time)?.classList ?? [])].filter((name) => name.includes('hover:'))).toEqual([]);
+        }
     });
 
     it('renders an empty trigger for the empty value and the tenant format otherwise, the machine value in the DOM', () => {

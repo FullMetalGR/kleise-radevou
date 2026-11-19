@@ -349,6 +349,28 @@ describe('the admin\'s own theme', () => {
         expect(squeezed(stroke[0]?.declarations ?? '')).toMatch(/(^|;)stroke-width:1\.8(px)?(;|$)/);
     });
 
+    it('builds the field\'s focus ring as the same outline held 1px off the control', () => {
+        const ring = rulesOf(ADMIN).filter((rule) => rule.selector === '.focus-ring-field:focus-visible');
+
+        expect(ring).toHaveLength(1);
+        expect(squeezed(ring[0]?.declarations ?? '')).toMatch(/(^|;)outline:3pxsolidvar\(--primary\)(;|$)/);
+        expect(squeezed(ring[0]?.declarations ?? '')).toMatch(/(^|;)outline-offset:1px(;|$)/);
+    });
+
+    it('draws the day calendar\'s days as 40px circles, the chosen one filled and today ringed in the primary, the month in the display face', () => {
+        const rules = rulesOf(ADMIN);
+        const block = (selector: string): string => squeezed(rules.filter((rule) => rule.selector.split(',').includes(selector)).map((rule) => rule.declarations).join(';'));
+        const calendar = block('.admin-day-calendar');
+
+        expect(calendar).toMatch(/(^|;)--rdp-day_button-height:2\.5rem(;|$)/);
+        expect(calendar).toMatch(/(^|;)--rdp-day_button-width:2\.5rem(;|$)/);
+        expect(calendar).toMatch(/(^|;)--rdp-day_button-border-radius:50%(;|$)/);
+        expect(block('.admin-day-calendar .rdp-selected .rdp-day_button')).toMatch(/(^|;)background-color:var\(--primary\)(;|$)/);
+        expect(block('.admin-day-calendar .admin-day-calendar__today:not(.rdp-outside) .rdp-day_button')).toMatch(/(^|;)box-shadow:inset0001\.5pxvar\(--primary\)(;|$)/);
+        expect(block('.admin-day-calendar .rdp-month_caption')).toMatch(/(^|;)font-family:var\(--font-display\)(;|$)/);
+        expect(rules.filter((rule) => rule.selector.startsWith('.admin-day-calendar')).some((rule) => rule.declarations.includes('--font-mono'))).toBe(false);
+    });
+
     it('takes the brand\'s primary into the scope from the brand\'s tokens and nothing else', () => {
         const scope = rulesOf(ADMIN).find((rule) => rule.selector === '.brand-scope');
 

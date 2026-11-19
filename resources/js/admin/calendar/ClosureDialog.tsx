@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import { DateField } from '@/components/ui/date-field';
 import { Field, useFocusFirstFailing } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
@@ -150,7 +151,7 @@ function ClosureFields({ typed, onChange, onDates, untilError, refusals, members
                 {(control) => <TextInput {...control} className="admin-closure__reason" value={typed.reason} onChange={(event) => onChange({ reason: event.target.value })} />}
             </Field>
             <div className="flex items-center gap-2 sm:col-span-2">
-                <input type="checkbox" id="closure-all-day" className="admin-closure__all-day" checked={typed.allDay} onChange={(event) => onChange({ allDay: event.target.checked })} />
+                <input type="checkbox" id="closure-all-day" className={`admin-closure__all-day ${CHECK_BOX}`} checked={typed.allDay} onChange={(event) => onChange({ allDay: event.target.checked })} />
                 <label htmlFor="closure-all-day">{words.text('closure.all_day')}</label>
             </div>
             {!typed.allDay && (

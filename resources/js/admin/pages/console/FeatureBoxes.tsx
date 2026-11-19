@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckField } from '@/components/ui/check-field';
+import { ErrorLine } from '@/components/ui/field';
 
 /*
  * The features as the console offers them: one checkbox per feature with its name and what it
@@ -47,11 +48,7 @@ export function FeatureBoxes({ idPrefix, offered, chosen, onToggle, error, error
                     onChange={(checked) => onToggle(choice.value, checked)}
                 />
             ))}
-            {error !== null && (
-                <p id={errorId} className="admin-field__error text-destructive text-sm">
-                    {error}
-                </p>
-            )}
+            {error !== null && <ErrorLine id={errorId}>{error}</ErrorLine>}
         </>
     );
 }

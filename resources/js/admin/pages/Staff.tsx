@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { ListDetail, SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import { Notice } from '@/components/ui/notice';
 import { type BookingLink, copyLinkOf } from '@/lib/booking-link';
 import { clockOf, formatCount, type TenantClock } from '@/lib/format';
@@ -13,7 +14,7 @@ import { ImageSlot, type ImageSlotWords } from '@/settings/ImageSlot';
 import { useColourByWrite } from '@/calendar/colour-by';
 import { bookingsWordsOf } from '@/bookings/words';
 import { Field } from '@/components/ui/field';
-import { TextInput } from '@/components/ui/input';
+import { FIELD_HEIGHT, TextInput } from '@/components/ui/input';
 import type { StaffColour } from '@/lib/hue';
 import { closurePath, type ClosureWho } from '@/staff/BlackoutsCard';
 import { Closures } from '@/staff/Closures';
@@ -267,8 +268,8 @@ export default function Staff() {
                         <Field id="staff-search" label={words.text('page.search')} className="w-full max-w-96">
                             {(control) => <TextInput {...control} type="search" className="admin-staff-search" placeholder={words.text('page.search_placeholder')} value={query} onChange={(event) => setQuery(event.target.value)} />}
                         </Field>
-                        <div className="admin-staff-toggle flex h-8 items-center gap-2 text-sm">
-                            <input type="checkbox" id="staff-show-inactive" className="admin-staff-toggle__tick size-4 accent-primary" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
+                        <div className={`admin-staff-toggle flex items-center gap-2 text-sm ${FIELD_HEIGHT}`}>
+                            <input type="checkbox" id="staff-show-inactive" className={`admin-staff-toggle__tick ${CHECK_BOX}`} checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
                             <label htmlFor="staff-show-inactive">{words.text('page.show_inactive', { count: formatCount(inactive, words.locale) })}</label>
                         </div>
                     </div>

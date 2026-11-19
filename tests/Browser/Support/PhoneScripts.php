@@ -168,4 +168,41 @@ final class PhoneScripts
             return box.bottom <= window.innerHeight + 1 && box.left >= 0 && box.right <= document.documentElement.clientWidth + 1;
         })
         JS;
+
+    /**
+     * True when the page draws a select inside a field and each one stands inside its field from
+     * side to side. A select is as wide as its longest option unless its frame holds it, and a
+     * field's own box does not grow with it, so each select's box is held to its field's.
+     */
+    public const string SELECTS_INSIDE_FIELDS = <<<'JS'
+        document.fonts.ready.then(() => {
+            const selects = Array.from(document.querySelectorAll('.admin-field select'));
+            return selects.length > 0 && selects.every((select) => {
+                const field = select.closest('.admin-field').getBoundingClientRect();
+                const own = select.getBoundingClientRect();
+                return own.left >= field.left - 1 && own.right <= field.right + 1;
+            });
+        })
+        JS;
+
+    /** How many selects of the page's fields list an option of sixty characters or more. */
+    public const string SELECTS_WITH_LONG_OPTION = "document.fonts.ready.then(() => Array.from(document.querySelectorAll('.admin-field select')).filter((select) => Array.from(select.options).some((option) => option.textContent.trim().length >= 60)).length)";
+
+    /**
+     * True when the Clear button of each search-and-pick box on the page stands inside its field
+     * and inside the card around it, from side to side. The box's input and Clear share a row, and
+     * an input that will not shrink pushes Clear out of the end of a narrow column.
+     */
+    public const string COMBOBOX_CLEAR_INSIDE = <<<'JS'
+        document.fonts.ready.then(() => {
+            const clears = Array.from(document.querySelectorAll('.admin-combobox__clear'));
+            return clears.length > 0 && clears.every((clear) => {
+                const own = clear.getBoundingClientRect();
+                return ['.admin-field', '.admin-section'].every((around) => {
+                    const box = clear.closest(around)?.getBoundingClientRect();
+                    return box !== undefined && own.left >= box.left - 1 && own.right <= box.right + 1;
+                });
+            });
+        })
+        JS;
 }

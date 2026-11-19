@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FIELD_HEIGHT } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { TimeField } from '@/components/ui/time-field';
 import { isoWeekday } from '@/lib/day';
@@ -117,7 +118,7 @@ export function DayEditor({ member, date, windows, source, patternWindows, clock
                         <Field id={`shift-day-end-${at}`} label={words.text('editor.end')}>
                             {(control) => <TimeField {...control} className="admin-shift-day__end" value={window.end} onChange={(value) => change(at, 'end', value)} clock={clock} granularity={granularity} disabled={busy} />}
                         </Field>
-                        <Button variant="link" destructive className="admin-shift-day__remove h-8" disabled={busy} onClick={() => remove(at)}>
+                        <Button variant="link" destructive className={`admin-shift-day__remove ${FIELD_HEIGHT}`} disabled={busy} onClick={() => remove(at)}>
                             {words.text('editor.remove')}
                         </Button>
                     </div>

@@ -357,6 +357,11 @@ describe('SignupForm\'s terms box', () => {
         expect(box()?.getAttribute('aria-invalid')).toBe('true');
         expect(box()?.getAttribute('aria-describedby')).toBe('signup-terms-error');
         expect(host.querySelector('#signup-terms-error')?.textContent).toBe('refusal-token');
+        // The refusal is drawn as a field's error, 13.5px behind the alert icon, and the box is the
+        // check field's.
+        expect(host.querySelector('#signup-terms-error')?.classList.contains('text-label')).toBe(true);
+        expect(host.querySelector('#signup-terms-error svg')?.getAttribute('aria-hidden')).toBe('true');
+        expect(['size-5', 'accent-primary', 'focus-ring-field'].every((look) => box()?.classList.contains(look))).toBe(true);
         expect(host.querySelector('#signup-terms')?.closest('.admin-signup-terms')?.contains(host.querySelector('#signup-terms-error'))).toBe(true);
         expect(document.activeElement).toBe(box());
     });
@@ -425,6 +430,8 @@ describe('SignupForm with Turnstile', () => {
         expect(check?.getAttribute('aria-invalid')).toBe('true');
         expect(check?.getAttribute('aria-describedby')).toBe('signup-turnstile_token-error');
         expect(host.querySelector('#signup-turnstile_token-error')?.textContent).toBe(FAILED);
+        expect(host.querySelector('#signup-turnstile_token-error')?.classList.contains('text-label')).toBe(true);
+        expect(host.querySelector('#signup-turnstile_token-error svg')?.getAttribute('aria-hidden')).toBe('true');
         expect(document.activeElement).toBe(check);
         expect(api.remove).toHaveBeenCalledWith('widget-1');
         expect(api.render).toHaveBeenCalledTimes(2);

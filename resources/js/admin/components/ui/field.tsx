@@ -1,4 +1,5 @@
 import { type ReactNode, type RefObject, useEffect, useRef } from 'react';
+import { Alert } from '../glyphs';
 import { cn } from '@/lib/utils';
 
 /*
@@ -7,7 +8,9 @@ import { cn } from '@/lib/utils';
  * everything inside it and a field with help would announce as label and explanation run
  * together. The line hangs off aria-describedby. An error replaces the help line, takes its
  * place in aria-describedby, and marks the control aria-invalid; a blank error is no error. The
- * help line is 12px; a compact field, a filter row's, draws its label and its error small too.
+ * label is 13.5px in the muted ink, the help line 13.5px at the body's weight, and the error
+ * 13.5px in the destructive colour at the label's weight, starting with an alert icon so it never
+ * rests on its colour alone. A compact field, a filter row's, draws all three at 12px.
  *
  * The control is rendered by the caller from the attributes the shell hands it, so any control,
  * native or ours, is wired the same way.
@@ -31,49 +34,85 @@ type Props = {
     children: (control: FieldControl) => ReactNode;
 };
 
-/** The help line's look, the one spelling of it: 12px and muted, as the boards draw it. */
-const HELP = 'admin-field__help text-xs text-muted-foreground';
+/** The frame's look, the one spelling of it: the label, the control and the line in a column. */
+const FRAME = 'admin-field flex flex-col gap-1.5';
+
+/** The label's look, the one spelling of it: muted, 13.5px, and 12px and heavier in a compact field. */
+const labelLook = (compact: boolean) => cn('admin-field__label text-muted-foreground', compact ? 'text-xs font-semibold' : 'text-label');
+
+/** The help line's look, the one spelling of it: muted at the body's weight, 13.5px, and 12px in a compact field. */
+const helpLook = (compact: boolean) => cn('admin-field__help', compact ? 'text-xs' : 'text-label', 'font-medium text-muted-foreground');
 
 /**
  * The help line on its own, for a sentence that explains a part of a form but belongs to no one
  * control: a card's or a section's help, a status line under a control. The caller's class names
  * the line for itself; the look is the field's.
  */
-export function HelpLine({ id, role, className, children }: { id?: string; role?: 'status'; className?: string; children: ReactNode }) {
+export function HelpLine({ id, role, className, compact = false, children }: { id?: string; role?: 'status'; className?: string; compact?: boolean; children: ReactNode }) {
     return (
-        <p id={id} role={role} className={cn(HELP, className)}>
+        <p id={id} role={role} className={cn(helpLook(compact), className)}>
             {children}
         </p>
     );
 }
 
+/**
+ * The error line on its own, for a refusal that belongs to a group of controls and to no one
+ * field: a list of ticks, a consent box, a check. The group points at the id through
+ * aria-describedby; the look is the field's, the alert icon first.
+ */
+export function ErrorLine({ id, compact = false, children }: { id: string; compact?: boolean; children: ReactNode }) {
+    return (
+        <p id={id} className={cn('admin-field__error flex items-start gap-1.5 text-destructive', compact ? 'text-xs font-semibold' : 'text-label font-semibold')}>
+            <span className="flex h-lh items-center">
+                <Alert />
+            </span>
+            {children}
+        </p>
+    );
+}
+
+/**
+ * The frame and the label around something that is no control: a sentence standing where a control
+ * will be, as while a list of choices loads. The label is plain text, since it has nothing to
+ * point at, and looks as it will once the control arrives.
+ */
+export function FieldFrame({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <div className={FRAME}>
+            <span className={labelLook(false)}>{label}</span>
+            {children}
+        </div>
+    );
+}
+
 export function Field({ id, label, help, error, className, compact = false, children }: Props) {
     const failing = error !== undefined && error !== null && error.trim() !== '';
-    const line = failing
-        ? { id: `${id}-error`, text: error, className: cn('admin-field__error text-destructive', compact ? 'text-xs' : 'text-sm') }
-        : help === undefined || help === ''
-          ? null
-          : { id: `${id}-help`, text: help, className: HELP };
+    const helped = !failing && help !== undefined && help !== '';
     const control: FieldControl = { id };
 
-    if (line !== null) {
-        control['aria-describedby'] = line.id;
-    }
-
     if (failing) {
+        control['aria-describedby'] = `${id}-error`;
         control['aria-invalid'] = true;
+    } else if (helped) {
+        control['aria-describedby'] = `${id}-help`;
     }
 
     return (
-        <div className={cn('admin-field flex flex-col gap-1', className)}>
-            <label htmlFor={id} className={cn('admin-field__label font-medium', compact ? 'text-xs' : 'text-sm')}>
+        <div className={cn(FRAME, className)}>
+            <label htmlFor={id} className={labelLook(compact)}>
                 {label}
             </label>
             {children(control)}
-            {line !== null && (
-                <p id={line.id} className={line.className}>
-                    {line.text}
-                </p>
+            {failing && (
+                <ErrorLine id={`${id}-error`} compact={compact}>
+                    {error}
+                </ErrorLine>
+            )}
+            {helped && (
+                <HelpLine id={`${id}-help`} compact={compact}>
+                    {help}
+                </HelpLine>
             )}
         </div>
     );

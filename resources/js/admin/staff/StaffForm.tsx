@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckField } from '@/components/ui/check-field';
+import { CHECK_BOX, CheckField } from '@/components/ui/check-field';
 import { Combobox } from '@/components/ui/combobox';
 import { Field, type FieldControl } from '@/components/ui/field';
 import { Textarea, TextInput } from '@/components/ui/input';
@@ -174,7 +174,7 @@ export function StaffForm({ form, onChange, creating, implicit, title, status, u
                         <ul className="admin-staff-services flex flex-col gap-2">
                             {services.map((service) => (
                                 <li key={service.id} className="admin-staff-services__row flex items-center gap-3">
-                                    <input type="checkbox" id={`staff-service-${service.id}`} className="admin-staff-services__tick" checked={form.service_ids.includes(service.id)} onChange={(event) => tick(service.id, event.target.checked)} />
+                                    <input type="checkbox" id={`staff-service-${service.id}`} className={`admin-staff-services__tick ${CHECK_BOX}`} checked={form.service_ids.includes(service.id)} onChange={(event) => tick(service.id, event.target.checked)} />
                                     <label htmlFor={`staff-service-${service.id}`} className="admin-staff-services__name">
                                         {service.status === 'inactive' ? words.text('form.inactive_service', { service: service.name }) : service.name}
                                     </label>

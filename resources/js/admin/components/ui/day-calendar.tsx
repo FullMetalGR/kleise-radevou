@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DayButton, DayPicker, type DayButtonProps, type DayProps } from 'react-day-picker';
+import { DayButton, DayPicker, getDefaultClassNames, type DayButtonProps, type DayProps } from 'react-day-picker';
 import { parseDay } from '../../../booking/time';
 import { dayKey, isoWeekday } from '@/lib/day';
 import { dayTitle, monthName, monthTitle, weekdayName, yearName } from '@/lib/names';
@@ -36,7 +36,12 @@ import { cn } from '@/lib/utils';
  * the library's month and year dropdowns, from the earliest day's month to today's, each option
  * ICU's month or year in the language and each dropdown named by the kit, and every day after today
  * is disabled, the one case a day is.
+ *
+ * A day and each turning control take the kit's focus outline on the keyboard; the sizes, the
+ * circles and the marks are the stylesheet's, on the calendar's class.
  */
+
+const LIBRARY = getDefaultClassNames();
 
 type Props = {
     selected: string;
@@ -95,7 +100,7 @@ function Cell({ day, modifiers, ...rest }: DayProps) {
 
 /** A day's button as the library draws it, with its machine date and the tenant's today. */
 function Face({ day, modifiers, ...rest }: DayButtonProps) {
-    return <DayButton day={day} modifiers={modifiers} data-date={day.isoDate} aria-current={modifiers[TENANT_TODAY] === true ? 'date' : undefined} {...rest} />;
+    return <DayButton day={day} modifiers={modifiers} data-date={day.isoDate} aria-current={modifiers[TENANT_TODAY] === true ? 'date' : undefined} {...rest} className={cn(rest.className, 'focus-ring')} />;
 }
 
 export function DayCalendar({ selected, weekStart, today, onChange, earliest, className }: Props) {
@@ -143,7 +148,7 @@ export function DayCalendar({ selected, weekStart, today, onChange, earliest, cl
             weekStartsOn={weekStartsOn(weekStart)}
             lang={shell.locale}
             className={cn('admin-day-calendar', className)}
-            classNames={{ today: '' }}
+            classNames={{ today: '', button_previous: cn(LIBRARY.button_previous, 'focus-ring'), button_next: cn(LIBRARY.button_next, 'focus-ring') }}
             components={{ Day: Cell, DayButton: Face }}
             formatters={{
                 formatCaption: title,

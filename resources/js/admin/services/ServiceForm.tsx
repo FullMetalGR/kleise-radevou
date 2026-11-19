@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckField } from '@/components/ui/check-field';
+import { CHECK_BOX, CheckField } from '@/components/ui/check-field';
 import { Field } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
@@ -160,7 +160,7 @@ export function ServiceForm({ form, onChange, creating, categories, title, statu
                 {number('cancel_window_hours', 'form.cancel_window', words.text('form.cancel_window_help'))}
                 {number('reschedule_window_hours', 'form.reschedule_window', words.text('form.reschedule_window_help'))}
                 <div className="admin-approval flex items-center gap-2 sm:col-span-2">
-                    <input type="checkbox" id="service-requires-approval" className="admin-approval__tick" checked={form.requires_approval} onChange={(event) => set('requires_approval')(event.target.checked)} />
+                    <input type="checkbox" id="service-requires-approval" className={`admin-approval__tick ${CHECK_BOX}`} checked={form.requires_approval} onChange={(event) => set('requires_approval')(event.target.checked)} />
                     <label htmlFor="service-requires-approval">{words.text('form.approval')}</label>
                 </div>
                 {form.requires_approval && (
@@ -175,7 +175,7 @@ export function ServiceForm({ form, onChange, creating, categories, title, statu
 
             <Section id="payment" title={words.text('form.payment')}>
                 <Field id="service-price" label={words.text('form.price', { currency })} help={words.text('form.price_help')}>
-                    {(control) => <TextInput {...control} inputMode="decimal" className="font-mono" value={form.price} onChange={(event) => set('price')(event.target.value)} />}
+                    {(control) => <TextInput {...control} inputMode="decimal" className="tabular-nums" value={form.price} onChange={(event) => set('price')(event.target.value)} />}
                 </Field>
                 <Field id="service-payment-mode" label={words.text('form.payment_mode')}>
                     {(control) => <Select {...control} options={optionsIn(PAYMENT_MODES, words)} value={form.payment_mode} onChange={set('payment_mode')} />}
@@ -225,7 +225,7 @@ function StaffChecklist({ staff, staged, onStage, clock }: ChecklistProps) {
                         <input
                             type="checkbox"
                             id={`service-staff-${member.id}`}
-                            className="admin-staff-checklist__tick"
+                            className={`admin-staff-checklist__tick ${CHECK_BOX}`}
                             checked={staged.includes(member.id)}
                             disabled={!staff.editable}
                             onChange={(event) => {

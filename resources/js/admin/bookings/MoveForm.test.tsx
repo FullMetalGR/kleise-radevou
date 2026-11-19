@@ -326,6 +326,27 @@ describe('the Move form', () => {
         expect(one('.admin-move__error')?.textContent).toBe(words.text('move.unreadable'));
     });
 
+    it('draws the Time label and its frame one way while the times load and once they are listed', async () => {
+        let release: (response: Response) => void = () => {};
+        answer = () => new Promise<Response>((resolve) => (release = resolve));
+        dialog();
+        press(one('.admin-booking-move'));
+
+        const looks = (inside: Element | null) => {
+            const frame = inside?.closest('.admin-field');
+            const label = frame?.querySelector('.admin-field__label');
+
+            return [frame?.className, label?.className, label?.textContent];
+        };
+        const waiting = looks(one('.admin-move__loading'));
+
+        expect(waiting[2]).toBe(words.text('move.time'));
+        expect(one('.admin-move__loading')?.getAttribute('role')).toBe('status');
+        await act(async () => release(day()));
+        await settle();
+        expect(looks(one('#move-time'))).toEqual(waiting);
+    });
+
     it('holds Save until a time is chosen, saying why beside it, and Back returns to the detail moving nothing', async () => {
         await openMove();
 

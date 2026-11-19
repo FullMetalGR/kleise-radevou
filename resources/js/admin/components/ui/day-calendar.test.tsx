@@ -206,6 +206,17 @@ describe('the day calendar', () => {
         expect(selected()[0]?.contains(day('2027-01-20'))).toBe(true);
     });
 
+    it('gives every day and both turning controls the kit\'s focus outline', () => {
+        view.render(<DayCalendar selected="2026-01-15" weekStart={1} today="2026-09-24" onChange={() => {}} />);
+
+        const shell = keyedShell('en');
+
+        expect(days()).toHaveLength(31);
+        for (const button of [...days(), turner(shell.text('kit.month_grid.previous')), turner(shell.text('kit.month_grid.next'))]) {
+            expect(button?.classList.contains('focus-ring')).toBe(true);
+        }
+    });
+
     it('steps a month back and on', () => {
         view.render(<DayCalendar selected="2026-01-15" weekStart={1} today="2026-09-24" onChange={() => {}} />);
 

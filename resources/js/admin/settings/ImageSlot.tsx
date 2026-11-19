@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { type FieldControl, HelpLine } from '@/components/ui/field';
+import { FIELD, FIELD_HEIGHT, PRESSED_HOVER } from '@/components/ui/input';
 import { useShell } from '@/lib/strings';
+import { cn } from '@/lib/utils';
 import { IMAGE_TYPES, type StoredImage } from './model';
 
 /*
@@ -23,12 +25,17 @@ import { IMAGE_TYPES, type StoredImage } from './model';
  */
 
 /**
- * A native file chooser drawn as the kit draws its controls: the chooser's button in the
- * secondary button's border, height and type, the chosen file's name beside it in the help
- * line's muted 12px. Shared by every file input of Settings and the staff page.
+ * A native file chooser drawn as the kit draws its fields: as tall as any field, in the field's
+ * ring, as wide as its contents. The chooser's button sits 5px inside it at the small button's
+ * 36px, in the secondary button's ring and type, and the chosen file's name beside it is muted.
+ * Shared by every file input of Settings and the staff page.
  */
-export const FILE_INPUT =
-    'text-xs text-muted-foreground file:mr-3 file:h-8 file:cursor-pointer file:rounded-lg file:border file:border-border file:bg-background file:px-3 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted disabled:cursor-not-allowed disabled:opacity-60';
+export const FILE_INPUT = cn(
+    FIELD,
+    PRESSED_HOVER,
+    FIELD_HEIGHT,
+    'w-auto max-w-full p-1.25 pr-3.5 text-sm text-muted-foreground file:mr-3 file:h-9 file:cursor-pointer file:rounded-full file:border-[1.5px] file:border-border file:bg-card file:px-3.5 file:text-sm file:font-bold file:text-foreground hover:file:bg-muted',
+);
 
 /** What a slot says: the line where nothing is stored, and its three buttons. */
 export type ImageSlotWords = { none: string; upload: string; replace: string; remove: string };

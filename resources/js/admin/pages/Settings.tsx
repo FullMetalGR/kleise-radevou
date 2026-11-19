@@ -1,6 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import { Field, type FieldControl, HelpLine } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -409,7 +410,7 @@ function Editor({ seed, initial, settings, urls, links, limits, countries, langu
                             <input
                                 type="checkbox"
                                 id={`settings-email-${message.key}`}
-                                className="admin-settings-email__tick"
+                                className={`admin-settings-email__tick ${CHECK_BOX}`}
                                 checked={message.locked || isOn(form.emails_off, message.key)}
                                 disabled={message.locked}
                                 aria-describedby={message.locked ? `settings-email-${message.key}-locked` : undefined}

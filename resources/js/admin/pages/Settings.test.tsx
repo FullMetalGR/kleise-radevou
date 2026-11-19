@@ -495,6 +495,8 @@ describe('Booking page', () => {
         expect(value('#settings-snippet')).toBe(SNIPPET);
         expect(value('#settings-snippet')).toContain('<div class="kr-booking" data-theme="violet"></div>');
         expect(document.querySelector('#settings-snippet')?.hasAttribute('readonly')).toBe(true);
+        // The snippet is code to paste, so it keeps the code face where a figure field does not.
+        expect(document.querySelector('#settings-snippet')?.classList.contains('font-mono')).toBe(true);
 
         press(document.querySelector('.admin-settings-copy'));
         expect(writeText).toHaveBeenCalledWith(SNIPPET);
@@ -577,7 +579,7 @@ describe('Booking page', () => {
 
         expect(card?.querySelector('#settings-links-head')?.textContent).toBe(settings.text(LINKS_TITLE));
         expect(card?.querySelector('.admin-settings-links__help')?.textContent).toBe(settings.text(LINKS_HELP));
-        expect(card?.querySelector('.admin-settings-links__help')?.className).toBe('admin-field__help text-xs text-muted-foreground admin-settings-links__help');
+        expect(card?.querySelector('.admin-settings-links__help')?.className).toBe('admin-field__help text-label font-medium text-muted-foreground admin-settings-links__help');
         expect(card?.querySelector('#settings-snippet')).not.toBeNull();
         expect(card?.querySelector('.admin-settings-copy')?.textContent).toBe(settings.text('booking_page.copy'));
         expect(Array.from(card?.querySelectorAll('h4') ?? []).map((heading) => heading.textContent)).toEqual([settings.text(SERVICE_LINKS), settings.text(STAFF_LINKS)]);
@@ -918,7 +920,8 @@ describe('Booking page cover and gallery', () => {
         expect(text('.admin-settings-gallery__count')).toBe(photoCount(8));
         expect(document.querySelectorAll('.admin-settings-gallery-remove')).toHaveLength(8);
         expect(chooser.className).toContain('admin-settings-gallery__file');
-        expect(chooser.className).toContain('file:h-8');
+        expect(chooser.className).toContain('h-11.5');
+        expect(chooser.className).toContain('file:h-9');
         expect(chooser.disabled).toBe(true);
         expect(disabled('.admin-settings-gallery-add')).toBe(true);
         expect(text('.admin-settings-gallery__full')).toBe(GALLERY_FULL);
@@ -1208,6 +1211,8 @@ describe('Emails', () => {
         render(propsWith({ values: { ...VALUES, emails_off: ['mystery_key', 'reminder'] } }));
         const ticks = document.querySelectorAll<HTMLInputElement>('.admin-settings-email__tick');
         expect(ticks).toHaveLength(17);
+        // Each is the check field's box.
+        expect(Array.from(ticks).every((tick) => ['size-5', 'accent-primary', 'focus-ring-field'].every((look) => tick.classList.contains(look)))).toBe(true);
         expect(Array.from(ticks).filter((tick) => !tick.checked).map((tick) => tick.id)).toEqual(['settings-email-reminder']);
         expect(text('label[for="settings-email-reminder"]')).toContain('Message reminder');
 
@@ -1242,7 +1247,7 @@ describe('Emails', () => {
         expect(approved?.disabled).toBe(true);
         expect(document.querySelectorAll('.admin-settings-email__locked')).toHaveLength(1);
         expect(sentence?.textContent).toBe(keyedEmails().text(LOCKED_SENTENCE));
-        expect(sentence?.className).toContain('admin-field__help text-xs');
+        expect(sentence?.className).toContain('admin-field__help text-label font-medium');
         expect(sentence?.closest('.admin-settings-email')?.querySelector('.admin-settings-email__tick')?.id).toBe('settings-email-approved');
         expect(approved?.getAttribute('aria-describedby')).toBe(sentence?.id);
         expect(Array.from(document.querySelectorAll<HTMLInputElement>('.admin-settings-email__tick:disabled')).map((tick) => tick.id)).toEqual(['settings-email-approved']);
@@ -1361,7 +1366,7 @@ describe('Payments with nothing connected', () => {
         expect(document.querySelectorAll('.admin-payments-mode--own .admin-payments-mode__unoffered')).toHaveLength(0);
         expect(texts('.admin-payments-own')).toEqual([payments.text('buttons.own', { provider: 'Cardhouse' }), payments.text('buttons.own', { provider: 'Tillpoint' })]);
         expect(text('.admin-payments-cash')).toBe(payments.text(CASH_SENTENCE));
-        expect(document.querySelector('.admin-payments-cash')?.className).toBe('admin-field__help text-xs text-muted-foreground admin-payments-cash');
+        expect(document.querySelector('.admin-payments-cash')?.className).toBe('admin-field__help text-label font-medium text-muted-foreground admin-payments-cash');
         expect(document.querySelectorAll('.admin-payments input')).toHaveLength(0);
         expect(document.querySelector('.admin-payments-connection')).toBeNull();
     });

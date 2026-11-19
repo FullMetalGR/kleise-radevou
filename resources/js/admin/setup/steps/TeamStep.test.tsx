@@ -121,6 +121,8 @@ describe('the Team step', () => {
         expect(q('label[for="staff-name"]')?.textContent).toBe(staff.text('form.name'));
         expect(q('.admin-setup-team__pick legend')?.textContent).toBe(staff.text('form.services'));
         expect(all('.admin-staff-services__name')).toEqual(['Haircut', 'Colour', staff.text('form.inactive_service', { service: 'Perm' })]);
+        // Each tick is the check field's box.
+        expect(['size-5', 'accent-primary', 'focus-ring-field'].every((look) => q('.admin-staff-services__tick')?.classList.contains(look))).toBe(true);
     });
 
     it('lists each member with the services they perform, offers Next once one exists, and links the Staff screen', () => {
@@ -254,6 +256,9 @@ describe('the Team step', () => {
         refuse('That service is gone.', 'service_ids');
         act(() => visit.onFinish?.());
         expect(q('#staff-services-error')?.textContent).toBe('That service is gone.');
+        // The refusal is drawn as a field's error: 13.5px behind the alert icon.
+        expect(q('#staff-services-error')?.classList.contains('text-label')).toBe(true);
+        expect(q('#staff-services-error svg')?.getAttribute('aria-hidden')).toBe('true');
 
         press(q('#staff-service-4'));
         expect(q('#staff-services-error')).toBeNull();

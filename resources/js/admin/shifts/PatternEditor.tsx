@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { Plus } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
+import { CHECK_BOX } from '@/components/ui/check-field';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
@@ -104,7 +105,7 @@ function PatternDay({ weekday, windows, busy, clock, granularity, words, onTick,
     const tickId = `shift-pattern-${weekday}-tick`;
     const head = (
         <>
-            <input type="checkbox" id={tickId} className="admin-shift-pattern__tick size-4 accent-primary" checked={first !== undefined} disabled={busy} onChange={(event) => onTick(event.target.checked)} />
+            <input type="checkbox" id={tickId} className={`admin-shift-pattern__tick ${CHECK_BOX}`} checked={first !== undefined} disabled={busy} onChange={(event) => onTick(event.target.checked)} />
             <span className="flex flex-col">
                 <label htmlFor={tickId} className="font-medium">
                     {weekdayName(weekday, 'long', shell.language)}
@@ -133,7 +134,7 @@ function PatternDay({ weekday, windows, busy, clock, granularity, words, onTick,
                                         <TimeField
                                             id={`shift-pattern-${weekday}-${position}-start`}
                                             aria-label={words.text('pattern.start')}
-                                            className="admin-shift-pattern__start min-w-0 flex-1"
+                                            className="admin-shift-pattern__start h-9 min-w-0 flex-1"
                                             value={window.start}
                                             onChange={(value) => onChange(window, 'start', value)}
                                             clock={clock}
@@ -145,7 +146,7 @@ function PatternDay({ weekday, windows, busy, clock, granularity, words, onTick,
                                         <TimeField
                                             id={`shift-pattern-${weekday}-${position}-end`}
                                             aria-label={words.text('pattern.end')}
-                                            className="admin-shift-pattern__end min-w-0 flex-1"
+                                            className="admin-shift-pattern__end h-9 min-w-0 flex-1"
                                             value={window.end}
                                             onChange={(value) => onChange(window, 'end', value)}
                                             clock={clock}

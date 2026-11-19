@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { wallClockOf } from '../../booking/time';
 import { Button } from '@/components/ui/button';
 import { DateField } from '@/components/ui/date-field';
-import { Field } from '@/components/ui/field';
+import { Field, FieldFrame } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { Select } from '@/components/ui/select';
 import { formatInstant, formatInstantTime, type TenantClock } from '@/lib/format';
@@ -290,8 +290,7 @@ export function MoveFields({ form, booking, staffShown, clock, weekStart }: Prop
                     )}
                 </Field>
             ) : (
-                <div className="admin-field flex flex-col gap-1">
-                    <span className="admin-field__label text-sm font-medium">{words.text('move.time')}</span>
+                <FieldFrame label={words.text('move.time')}>
                     {day.kind === 'error' ? (
                         <p role="alert" className="admin-move__error text-sm text-destructive">
                             {day.sentence}
@@ -305,7 +304,7 @@ export function MoveFields({ form, booking, staffShown, clock, weekStart }: Prop
                             {words.text('move.loading')}
                         </p>
                     )}
-                </div>
+                </FieldFrame>
             )}
             <MoveConfirm
                 open={form.confirming}

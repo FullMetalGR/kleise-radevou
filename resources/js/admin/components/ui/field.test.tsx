@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Field, HelpLine } from './field';
+import { ErrorLine, Field, FieldFrame, HelpLine } from './field';
 import { mount, type Mounted } from './harness';
 import { TextInput } from './input';
 
@@ -45,19 +45,20 @@ describe('the field shell', () => {
         expect(input()?.hasAttribute('aria-invalid')).toBe(false);
     });
 
-    it('draws a compact field\'s label and line small, the line still describing the control, and any field\'s help line at 12px', () => {
+    it('draws a compact field\'s label and help small, any other label and help at 13.5px, both in the muted ink', () => {
         view.render(
             <Field id="colour-by" label="Colour by" help="Only a manager changes it." compact={true}>
                 {(control) => <TextInput {...control} />}
             </Field>,
         );
 
-        const line = document.getElementById(input()?.getAttribute('aria-describedby') ?? '');
+        const line = () => document.getElementById(input()?.getAttribute('aria-describedby') ?? '');
 
         expect(label()?.classList.contains('text-xs')).toBe(true);
-        expect(label()?.classList.contains('text-sm')).toBe(false);
-        expect(line?.textContent).toBe('Only a manager changes it.');
-        expect(line?.classList.contains('text-xs')).toBe(true);
+        expect(label()?.classList.contains('text-label')).toBe(false);
+        expect(line()?.textContent).toBe('Only a manager changes it.');
+        // A compact field's help is 12px beside its 12px label and error, at the body weight.
+        expect(line()?.className).toBe('admin-field__help text-xs font-medium text-muted-foreground');
 
         view.render(
             <Field id="colour-by" label="Colour by" help="Only a manager changes it.">
@@ -65,10 +66,28 @@ describe('the field shell', () => {
             </Field>,
         );
 
-        expect(label()?.classList.contains('text-sm')).toBe(true);
-        // The help line is 12px in every field.
-        expect(document.getElementById(input()?.getAttribute('aria-describedby') ?? '')?.classList.contains('text-xs')).toBe(true);
-        expect(document.getElementById(input()?.getAttribute('aria-describedby') ?? '')?.classList.contains('text-sm')).toBe(false);
+        expect(label()?.classList.contains('text-label')).toBe(true);
+        expect(label()?.classList.contains('text-muted-foreground')).toBe(true);
+        expect(label()?.classList.contains('text-xs')).toBe(false);
+        // Any other field's help is 13.5px at the body weight.
+        expect(line()?.className).toBe('admin-field__help text-label font-medium text-muted-foreground');
+    });
+
+    it('starts the error with an alert icon kept from a screen reader, so the error never rests on colour alone', () => {
+        view.render(
+            <Field id="service-name" label="Name" error="The name is required.">
+                {(control) => <TextInput {...control} />}
+            </Field>,
+        );
+
+        const error = view.host.querySelector('.admin-field__error');
+        const icon = error?.querySelector('svg');
+
+        expect(icon?.getAttribute('aria-hidden')).toBe('true');
+        expect(error?.firstElementChild?.contains(icon ?? null)).toBe(true);
+        expect(error?.textContent).toBe('The name is required.');
+        expect(error?.classList.contains('text-destructive')).toBe(true);
+        expect(error?.classList.contains('font-semibold')).toBe(true);
     });
 
     it('replaces the help line with the error, references the error in its place and marks the control invalid', () => {
@@ -96,6 +115,52 @@ describe('the field shell', () => {
 
         expect(view.host.querySelector('.admin-field__help')?.textContent).toBe('Shown to customers.');
         expect(input()?.hasAttribute('aria-invalid')).toBe(false);
+    });
+});
+
+describe('the error line on its own', () => {
+    it('draws a line as the field draws its error, alert icon first, under the id its group points at', () => {
+        view.render(
+            <>
+                <Field id="service-name" label="Name" error="The name is required.">
+                    {(control) => <TextInput {...control} />}
+                </Field>
+                <ErrorLine id="services-error">Choose a service from the list.</ErrorLine>
+            </>,
+        );
+        const field = view.host.querySelector('#service-name-error');
+        const line = view.host.querySelector('#services-error');
+
+        expect(line?.tagName.toLowerCase()).toBe('p');
+        expect(line?.className).toBe(field?.className);
+        expect(line?.classList.contains('admin-field__error')).toBe(true);
+        expect(line?.classList.contains('text-label')).toBe(true);
+        expect(line?.firstElementChild?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+        expect(line?.textContent).toBe('Choose a service from the list.');
+        expect(line?.hasAttribute('role')).toBe(false);
+    });
+});
+
+describe('the frame around something that is no control', () => {
+    it('draws the frame and the label as the field draws its own, the label plain text pointing at nothing', () => {
+        view.render(
+            <>
+                <Field id="move-time" label="Time">
+                    {(control) => <TextInput {...control} />}
+                </Field>
+                <FieldFrame label="Time">
+                    <p className="waiting">Loading the times...</p>
+                </FieldFrame>
+            </>,
+        );
+        const [field, frame] = [...view.host.querySelectorAll('.admin-field')];
+        const plain = frame?.querySelector('.admin-field__label');
+
+        expect(frame?.className).toBe(field?.className);
+        expect(plain?.className).toBe(label()?.className);
+        expect(plain?.tagName.toLowerCase()).toBe('span');
+        expect(plain?.textContent).toBe('Time');
+        expect(frame?.querySelector('.waiting')?.textContent).toBe('Loading the times...');
     });
 });
 

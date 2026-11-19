@@ -504,6 +504,9 @@ describe('the day editor', () => {
         edit(3, '2026-12-02');
 
         expect(q('.admin-shift-day__remove')?.classList.contains('text-destructive')).toBe(true);
+        // Remove's box is as tall as the time fields beside it, so the link stands level with them.
+        expect(q('.admin-shift-day__remove')?.classList.contains('h-11.5')).toBe(true);
+        expect(q('.admin-shift-day__window #shift-day-start-0')?.classList.contains('h-11.5')).toBe(true);
         expect(q('.admin-shift-day__off')?.classList.contains('text-destructive')).toBe(true);
         expect(q('.admin-shift-day__add')?.classList.contains('inset-ring-border')).toBe(true);
         expect(q('.admin-shift-day__add')?.classList.contains('inset-ring-[1.5px]')).toBe(true);
