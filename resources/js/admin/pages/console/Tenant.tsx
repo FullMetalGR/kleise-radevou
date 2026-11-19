@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Confirm } from '@/components/ui/confirm';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/page-header';
 import { statusLabel } from '@/components/ui/status-chip';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { useShell } from '@/lib/strings';
@@ -874,13 +875,15 @@ export default function Tenant() {
         <>
             <Head title={tenant.name} />
             <div className="admin-tenant-screen flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                    <Link href="/" className="admin-tenant-back text-sm underline-offset-4 hover:underline">
-                        {ALL_TENANTS}
-                    </Link>
-                    <h1 className="admin-tenant__name text-2xl font-semibold">{tenant.name}</h1>
-                    <p className="admin-tenant__slug text-muted-foreground">{slug ?? SLUG_RELEASED}</p>
-                </div>
+                <PageHeader
+                    breadcrumb={
+                        <Link href="/" className="admin-tenant-back self-start text-sm underline-offset-4 hover:underline">
+                            {ALL_TENANTS}
+                        </Link>
+                    }
+                    title={<span className="admin-tenant__name">{tenant.name}</span>}
+                    lead={<span className="admin-tenant__slug">{slug ?? SLUG_RELEASED}</span>}
+                />
                 {slug !== null && (
                     <>
                         {props.links !== null && <Links links={props.links} />}

@@ -440,7 +440,8 @@ describe('the sections', () => {
         expect(form?.contains(zone)).toBe(false);
         expect(form?.lastElementChild?.classList.contains('admin-save-bar')).toBe(true);
         expect(form?.nextElementSibling).toBe(zone);
-        expect(document.querySelectorAll('.admin-settings-page > h1')).toHaveLength(1);
+        expect(document.querySelectorAll('.admin-settings-page > .admin-page-header h1')).toHaveLength(1);
+        expect(document.querySelectorAll('h1')).toHaveLength(1);
     });
 });
 

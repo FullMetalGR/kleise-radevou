@@ -1,5 +1,6 @@
 import { Head, usePage } from '@inertiajs/react';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { clockOf } from '@/lib/format';
 import { usePartialRead } from '@/lib/partial-read';
 import { stringsOf, useShell } from '@/lib/strings';
@@ -49,7 +50,7 @@ export default function Reports() {
         <>
             <Head title={words.text('page_title')} />
             <div className="admin-reports-screen flex flex-col gap-4">
-                <h1 className="text-2xl font-semibold">{words.text('page_title')}</h1>
+                <PageHeader title={words.text('page_title')} />
                 <FilterCard
                     key={`${range.word} ${range.from} ${range.to} ${String(filters.staff)} ${String(filters.service)}`}
                     range={range}

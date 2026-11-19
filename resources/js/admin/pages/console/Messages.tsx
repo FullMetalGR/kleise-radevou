@@ -4,6 +4,7 @@ import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { Segmented } from '@/components/ui/segmented';
 import { usePartialRead } from '@/lib/partial-read';
 import { useShell } from '@/lib/strings';
@@ -204,7 +205,7 @@ export default function Messages() {
         <>
             <Head title={MESSAGES_TITLE} />
             <div className="admin-messages-screen flex flex-col gap-4">
-                <h1 className="text-2xl font-semibold">{MESSAGES_TITLE}</h1>
+                <PageHeader title={MESSAGES_TITLE} />
                 <Segmented className="admin-messages-view self-start" label={VIEW_LABEL} options={VIEWS} value={current} onChange={(view) => load(view, 1)} />
                 <SettledList
                     count={rows.length}

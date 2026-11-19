@@ -4,6 +4,7 @@ import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DateField } from '@/components/ui/date-field';
+import { PageHeader } from '@/components/ui/page-header';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -166,12 +167,14 @@ export default function Tenants() {
         <>
             <Head title={TENANTS_TITLE} />
             <div className="admin-tenants-screen flex flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h1 className="text-2xl font-semibold">{TENANTS_TITLE}</h1>
-                    <Link href={NEW_TENANT_PATH} className="admin-tenants-new inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/85">
-                        {NEW_TENANT}
-                    </Link>
-                </div>
+                <PageHeader
+                    title={TENANTS_TITLE}
+                    actions={
+                        <Link href={NEW_TENANT_PATH} className="admin-tenants-new inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/85">
+                            {NEW_TENANT}
+                        </Link>
+                    }
+                />
                 <Card className="admin-filter-bar admin-tenants-filters flex flex-col gap-3" aria-label="Filters">
                     <div className="admin-filter-bar__fields grid grid-cols-1 gap-3 desktop:grid-cols-3 xl:grid-cols-6">
                         <Field id="tenants-search" label="Search">

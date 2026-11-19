@@ -89,7 +89,7 @@ it('opens Customers from the rail, searches, opens a customer, opens a booking o
         ->assertSeeIn('.admin-customer-head h1', 'Casey Customer')
         ->assertSeeIn('.admin-customer-head__email', 'casey@example.com')
         ->assertSeeIn('.admin-bookings__count', adminLine('admin/bookings.table.count', ['count' => '2', 'total' => '2']))
-        ->assertAttribute('[aria-current="page"]', 'href', '/admin/customers');
+        ->assertAttribute('.admin-rail [aria-current="page"]', 'href', '/admin/customers');
 
     $page->click('.admin-bookings__row:first-child .admin-row-select')
         ->waitForText(adminLine('admin/bookings.dialog.items.title'))

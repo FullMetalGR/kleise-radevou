@@ -52,6 +52,7 @@ import { type CalendarKey, CalendarProvider, type CalendarWords, calendarWordsOf
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, type MenuItem } from '@/components/ui/dropdown-menu';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { statusLabel } from '@/components/ui/status-chip';
 import { clockOf } from '@/lib/format';
 import { readMemory, writeMemory } from '@/lib/session-memory';
@@ -395,24 +396,27 @@ export default function Calendar() {
         <Words calendar={words} shifts={shiftWords} bookings={bookingsWords}>
             <Head title={words.text('page.title')} />
             <div className="admin-calendar-screen flex flex-col gap-4">
-                <div className="admin-calendar-heading flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="text-2xl font-semibold">{words.text('page.title')}</h1>
-                    {adds.length > 0 && (
-                        <DropdownMenu
-                            label={words.text('page.add')}
-                            items={adds}
-                            align="end"
-                            className="w-56"
-                            note={settles ? words.text('page.add_hint') : undefined}
-                            trigger={
-                                <Button variant="primary" className="admin-calendar-add">
-                                    {words.text('page.add')}
-                                    <Caret />
-                                </Button>
-                            }
-                        />
-                    )}
-                </div>
+                <PageHeader
+                    className="admin-calendar-heading"
+                    title={words.text('page.title')}
+                    actions={
+                        adds.length > 0 ? (
+                            <DropdownMenu
+                                label={words.text('page.add')}
+                                items={adds}
+                                align="end"
+                                className="w-56"
+                                note={settles ? words.text('page.add_hint') : undefined}
+                                trigger={
+                                    <Button variant="primary" className="admin-calendar-add">
+                                        {words.text('page.add')}
+                                        <Caret />
+                                    </Button>
+                                }
+                            />
+                        ) : undefined
+                    }
+                />
                 {pinned && own === null ? (
                     <Notice kind="info" className="admin-calendar-unlinked">
                         {words.text(UNLINKED)}

@@ -4,6 +4,7 @@ import { SettledList } from '@/components/settled-list';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { CustomersDownload } from '@/customers/CustomersDownload';
 import { CustomersTable } from '@/customers/CustomersTable';
 import { type Customer, type CustomerPage, type CustomerQuery, customerQuery, CUSTOMERS_TITLE } from '@/customers/model';
@@ -79,7 +80,7 @@ export default function Customers() {
         <CustomersProvider words={words}>
             <Head title={words.text(CUSTOMERS_TITLE)} />
             <div className="admin-customers-screen flex flex-col gap-4">
-                <h1 className="text-2xl font-semibold">{words.text(CUSTOMERS_TITLE)}</h1>
+                <PageHeader title={words.text(CUSTOMERS_TITLE)} />
                 <div className="admin-customers-bar flex flex-wrap items-end justify-between gap-3">
                     <Field id="customers-search" label={words.text(SEARCH_LABEL)} className="admin-customers-search w-full max-w-sm">
                         {(control) => (

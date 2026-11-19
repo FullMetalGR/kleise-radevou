@@ -11,9 +11,10 @@ use Tests\Support\LunaFixture;
 
 /*
  * Every screen the rail reaches, at a tablet's width and a desktop's, in English and in Greek:
- * each one drawn, in the owner's language and free of script errors, and no wider than the window
- * at the widths the layout fits, which Look::UNFITTED leaves the tablet's out of. A line longer in
- * one language widens a screen in that language alone, so the owner reads every screen in each. A
+ * each one drawn under the one shared page header holding its one main heading, in the owner's
+ * language and free of script errors, and no wider than the window at the widths the layout fits,
+ * which Look::UNFITTED leaves the tablet's out of. A line longer in one language widens a screen
+ * in that language alone, so the owner reads every screen in each. A
  * screen is loaded afresh at each width, so its first paint is the layout that width is given.
  * One more case opens the staff form in Greek at the narrowest width at which its fields stand
  * two abreast beside the rail, where a field is at its narrowest, and holds Clear, beside a
@@ -69,6 +70,9 @@ const LOOK_FACES = <<<'JS'
 })()
 JS;
 
+/** Whether the screen draws exactly one shared page header and one main heading, inside it. */
+const LOOK_ONE_HEADER = "document.querySelectorAll('.admin-page-header').length === 1 && document.querySelectorAll('h1').length === 1 && document.querySelector('.admin-page-header h1') !== null";
+
 /** How many columns the section holding the staff form's linked sign-in lays its fields in. */
 const LOOK_SIGN_IN_COLUMNS = "getComputedStyle(document.querySelector('#staff-user').closest('.admin-field').parentElement).gridTemplateColumns.split(' ').length";
 
@@ -119,6 +123,7 @@ it('draws every screen of the admin at a tablet\'s width and a desktop\'s in the
         foreach (Look::screens() as $screen => ['path' => $path, 'hook' => $hook]) {
             $page->navigate(Admin::url('luna', $path))
                 ->assertVisible($hook)
+                ->assertScript(LOOK_ONE_HEADER, true)
                 ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
                 ->assertNoJavaScriptErrors();
 

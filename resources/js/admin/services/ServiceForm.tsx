@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { CHECK_BOX, CheckField } from '@/components/ui/check-field';
 import { Field } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { Section } from '@/components/ui/section';
 import { Select } from '@/components/ui/select';
 import { StatusChip } from '@/components/ui/status-chip';
@@ -89,25 +91,13 @@ export function ServiceForm({ form, onChange, creating, categories, title, statu
                 onSave();
             }}
         >
-            <nav className="admin-breadcrumb text-sm text-muted-foreground" aria-label={words.text('form.breadcrumb')}>
-                <a
-                    href={listHref}
-                    className="admin-breadcrumb__list underline"
-                    onClick={(event) => {
-                        event.preventDefault();
-                        onBack();
-                    }}
-                >
-                    {words.text('form.list')}
-                </a>
-                <span aria-hidden="true"> / </span>
-                <span className="admin-breadcrumb__current">{title}</span>
-            </nav>
-            <div className="admin-service-title flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-semibold">{title}</h1>
-                {status !== null && <StatusChip status={status} label={statusWord(status, words)} />}
-                {copyLink}
-            </div>
+            <PageHeader
+                className="admin-service-title"
+                breadcrumb={<Breadcrumb label={words.text('form.breadcrumb')} items={[{ label: words.text('form.list'), href: listHref, onClick: onBack }, { label: title }]} />}
+                title={title}
+                status={status !== null && <StatusChip status={status} label={statusWord(status, words)} />}
+                actions={copyLink ?? undefined}
+            />
 
             <Section id="basics" title={words.text('form.basics')}>
                 <Field id="service-name" label={words.text('form.name')}>

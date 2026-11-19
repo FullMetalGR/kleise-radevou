@@ -1,6 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { SettledList } from '@/components/settled-list';
+import { PageHeader } from '@/components/ui/page-header';
 import { useActs } from '@/bookings/acting';
 import { BookingDialog, type DialogState } from '@/bookings/BookingDialog';
 import { BookingsTable } from '@/bookings/BookingsTable';
@@ -124,7 +125,7 @@ export default function Bookings() {
         <BookingsProvider words={words}>
             <Head title={words.text('page.title')} />
             <div className="admin-bookings-screen flex flex-col gap-4">
-                <h1 className="text-2xl font-semibold">{words.text('page.title')}</h1>
+                <PageHeader title={words.text('page.title')} />
                 <FilterBar filters={bar} options={props.options} staffShown={shown} clock={clock} weekStart={props.settings.week_start} onChange={change} />
                 <SettledList
                     count={rows.length}

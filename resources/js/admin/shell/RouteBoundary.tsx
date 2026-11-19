@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { PageHeader } from '@/components/ui/page-header';
 import { useShell } from '@/lib/strings';
 
 /*
@@ -22,7 +23,7 @@ function Fallen({ error, componentStack }: { error: Error; componentStack: strin
 
     return (
         <section className="admin-boundary flex flex-col gap-3" role="alert">
-            <h1 className="text-lg font-semibold">{shell.text(BOUNDARY_NOTICE)}</h1>
+            <PageHeader title={shell.text(BOUNDARY_NOTICE)} />
             <p>{shell.text(BOUNDARY_REST)}</p>
             <pre className="admin-boundary-error overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">{`${error.name}: ${error.message}${componentStack}`}</pre>
         </section>

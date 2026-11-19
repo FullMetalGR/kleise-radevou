@@ -3,6 +3,7 @@ import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { usePartialRead } from '@/lib/partial-read';
 import type { ConsoleProps } from '@/types';
@@ -154,7 +155,7 @@ export default function Audit() {
         <>
             <Head title={AUDIT_TITLE} />
             <div className="admin-audit-screen flex flex-col gap-4">
-                <h1 className="text-2xl font-semibold">{AUDIT_TITLE}</h1>
+                <PageHeader title={AUDIT_TITLE} />
                 {tenant !== null && (
                     <div className="admin-audit-narrowed flex flex-wrap items-center gap-3 text-sm">
                         <p>{narrowedTo(tenant)}</p>

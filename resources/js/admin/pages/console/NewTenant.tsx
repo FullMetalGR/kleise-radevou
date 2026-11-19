@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Field, useFocusFirstFailing } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { Select } from '@/components/ui/select';
 import { useShell } from '@/lib/strings';
 import { owningFailure } from '@/lib/visits';
@@ -106,12 +107,14 @@ export default function NewTenant({ categories, timezones, centralHost, features
         <>
             <Head title="New tenant" />
             <div className="admin-new-tenant-screen flex max-w-xl flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                    <Link href="/" className="admin-new-tenant-back text-sm underline-offset-4 hover:underline">
-                        All tenants
-                    </Link>
-                    <h1 className="text-2xl font-semibold">New tenant</h1>
-                </div>
+                <PageHeader
+                    breadcrumb={
+                        <Link href="/" className="admin-new-tenant-back self-start text-sm underline-offset-4 hover:underline">
+                            All tenants
+                        </Link>
+                    }
+                    title="New tenant"
+                />
                 <Notice kind="info" className="admin-new-tenant__note">
                     {NEW_TENANT_NOTE}
                 </Notice>

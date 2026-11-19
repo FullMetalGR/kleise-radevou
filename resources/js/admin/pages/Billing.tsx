@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { Section } from '@/components/ui/section';
 import { namedFeatures } from '@/lib/features';
 import { clockOf, formatAmount, formatInstant, type TenantClock } from '@/lib/format';
@@ -343,7 +344,7 @@ export default function Billing() {
     return (
         <BillingProvider words={words}>
             <div className="admin-billing flex flex-col gap-4">
-                <h1 className="text-2xl font-semibold">{words.text('title')}</h1>
+                <PageHeader title={words.text('title')} />
 
                 {limited !== null && (
                     <Notice kind="warning" className="admin-billing__limited">

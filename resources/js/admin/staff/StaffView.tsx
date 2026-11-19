@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { PageHeader } from '@/components/ui/page-header';
 import { Section } from '@/components/ui/section';
 import { StatusChip } from '@/components/ui/status-chip';
 import type { TenantClock } from '@/lib/format';
@@ -41,25 +43,13 @@ export function StaffView({ member, services, users, clock, notice, listHref, on
 
     return (
         <div className="admin-staff-view flex flex-col gap-4">
-            <nav className="admin-breadcrumb text-sm text-muted-foreground" aria-label={words.text('form.breadcrumb')}>
-                <a
-                    href={listHref}
-                    className="admin-breadcrumb__list underline"
-                    onClick={(event) => {
-                        event.preventDefault();
-                        onBack();
-                    }}
-                >
-                    {words.text('form.list')}
-                </a>
-                <span aria-hidden="true"> / </span>
-                <span className="admin-breadcrumb__current">{member.name}</span>
-            </nav>
-            <div className="admin-staff-title flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-semibold">{member.name}</h1>
-                <StatusChip status={member.status} label={statusWord(member.status, words)} />
-                {copyLink}
-            </div>
+            <PageHeader
+                className="admin-staff-title"
+                breadcrumb={<Breadcrumb label={words.text('form.breadcrumb')} items={[{ label: words.text('form.list'), href: listHref, onClick: onBack }, { label: member.name }]} />}
+                title={member.name}
+                status={<StatusChip status={member.status} label={statusWord(member.status, words)} />}
+                actions={copyLink ?? undefined}
+            />
             {notice}
 
             <Section id="basics" title={words.text('form.basics')}>

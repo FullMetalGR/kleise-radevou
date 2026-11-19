@@ -9,6 +9,7 @@ import { Activity, Awaiting, type HomeActivityRow, type HomeBooking, NextUp } fr
 import { RangeCard, type RangeFigures, Tiles, TopTables } from '@/home/figures';
 import { ToMark, type ToMarkList } from '@/home/ToMark';
 import { type HomeWords, homeWordsOf } from '@/home/words';
+import { PageHeader } from '@/components/ui/page-header';
 import { isoWeekday } from '@/lib/day';
 import { clockOf, formatCount } from '@/lib/format';
 import { weekdayName } from '@/lib/names';
@@ -163,7 +164,7 @@ export default function Home() {
             <Head title={words.text('page_title')} />
             <div className="admin-home-screen flex flex-col gap-4">
                 <SetupOnHome setup={props.setup} strings={props.strings.setup} finished={props.setup_finished === true} />
-                <h1 className="text-2xl font-semibold">{words.text('title')}</h1>
+                <PageHeader title={words.text('title')} />
                 <ToMark list={props.to_mark} manage={props.permissions.includes('manageBookings')} clock={clock} words={words} staffShown={shown} onOpen={opening.open} />
                 <RangeCard range={props.range_figures.range} clock={clock} words={words} busy={ranging.loading} failed={ranging.error} onChoose={(word) => ranging.read(PATH, word === 'week' ? {} : { range: word })} />
                 <Tiles figures={props.range_figures} words={words} />

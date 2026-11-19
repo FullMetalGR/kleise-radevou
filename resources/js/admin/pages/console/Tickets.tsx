@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { usePartialRead } from '@/lib/partial-read';
@@ -117,7 +118,7 @@ export default function Tickets() {
         <>
             <Head title={TICKETS_TITLE} />
             <div className="admin-tickets-screen flex flex-col gap-4">
-                <h1 className="text-2xl font-semibold">{TICKETS_TITLE}</h1>
+                <PageHeader title={TICKETS_TITLE} />
                 <SettledList
                     count={rows.length}
                     state={{ loading: list.loading, error: list.error }}

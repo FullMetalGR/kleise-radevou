@@ -3,6 +3,7 @@ import { type FormEvent, Fragment, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Field, useFocusFirstFailing } from '@/components/ui/field';
+import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/input';
 import { useShell } from '@/lib/strings';
 import { NOT_DONE, owningFailure } from '@/lib/visits';
@@ -182,24 +183,28 @@ export default function Ticket() {
         <>
             <Head title={ticket.subject} />
             <div className="admin-ticket-screen flex flex-col gap-4">
-                <Link href="/tickets" className="admin-ticket-back self-start text-sm underline-offset-4 hover:underline">
-                    {ALL_TICKETS}
-                </Link>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex flex-col gap-1">
-                        <h1 className="admin-ticket__subject text-2xl font-semibold break-words">{ticket.subject}</h1>
-                        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <PageHeader
+                    breadcrumb={
+                        <Link href="/tickets" className="admin-ticket-back self-start text-sm underline-offset-4 hover:underline">
+                            {ALL_TICKETS}
+                        </Link>
+                    }
+                    title={<span className="admin-ticket__subject">{ticket.subject}</span>}
+                    lead={
+                        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-foreground">
                             <Link href={ticket.tenant.url} className="admin-ticket__tenant font-medium underline-offset-4 hover:underline">
                                 {ticket.tenant.name}
                             </Link>
                             <TicketStatusWords ticket={ticket} name="admin-ticket" />
                             <span className="admin-ticket__last text-muted-foreground">Last message {ticket.last_message}</span>
-                        </p>
-                    </div>
-                    <Button className={open ? 'admin-ticket-close' : 'admin-ticket-reopen'} busy={busy === 'close' || busy === 'reopen'} busyLabel={open ? CLOSING : REOPENING} onClick={move}>
-                        {open ? CLOSE : REOPEN}
-                    </Button>
-                </div>
+                        </span>
+                    }
+                    actions={
+                        <Button className={open ? 'admin-ticket-close' : 'admin-ticket-reopen'} busy={busy === 'close' || busy === 'reopen'} busyLabel={open ? CLOSING : REOPENING} onClick={move}>
+                            {open ? CLOSE : REOPEN}
+                        </Button>
+                    }
+                />
                 <Card flush className="admin-card admin-ticket" aria-labelledby="ticket-messages-head">
                     <header className="px-4 py-3">
                         <h2 id="ticket-messages-head" className="font-semibold">

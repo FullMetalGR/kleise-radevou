@@ -5,6 +5,7 @@ import { Initials } from '@/components/initials';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { isoWeekday } from '@/lib/day';
 import { clockOf, formatCount, formatDate, formatDayMonth, formatTimeOfDay, type TenantClock } from '@/lib/format';
@@ -328,13 +329,11 @@ export default function Shifts() {
         <>
             <Head title={words.text('page.title')} />
             <div className="admin-shifts-screen flex flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-col gap-1">
-                        <h1 className="text-2xl font-semibold">{words.text('page.title')}</h1>
-                        <p className="admin-shifts__lead text-muted-foreground">{words.text('page.lead')}</p>
-                    </div>
-                    <WeekBar week={props.week} last={last} loading={read.loading} words={words} clock={clock} onRead={(query) => read.read(SHIFTS, query)} />
-                </div>
+                <PageHeader
+                    title={words.text('page.title')}
+                    lead={<span className="admin-shifts__lead">{words.text('page.lead')}</span>}
+                    actions={<WeekBar week={props.week} last={last} loading={read.loading} words={words} clock={clock} onRead={(query) => read.read(SHIFTS, query)} />}
+                />
                 {!props.editable && props.members.some((member) => !member.is_implicit) && !props.narrowed.includes('staff') && (
                     <Notice kind="info" className="admin-shifts-readonly">
                         <FeatureGone slug="staff" manageBilling={props.permissions.includes('manageBilling')} free={props.free} block="admin-shifts-readonly" />

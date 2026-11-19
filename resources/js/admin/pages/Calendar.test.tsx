@@ -1295,8 +1295,12 @@ describe('the Add menu', () => {
 
         expect(add()?.classList.contains('admin-button--primary')).toBe(true);
         expect(add()?.querySelector('svg')).not.toBeNull();
-        expect(add()?.closest('.admin-calendar-heading')?.classList.contains('justify-between')).toBe(true);
-        expect(add()?.closest('.admin-calendar-heading')?.lastElementChild).toBe(add());
+        const actions = add()?.closest('.admin-calendar-heading .admin-page-header__actions');
+
+        expect(actions?.classList.contains('ms-auto')).toBe(true);
+        expect(actions?.parentElement?.lastElementChild).toBe(actions);
+        expect(actions?.parentElement?.querySelector(':scope > h1')?.textContent).toBe(cal.text('page.title'));
+        expect(actions?.lastElementChild).toBe(add());
         await openAdd();
 
         expect(document.querySelector('.admin-menu')?.lastElementChild?.textContent).toBe(cal.text('page.add_hint'));

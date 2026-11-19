@@ -181,7 +181,8 @@ describe('a tenant\'s detail', () => {
     it('heads the page with the name and the slug, and links out to the tenant\'s origin in a new tab and to its audit', () => {
         show(LUNA);
 
-        expect(text('h1.admin-tenant__name')).toBe('Luna Hair Studio');
+        expect(text('h1.admin-page-title > .admin-tenant__name')).toBe('Luna Hair Studio');
+        expect(text('h1')).toBe('Luna Hair Studio');
         expect(text('.admin-tenant__slug')).toBe('luna');
         expect(view.host.querySelector('.admin-tenant-back')?.getAttribute('href')).toBe('/');
 

@@ -1,4 +1,5 @@
 import { Head } from '@inertiajs/react';
+import { PageHeader } from '@/components/ui/page-header';
 import { type ShellKey, useShell } from '@/lib/strings';
 
 /*
@@ -16,8 +17,7 @@ export default function NotFound() {
     return (
         <>
             <Head title={shell.text(NOT_FOUND_HEADING)} />
-            <h1 className="text-2xl font-semibold">{shell.text(NOT_FOUND_HEADING)}</h1>
-            <p className="mt-2 text-muted-foreground">{shell.text('not_found.sentence')}</p>
+            <PageHeader title={shell.text(NOT_FOUND_HEADING)} lead={shell.text('not_found.sentence')} />
         </>
     );
 }

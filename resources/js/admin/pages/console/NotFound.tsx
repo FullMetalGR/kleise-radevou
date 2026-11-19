@@ -1,4 +1,5 @@
 import { Head } from '@inertiajs/react';
+import { PageHeader } from '@/components/ui/page-header';
 
 /*
  * An unknown address on the console's host: the console's own 404 page inside its shell, as the
@@ -9,8 +10,7 @@ export default function NotFound() {
     return (
         <>
             <Head title="Page not found" />
-            <h1 className="text-2xl font-semibold">Page not found</h1>
-            <p className="mt-2 text-muted-foreground">There is nothing at this address on the console.</p>
+            <PageHeader title="Page not found" lead="There is nothing at this address on the console." />
         </>
     );
 }

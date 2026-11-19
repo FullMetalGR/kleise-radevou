@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Confirm } from '@/components/ui/confirm';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/page-header';
 import { Segmented } from '@/components/ui/segmented';
 import { TableScroll } from '@/components/ui/table-scroll';
 import { useOneWrite } from '@/lib/one-write';
@@ -113,10 +114,7 @@ export default function Team() {
         <>
             <Head title={words.text('page.title')} />
             <div className="admin-team-screen flex flex-col gap-4">
-                <div className="flex flex-wrap items-baseline gap-3">
-                    <h1 className="text-2xl font-semibold">{words.text('page.title')}</h1>
-                    <span className="admin-team-count text-muted-foreground">{words.choice('page.count', props.members.length)}</span>
-                </div>
+                <PageHeader title={words.text('page.title')} count={<span className="admin-team-count">{words.choice('page.count', props.members.length)}</span>} />
                 {held && (
                     <p id={WAIT_ID} role="status" className="admin-team-wait text-sm text-muted-foreground">
                         {wait}

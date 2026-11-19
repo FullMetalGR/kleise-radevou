@@ -6,8 +6,10 @@ import { type Detail, type ListPage, staffShown } from '@/bookings/model';
 import { useOpenedDetail } from '@/bookings/opened-detail';
 import { BookingsProvider, bookingsWordsOf } from '@/bookings/words';
 import { SettledList } from '@/components/settled-list';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { CustomerDangerZone, type Erasure } from '@/customers/CustomerDangerZone';
 import { CustomerBlockCard } from '@/customers/CustomerBlockCard';
 import { CustomerExport } from '@/customers/CustomerExport';
@@ -139,37 +141,21 @@ export default function CustomerPage() {
             <BookingsProvider words={words}>
                 <Head title={props.customer.name} />
                 <div className="admin-customer-screen flex flex-col gap-4">
-                    <nav className="admin-breadcrumb text-sm text-muted-foreground" aria-label={own.text('customer.breadcrumb')}>
-                        <a
-                            href={LIST}
-                            className="admin-breadcrumb__list underline"
-                            onClick={(event) => {
-                                event.preventDefault();
-                                leave();
-                            }}
-                        >
-                            {own.text(CUSTOMERS_TITLE)}
-                        </a>
-                        <span aria-hidden="true"> / </span>
-                        <span className="admin-breadcrumb__current">{props.customer.name}</span>
-                    </nav>
-                    {leaveFailed && (
-                        <Notice kind="error" className="admin-customer-leave-error">
-                            {own.text(LEAVE_ERROR)}
-                        </Notice>
-                    )}
-                    <header className="admin-customer-head flex flex-col gap-1">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <h1 className="text-2xl font-semibold">{props.customer.name}</h1>
-                            {manage && (
-                                <div className="admin-customer-head__actions flex flex-wrap gap-2">
-                                    <CustomerExport url={props.customer.url} />
-                                    <Button variant="primary" className="admin-customer-book" onClick={() => wizard.open({ customer: bookingCustomer(props.customer) })}>
-                                        {own.text(BOOK_NOW_LABEL)}
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
+                    <div className="admin-customer-head flex flex-col gap-1">
+                        <PageHeader
+                            breadcrumb={<Breadcrumb label={own.text('customer.breadcrumb')} items={[{ label: own.text(CUSTOMERS_TITLE), href: LIST, onClick: leave }, { label: props.customer.name }]} />}
+                            title={props.customer.name}
+                            actions={
+                                manage ? (
+                                    <div className="admin-customer-head__actions flex flex-wrap gap-2">
+                                        <CustomerExport url={props.customer.url} />
+                                        <Button variant="primary" className="admin-customer-book" onClick={() => wizard.open({ customer: bookingCustomer(props.customer) })}>
+                                            {own.text(BOOK_NOW_LABEL)}
+                                        </Button>
+                                    </div>
+                                ) : undefined
+                            }
+                        />
                         {props.customer.email !== undefined && <p className="admin-customer-head__email text-muted-foreground">{props.customer.email}</p>}
                         {(props.customer.tags.length > 0 || others.length > 0) && (
                             <div className="admin-customer-head__chips flex flex-wrap gap-1">
@@ -177,7 +163,12 @@ export default function CustomerPage() {
                                 {others.length > 0 && <span className="admin-chip admin-chip--past admin-customer-head__also">{own.text(ALSO_BOOKED_AS, { names: others.join(', ') })}</span>}
                             </div>
                         )}
-                    </header>
+                    </div>
+                    {leaveFailed && (
+                        <Notice kind="error" className="admin-customer-leave-error">
+                            {own.text(LEAVE_ERROR)}
+                        </Notice>
+                    )}
                     <div className="admin-customer-cards grid grid-cols-[repeat(auto-fit,minmax(min(440px,100%),1fr))] gap-4">
                         <CustomerGlance customer={props.customer} spent={props.spent} clock={clock} />
                         {manage && <CustomerProfileCard key={profileKey(props.profile)} url={props.customer.url} profile={props.profile} earliest={props.earliest_birthday} clock={clock} weekStart={props.settings.week_start} />}

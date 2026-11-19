@@ -4,6 +4,7 @@ import { ListDetail, SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { CHECK_BOX } from '@/components/ui/check-field';
 import { Notice } from '@/components/ui/notice';
+import { PageHeader } from '@/components/ui/page-header';
 import { type BookingLink, copyLinkOf } from '@/lib/booking-link';
 import { clockOf, formatCount, type TenantClock } from '@/lib/format';
 import type { FieldControl } from '@/components/ui/field';
@@ -226,7 +227,7 @@ export default function Staff() {
             <StaffProvider words={words}>
                 <Head title={words.text('page.floor_title')} />
                 <div className="admin-staff-screen admin-staff-screen--floor flex flex-col gap-4">
-                    <h1 className="text-2xl font-semibold">{words.text('page.floor_title')}</h1>
+                    <PageHeader title={words.text('page.floor_title')} />
                     {closures()}
                 </div>
             </StaffProvider>
@@ -249,20 +250,22 @@ export default function Staff() {
             <StaffProvider words={words}>
                 <Head title={words.text('page.title')} />
                 <div className="admin-staff-screen flex flex-col gap-4">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <h1 className="text-2xl font-semibold">{words.text('page.title')}</h1>
-                        {editable && (
-                            <div className="flex items-center gap-2">
-                                <Button variant="secondary" size="small" className="admin-staff-shifts" onClick={() => router.get(SHIFTS_PATH)}>
-                                    {words.text('page.shifts')}
-                                </Button>
-                                <Button variant="primary" size="small" className="admin-staff-new" onClick={() => go(`${LIST}/new`)}>
-                                    {words.text('page.new')}
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                    <p className="admin-staff-lead text-sm text-muted-foreground">{words.text('page.lead')}</p>
+                    <PageHeader
+                        title={words.text('page.title')}
+                        lead={<span className="admin-staff-lead">{words.text('page.lead')}</span>}
+                        actions={
+                            editable ? (
+                                <>
+                                    <Button variant="secondary" size="small" className="admin-staff-shifts" onClick={() => router.get(SHIFTS_PATH)}>
+                                        {words.text('page.shifts')}
+                                    </Button>
+                                    <Button variant="primary" size="small" className="admin-staff-new" onClick={() => go(`${LIST}/new`)}>
+                                        {words.text('page.new')}
+                                    </Button>
+                                </>
+                            ) : undefined
+                        }
+                    />
                     {readOnly}
                     <div className="flex flex-wrap items-end gap-4">
                         <Field id="staff-search" label={words.text('page.search')} className="w-full max-w-96">

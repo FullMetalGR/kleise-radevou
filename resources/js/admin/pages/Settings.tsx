@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { CHECK_BOX } from '@/components/ui/check-field';
 import { Field, type FieldControl, HelpLine } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/page-header';
 import { Section } from '@/components/ui/section';
 import { Select } from '@/components/ui/select';
 import { useCopy } from '@/lib/copy';
@@ -214,7 +215,7 @@ export default function Settings() {
             <EmailsProvider words={emailsWordsOf(props.strings, shell.language)}>
                 <div className="admin-settings-page flex flex-col gap-4">
                     <Head title={words.text('page.title')} />
-                    <h1 className="text-2xl font-semibold">{words.text('page.title')}</h1>
+                    <PageHeader title={words.text('page.title')} />
                     <Editor
                         seed={seed}
                         initial={seedForm(props.values)}

@@ -627,11 +627,12 @@ describe('a closing account', () => {
         );
 
         const notice = document.querySelector('.admin-billing__notice');
-        const heading = document.querySelector('.admin-billing h1');
+        const header = document.querySelector('.admin-billing > .admin-page-header');
 
         expect(notice?.classList.contains('admin-notice--warning')).toBe(true);
         expect(notice?.getAttribute('role')).toBe('status');
-        expect(heading !== null && notice !== null && heading.nextElementSibling === notice).toBe(true);
+        expect(header?.querySelector('h1')?.textContent).toBe(words.text('title'));
+        expect(header !== null && notice !== null && header.nextElementSibling === notice).toBe(true);
         expect(document.querySelectorAll('.admin-billing__sentence')).toHaveLength(1);
         expect(text('.admin-billing__sentence')).toBe(CLOSING);
         expect(text('.admin-billing__paused')).toBe('paused-token');
