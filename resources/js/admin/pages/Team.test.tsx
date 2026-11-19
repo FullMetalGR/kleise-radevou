@@ -199,18 +199,18 @@ describe('the Team screen', () => {
         expect(q('.admin-team-members h2')?.textContent).toBe(words.text('members.title'));
         expect(q('.admin-team-members .admin-table-scroll table')).not.toBeNull();
         expect(texts('.admin-team-members thead th')).toEqual([words.text('members.name'), words.text('members.email'), words.text('members.staff_row'), words.text('members.role'), words.text('members.actions')]);
-        expect(texts('.admin-team-members tbody tr td:nth-child(2)')).toEqual(['owner@luna.example', 'elena@luna.example', 'nikos@luna.example', 'ioanna@luna.example']);
+        expect(texts('.admin-team-members tbody tr td:nth-child(2) .admin-table__value')).toEqual(['owner@luna.example', 'elena@luna.example', 'nikos@luna.example', 'ioanna@luna.example']);
     });
 
     it('marks the viewer You and an invitation still out, and names each staff row or None', () => {
         view.render(<Page />);
 
-        expect(texts(`${row(0)} td:first-child .admin-chip`)).toEqual([words.text('members.you')]);
-        expect(texts(`${row(1)} td:first-child .admin-chip`)).toEqual([]);
-        expect(texts(`${row(3)} td:first-child .admin-chip`)).toEqual([words.text('members.invited')]);
+        expect(texts(`${row(0)} th:first-child .admin-chip`)).toEqual([words.text('members.you')]);
+        expect(texts(`${row(1)} th:first-child .admin-chip`)).toEqual([]);
+        expect(texts(`${row(3)} th:first-child .admin-chip`)).toEqual([words.text('members.invited')]);
         expect(q(`${row(3)} .admin-chip`)?.classList.contains('admin-chip--provisional')).toBe(true);
         expect(q(`${row(0)} .admin-chip`)?.classList.contains('admin-chip--past')).toBe(true);
-        expect(texts('.admin-team-members tbody tr td:nth-child(3)')).toEqual([words.text('members.no_staff'), 'Elena Papadaki', 'Nikos Georgiou', words.text('members.no_staff')]);
+        expect(texts('.admin-team-members tbody tr td:nth-child(3) .admin-table__value')).toEqual([words.text('members.no_staff'), 'Elena Papadaki', 'Nikos Georgiou', words.text('members.no_staff')]);
     });
 
     it('shows each role as the segmented control named for its member, and writes a change at once', () => {

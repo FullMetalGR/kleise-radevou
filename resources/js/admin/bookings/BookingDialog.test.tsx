@@ -70,6 +70,16 @@ describe('the booking dialog', () => {
         expect(inDialog('.admin-booking-close')).not.toBeNull();
     });
 
+    it('sets the head cells of the items table semibold from their row, no cell spelling a weight of its own', () => {
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: BOOKING, note: null, trail: TRAIL, actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+
+        const row = inDialog('.admin-booking-items thead tr');
+
+        expect(row?.querySelectorAll('th')).toHaveLength(5);
+        expect([...(row?.classList ?? [])]).toContain('[&_th]:font-semibold');
+        expect(row?.querySelectorAll('th[class*="font-"]')).toHaveLength(0);
+    });
+
     it('shows no email and no phone where the payload carries neither, and says so when nothing has happened', () => {
         const { customer_email: _email, customer_phone: _phone, ...withheld } = BOOKING;
         show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: withheld, note: null, trail: [], actions: [] } }} staffShown={false} clock={CLOCK} onClose={() => {}} />);

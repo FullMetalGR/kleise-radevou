@@ -126,14 +126,14 @@ describe('the tenant list', () => {
         view.render(<Tenants />);
 
         expect(q('h1')?.textContent).toBe('Tenants');
-        expect(texts('th')).toEqual(['Slug', 'Name', 'Status', 'Plan', 'Subscription', 'Signed up']);
+        expect(texts('thead th')).toEqual(['Slug', 'Name', 'Status', 'Plan', 'Subscription', 'Signed up']);
         expect(texts('.admin-tenants__slug')).toEqual(['luna', 'pier', 'reserved']);
         expect([...view.host.querySelectorAll('.admin-tenants__slug')].map((link) => link.getAttribute('href'))).toEqual(['/tenants/luna', '/tenants/pier', '/tenants/reserved']);
-        expect(texts('.admin-tenants__name')).toEqual(['Luna Hair Studio', 'Pier Physiotherapy', 'Reserved Salon']);
-        expect(texts('.admin-tenants__status')).toEqual(['Active', 'Suspended', 'Provisioning']);
-        expect(texts('.admin-tenants__plan')).toEqual(['Free', 'Team', NO_PLAN]);
-        expect(texts('.admin-tenants__state')).toEqual(['Active', 'Past due', 'Incomplete']);
-        expect(texts('.admin-tenants__signed-up')).toEqual([LUNA.signed_up, PIER.signed_up, RESERVED.signed_up]);
+        expect(texts('.admin-tenants__name .admin-table__value')).toEqual(['Luna Hair Studio', 'Pier Physiotherapy', 'Reserved Salon']);
+        expect(texts('.admin-tenants__status .admin-table__value')).toEqual(['Active', 'Suspended', 'Provisioning']);
+        expect(texts('.admin-tenants__plan .admin-table__value')).toEqual(['Free', 'Team', NO_PLAN]);
+        expect(texts('.admin-tenants__state .admin-table__value')).toEqual(['Active', 'Past due', 'Incomplete']);
+        expect(texts('.admin-tenants__signed-up .admin-table__value')).toEqual([LUNA.signed_up, PIER.signed_up, RESERVED.signed_up]);
         expect(q('.admin-tenants__count')?.textContent).toBe('3 of 40');
         expect(q('.admin-pagination')?.textContent).toContain(shell.text('kit.pagination.page', { page: '1', last: '2' }));
     });
@@ -145,7 +145,7 @@ describe('the tenant list', () => {
 
         expect(texts('.admin-tenants__slug')).toEqual(['luna', RELEASED]);
         expect([...view.host.querySelectorAll('.admin-tenants__slug')].map((link) => link.getAttribute('href'))).toEqual(['/tenants/luna', '/tenants/closed/12']);
-        expect(texts('.admin-tenants__status')).toEqual(['Active', 'Closed']);
+        expect(texts('.admin-tenants__status .admin-table__value')).toEqual(['Active', 'Closed']);
     });
 
     it('offers New tenant beside the heading, a link to the free tenant\'s form', () => {
@@ -170,7 +170,7 @@ describe('the tenant list', () => {
         inertia.props = propsWith([PIER, { ...LUNA, plan: 'floor' }], { planNames: [{ plan: 'floor', name: 'Starter' }, { plan: 'staff', name: 'Studio' }] });
         view.render(<Tenants />);
 
-        expect(texts('.admin-tenants__plan')).toEqual(['Studio', 'Starter']);
+        expect(texts('.admin-tenants__plan .admin-table__value')).toEqual(['Studio', 'Starter']);
         expect(texts('#tenants-plan option')).toEqual(['Any plan', 'Trial', 'Free', 'Starter', 'Studio', 'Unlisted']);
     });
 

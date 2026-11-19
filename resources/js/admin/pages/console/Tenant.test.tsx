@@ -299,11 +299,11 @@ describe('a tenant\'s detail', () => {
     it('lists the people with the role in words and whether each email is verified, and says so where there are none', () => {
         show(LUNA);
 
-        expect(texts('.admin-tenant-people th')).toEqual(['Name', 'Email', 'Role', 'Verified', 'Password']);
-        expect(texts('.admin-tenant-people__name')).toEqual(['Alex Owner', 'Sam Staff']);
-        expect(texts('.admin-tenant-people__email')).toEqual(['owner@luna.example', 'sam@luna.example']);
-        expect(texts('.admin-tenant-people__role')).toEqual(['Owner', 'Staff']);
-        expect(texts('.admin-tenant-people__verified')).toEqual(['Yes', 'No']);
+        expect(texts('.admin-tenant-people thead th')).toEqual(['Name', 'Email', 'Role', 'Verified', 'Password']);
+        expect(texts('.admin-tenant-people__name .admin-table__value')).toEqual(['Alex Owner', 'Sam Staff']);
+        expect(texts('.admin-tenant-people__email .admin-table__value')).toEqual(['owner@luna.example', 'sam@luna.example']);
+        expect(texts('.admin-tenant-people__role .admin-table__value')).toEqual(['Owner', 'Staff']);
+        expect(texts('.admin-tenant-people__verified .admin-table__value')).toEqual(['Yes', 'No']);
 
         view.unmount();
         view = mount();
@@ -948,9 +948,9 @@ describe('the open support sessions', () => {
         show(LUNA, null, SESSIONS);
 
         expect(text('.admin-tenant-sessions h2')).toBe('Support sessions');
-        expect(texts('.admin-tenant-sessions__operator')).toEqual(['Pat Operator', 'Sam Operator']);
-        expect(texts('.admin-tenant-sessions__opened')).toEqual(['Monday 2 November 2026 at 07:31', 'Monday 2 November 2026 at 07:45']);
-        expect(texts('.admin-tenant-sessions__ends')).toEqual(['Monday 2 November 2026 at 08:31', 'Monday 2 November 2026 at 08:45']);
+        expect(texts('.admin-tenant-sessions__operator .admin-table__value')).toEqual(['Pat Operator', 'Sam Operator']);
+        expect(texts('.admin-tenant-sessions__opened .admin-table__value')).toEqual(['Monday 2 November 2026 at 07:31', 'Monday 2 November 2026 at 07:45']);
+        expect(texts('.admin-tenant-sessions__ends .admin-table__value')).toEqual(['Monday 2 November 2026 at 08:31', 'Monday 2 November 2026 at 08:45']);
         expect(texts('.admin-tenant-sessions__end')).toEqual(['End', 'End']);
         expect(view.host.querySelector('.admin-tenant-sessions__none')).toBeNull();
     });

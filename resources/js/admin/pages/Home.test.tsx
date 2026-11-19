@@ -156,7 +156,7 @@ function signed(percent: number): string {
 
 /** A Top table's rows as name, bookings and revenue. */
 function topRows(id: string): string[][] {
-    return [...view.host.querySelectorAll(`.admin-home-top--${id} tbody tr`)].map((row) => [...row.querySelectorAll('td')].map((cell) => cell.textContent ?? ''));
+    return [...view.host.querySelectorAll(`.admin-home-top--${id} tbody tr`)].map((row) => [...row.querySelectorAll('.admin-table__value')].map((cell) => cell.textContent ?? ''));
 }
 
 let view: Mounted;
@@ -331,7 +331,7 @@ describe('Home', () => {
 
         expect(view.host.querySelector('#home-top-services-title')?.textContent).toBe(home.text('top.services'));
         expect(view.host.querySelector('#home-top-staff-title')?.textContent).toBe(home.text('top.staff'));
-        expect([...view.host.querySelectorAll('.admin-home-top--services th')].map((el) => el.textContent)).toEqual([home.text('top.name'), home.text('top.bookings'), home.text('top.revenue')]);
+        expect([...view.host.querySelectorAll('.admin-home-top--services thead th')].map((el) => el.textContent)).toEqual([home.text('top.name'), home.text('top.bookings'), home.text('top.revenue')]);
         expect(topRows('services')).toEqual([
             ['Haircut', '14', formatAmount(49000, 'EUR', home.locale)],
             ['Colour', '5', formatAmount(40000, 'EUR', home.locale)],
@@ -346,6 +346,19 @@ describe('Home', () => {
         renderHome();
         expect(view.host.querySelectorAll('.admin-home-top table')).toHaveLength(0);
         expect(texts('.admin-home-top__empty')).toEqual([home.text('top.empty'), home.text('top.empty')]);
+    });
+
+    it('turns each Top table to rows below the wide breakpoint alone, so it stays a grid in whatever panel a wide window gives it', () => {
+        renderHome();
+
+        const tables = [...view.host.querySelectorAll('.admin-home-top table')];
+
+        expect(tables).toHaveLength(2);
+
+        for (const table of tables) {
+            expect([...table.classList]).toContain('max-wide:block');
+            expect([...table.classList].filter((name) => name.startsWith('@max-'))).toEqual([]);
+        }
     });
 
     it('carries no link to Reports and none of the old week\'s tiles', () => {

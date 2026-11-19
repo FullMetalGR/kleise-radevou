@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { StatusChip } from '@/components/ui/status-chip';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { formatAmount, formatCount, type TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
 import { Strip } from '@/figures/kit';
@@ -53,28 +53,30 @@ function Breakdown({ name, title, head, rows, words }: { name: string; title: st
     return (
         <ReportCard name={name} labelledBy={id}>
             <Strip titleId={id} title={title} />
-            <TableScroll>
-                <table className="admin-table w-full text-sm">
-                    <thead>
-                        <tr className="text-left">
-                            <th className="px-4 py-2">{head}</th>
-                            <th className="px-4 py-2 text-right">{words.text('tables.bookings')}</th>
-                            <th className="px-4 py-2 text-right">{words.text('tables.revenue_head')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row) => (
-                            <tr key={row.key} className="admin-reports__row border-t">
-                                <td className="admin-reports__label px-4 py-2">{row.label}</td>
-                                <td className="admin-reports__bookings px-4 py-2 text-right font-mono">{formatCount(row.bookings, words.locale)}</td>
-                                <td className="admin-reports__revenue px-4 py-2 text-right">
-                                    <Amounts lines={row.revenue} locale={words.locale} />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </TableScroll>
+            <Table compact="rows-below-wide">
+                <TableHead>
+                    <TableRow>
+                        <Th>{head}</Th>
+                        <Th className="text-right">{words.text('tables.bookings')}</Th>
+                        <Th className="text-right">{words.text('tables.revenue_head')}</Th>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {rows.map((row) => (
+                        <TableRow key={row.key} className="admin-reports__row">
+                            <Td label={head} header className="admin-reports__label">
+                                {row.label}
+                            </Td>
+                            <Td label={words.text('tables.bookings')} className="admin-reports__bookings text-right">
+                                {formatCount(row.bookings, words.locale)}
+                            </Td>
+                            <Td label={words.text('tables.revenue_head')} className="admin-reports__revenue text-right">
+                                <Amounts lines={row.revenue} locale={words.locale} />
+                            </Td>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </ReportCard>
     );
 }

@@ -119,7 +119,7 @@ describe('the tickets screen', () => {
             ['Luna Hair Studio', '/tenants/luna'],
             ['Gone Salon', '/tenants/closed/4'],
         ]);
-        expect(texts('.admin-tickets__last')).toEqual([WAITING.last_message, CLOSED.last_message]);
+        expect(texts('.admin-tickets__last .admin-table__value')).toEqual([WAITING.last_message, CLOSED.last_message]);
         expect(texts('.admin-tickets__status')).toEqual(['Open', 'Closed']);
         expect(q('.admin-tickets__count')?.textContent).toBe('2 of 30');
         expect(q('.admin-pagination')?.textContent).toContain(shell.text('kit.pagination.page', { page: '1', last: '2' }));

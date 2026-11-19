@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { RowSelectButton } from '@/components/ui/row-select-button';
 import { StatusChip } from '@/components/ui/status-chip';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { formatAmount } from '@/lib/format';
 import { paymentLabel, type Service, statusWord, subLine } from './model';
 import { type ServicesKey, useServices } from './words';
@@ -40,40 +40,48 @@ export function ServicesTable({ rows, onSelect }: Props) {
                 </h2>
                 <p className="admin-services__count text-sm text-muted-foreground">{words.choice('table.count', rows.length)}</p>
             </header>
-            <TableScroll>
-                <table className="admin-table w-full text-sm">
-                    <thead>
-                        <tr className="text-left">
-                            {HEADS.map((head) => (
-                                <th key={head} className={`px-4 py-2${head === 'table.price' ? ' text-right' : ''}`}>
-                                    {words.text(head)}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((service) => (
-                            <tr key={service.id} className="admin-services__row cursor-pointer border-t" onClick={() => onSelect(service.id)}>
-                                <td className="admin-services__id px-4 py-2 font-mono">{service.id}</td>
-                                <td className="px-4 py-2">
-                                    <RowSelectButton name={service.name} selected={false} onSelect={() => onSelect(service.id)} />
-                                    <p className="admin-services__sub text-xs text-muted-foreground">{subLine(service, words)}</p>
-                                </td>
-                                <td className="admin-services__category px-4 py-2">{service.category ?? ''}</td>
-                                <td className="admin-services__duration px-4 py-2 font-mono">{words.text('table.minutes', { n: String(service.duration_min) })}</td>
-                                <td className="admin-services__price px-4 py-2 text-right font-mono">{formatAmount(service.price_minor, service.currency)}</td>
-                                <td className="admin-services__payment px-4 py-2">{paymentLabel(service.payment_mode, words)}</td>
-                                <td className="px-4 py-2">
-                                    <span className="flex items-center gap-2">
-                                        <StatusChip status={service.status} label={statusWord(service.status, words)} />
-                                        <span className={`admin-services__online text-xs ${service.online ? 'text-muted-foreground' : 'admin-services__online--off font-medium'}`}>{words.text(service.online ? ONLINE : NOT_ONLINE)}</span>
-                                    </span>
-                                </td>
-                            </tr>
+            <Table>
+                <TableHead>
+                    <TableRow>
+                        {HEADS.map((head) => (
+                            <Th key={head} className={head === 'table.price' ? 'text-right' : undefined}>
+                                {words.text(head)}
+                            </Th>
                         ))}
-                    </tbody>
-                </table>
-            </TableScroll>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {rows.map((service) => (
+                        <TableRow key={service.id} className="admin-services__row cursor-pointer" onClick={() => onSelect(service.id)}>
+                            <Td label={words.text('table.id')} className="admin-services__id">
+                                {service.id}
+                            </Td>
+                            <Td label={words.text('table.name')} header>
+                                <RowSelectButton name={service.name} selected={false} onSelect={() => onSelect(service.id)} />
+                                <p className="admin-services__sub text-xs text-muted-foreground">{subLine(service, words)}</p>
+                            </Td>
+                            <Td label={words.text('table.category')} className="admin-services__category">
+                                {service.category ?? ''}
+                            </Td>
+                            <Td label={words.text('table.duration')} className="admin-services__duration">
+                                {words.text('table.minutes', { n: String(service.duration_min) })}
+                            </Td>
+                            <Td label={words.text('table.price')} className="admin-services__price text-right">
+                                {formatAmount(service.price_minor, service.currency)}
+                            </Td>
+                            <Td label={words.text('table.payment')} className="admin-services__payment">
+                                {paymentLabel(service.payment_mode, words)}
+                            </Td>
+                            <Td label={words.text('table.status')}>
+                                <span className="flex items-center gap-2">
+                                    <StatusChip status={service.status} label={statusWord(service.status, words)} />
+                                    <span className={`admin-services__online text-xs ${service.online ? 'text-muted-foreground' : 'admin-services__online--off font-medium'}`}>{words.text(service.online ? ONLINE : NOT_ONLINE)}</span>
+                                </span>
+                            </Td>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </Card>
     );
 }

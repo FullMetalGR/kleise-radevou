@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import type { TenantClock } from '@/lib/format';
 import { keepTyped, useAnsweredBar, usePartialRead } from '@/lib/partial-read';
 import type { ConsoleProps } from '@/types';
@@ -105,7 +105,9 @@ const CLEAR = 'Clear filters';
 
 const CLEARING = 'Clearing filters';
 
-const HEADINGS = ['Slug', 'Name', 'Status', 'Plan', 'Subscription', 'Signed up'];
+const HEADINGS = ['Slug', 'Name', 'Status', 'Plan', 'Subscription', 'Signed up'] as const;
+
+const [SLUG_HEADING, NAME_HEADING, STATUS_HEADING, PLAN_HEADING, STATE_HEADING, SIGNED_UP_HEADING] = HEADINGS;
 
 function choices<T extends string>(words: Record<T, string>, any: string): { value: string; label: string }[] {
     return [{ value: '', label: any }, ...Object.entries<string>(words).map(([value, label]) => ({ value, label }))];
@@ -230,35 +232,41 @@ export default function Tenants() {
                                 {rows.length} of {props.tenants.total}
                             </p>
                         </header>
-                        <TableScroll>
-                            <table className="admin-table w-full text-sm">
-                                <thead>
-                                    <tr className="text-left">
-                                        {HEADINGS.map((heading) => (
-                                            <th key={heading} className="px-4 py-2">
-                                                {heading}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((row) => (
-                                        <tr key={row.detail} className="admin-tenants__row border-t">
-                                            <td className="px-4 py-2">
-                                                <Link href={row.detail} className="admin-tenants__slug font-medium underline-offset-4 hover:underline">
-                                                    {row.slug ?? RELEASED}
-                                                </Link>
-                                            </td>
-                                            <td className="admin-tenants__name px-4 py-2">{row.name}</td>
-                                            <td className="admin-tenants__status px-4 py-2">{STATUS_WORDS[row.status]}</td>
-                                            <td className="admin-tenants__plan px-4 py-2">{row.plan === null ? NO_PLAN : planWord(row.plan, props.plan_names)}</td>
-                                            <td className="admin-tenants__state px-4 py-2">{STATE_WORDS[row.state]}</td>
-                                            <td className="admin-tenants__signed-up px-4 py-2">{row.signed_up}</td>
-                                        </tr>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    {HEADINGS.map((heading) => (
+                                        <Th key={heading}>{heading}</Th>
                                     ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {rows.map((row) => (
+                                    <TableRow key={row.detail} className="admin-tenants__row">
+                                        <Td label={SLUG_HEADING} header>
+                                            <Link href={row.detail} className="admin-tenants__slug font-medium underline-offset-4 hover:underline">
+                                                {row.slug ?? RELEASED}
+                                            </Link>
+                                        </Td>
+                                        <Td label={NAME_HEADING} className="admin-tenants__name">
+                                            {row.name}
+                                        </Td>
+                                        <Td label={STATUS_HEADING} className="admin-tenants__status">
+                                            {STATUS_WORDS[row.status]}
+                                        </Td>
+                                        <Td label={PLAN_HEADING} className="admin-tenants__plan">
+                                            {row.plan === null ? NO_PLAN : planWord(row.plan, props.plan_names)}
+                                        </Td>
+                                        <Td label={STATE_HEADING} className="admin-tenants__state">
+                                            {STATE_WORDS[row.state]}
+                                        </Td>
+                                        <Td label={SIGNED_UP_HEADING} className="admin-tenants__signed-up">
+                                            {row.signed_up}
+                                        </Td>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                         <Pagination page={props.tenants.page} total={props.tenants.total} pageSize={props.tenants.page_size} onPage={(page) => load(filters, page)} />
                     </Card>
                 </SettledList>

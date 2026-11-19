@@ -244,8 +244,8 @@ describe('the list', () => {
         render(propsWith({ kind: 'list' }));
 
         expect(document.querySelectorAll('.admin-staff__row')).toHaveLength(2);
-        expect(Array.from(document.querySelectorAll('.admin-staff__id')).map((cell) => cell.textContent)).toEqual(['1', '2']);
-        expect(Array.from(document.querySelectorAll('.admin-staff__email')).map((cell) => cell.textContent)).toEqual(['', 'elena@luna.example']);
+        expect(Array.from(document.querySelectorAll('.admin-staff__id .admin-table__value')).map((cell) => cell.textContent)).toEqual(['1', '2']);
+        expect(Array.from(document.querySelectorAll('.admin-staff__email .admin-table__value')).map((cell) => cell.textContent)).toEqual(['', 'elena@luna.example']);
         expect(text('.admin-staff-toggle label')).toBe(staff.text('page.show_inactive', { count: formatCount(1, staff.locale) }));
         expect(text('.admin-staff')).toContain('Luna Hair Studio');
         // The toggle's box is as tall as the search field beside it, so the two stand level, and its
@@ -267,7 +267,7 @@ describe('the list', () => {
         render(propsWith({ kind: 'list' }));
 
         expect(Array.from(document.querySelectorAll('.admin-staff thead th')).map((cell) => cell.textContent)).toEqual((['table.id', 'table.name', 'table.job_title', 'table.email', 'table.status', 'table.hours'] as const).map((key) => staff.text(key)));
-        expect(Array.from(document.querySelectorAll('.admin-staff__hours')).map((cell) => cell.textContent)).toEqual([staff.text('table.hours_weekly', { hours: hour(40) }), staff.text('table.hours_this_week', { hours: hour(15) })]);
+        expect(Array.from(document.querySelectorAll('.admin-staff__hours .admin-table__value')).map((cell) => cell.textContent)).toEqual([staff.text('table.hours_weekly', { hours: hour(40) }), staff.text('table.hours_this_week', { hours: hour(15) })]);
         expect(Array.from(document.querySelectorAll('.admin-staff__hours a.admin-staff__figure')).map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
             [hour(40), '/admin/shifts'],
             [hour(15), '/admin/shifts'],
@@ -353,7 +353,7 @@ describe('the list over a roster whose every row is inactive', () => {
         render({ ...propsWith({ kind: 'list' }, ALL_INACTIVE), entitlements, narrowed: [] });
 
         act(() => document.querySelector<HTMLInputElement>('#staff-show-inactive')?.click());
-        expect(Array.from(document.querySelectorAll('.admin-staff__id')).map((cell) => cell.textContent)).toEqual(['1', '2', '3']);
+        expect(Array.from(document.querySelectorAll('.admin-staff__id .admin-table__value')).map((cell) => cell.textContent)).toEqual(['1', '2', '3']);
         expect(document.querySelector('.admin-staff-empty')).toBeNull();
     });
 });
@@ -386,21 +386,21 @@ describe('the list screen', () => {
         expect(document.querySelector('#staff-search')?.getAttribute('type')).toBe('search');
 
         type('#staff-search', 'eLeNa');
-        expect(texts('.admin-staff__id')).toEqual(['2']);
+        expect(texts('.admin-staff__id .admin-table__value')).toEqual(['2']);
         expect(text('.admin-staff__count')).toBe(staff.choice('table.count', 1));
         type('#staff-search', 'SENIOR');
-        expect(texts('.admin-staff__id')).toEqual(['2']);
+        expect(texts('.admin-staff__id .admin-table__value')).toEqual(['2']);
         type('#staff-search', '@luna.EXAMPLE');
-        expect(texts('.admin-staff__id')).toEqual(['2']);
+        expect(texts('.admin-staff__id .admin-table__value')).toEqual(['2']);
 
         type('#staff-search', 'nikos');
-        expect(texts('.admin-staff__id')).toEqual([]);
+        expect(texts('.admin-staff__id .admin-table__value')).toEqual([]);
         expect(text('.admin-staff-no-match')).toBe(staff.text('page.no_match'));
         act(() => document.querySelector<HTMLInputElement>('#staff-show-inactive')?.click());
-        expect(texts('.admin-staff__id')).toEqual(['3']);
+        expect(texts('.admin-staff__id .admin-table__value')).toEqual(['3']);
 
         type('#staff-search', '');
-        expect(texts('.admin-staff__id')).toEqual(['1', '2', '3']);
+        expect(texts('.admin-staff__id .admin-table__value')).toEqual(['1', '2', '3']);
     });
 
     it('draws each name after a dot in the member\'s calendar colour as a link to their page, the Title column, and the hours figure linking to Shifts', () => {
@@ -411,7 +411,7 @@ describe('the list screen', () => {
             ['Luna Hair Studio', '/admin/staff/1'],
             ['Elena Papadaki', '/admin/staff/2'],
         ]);
-        expect(texts('.admin-staff__title')).toEqual(['', 'Senior stylist']);
+        expect(texts('.admin-staff__title .admin-table__value')).toEqual(['', 'Senior stylist']);
         expect(Array.from(document.querySelectorAll('a.admin-staff__figure')).map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
             [hour(40), '/admin/shifts'],
             [hour(15), '/admin/shifts'],
@@ -441,7 +441,7 @@ describe('the list screen', () => {
         render(propsWith({ kind: 'list' }, [closed, ELENA, NIKOS]));
 
         const wednesday = staff.text('table.closed_window', { day: weekdayName(3, 'short', 'en'), time: '14:00', end: '16:00' });
-        expect(text('.admin-staff__hours')).toBe(staff.text('table.hours_weekly_closed', { hours: hour(38), closures: listOf([wednesday, weekdayName(5, 'short', 'en')], 'en') }));
+        expect(text('.admin-staff__hours .admin-table__value')).toBe(staff.text('table.hours_weekly_closed', { hours: hour(38), closures: listOf([wednesday, weekdayName(5, 'short', 'en')], 'en') }));
         expect(text('.admin-staff__hours a.admin-staff__figure')).toBe(hour(38));
     });
 
@@ -909,7 +909,7 @@ describe('without the staff feature', () => {
 
         expect(document.querySelector('.admin-staff-new')).toBeNull();
         expect(document.querySelector('.admin-staff-shifts')).toBeNull();
-        expect(Array.from(document.querySelectorAll('.admin-staff__id')).map((cell) => cell.textContent)).toEqual(['1', '2', '3']);
+        expect(Array.from(document.querySelectorAll('.admin-staff__id .admin-table__value')).map((cell) => cell.textContent)).toEqual(['1', '2', '3']);
         expect(text('.admin-staff-readonly__line')).toBe(STAFF_GONE);
         expect(document.querySelector('.admin-staff-readonly')?.getAttribute('role')).toBe('status');
         expect(document.querySelector('a.admin-staff-readonly__billing')?.getAttribute('href')).toBe('/admin/billing');
@@ -1090,12 +1090,12 @@ describe('without the staff feature', () => {
 
         expect(document.querySelector('.admin-staff-screen--floor')).toBeNull();
         expect(document.querySelector('.admin-staff-new')).toBeNull();
-        expect(Array.from(document.querySelectorAll('.admin-staff__id')).map((cell) => cell.textContent)).toEqual(['1']);
+        expect(Array.from(document.querySelectorAll('.admin-staff__id .admin-table__value')).map((cell) => cell.textContent)).toEqual(['1']);
         expect(text('.admin-staff-toggle label')).toBe(staff.text('page.show_inactive', { count: formatCount(2, staff.locale) }));
         expect(text('.admin-blackouts h2')).toBe(CLOSED_DAYS);
 
         act(() => document.querySelector<HTMLInputElement>('#staff-show-inactive')?.click());
-        expect(Array.from(document.querySelectorAll('.admin-staff__id')).map((cell) => cell.textContent)).toEqual(['1', '2', '3']);
+        expect(Array.from(document.querySelectorAll('.admin-staff__id .admin-table__value')).map((cell) => cell.textContent)).toEqual(['1', '2', '3']);
     });
 
     it('shows a member deactivated before the feature went on their own page reached by URL, their hours and closures as stored and no control', () => {

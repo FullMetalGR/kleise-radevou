@@ -1,6 +1,6 @@
 import { Pagination } from '@/components/pagination';
 import { Card } from '@/components/ui/card';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table } from '@/components/ui/table';
 import { formatInstant, type TenantClock } from '@/lib/format';
 import { inPage } from '@/lib/in-page';
 import { cn } from '@/lib/utils';
@@ -61,49 +61,47 @@ export function CustomersTable({ rows, total, page, pageSize, clock, onSelect, o
                 </h2>
                 <p className="admin-customers__count text-sm text-muted-foreground">{words.text('table.count', { count: String(rows.length), total: String(total) })}</p>
             </header>
-            <TableScroll>
-                <table className="admin-table w-full text-sm">
-                    <thead>
-                        <tr className="text-left">
-                            <th className="px-4 py-2">{words.text(NAME_HEADING)}</th>
-                            {contact && <th className="px-4 py-2">{words.text(EMAIL_HEADING)}</th>}
-                            {contact && <th className="px-4 py-2">{words.text(PHONE_HEADING)}</th>}
-                            <th className="px-4 py-2">{words.text(FIRST_VISIT_HEADING)}</th>
-                            <th className="px-4 py-2">{words.text(LAST_VISIT_HEADING)}</th>
-                            <th className="px-4 py-2 text-right">{words.text(BOOKINGS_HEADING)}</th>
+            <Table compact="scroll" className="text-sm">
+                <thead>
+                    <tr className="text-left">
+                        <th className="px-4 py-2 font-semibold">{words.text(NAME_HEADING)}</th>
+                        {contact && <th className="px-4 py-2 font-semibold">{words.text(EMAIL_HEADING)}</th>}
+                        {contact && <th className="px-4 py-2 font-semibold">{words.text(PHONE_HEADING)}</th>}
+                        <th className="px-4 py-2 font-semibold">{words.text(FIRST_VISIT_HEADING)}</th>
+                        <th className="px-4 py-2 font-semibold">{words.text(LAST_VISIT_HEADING)}</th>
+                        <th className="px-4 py-2 font-semibold text-right">{words.text(BOOKINGS_HEADING)}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((customer) => (
+                        <tr key={customer.url} className="admin-customers__row cursor-pointer border-t" onClick={() => onSelect(customer)}>
+                            <td className="px-4 py-2 align-top">
+                                <div className="flex flex-col items-start gap-1">
+                                    <a
+                                        href={customer.url}
+                                        className="admin-customers__name font-medium underline underline-offset-3"
+                                        onClick={(event) => inPage(event, () => onSelect(customer))}
+                                    >
+                                        {customer.name}
+                                    </a>
+                                    {customer.names.length > 1 && <span className="admin-customers__also text-xs text-muted-foreground">{words.text(ALSO_BOOKED_AS, { names: customer.names.slice(1).join(', ') })}</span>}
+                                    {(customer.tags.length > 0 || customer.blocked) && (
+                                        <div className="admin-customers__chips flex flex-wrap gap-1">
+                                            {customer.blocked && <span className="admin-chip admin-customers__blocked border-destructive/60 font-medium text-destructive">{words.text(BLOCKED)}</span>}
+                                            <TagChips tags={customer.tags} />
+                                        </div>
+                                    )}
+                                </div>
+                            </td>
+                            {contact && <td className="admin-customers__email px-4 py-2 align-top">{customer.email ?? ''}</td>}
+                            {contact && <td className="admin-customers__phones px-4 py-2 align-top font-mono">{(customer.phones ?? []).join(', ')}</td>}
+                            <td className="admin-customers__first px-4 py-2 align-top font-mono">{formatInstant(customer.first_visit, clock)}</td>
+                            <td className={cn('admin-customers__last px-4 py-2 align-top', customer.last_visit !== null && 'font-mono')}>{customer.last_visit === null ? words.text(NO_VISIT) : formatInstant(customer.last_visit, clock)}</td>
+                            <td className="admin-customers__bookings px-4 py-2 align-top text-right font-mono">{customer.bookings}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((customer) => (
-                            <tr key={customer.url} className="admin-customers__row cursor-pointer border-t" onClick={() => onSelect(customer)}>
-                                <td className="px-4 py-2 align-top">
-                                    <div className="flex flex-col items-start gap-1">
-                                        <a
-                                            href={customer.url}
-                                            className="admin-customers__name font-medium underline underline-offset-3"
-                                            onClick={(event) => inPage(event, () => onSelect(customer))}
-                                        >
-                                            {customer.name}
-                                        </a>
-                                        {customer.names.length > 1 && <span className="admin-customers__also text-xs text-muted-foreground">{words.text(ALSO_BOOKED_AS, { names: customer.names.slice(1).join(', ') })}</span>}
-                                        {(customer.tags.length > 0 || customer.blocked) && (
-                                            <div className="admin-customers__chips flex flex-wrap gap-1">
-                                                {customer.blocked && <span className="admin-chip admin-customers__blocked border-destructive/60 font-medium text-destructive">{words.text(BLOCKED)}</span>}
-                                                <TagChips tags={customer.tags} />
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
-                                {contact && <td className="admin-customers__email px-4 py-2 align-top">{customer.email ?? ''}</td>}
-                                {contact && <td className="admin-customers__phones px-4 py-2 align-top font-mono">{(customer.phones ?? []).join(', ')}</td>}
-                                <td className="admin-customers__first px-4 py-2 align-top font-mono">{formatInstant(customer.first_visit, clock)}</td>
-                                <td className={cn('admin-customers__last px-4 py-2 align-top', customer.last_visit !== null && 'font-mono')}>{customer.last_visit === null ? words.text(NO_VISIT) : formatInstant(customer.last_visit, clock)}</td>
-                                <td className="admin-customers__bookings px-4 py-2 align-top text-right font-mono">{customer.bookings}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </TableScroll>
+                    ))}
+                </tbody>
+            </Table>
             <Pagination page={page} total={total} pageSize={pageSize} onPage={onPage} />
         </Card>
     );

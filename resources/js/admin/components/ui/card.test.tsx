@@ -63,6 +63,18 @@ describe('the card', () => {
         }
     });
 
+    it('clips a flush card to its corner, so a filled head row of the table inside never draws past it', () => {
+        for (const variant of ['tile', 'form', 'inner'] as const) {
+            view.render(<Card key={variant} variant={variant} flush className="probe" />);
+
+            expect(classes()).toContain('overflow-clip');
+        }
+
+        view.render(<Card className="probe" />);
+
+        expect(classes()).not.toContain('overflow-clip');
+    });
+
     it('lets a class its caller passes win over its own', () => {
         view.render(<Card className="probe p-3 rounded-none" />);
 

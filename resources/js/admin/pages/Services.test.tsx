@@ -195,12 +195,12 @@ describe('the catalog', () => {
     it('shows every service with the ID column and the sub-line, hiding inactive rows until the toggle, whose count is the inactive number', () => {
         render(propsWith({ kind: 'list' }, [HAIRCUT, COLOUR, PERM]));
 
-        const cells = () => [...document.querySelectorAll('.admin-services__id')].map((cell) => cell.textContent);
+        const cells = () => [...document.querySelectorAll('.admin-services__id .admin-table__value')].map((cell) => cell.textContent);
 
         expect(cells()).toEqual(['7', '9']);
         expect([...document.querySelectorAll('.admin-services__sub')].map((sub) => sub.textContent)).toEqual([words.text('table.minutes', { n: '45' }), words.choice('table.minutes_gap', 30, { n: '60' })]);
-        expect(text('.admin-services__payment')).toBe(words.text('modes.onsite'));
-        expect(text('.admin-services__duration')).toBe(words.text('table.minutes', { n: '45' }));
+        expect(text('.admin-services__payment .admin-table__value')).toBe(words.text('modes.onsite'));
+        expect(text('.admin-services__duration .admin-table__value')).toBe(words.text('table.minutes', { n: '45' }));
         expect(text('.admin-services__count')).toBe(words.choice('table.count', 2));
         expect(text('label[for="services-show-inactive"]')).toBe(words.text('page.show_inactive', { count: '1' }));
         // The toggle's tick is the check field's box.
@@ -223,8 +223,10 @@ describe('the category and the online flag', () => {
         expect([...document.querySelectorAll('.admin-services thead th')].map((cell) => cell.textContent)).toEqual(
             (['table.id', 'table.name', 'table.category', 'table.duration', 'table.price', 'table.payment', 'table.status'] as const).map((head) => words.text(head)),
         );
-        expect([...document.querySelectorAll('.admin-services__category')].map((cell) => cell.textContent)).toEqual(['Hair', '']);
+        expect([...document.querySelectorAll('.admin-services__category .admin-table__value')].map((cell) => cell.textContent)).toEqual(['Hair', '']);
         expect([...document.querySelectorAll('.admin-services__online')].map((mark) => mark.textContent)).toEqual([words.text(ONLINE), words.text(NOT_ONLINE)]);
+        expect([...document.querySelectorAll('.admin-services tbody th[scope="row"] .admin-row-select')].length).toBe(2);
+        expect(document.querySelector('.admin-services__category .admin-table__label')?.textContent).toBe(words.text('table.category'));
     });
 
     it('renders Category with the catalogue\'s categories suggested and Offered online ticked by default in Basics, each with its help, and sends both', () => {

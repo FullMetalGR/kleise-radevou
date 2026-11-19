@@ -288,7 +288,7 @@ function Items({ booking, staffShown, clock }: { booking: Booking; staffShown: b
             <TableScroll>
                 <table className="admin-booking-items w-full text-sm">
                     <thead>
-                        <tr className="text-left">
+                        <tr className="text-left [&_th]:font-semibold">
                             <th className={CELL}>{words.text('dialog.items.service')}</th>
                             {staffShown && <th className={CELL}>{words.text('dialog.items.staff')}</th>}
                             <th className={CELL}>{words.text('dialog.items.start')}</th>

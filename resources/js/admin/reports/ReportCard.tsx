@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 
 export function ReportCard({ name, labelledBy, padded = false, children }: { name: string; labelledBy: string; padded?: boolean; children: ReactNode }) {
     return (
-        <Card flush={!padded} className={`admin-reports-${name} ${padded ? 'flex flex-col gap-2 text-sm' : 'overflow-hidden'}`} aria-labelledby={labelledBy}>
+        <Card flush={!padded} className={`admin-reports-${name}${padded ? ' flex flex-col gap-2 text-sm' : ''}`} aria-labelledby={labelledBy}>
             {children}
         </Card>
     );

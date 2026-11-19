@@ -2,7 +2,7 @@ import { Pagination } from '@/components/pagination';
 import { Card } from '@/components/ui/card';
 import { RowSelectButton } from '@/components/ui/row-select-button';
 import { StatusChip } from '@/components/ui/status-chip';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table } from '@/components/ui/table';
 import { formatAmount, formatInstant, type TenantClock } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { type Booking, customerName, distinct, isVoid, startOf } from './model';
@@ -46,45 +46,43 @@ export function BookingsTable({ rows, total, page, pageSize, staffShown, plainNa
                     {words.text('table.count', { count: String(rows.length), total: String(total) })}
                 </p>
             </header>
-            <TableScroll>
-                <table className="admin-table w-full text-sm">
-                    <thead>
-                        <tr className="text-left">
-                            <th className="px-4 py-2">{words.text('table.customer')}</th>
-                            <th className="px-4 py-2 max-desktop:hidden">{words.text('table.service')}</th>
-                            {staffShown && <th className="px-4 py-2 max-desktop:hidden">{words.text('table.staff')}</th>}
-                            <th className="px-4 py-2">{words.text('table.when')}</th>
-                            <th className="px-4 py-2">{words.text('table.status')}</th>
-                            <th className="px-4 py-2 text-right">{words.text('table.total')}</th>
+            <Table compact="scroll" className="text-sm">
+                <thead>
+                    <tr className="text-left">
+                        <th className="px-4 py-2 font-semibold">{words.text('table.customer')}</th>
+                        <th className="px-4 py-2 font-semibold max-desktop:hidden">{words.text('table.service')}</th>
+                        {staffShown && <th className="px-4 py-2 font-semibold max-desktop:hidden">{words.text('table.staff')}</th>}
+                        <th className="px-4 py-2 font-semibold">{words.text('table.when')}</th>
+                        <th className="px-4 py-2 font-semibold">{words.text('table.status')}</th>
+                        <th className="px-4 py-2 font-semibold text-right">{words.text('table.total')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((booking) => (
+                        <tr
+                            key={booking.uuid}
+                            className={cn('admin-bookings__row cursor-pointer border-t', isVoid(booking.status) && 'admin-row--void line-through opacity-60')}
+                            onClick={() => onSelect(booking.uuid)}
+                        >
+                            <td className="px-4 py-2">
+                                <RowSelectButton
+                                    name={customerName(booking, words)}
+                                    selected={booking.uuid === selected}
+                                    onSelect={() => onSelect(booking.uuid)}
+                                    className={plainNames ? 'admin-row-select--plain text-foreground enabled:hover:no-underline' : undefined}
+                                />
+                            </td>
+                            <td className="admin-bookings__services px-4 py-2 max-desktop:hidden">{distinct(booking.items.map((item) => item.service_name)).join(', ')}</td>
+                            {staffShown && <td className="admin-bookings__staff px-4 py-2 max-desktop:hidden">{distinct(booking.items.map((item) => item.staff_name)).join(', ')}</td>}
+                            <td className="admin-bookings__when px-4 py-2 font-mono">{formatInstant(startOf(booking), clock)}</td>
+                            <td className="px-4 py-2">
+                                <StatusChip status={booking.status} />
+                            </td>
+                            <td className="admin-bookings__total px-4 py-2 text-right font-mono">{formatAmount(booking.total_minor, booking.currency)}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((booking) => (
-                            <tr
-                                key={booking.uuid}
-                                className={cn('admin-bookings__row cursor-pointer border-t', isVoid(booking.status) && 'admin-row--void line-through opacity-60')}
-                                onClick={() => onSelect(booking.uuid)}
-                            >
-                                <td className="px-4 py-2">
-                                    <RowSelectButton
-                                        name={customerName(booking, words)}
-                                        selected={booking.uuid === selected}
-                                        onSelect={() => onSelect(booking.uuid)}
-                                        className={plainNames ? 'admin-row-select--plain text-foreground enabled:hover:no-underline' : undefined}
-                                    />
-                                </td>
-                                <td className="admin-bookings__services px-4 py-2 max-desktop:hidden">{distinct(booking.items.map((item) => item.service_name)).join(', ')}</td>
-                                {staffShown && <td className="admin-bookings__staff px-4 py-2 max-desktop:hidden">{distinct(booking.items.map((item) => item.staff_name)).join(', ')}</td>}
-                                <td className="admin-bookings__when px-4 py-2 font-mono">{formatInstant(startOf(booking), clock)}</td>
-                                <td className="px-4 py-2">
-                                    <StatusChip status={booking.status} />
-                                </td>
-                                <td className="admin-bookings__total px-4 py-2 text-right font-mono">{formatAmount(booking.total_minor, booking.currency)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </TableScroll>
+                    ))}
+                </tbody>
+            </Table>
             <Pagination page={page} total={total} pageSize={pageSize} onPage={onPage} />
         </Card>
     );

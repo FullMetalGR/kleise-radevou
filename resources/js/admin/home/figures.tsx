@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Segmented } from '@/components/ui/segmented';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { FigureLine, FigureTile, Strip } from '@/figures/kit';
 import { formatAmount, formatCount, formatDate, formatPercent, type TenantClock } from '@/lib/format';
 import { unitFigure } from '@/lib/names';
@@ -170,31 +170,35 @@ type TopRow = { id: number; name: string; bookings: number; revenue: Money; busi
 
 function Top({ id, title, rows, words }: { id: 'services' | 'staff'; title: string; rows: TopRow[]; words: HomeWords }) {
     return (
-        <section className={`admin-home-top admin-home-top--${id} rounded-xl border`} aria-labelledby={`home-top-${id}-title`}>
+        <section className={`admin-home-top admin-home-top--${id} overflow-clip rounded-xl border`} aria-labelledby={`home-top-${id}-title`}>
             <Strip titleId={`home-top-${id}-title`} title={title} />
             {rows.length === 0 ? (
                 <p className="admin-home-top__empty px-4 py-3 text-sm text-muted-foreground">{words.text('top.empty')}</p>
             ) : (
-                <TableScroll>
-                    <table className="admin-table w-full text-sm">
-                        <thead>
-                            <tr className="text-left">
-                                <th className="px-4 py-2 font-semibold">{words.text('top.name')}</th>
-                                <th className="px-4 py-2 text-right font-semibold">{words.text('top.bookings')}</th>
-                                <th className="px-4 py-2 text-right font-semibold">{words.text('top.revenue')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row) => (
-                                <tr key={row.id} className="admin-home-top__row border-t" data-business={row.business === true ? 'true' : undefined}>
-                                    <td className="px-4 py-2">{row.name}</td>
-                                    <td className="px-4 py-2 text-right font-mono">{formatCount(row.bookings, words.locale)}</td>
-                                    <td className="px-4 py-2 text-right font-mono">{formatAmount(row.revenue.minor, row.revenue.currency, words.locale)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </TableScroll>
+                <Table compact="rows-below-wide">
+                    <TableHead>
+                        <TableRow>
+                            <Th>{words.text('top.name')}</Th>
+                            <Th className="text-right">{words.text('top.bookings')}</Th>
+                            <Th className="text-right">{words.text('top.revenue')}</Th>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {rows.map((row) => (
+                            <TableRow key={row.id} className="admin-home-top__row" data-business={row.business === true ? 'true' : undefined}>
+                                <Td label={words.text('top.name')} header>
+                                    {row.name}
+                                </Td>
+                                <Td label={words.text('top.bookings')} className="text-right">
+                                    {formatCount(row.bookings, words.locale)}
+                                </Td>
+                                <Td label={words.text('top.revenue')} className="text-right">
+                                    {formatAmount(row.revenue.minor, row.revenue.currency, words.locale)}
+                                </Td>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             )}
         </section>
     );

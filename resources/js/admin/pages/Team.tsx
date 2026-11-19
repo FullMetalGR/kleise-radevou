@@ -6,7 +6,7 @@ import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { Segmented } from '@/components/ui/segmented';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { useOneWrite } from '@/lib/one-write';
 import { type KeysOf, type Strings, stringsOf, useShell } from '@/lib/strings';
 import type { Failure } from '@/lib/visits';
@@ -157,76 +157,76 @@ export default function Team() {
                             {words.text('members.title')}
                         </h2>
                     </header>
-                    <TableScroll>
-                        <table className="w-full border-collapse text-sm">
-                            <thead>
-                                <tr>
-                                    <th className="px-4 py-2 text-left font-semibold">{words.text('members.name')}</th>
-                                    <th className="px-4 py-2 text-left font-semibold">{words.text('members.email')}</th>
-                                    <th className="px-4 py-2 text-left font-semibold">{words.text('members.staff_row')}</th>
-                                    <th className="px-4 py-2 text-left font-semibold">{words.text('members.role')}</th>
-                                    <th className="px-4 py-2 text-right font-semibold">
-                                        <span className="sr-only">{words.text('members.actions')}</span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {props.members.map((member) => (
-                                    <tr key={member.id} className="admin-team-member">
-                                        <td className="border-t px-4 py-2 align-middle">
-                                            <span className="inline-flex items-center gap-2">
-                                                <span className="font-medium">{member.name}</span>
-                                                {member.you && <span className="admin-chip admin-chip--past">{words.text('members.you')}</span>}
-                                                {member.invited && <span className="admin-chip admin-chip--provisional">{words.text('members.invited')}</span>}
-                                            </span>
-                                        </td>
-                                        <td className="border-t px-4 py-2 align-middle">{member.email}</td>
-                                        <td className="border-t px-4 py-2 align-middle text-muted-foreground">{member.staff ?? words.text('members.no_staff')}</td>
-                                        <td className="border-t px-4 py-2 align-middle">
-                                            <Segmented
-                                                label={words.text('members.role_of', { name: member.name })}
-                                                options={roles}
-                                                value={member.role}
-                                                onChange={(next) => changeRole(member, next)}
-                                                disabled={held}
-                                                className="admin-team-role"
-                                            />
-                                        </td>
-                                        <td className="border-t px-4 py-2 text-right align-middle">
-                                            <span className="inline-flex gap-1">
-                                                <Button
-                                                    variant="tertiary"
-                                                    className="admin-team-link"
-                                                    busy={busy('link', member)}
-                                                    busyLabel={words.text('members.sending')}
-                                                    disabled={held && !busy('link', member)}
-                                                    aria-describedby={held && !busy('link', member) ? WAIT_ID : undefined}
-                                                    onClick={() => sendLink(member)}
-                                                >
-                                                    {words.text('members.link')}
-                                                </Button>
-                                                <Button
-                                                    variant="tertiary"
-                                                    destructive
-                                                    className="admin-team-remove"
-                                                    disabled={member.you || held}
-                                                    aria-describedby={member.you ? `team-remove-self-${String(member.id)}` : held ? WAIT_ID : undefined}
-                                                    onClick={() => setRemoving(member)}
-                                                >
-                                                    {words.text('members.remove')}
-                                                </Button>
-                                                {member.you && (
-                                                    <span id={`team-remove-self-${String(member.id)}`} className="sr-only">
-                                                        {words.text('members.remove_self')}
-                                                    </span>
-                                                )}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </TableScroll>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <Th>{words.text('members.name')}</Th>
+                                <Th>{words.text('members.email')}</Th>
+                                <Th>{words.text('members.staff_row')}</Th>
+                                <Th>{words.text('members.role')}</Th>
+                                <Th className="text-right">
+                                    <span className="sr-only">{words.text('members.actions')}</span>
+                                </Th>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {props.members.map((member) => (
+                                <TableRow key={member.id} className="admin-team-member">
+                                    <Td label={words.text('members.name')} header>
+                                        <span className="inline-flex flex-wrap items-center gap-2">
+                                            <span className="font-medium">{member.name}</span>
+                                            {member.you && <span className="admin-chip admin-chip--past">{words.text('members.you')}</span>}
+                                            {member.invited && <span className="admin-chip admin-chip--provisional">{words.text('members.invited')}</span>}
+                                        </span>
+                                    </Td>
+                                    <Td label={words.text('members.email')}>{member.email}</Td>
+                                    <Td label={words.text('members.staff_row')} className="text-muted-foreground">
+                                        {member.staff ?? words.text('members.no_staff')}
+                                    </Td>
+                                    <Td label={words.text('members.role')}>
+                                        <Segmented
+                                            label={words.text('members.role_of', { name: member.name })}
+                                            options={roles}
+                                            value={member.role}
+                                            onChange={(next) => changeRole(member, next)}
+                                            disabled={held}
+                                            className="admin-team-role"
+                                        />
+                                    </Td>
+                                    <Td className="text-right">
+                                        <span className="inline-flex flex-wrap gap-1">
+                                            <Button
+                                                variant="tertiary"
+                                                className="admin-team-link"
+                                                busy={busy('link', member)}
+                                                busyLabel={words.text('members.sending')}
+                                                disabled={held && !busy('link', member)}
+                                                aria-describedby={held && !busy('link', member) ? WAIT_ID : undefined}
+                                                onClick={() => sendLink(member)}
+                                            >
+                                                {words.text('members.link')}
+                                            </Button>
+                                            <Button
+                                                variant="tertiary"
+                                                destructive
+                                                className="admin-team-remove"
+                                                disabled={member.you || held}
+                                                aria-describedby={member.you ? `team-remove-self-${String(member.id)}` : held ? WAIT_ID : undefined}
+                                                onClick={() => setRemoving(member)}
+                                            >
+                                                {words.text('members.remove')}
+                                            </Button>
+                                            {member.you && (
+                                                <span id={`team-remove-self-${String(member.id)}`} className="sr-only">
+                                                    {words.text('members.remove_self')}
+                                                </span>
+                                            )}
+                                        </span>
+                                    </Td>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </section>
             </div>
             <Confirm

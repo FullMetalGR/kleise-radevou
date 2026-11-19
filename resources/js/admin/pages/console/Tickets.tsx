@@ -4,7 +4,7 @@ import { SettledList } from '@/components/settled-list';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { usePartialRead } from '@/lib/partial-read';
 import type { ConsoleProps } from '@/types';
 
@@ -51,7 +51,9 @@ const LIST_PROPS = ['tickets'];
 
 const TICKETS_TITLE = 'Tickets';
 
-const HEADINGS = ['Subject', 'Business', 'Last message', 'Status'];
+const HEADINGS = ['Subject', 'Business', 'Last message', 'Status'] as const;
+
+const [SUBJECT_HEADING, BUSINESS_HEADING, LAST_HEADING, STATUS_HEADING] = HEADINGS;
 
 /** Each status in words, one per case. */
 export const STATUS_WORDS: Record<TicketStatus, string> = {
@@ -90,22 +92,24 @@ function ticketsQuery(page: number): Record<string, string> {
 
 function TicketRow({ ticket }: { ticket: TicketSummary }) {
     return (
-        <tr className="admin-tickets__row border-t" data-awaiting={ticket.awaiting ? 'true' : 'false'}>
-            <td className="px-4 py-2">
+        <TableRow className="admin-tickets__row" data-awaiting={ticket.awaiting ? 'true' : 'false'}>
+            <Td label={SUBJECT_HEADING} header>
                 <Link href={threadPath(ticket.id)} className="admin-tickets__subject font-medium underline-offset-4 hover:underline">
                     {ticket.subject}
                 </Link>
-            </td>
-            <td className="px-4 py-2">
+            </Td>
+            <Td label={BUSINESS_HEADING}>
                 <Link href={ticket.tenant.url} className="admin-tickets__tenant underline-offset-4 hover:underline">
                     {ticket.tenant.name}
                 </Link>
-            </td>
-            <td className="admin-tickets__last px-4 py-2">{ticket.last_message}</td>
-            <td className="px-4 py-2">
+            </Td>
+            <Td label={LAST_HEADING} className="admin-tickets__last">
+                {ticket.last_message}
+            </Td>
+            <Td label={STATUS_HEADING}>
                 <TicketStatusWords ticket={ticket} name="admin-tickets" />
-            </td>
-        </tr>
+            </Td>
+        </TableRow>
     );
 }
 
@@ -138,24 +142,20 @@ export default function Tickets() {
                                 {rows.length} of {props.tickets.total}
                             </p>
                         </header>
-                        <TableScroll>
-                            <table className="admin-table w-full text-sm">
-                                <thead>
-                                    <tr className="text-left">
-                                        {HEADINGS.map((heading) => (
-                                            <th key={heading} className="px-4 py-2">
-                                                {heading}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((ticket) => (
-                                        <TicketRow key={ticket.id} ticket={ticket} />
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    {HEADINGS.map((heading) => (
+                                        <Th key={heading}>{heading}</Th>
                                     ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {rows.map((ticket) => (
+                                    <TicketRow key={ticket.id} ticket={ticket} />
+                                ))}
+                            </TableBody>
+                        </Table>
                         <Pagination page={props.tickets.page} total={props.tickets.total} pageSize={props.tickets.page_size} onPage={(page) => list.read(TICKETS, ticketsQuery(page))} />
                     </Card>
                 </SettledList>

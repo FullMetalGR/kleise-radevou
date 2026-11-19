@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table } from '@/components/ui/table';
 import { isoWeekday } from '@/lib/day';
 import { clockOf, formatCount, formatDate, formatDayMonth, formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { hueOf, type OwnColours } from '@/lib/hue';
@@ -194,7 +194,7 @@ type MemberRowProps = {
 function MemberRow({ member, hue, dates, days, minutes, pattern, words, clock, editable, onEditDay, onEditPattern }: MemberRowProps) {
     return (
         <tr className="admin-shifts__row border-t" data-staff={member.id}>
-            <th scope="row" className="admin-shifts__member py-2.5 pr-2 pl-4 text-left align-middle font-normal">
+            <th scope="row" className="admin-shifts__member py-2.5 pr-2 pl-4 text-left align-middle font-semibold">
                 <div className="flex items-center gap-2.5">
                     <Initials name={member.name} hue={hue} size="row" className="admin-shifts__initials" />
                     <span className="flex min-w-0 flex-col gap-0.5">
@@ -348,41 +348,39 @@ export default function Shifts() {
                     <p className="admin-shifts__empty text-muted-foreground">{words.text('page.empty')}</p>
                 ) : (
                     <Card flush className="admin-card admin-shifts">
-                        <TableScroll>
-                            <table className="admin-table w-full min-w-[54rem] table-fixed border-collapse text-sm">
-                                <thead>
-                                    <tr className="border-b">
-                                        <th className="admin-shifts__member-head w-[220px] py-2.5 pr-2 pl-4 text-left align-top font-semibold">{words.text('page.member')}</th>
-                                        {dates.map((date) => (
-                                            <th key={date} className="admin-shifts__head px-2 py-2.5 text-center align-top font-semibold" data-date={date}>
-                                                <span className="flex flex-col items-center gap-0.5">
-                                                    <span className="admin-shifts__day-name">{words.text('page.day_head', { weekday: weekdayName(isoWeekday(date), 'short', shell.language), date: formatDayMonth(date, clock) })}</span>
-                                                    <span className="admin-shifts__day-total text-xs font-normal text-muted-foreground">{hoursOf(dateMinutes(props.totals, date), words)}</span>
-                                                </span>
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {props.members.map((member) => (
-                                        <MemberRow
-                                            key={member.id}
-                                            member={member}
-                                            hue={hueOf(member.id, props.colours)}
-                                            dates={dates}
-                                            days={props.days}
-                                            minutes={memberMinutes(props.totals, member.id)}
-                                            pattern={patternOf(props.patterns, member.id)}
-                                            words={words}
-                                            clock={clock}
-                                            editable={props.editable}
-                                            onEditDay={(date) => setEditing({ member, date })}
-                                            onEditPattern={() => setPatterning(member)}
-                                        />
+                        <Table compact="scroll" className="min-w-[54rem] table-fixed border-collapse text-sm">
+                            <thead>
+                                <tr className="border-b">
+                                    <th className="admin-shifts__member-head w-[220px] py-2.5 pr-2 pl-4 text-left align-top font-semibold">{words.text('page.member')}</th>
+                                    {dates.map((date) => (
+                                        <th key={date} className="admin-shifts__head px-2 py-2.5 text-center align-top font-semibold" data-date={date}>
+                                            <span className="flex flex-col items-center gap-0.5">
+                                                <span className="admin-shifts__day-name">{words.text('page.day_head', { weekday: weekdayName(isoWeekday(date), 'short', shell.language), date: formatDayMonth(date, clock) })}</span>
+                                                <span className="admin-shifts__day-total text-xs font-normal text-muted-foreground">{hoursOf(dateMinutes(props.totals, date), words)}</span>
+                                            </span>
+                                        </th>
                                     ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {props.members.map((member) => (
+                                    <MemberRow
+                                        key={member.id}
+                                        member={member}
+                                        hue={hueOf(member.id, props.colours)}
+                                        dates={dates}
+                                        days={props.days}
+                                        minutes={memberMinutes(props.totals, member.id)}
+                                        pattern={patternOf(props.patterns, member.id)}
+                                        words={words}
+                                        clock={clock}
+                                        editable={props.editable}
+                                        onEditDay={(date) => setEditing({ member, date })}
+                                        onEditPattern={() => setPatterning(member)}
+                                    />
+                                ))}
+                            </tbody>
+                        </Table>
                         <Legend words={words} clock={clock} />
                     </Card>
                 )}

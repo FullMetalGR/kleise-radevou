@@ -1,4 +1,4 @@
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { formatAmount, formatCount, formatDate, formatDayMonth, type TenantClock } from '@/lib/format';
 import { monthName } from '@/lib/names';
 import { Strip } from '@/figures/kit';
@@ -119,28 +119,32 @@ export function OverTime({ overTime, clock, words }: { overTime: Report['over_ti
                 />
             </div>
             <div className="border-t">
-                <TableScroll>
-                    <table className="admin-table w-full text-sm">
-                        <thead>
-                            <tr className="text-left">
-                                <th className="px-4 py-2">{words.text('over_time.from')}</th>
-                                <th className="px-4 py-2">{words.text('over_time.to')}</th>
-                                <th className="px-4 py-2 text-right">{words.text('over_time.bookings_head')}</th>
-                                <th className="px-4 py-2 text-right">{words.text('over_time.revenue_head')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row) => (
-                                <tr key={row.from} className="border-t">
-                                    <td className="px-4 py-2 font-mono">{formatDate(row.from, clock)}</td>
-                                    <td className="px-4 py-2 font-mono">{formatDate(row.to, clock)}</td>
-                                    <td className="px-4 py-2 text-right font-mono">{formatCount(row.bookings, words.locale)}</td>
-                                    <td className="px-4 py-2 text-right font-mono">{formatAmount(row.revenue.minor, row.revenue.currency, words.locale)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </TableScroll>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <Th>{words.text('over_time.from')}</Th>
+                            <Th>{words.text('over_time.to')}</Th>
+                            <Th className="text-right">{words.text('over_time.bookings_head')}</Th>
+                            <Th className="text-right">{words.text('over_time.revenue_head')}</Th>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {rows.map((row) => (
+                            <TableRow key={row.from}>
+                                <Td label={words.text('over_time.from')} header>
+                                    {formatDate(row.from, clock)}
+                                </Td>
+                                <Td label={words.text('over_time.to')}>{formatDate(row.to, clock)}</Td>
+                                <Td label={words.text('over_time.bookings_head')} className="text-right">
+                                    {formatCount(row.bookings, words.locale)}
+                                </Td>
+                                <Td label={words.text('over_time.revenue_head')} className="text-right">
+                                    {formatAmount(row.revenue.minor, row.revenue.currency, words.locale)}
+                                </Td>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             </div>
         </ReportCard>
     );

@@ -7,7 +7,7 @@ import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { statusLabel } from '@/components/ui/status-chip';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { useShell } from '@/lib/strings';
 import { NOT_DONE, owningFailure } from '@/lib/visits';
 import { useToasts } from '@/toast/toasts';
@@ -263,27 +263,27 @@ function passwordLinkPath(slug: string, user: number): string {
 
 function nothing(): void {}
 
-const PEOPLE_HEADS = ['Name', 'Email', 'Role', 'Verified', 'Password'];
+const PEOPLE_HEADS = ['Name', 'Email', 'Role', 'Verified', 'Password'] as const;
 
-const SESSION_HEADS = ['Operator', 'Opened', 'Ends', 'Session'];
+const [PERSON_HEAD, EMAIL_HEAD, ROLE_HEAD, VERIFIED_HEAD, PASSWORD_HEAD] = PEOPLE_HEADS;
 
-/** One of the page's tables under its column heads, scrolling sideways on a narrow screen. */
-function HeadedTable({ heads, children }: { heads: string[]; children: ReactNode }) {
+const SESSION_HEADS = ['Operator', 'Opened', 'Ends', 'Session'] as const;
+
+const [OPERATOR_HEAD, OPENED_HEAD, ENDS_HEAD, SESSION_HEAD] = SESSION_HEADS;
+
+/** One of the page's tables under its column heads, a row a block on a narrow screen. */
+function HeadedTable({ heads, children }: { heads: readonly string[]; children: ReactNode }) {
     return (
-        <TableScroll>
-            <table className="admin-table w-full text-sm">
-                <thead>
-                    <tr className="text-left">
-                        {heads.map((head) => (
-                            <th key={head} className="px-4 py-2">
-                                {head}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>{children}</tbody>
-            </table>
-        </TableScroll>
+        <Table>
+            <TableHead>
+                <TableRow>
+                    {heads.map((head) => (
+                        <Th key={head}>{head}</Th>
+                    ))}
+                </TableRow>
+            </TableHead>
+            <TableBody>{children}</TableBody>
+        </Table>
     );
 }
 
@@ -493,14 +493,20 @@ function People({ slug, users }: { slug: string; users: Person[] }) {
             ) : (
                 <HeadedTable heads={PEOPLE_HEADS}>
                     {users.map((person) => (
-                        <tr key={person.id} className="admin-tenant-people__row border-t">
-                            <td className="admin-tenant-people__name px-4 py-2">{person.name}</td>
-                            <td id={`tenant-person-${person.id}-email`} className="admin-tenant-people__email px-4 py-2">
-                                {person.email}
-                            </td>
-                            <td className="admin-tenant-people__role px-4 py-2">{ROLE_WORDS[person.role]}</td>
-                            <td className="admin-tenant-people__verified px-4 py-2">{person.verified ? 'Yes' : 'No'}</td>
-                            <td className="px-4 py-2">
+                        <TableRow key={person.id} className="admin-tenant-people__row">
+                            <Td label={PERSON_HEAD} header className="admin-tenant-people__name">
+                                {person.name}
+                            </Td>
+                            <Td label={EMAIL_HEAD} className="admin-tenant-people__email">
+                                <span id={`tenant-person-${person.id}-email`}>{person.email}</span>
+                            </Td>
+                            <Td label={ROLE_HEAD} className="admin-tenant-people__role">
+                                {ROLE_WORDS[person.role]}
+                            </Td>
+                            <Td label={VERIFIED_HEAD} className="admin-tenant-people__verified">
+                                {person.verified ? 'Yes' : 'No'}
+                            </Td>
+                            <Td label={PASSWORD_HEAD}>
                                 <Button
                                     className="admin-tenant-people__password-link"
                                     aria-describedby={`tenant-person-${person.id}-email`}
@@ -510,8 +516,8 @@ function People({ slug, users }: { slug: string; users: Person[] }) {
                                 >
                                     Send password link
                                 </Button>
-                            </td>
-                        </tr>
+                            </Td>
+                        </TableRow>
                     ))}
                 </HeadedTable>
             )}
@@ -823,13 +829,17 @@ function SupportSessions({ sessions }: { sessions: OpenSupportSession[] }) {
             ) : (
                 <HeadedTable heads={SESSION_HEADS}>
                     {sessions.map((session) => (
-                        <tr key={session.id} className="admin-tenant-sessions__row border-t">
-                            <td id={`tenant-session-${session.id}-operator`} className="admin-tenant-sessions__operator px-4 py-2">
-                                {session.operator}
-                            </td>
-                            <td className="admin-tenant-sessions__opened px-4 py-2">{session.opened}</td>
-                            <td className="admin-tenant-sessions__ends px-4 py-2">{session.ends}</td>
-                            <td className="px-4 py-2">
+                        <TableRow key={session.id} className="admin-tenant-sessions__row">
+                            <Td label={OPERATOR_HEAD} header className="admin-tenant-sessions__operator">
+                                <span id={`tenant-session-${session.id}-operator`}>{session.operator}</span>
+                            </Td>
+                            <Td label={OPENED_HEAD} className="admin-tenant-sessions__opened">
+                                {session.opened}
+                            </Td>
+                            <Td label={ENDS_HEAD} className="admin-tenant-sessions__ends">
+                                {session.ends}
+                            </Td>
+                            <Td label={SESSION_HEAD}>
                                 <Button
                                     destructive
                                     className="admin-tenant-sessions__end"
@@ -840,8 +850,8 @@ function SupportSessions({ sessions }: { sessions: OpenSupportSession[] }) {
                                 >
                                     End
                                 </Button>
-                            </td>
-                        </tr>
+                            </Td>
+                        </TableRow>
                     ))}
                 </HeadedTable>
             )}

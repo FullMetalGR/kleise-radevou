@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BookingActionController;
+use App\Platform\PasswordLinks;
 use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
@@ -29,10 +30,11 @@ use Tests\Support\LunaFixture;
  * Month's day its number and how many bookings it has with no chip, the whole cell its date menu,
  * whose Open day opens Day view on it, and one more opens every screen of the admin, as an owner
  * who reads English and as one who reads Greek, and reads that none is wider than the phone, the
- * Team screen's table scrolling inside its card. A walk in Greek holds a field's control to its
- * place: the selects of Bookings' filters, listing a member and a service whose names run to sixty
- * characters, stand inside their fields with the page not scrolling sideways. The rest of the
- * suite stays on the plugin's desktop device.
+ * Team screen's members read as rows, each value beside its column name; an email of sixty
+ * characters with no break wraps inside its row there. A walk in Greek holds a field's control to
+ * its place: the selects of Bookings' filters, listing a member and a service whose names run to
+ * sixty characters, stand inside their fields with the page not scrolling sideways. The rest of
+ * the suite stays on the plugin's desktop device.
  *
  * The bookings are written straight to luna's rows, dated whole days from the tenant's today in
  * Athens on the real clock, which the browser and the application both read.
@@ -382,7 +384,7 @@ it('keeps each select of Bookings\' filters inside its field on a phone in Greek
         ->assertNoJavaScriptErrors();
 });
 
-it('keeps every screen of the admin no wider than a phone, a customer\'s page among them, the Team screen\'s table scrolling inside its card with the help bubble on screen', function (SiteLanguage $language) {
+it('keeps every screen of the admin no wider than a phone, a customer\'s page among them, the Team screen\'s members read as rows with the help bubble on screen', function (SiteLanguage $language) {
     phoneBooking('Cora Cut', athensDaysOn(0, 10));
     // A line longer in one language, on a control that does not wrap, widens a screen in that
     // language alone, so the owner reads every screen in each. The language is the owner's before
@@ -402,12 +404,31 @@ it('keeps every screen of the admin no wider than a phone, a customer\'s page am
         ->assertVisible('.admin-customer-screen')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
 
-    // The members table is wider than the phone: its frame scrolls and the page does not, so the
-    // bubble fixed to the screen's corner stays on it.
+    // The members table has no room for its columns on a phone: each member is a block of
+    // labelled lines, nothing scrolls sideways, and the bubble fixed to the screen's corner stays
+    // on it.
     $page->navigate(Admin::url('luna', '/team'))
         ->assertVisible('.admin-team-member')
-        ->assertScript(PhoneScripts::TEAM_TABLE_SCROLLS, true)
+        ->assertScript(PhoneScripts::TEAM_TABLE_AS_ROWS, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertScript(PhoneScripts::BUBBLE_INSIDE, true)
         ->assertNoJavaScriptErrors();
 })->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('wraps an email of sixty characters with no break inside its row on the Team screen, neither the page nor the table scrolling sideways', function () {
+    $email = str_repeat('a', 47).'@luna.example';
+    expect(strlen($email))->toBe(60);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+
+    $page->navigate(Admin::url('luna', '/team'))
+        ->assertVisible('.admin-team-member')
+        ->type('#team-invite-name', 'Maria Ioannou')
+        ->type('#team-invite-email', $email)
+        ->click('.admin-team-invite__send')
+        ->waitForText(adminChoice('admin/team.flashes.invited', PasswordLinks::hours(), ['email' => $email]))
+        ->assertScript(PhoneScripts::TEAM_TABLE_AS_ROWS, true)
+        ->assertScript(PhoneScripts::LONG_EMAIL_WRAPS, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertNoJavaScriptErrors();
+});

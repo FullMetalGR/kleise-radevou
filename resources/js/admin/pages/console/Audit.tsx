@@ -4,7 +4,7 @@ import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { usePartialRead } from '@/lib/partial-read';
 import type { ConsoleProps } from '@/types';
 
@@ -183,42 +183,46 @@ export default function Audit() {
                                 {rows.length} of {props.entries.total}
                             </p>
                         </header>
-                        <TableScroll>
-                            <table className="admin-table w-full text-sm">
-                                <thead>
-                                    <tr className="text-left">
-                                        <th className="px-4 py-2">{WHEN_HEADING}</th>
-                                        <th className="px-4 py-2">{OPERATOR_HEADING}</th>
-                                        <th className="px-4 py-2">{ACTION_HEADING}</th>
-                                        <th className="px-4 py-2">{TENANT_HEADING}</th>
-                                        <th className="px-4 py-2">{DETAILS_HEADING}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((row) => (
-                                        <tr key={row.id} className="admin-audit__row border-t">
-                                            <td className="admin-audit__at px-4 py-2">{row.at}</td>
-                                            <td className="admin-audit__operator px-4 py-2">{row.operator}</td>
-                                            <td className="admin-audit__action px-4 py-2">{ACTION_WORDS[row.action]}</td>
-                                            <td className="px-4 py-2">
-                                                {row.tenant !== null && (
-                                                    <Button variant="link" className="admin-audit__tenant" onClick={() => load(row.tenant, 1)}>
-                                                        {row.tenant}
-                                                    </Button>
-                                                )}
-                                            </td>
-                                            <td className="admin-audit__facts px-4 py-2">
-                                                {row.facts.map((fact) => (
-                                                    <span key={fact.key} className="admin-audit__fact block">
-                                                        {factText(fact)}
-                                                    </span>
-                                                ))}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <Th>{WHEN_HEADING}</Th>
+                                    <Th>{OPERATOR_HEADING}</Th>
+                                    <Th>{ACTION_HEADING}</Th>
+                                    <Th>{TENANT_HEADING}</Th>
+                                    <Th>{DETAILS_HEADING}</Th>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {rows.map((row) => (
+                                    <TableRow key={row.id} className="admin-audit__row">
+                                        <Td label={WHEN_HEADING} header className="admin-audit__at">
+                                            {row.at}
+                                        </Td>
+                                        <Td label={OPERATOR_HEADING} className="admin-audit__operator">
+                                            {row.operator}
+                                        </Td>
+                                        <Td label={ACTION_HEADING} className="admin-audit__action">
+                                            {ACTION_WORDS[row.action]}
+                                        </Td>
+                                        <Td label={TENANT_HEADING}>
+                                            {row.tenant !== null && (
+                                                <Button variant="link" className="admin-audit__tenant" onClick={() => load(row.tenant, 1)}>
+                                                    {row.tenant}
+                                                </Button>
+                                            )}
+                                        </Td>
+                                        <Td label={DETAILS_HEADING} className="admin-audit__facts">
+                                            {row.facts.map((fact) => (
+                                                <span key={fact.key} className="admin-audit__fact block">
+                                                    {factText(fact)}
+                                                </span>
+                                            ))}
+                                        </Td>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                         <Pagination page={props.entries.page} total={props.entries.total} pageSize={props.entries.page_size} onPage={(page) => load(tenant, page)} />
                     </Card>
                 </SettledList>

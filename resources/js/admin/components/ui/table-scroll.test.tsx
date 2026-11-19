@@ -48,14 +48,26 @@ describe('the table scroller', () => {
         expect([...(box?.classList ?? [])]).toEqual(expect.arrayContaining(['relative', 'w-full', 'overflow-x-auto']));
     });
 
-    it('sets every head cell of its table at weight 600', () => {
+    it('is a query container, so the table inside can read how wide its own box is', () => {
         view.render(
             <TableScroll>
                 <table />
             </TableScroll>,
         );
 
-        expect(view.host.querySelector('.admin-table-scroll')?.classList.contains('[&_th]:font-semibold')).toBe(true);
+        expect(view.host.querySelector('.admin-table-scroll')?.classList.contains('@container')).toBe(true);
+    });
+
+    it('sets no type of its own, so each table spells the weight of its head cells', () => {
+        view.render(
+            <TableScroll>
+                <table />
+            </TableScroll>,
+        );
+
+        const box = [...(view.host.querySelector('.admin-table-scroll')?.classList ?? [])];
+
+        expect(box.filter((name) => name.includes('font-'))).toEqual([]);
     });
 
     it('frames every data table in the admin, one scroller per table', () => {

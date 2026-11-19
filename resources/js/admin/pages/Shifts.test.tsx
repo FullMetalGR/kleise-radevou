@@ -354,6 +354,21 @@ describe('the week grid', () => {
         ]);
     });
 
+    it('sets a member\'s row head semibold, so the hours line under the name is as heavy as the head row', () => {
+        render();
+
+        const heads = [...document.querySelectorAll('.admin-shifts__member')];
+
+        expect(heads).toHaveLength(2);
+
+        for (const head of heads) {
+            expect([...head.classList]).toContain('font-semibold');
+            expect([...head.classList]).not.toContain('font-normal');
+        }
+
+        expect(document.querySelectorAll('.admin-shifts__row-head[class*="font-"]')).toHaveLength(0);
+    });
+
     it('shows each day\'s windows, Not working, This day only under a day edited alone, and the closures linking to the Staff page', () => {
         render();
 

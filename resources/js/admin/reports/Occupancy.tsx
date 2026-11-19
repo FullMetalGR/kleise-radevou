@@ -1,4 +1,4 @@
-import { TableScroll } from '@/components/ui/table-scroll';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { Strip } from '@/figures/kit';
 import { formatOccupancy, hoursOf, type Report } from './model';
 import { ReportCard } from './ReportCard';
@@ -16,28 +16,34 @@ export function OccupancyByStaff({ rows, words }: { rows: Report['occupancy']; w
     return (
         <ReportCard name="occupancy" labelledBy="reports-occupancy-head">
             <Strip titleId="reports-occupancy-head" title={words.text('occupancy.title')} />
-            <TableScroll>
-                <table className="admin-table w-full text-sm">
-                    <thead>
-                        <tr className="text-left">
-                            <th className="px-4 py-2">{words.text('tables.staff')}</th>
-                            <th className="px-4 py-2 text-right">{words.text('occupancy.booked')}</th>
-                            <th className="px-4 py-2 text-right">{words.text('occupancy.available')}</th>
-                            <th className="px-4 py-2 text-right">{words.text('tiles.occupancy')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row) => (
-                            <tr key={row.id} className="admin-reports-occupancy__row border-t">
-                                <td className="px-4 py-2">{row.name}</td>
-                                <td className="px-4 py-2 text-right font-mono">{hoursOf(row.booked_minutes, words)}</td>
-                                <td className="px-4 py-2 text-right font-mono">{hoursOf(row.available_minutes, words)}</td>
-                                <td className="px-4 py-2 text-right font-mono">{row.occupancy === null ? words.text('occupancy.no_hours') : formatOccupancy(row.occupancy, words.locale)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </TableScroll>
+            <Table>
+                <TableHead>
+                    <TableRow>
+                        <Th>{words.text('tables.staff')}</Th>
+                        <Th className="text-right">{words.text('occupancy.booked')}</Th>
+                        <Th className="text-right">{words.text('occupancy.available')}</Th>
+                        <Th className="text-right">{words.text('tiles.occupancy')}</Th>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {rows.map((row) => (
+                        <TableRow key={row.id} className="admin-reports-occupancy__row">
+                            <Td label={words.text('tables.staff')} header>
+                                {row.name}
+                            </Td>
+                            <Td label={words.text('occupancy.booked')} className="text-right">
+                                {hoursOf(row.booked_minutes, words)}
+                            </Td>
+                            <Td label={words.text('occupancy.available')} className="text-right">
+                                {hoursOf(row.available_minutes, words)}
+                            </Td>
+                            <Td label={words.text('tiles.occupancy')} className="text-right">
+                                {row.occupancy === null ? words.text('occupancy.no_hours') : formatOccupancy(row.occupancy, words.locale)}
+                            </Td>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </ReportCard>
     );
 }

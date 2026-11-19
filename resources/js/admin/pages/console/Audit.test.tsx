@@ -95,10 +95,10 @@ describe('the Audit screen', () => {
         view.render(<Audit />);
 
         expect(q('h1')?.textContent).toBe('Audit');
-        expect(texts('th')).toEqual(['When', 'Operator', 'Action', 'Tenant', 'Details']);
-        expect(texts('.admin-audit__at')).toEqual([SUSPENDED.at, SIGNED_IN.at]);
-        expect(texts('.admin-audit__operator')).toEqual(['Sam Operator', 'Pat Operator']);
-        expect(texts('.admin-audit__action')).toEqual(['Suspended a tenant', 'Signed in']);
+        expect(texts('thead th')).toEqual(['When', 'Operator', 'Action', 'Tenant', 'Details']);
+        expect(texts('.admin-audit__at .admin-table__value')).toEqual([SUSPENDED.at, SIGNED_IN.at]);
+        expect(texts('.admin-audit__operator .admin-table__value')).toEqual(['Sam Operator', 'Pat Operator']);
+        expect(texts('.admin-audit__action .admin-table__value')).toEqual(['Suspended a tenant', 'Signed in']);
         expect(texts('.admin-audit__tenant')).toEqual(['acme']);
         expect(texts('.admin-audit__fact')).toEqual(['Reason: Unpaid since March', 'Features: staff, extra', 'User: 12']);
         expect(q('.admin-audit__count')?.textContent).toBe('2 of 75');
@@ -122,7 +122,7 @@ describe('the Audit screen', () => {
         inertia.props = propsWith([{ id: 6, at: SIGNED_IN.at, operator: 'Pat Operator', action: 'help_ticket_closed', tenant: 'acme', facts: [{ key: 'ticket', value: 42 }] }]);
         view.render(<Audit />);
 
-        expect(texts('.admin-audit__action')).toEqual(['Closed a help ticket']);
+        expect(texts('.admin-audit__action .admin-table__value')).toEqual(['Closed a help ticket']);
         expect(texts('.admin-audit__fact')).toEqual(['Ticket: 42']);
         expect(texts('.admin-audit__tenant')).toEqual(['acme']);
     });
@@ -131,7 +131,7 @@ describe('the Audit screen', () => {
         inertia.props = propsWith([{ id: 5, at: SIGNED_IN.at, operator: 'Pat Operator', action: 'contact_archived', tenant: null, facts: [{ key: 'message', value: 31 }] }]);
         view.render(<Audit />);
 
-        expect(texts('.admin-audit__action')).toEqual(['Archived a contact message']);
+        expect(texts('.admin-audit__action .admin-table__value')).toEqual(['Archived a contact message']);
         expect(texts('.admin-audit__fact')).toEqual(['Message: 31']);
         expect(q('.admin-audit__tenant')).toBeNull();
     });
@@ -216,7 +216,7 @@ describe('the Audit screen', () => {
         act(() => lastVisit().onFinish?.());
 
         expect(q('.admin-list-error')?.textContent).toBe(AUDIT_LIST_ERROR);
-        expect(texts('.admin-audit__operator')).toEqual(['Pat Operator']);
+        expect(texts('.admin-audit__operator .admin-table__value')).toEqual(['Pat Operator']);
         expect(q('.admin-audit-empty')).toBeNull();
     });
 });

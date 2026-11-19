@@ -26,8 +26,17 @@ final class PhoneScripts
      */
     public const string NO_SIDEWAYS_SCROLL = 'document.fonts.ready.then(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)';
 
-    /** The Team screen's members table wider than its frame, which scrolls sideways and holds it. */
-    public const string TEAM_TABLE_SCROLLS = "document.fonts.ready.then(() => { const frame = document.querySelector('.admin-team-members .admin-table-scroll'); return frame !== null && frame.scrollWidth > frame.clientWidth && getComputedStyle(frame).overflowX === 'auto'; })";
+    /**
+     * The Team screen's members as rows: each member a block whose cells show their column name,
+     * and the table's box no wider than the room it has, so nothing scrolls sideways.
+     */
+    public const string TEAM_TABLE_AS_ROWS = "document.fonts.ready.then(() => { const box = document.querySelector('.admin-team-members .admin-table-scroll'); const rows = [...document.querySelectorAll('.admin-team-member')]; const label = document.querySelector('.admin-team-member .admin-table__label'); return box !== null && rows.length > 0 && rows.every((row) => getComputedStyle(row).display === 'block') && label !== null && getComputedStyle(label).display !== 'none' && box.scrollWidth <= box.clientWidth + 1; })";
+
+    /**
+     * The Team screen's longest email, sixty characters with no break, wrapped onto more than one
+     * line inside its row: the value no wider than its room, and the row inside the table's box.
+     */
+    public const string LONG_EMAIL_WRAPS = "document.fonts.ready.then(() => { const value = [...document.querySelectorAll('.admin-team-member td .admin-table__value')].find((cell) => (cell.textContent ?? '').length >= 60); if (value === undefined) { return false; } const box = document.querySelector('.admin-team-members .admin-table-scroll').getBoundingClientRect(); const row = value.closest('tr').getBoundingClientRect(); const line = parseFloat(getComputedStyle(value).lineHeight); return value.scrollWidth <= value.clientWidth + 1 && value.getBoundingClientRect().height > line * 1.5 && row.left >= box.left - 1 && row.right <= box.right + 1; })";
 
     /** True when the help bubble stands whole inside the screen's width. */
     public const string BUBBLE_INSIDE = "document.fonts.ready.then(() => { const bubble = document.querySelector('".Help::BUBBLE."'); if (bubble === null) { return false; } const box = bubble.getBoundingClientRect(); return box.left >= 0 && box.right <= document.documentElement.clientWidth + 1; })";

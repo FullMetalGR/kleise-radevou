@@ -535,8 +535,8 @@ describe('every figure in the user\'s language', () => {
             q('.admin-reports-no-show__rate')?.textContent ?? null,
             q('.admin-reports-no-show__no-shows')?.textContent ?? null,
             q('.admin-reports-cancelled-by dd')?.textContent ?? null,
-            ...texts('.admin-reports-staff td').slice(1),
-            ...texts('.admin-reports-over-time tbody td').slice(2),
+            ...texts('.admin-reports-staff .admin-table__value').slice(1),
+            ...texts('.admin-reports-over-time tbody .admin-table__value').slice(2),
             q('.admin-reports-over-time__revenue svg')?.getAttribute('aria-label') ?? null,
         ];
     }
@@ -630,15 +630,15 @@ describe('the cards and tables', () => {
         expect(texts('.admin-reports-cancelled-by dt')).toEqual([words.text('tables.by_customer'), words.text('tables.by_business')]);
         expect(texts('.admin-reports-cancelled-by dd')).toEqual(['2', '0']);
 
-        expect(texts('.admin-reports-services th')).toEqual([words.text('tables.service'), words.text('tables.bookings'), words.text('tables.revenue_head')]);
-        expect(texts('.admin-reports-services .admin-reports__label')).toEqual(['Haircut', 'Beard trim', 'Colour']);
-        expect(texts('.admin-reports-services .admin-reports__revenue')).toEqual([formatAmount(10500, 'EUR', words.locale), formatAmount(0, 'EUR', words.locale), `${formatAmount(6000, 'EUR', words.locale)}${formatAmount(12000, 'USD', words.locale)}`]);
-        expect(texts('.admin-reports-staff th')).toEqual([words.text('tables.staff'), words.text('tables.bookings'), words.text('tables.revenue_head')]);
-        expect(texts('.admin-reports-staff .admin-reports__bookings')).toEqual(['5', '8']);
-        expect(texts('.admin-reports-sources th')).toEqual([words.text('tables.source'), words.text('tables.bookings'), words.text('tables.revenue_head')]);
-        expect(texts('.admin-reports-sources .admin-reports__label')).toEqual([shell.text('shared.sources.hosted'), shell.text('shared.sources.embed'), shell.text('shared.sources.admin')]);
-        expect(texts('.admin-reports-channels th')).toEqual([words.text('tables.channel'), words.text('tables.bookings'), words.text('tables.revenue_head')]);
-        expect(texts('.admin-reports-channels .admin-reports__label')).toEqual([shell.text('shared.channels.instagram'), shell.text('shared.channels.qr'), words.text('tables.no_channel')]);
+        expect(texts('.admin-reports-services thead th')).toEqual([words.text('tables.service'), words.text('tables.bookings'), words.text('tables.revenue_head')]);
+        expect(texts('.admin-reports-services .admin-reports__label .admin-table__value')).toEqual(['Haircut', 'Beard trim', 'Colour']);
+        expect(texts('.admin-reports-services .admin-reports__revenue .admin-table__value')).toEqual([formatAmount(10500, 'EUR', words.locale), formatAmount(0, 'EUR', words.locale), `${formatAmount(6000, 'EUR', words.locale)}${formatAmount(12000, 'USD', words.locale)}`]);
+        expect(texts('.admin-reports-staff thead th')).toEqual([words.text('tables.staff'), words.text('tables.bookings'), words.text('tables.revenue_head')]);
+        expect(texts('.admin-reports-staff .admin-reports__bookings .admin-table__value')).toEqual(['5', '8']);
+        expect(texts('.admin-reports-sources thead th')).toEqual([words.text('tables.source'), words.text('tables.bookings'), words.text('tables.revenue_head')]);
+        expect(texts('.admin-reports-sources .admin-reports__label .admin-table__value')).toEqual([shell.text('shared.sources.hosted'), shell.text('shared.sources.embed'), shell.text('shared.sources.admin')]);
+        expect(texts('.admin-reports-channels thead th')).toEqual([words.text('tables.channel'), words.text('tables.bookings'), words.text('tables.revenue_head')]);
+        expect(texts('.admin-reports-channels .admin-reports__label .admin-table__value')).toEqual([shell.text('shared.channels.instagram'), shell.text('shared.channels.qr'), words.text('tables.no_channel')]);
 
         expect(q('.admin-reports-note')?.textContent).toBe(words.text('tables.note'));
         expect(q('.admin-reports > :last-child')?.className).toContain('admin-reports-note');
@@ -661,11 +661,27 @@ describe('the cards and tables', () => {
         for (const name of ['over-time', 'services', 'staff', 'sources', 'channels']) {
             const card = q(`.admin-reports-${name}`);
 
-            expect(card?.className.split(' ')).toEqual(expect.arrayContaining(['bg-card', 'rounded-tile', 'shadow-card', 'overflow-hidden']));
+            expect(card?.className.split(' ')).toEqual(expect.arrayContaining(['bg-card', 'rounded-tile', 'shadow-card', 'overflow-clip']));
             expect(card?.className.split(' ')).not.toContain('border');
             expect(card?.className.split(' ')).not.toContain('p-6.5');
             expect(card?.querySelector(':scope > header.admin-card-strip.border-b > h2')).not.toBeNull();
-            expect(card?.querySelector('table')?.closest('.admin-table-scroll')).not.toBeNull();
+            expect(card?.querySelector('table[role="table"]')?.parentElement?.matches('.admin-table-scroll.\\@container')).toBe(true);
+        }
+    });
+
+    it('turns the four By tables to rows below the wide breakpoint alone, and Over time and Occupancy in a narrow box as well', () => {
+        inertia.props = propsWith();
+        view.render(<Page />);
+
+        const written = (name: string) => [...(q(`.admin-reports-${name} table`)?.classList ?? [])];
+
+        for (const name of ['services', 'staff', 'sources', 'channels']) {
+            expect(written(name)).toContain('max-wide:block');
+            expect(written(name).filter((utility) => utility.startsWith('@max-'))).toEqual([]);
+        }
+
+        for (const name of ['over-time', 'occupancy']) {
+            expect(written(name)).toEqual(expect.arrayContaining(['max-wide:block', '@max-2xl:block']));
         }
     });
 
@@ -680,7 +696,7 @@ describe('the cards and tables', () => {
         expect(q('.admin-reports-no-show__empty')?.textContent).toBe(words.text('tables.no_completed'));
         expect(q('.admin-reports-no-show__empty')?.className).not.toMatch(/text-2xl|font-semibold/);
         expect(texts('.admin-reports-cancelled-by dd')).toEqual(['0', '0']);
-        expect(texts('.admin-reports-channels .admin-reports__revenue')).toEqual(Array(6).fill(formatAmount(0, 'EUR', words.locale)));
+        expect(texts('.admin-reports-channels .admin-reports__revenue .admin-table__value')).toEqual(Array(6).fill(formatAmount(0, 'EUR', words.locale)));
         expect(q('.admin-reports-over-time rect')).toBeNull();
         expect(texts('.admin-reports-over-time tbody tr')).toHaveLength(7);
         expect(q('.admin-list-empty, .admin-reports-empty')).toBeNull();
@@ -721,8 +737,8 @@ describe('Over time', () => {
             words.text('over_time.chart', { chart: words.text('over_time.bookings.day'), from: '19/10/2026', to: '25/10/2026', values: new Intl.ListFormat(words.locale, { style: 'narrow', type: 'unit' }).format(['0', '4', '5', '5', '4', '3', '2']) }),
         );
 
-        expect(texts('.admin-reports-over-time th')).toEqual([words.text('over_time.from'), words.text('over_time.to'), words.text('over_time.bookings_head'), words.text('over_time.revenue_head')]);
-        expect(texts('.admin-reports-over-time tbody tr:nth-child(2) td')).toEqual(['20/10/2026', '20/10/2026', '4', formatAmount(19000, 'EUR', words.locale)]);
+        expect(texts('.admin-reports-over-time thead th')).toEqual([words.text('over_time.from'), words.text('over_time.to'), words.text('over_time.bookings_head'), words.text('over_time.revenue_head')]);
+        expect(texts('.admin-reports-over-time tbody tr:nth-child(2) .admin-table__value')).toEqual(['20/10/2026', '20/10/2026', '4', formatAmount(19000, 'EUR', words.locale)]);
         expect(texts('.admin-reports-over-time tbody tr')).toHaveLength(7);
     });
 
@@ -743,7 +759,7 @@ describe('Over time', () => {
 
         expect(texts('.admin-reports-over-time figcaption')).toEqual([words.text('over_time.bookings.week'), words.text('over_time.revenue.week')]);
         expect(texts('.admin-reports-over-time__bookings .admin-reports-tick')).toEqual(['10/09', '14/09']);
-        expect(texts('.admin-reports-over-time tbody tr:first-child td')).toEqual(['10/09/2026', '13/09/2026', '1', formatAmount(3500, 'EUR', words.locale)]);
+        expect(texts('.admin-reports-over-time tbody tr:first-child .admin-table__value')).toEqual(['10/09/2026', '13/09/2026', '1', formatAmount(3500, 'EUR', words.locale)]);
 
         inertia.props = propsWith({
             report: {
@@ -806,11 +822,11 @@ describe('Occupancy by staff', () => {
         expect(card?.previousElementSibling?.querySelector('.admin-reports-statuses')).not.toBeNull();
         expect(card?.nextElementSibling?.querySelector('.admin-reports-services')).not.toBeNull();
         expect(card?.querySelector(':scope > header.admin-card-strip > h2')?.textContent).toBe(words.text('occupancy.title'));
-        expect(card?.querySelector('table')?.closest('.admin-table-scroll')).not.toBeNull();
-        expect(texts('.admin-reports-occupancy th')).toEqual([words.text('tables.staff'), words.text('occupancy.booked'), words.text('occupancy.available'), words.text('tiles.occupancy')]);
-        expect(texts('.admin-reports-occupancy tbody tr:nth-child(1) td')).toEqual(['Elena Papadaki', hoursOf(1710, words), hoursOf(2400, words), '71.3%']);
-        expect(texts('.admin-reports-occupancy tbody tr:nth-child(2) td')).toEqual(['Nikos Georgiou', hoursOf(1265, words), hoursOf(2700, words), '46.9%']);
-        expect(texts('.admin-reports-occupancy tbody tr:nth-child(3) td')).toEqual(['Maria Ioannou', hoursOf(0, words), hoursOf(0, words), words.text('occupancy.no_hours')]);
+        expect(card?.querySelector('table[role="table"]')?.parentElement?.matches('.admin-table-scroll.\\@container')).toBe(true);
+        expect(texts('.admin-reports-occupancy thead th')).toEqual([words.text('tables.staff'), words.text('occupancy.booked'), words.text('occupancy.available'), words.text('tiles.occupancy')]);
+        expect(texts('.admin-reports-occupancy tbody tr:nth-child(1) .admin-table__value')).toEqual(['Elena Papadaki', hoursOf(1710, words), hoursOf(2400, words), '71.3%']);
+        expect(texts('.admin-reports-occupancy tbody tr:nth-child(2) .admin-table__value')).toEqual(['Nikos Georgiou', hoursOf(1265, words), hoursOf(2700, words), '46.9%']);
+        expect(texts('.admin-reports-occupancy tbody tr:nth-child(3) .admin-table__value')).toEqual(['Maria Ioannou', hoursOf(0, words), hoursOf(0, words), words.text('occupancy.no_hours')]);
     });
 
     it('names the currency in the revenue chart\'s spoken label', () => {

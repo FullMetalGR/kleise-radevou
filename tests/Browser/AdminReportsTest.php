@@ -15,8 +15,9 @@ use Tests\Support\LunaFixture;
  * a member, which changes the Bookings tile again; reloads and finds both kept; opens a custom
  * range by the Range; and a custom range reached by its address reads a second currency on its
  * own line; Occupancy by staff follows the member chosen and Download CSV asks the page's own
- * query. The waiting and failing states are proven by the component tests alone: a browser cannot
- * be made to hold a read honestly.
+ * query; and a By table is a grid at a desktop width, its head row on screen. The waiting and
+ * failing states are proven by the component tests alone: a browser cannot be made to hold a read
+ * honestly.
  *
  * The bookings are written straight to luna's rows, every start whole days from today, because
  * the browser and the application both read the real clock here.
@@ -31,6 +32,27 @@ afterEach(fn () => dropDemoSchemas());
 
 // The rail's own entry, reached by its target: the screen's heading reads "Reports" too.
 const REPORTS_WALK_ENTRY = '.admin-rail a[href="/admin/reports"]';
+
+/**
+ * Whether the By staff table draws as a grid: the table, its head and its first body row display
+ * as a table's own parts, the head row has its height on screen, and no cell shows its column
+ * name beside its value.
+ */
+const REPORTS_WALK_BY_TABLE_IS_GRID = <<<'JS'
+    (() => {
+        const table = document.querySelector('.admin-reports-staff table');
+        const head = table?.querySelector('thead');
+        const row = table?.querySelector('tbody tr');
+        const shown = (element) => (element ? getComputedStyle(element).display : null);
+
+        return shown(table) === 'table'
+            && shown(head) === 'table-header-group'
+            && head.getBoundingClientRect().height > 1
+            && shown(row) === 'table-row'
+            && [...row.cells].every((cell) => shown(cell) === 'table-cell')
+            && [...table.querySelectorAll('.admin-table__label')].every((label) => shown(label) === 'none');
+    })()
+    JS;
 
 /**
  * Whether the confirmed revenue line shows an amount of minor units in a currency, as the page's
@@ -172,12 +194,13 @@ function reportsWalkNarrowed(string $day, string $bookings, array $staff): strin
     return sprintf(
         <<<'JS'
             (() => {
-                const row = [...document.querySelectorAll('.admin-reports-over-time tbody tr')].find((tr) => tr.cells[0]?.textContent === '%1$s');
+                const value = (tr, index) => tr?.cells[index]?.querySelector('.admin-table__value')?.textContent;
+                const row = [...document.querySelectorAll('.admin-reports-over-time tbody tr')].find((tr) => value(tr, 0) === '%1$s');
                 const staff = %3$s;
                 const members = [...document.querySelectorAll('.admin-reports-staff tbody tr')];
 
-                return row?.cells[2]?.textContent === '%2$s'
-                    && Object.entries(staff).every(([name, count]) => members.some((tr) => tr.cells[0]?.textContent === name && tr.cells[1]?.textContent === count));
+                return value(row, 2) === '%2$s'
+                    && Object.entries(staff).every(([name, count]) => members.some((tr) => value(tr, 0) === name && value(tr, 1) === count));
             })()
             JS,
         $day,
@@ -235,5 +258,15 @@ it('shows Occupancy by staff for the member chosen alone, and asks the CSV with 
         JS);
     $page->click('.admin-reports-download')
         ->assertScript("window.reportsAsked.includes('/admin/reports/csv?range=last_7_days&staff={$nikos}')", true)
+        ->assertNoJavaScriptErrors();
+});
+
+it('keeps a By table a grid with its head row on screen at a desktop width, in a card half as wide as the page', function () {
+    reportsWalkBooking(athensDaysOn(0), 'EUR', 3500);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1280, 800);
+    $page->click(REPORTS_WALK_ENTRY)
+        ->waitForText(adminLine('admin/reports.tables.statuses'))
+        ->assertScript(REPORTS_WALK_BY_TABLE_IS_GRID, true)
         ->assertNoJavaScriptErrors();
 });
