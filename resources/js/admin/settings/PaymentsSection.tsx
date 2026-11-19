@@ -219,19 +219,13 @@ function ProviderList({ providers, held, open, onOpen, platform, onPlatform, for
 type ModeProps = { mode: PaymentMode; provider: PaymentProvider; disabled: boolean; onOwn: () => void; platform: Control; onPlatform: () => void };
 
 /**
- * A button with a long label below the admin's breakpoint: held to the row's width, its label
- * wrapping. A mode's button names the provider and the one that resumes an onboarding says so in
- * full, and in a language of longer words each is wider than a phone, where a button that keeps to
- * one line would push the whole page sideways.
- */
-const PHONE_BUTTON = 'max-desktop:h-auto max-desktop:min-h-8 max-desktop:max-w-full max-desktop:py-1 max-desktop:whitespace-normal';
-
-/**
  * One mode of one provider: how it connects, what it costs as the prop states it with the
  * provider's own processing rate linked to the rate it publishes, and its control. A mode the
  * prop does not offer reads as not offered. Own mode opens the credential form; platform mode's
  * one button posts the provider, busy until the answer, a location the router follows to the
- * provider's hosted onboarding.
+ * provider's hosted onboarding. Either button names the provider, and in a language of longer
+ * words is wider than a phone, where a button that keeps to one line would push the whole page
+ * sideways: below the admin's breakpoint each is held to its row's width, its label wrapping.
  */
 function ModeRow({ mode, provider, disabled, onOwn, platform, onPlatform }: ModeProps) {
     const words = usePayments();
@@ -253,11 +247,11 @@ function ModeRow({ mode, provider, disabled, onOwn, platform, onPlatform }: Mode
             {!mode.offered ? (
                 <span className="admin-payments-mode__unoffered text-sm text-muted-foreground">{words.text(NOT_OFFERED)}</span>
             ) : mode.mode === 'own' ? (
-                <Button className={`admin-payments-own ${PHONE_BUTTON}`} disabled={disabled} onClick={onOwn}>
+                <Button wrap className="admin-payments-own" disabled={disabled} onClick={onOwn}>
                     {words.text('buttons.own', { provider: provider.name })}
                 </Button>
             ) : (
-                <Button variant="primary" className={`admin-payments-platform ${PHONE_BUTTON}`} {...platform} busyLabel={words.text('buttons.opening')} onClick={onPlatform}>
+                <Button wrap variant="primary" className="admin-payments-platform" {...platform} busyLabel={words.text('buttons.opening')} onClick={onPlatform}>
                     {words.text('buttons.platform', { provider: provider.name })}
                 </Button>
             )}
@@ -400,7 +394,8 @@ type StandingProps = { connection: PaymentConnection; registered: boolean; contr
  * The state's sentence with what the provider said verbatim, or, on an active row made through
  * us whose provider still lists information it needs, the one line saying so in place of the
  * list, with the provider's page linked through a fresh onboarding link where this build still
- * registers the provider.
+ * registers the provider. That link runs on from the sentence, where its colour alone does not
+ * tell it from the sentence's ink, so it is underlined at rest.
  */
 function Standing({ connection, registered, control, onResume }: StandingProps) {
     const reason = connection.information_due ? null : reasonOf(connection.requirements);
@@ -416,7 +411,7 @@ function Standing({ connection, registered, control, onResume }: StandingProps) 
                 <p className="admin-payments-due text-sm">
                     <span className="admin-payments-due__sentence">{informationSentence(connection.name, words)}</span>{' '}
                     {registered && (
-                        <Button variant="link" className="admin-payments-due__open" {...control} busyLabel={words.text('buttons.opening')} onClick={onResume}>
+                        <Button variant="link" className="admin-payments-due__open underline" {...control} busyLabel={words.text('buttons.opening')} onClick={onResume}>
                             {words.text('give', { provider: connection.name })}
                         </Button>
                     )}
@@ -428,7 +423,12 @@ function Standing({ connection, registered, control, onResume }: StandingProps) 
 
 type ControlsProps = Pick<ConnectionProps, 'connection' | 'provider' | 'control' | 'visit' | 'open' | 'onOpen' | 'refusal' | 'onboarding'> & { post: (action: PaymentAction, path: string) => () => void };
 
-/** The controls the state and the mode offer: resume while unfinished or wanting, the test and Replace in own mode, the switch, and Disconnect. */
+/**
+ * The controls the state and the mode offer: resume while unfinished or wanting, the test and
+ * Replace in own mode, the switch, and Disconnect. The one that resumes an onboarding says so in
+ * full and is wider than a phone in a language of longer words, so it wraps there as a mode's
+ * button does.
+ */
 function ConnectionControls({ connection, provider, control, visit, post, open, onOpen, refusal, onboarding }: ControlsProps) {
     const own = connection.mode === 'own';
     const resumable = !own && (connection.state === 'pending' || connection.state === 'restricted');
@@ -438,7 +438,7 @@ function ConnectionControls({ connection, provider, control, visit, post, open, 
     return (
         <div className="admin-payments-controls flex flex-wrap items-center gap-3">
             {resumable && (
-                <Button variant="primary" className={`admin-payments-resume ${PHONE_BUTTON}`} {...control('resume')} busyLabel={words.text('buttons.opening')} onClick={post('resume', `${onboarding}/resume`)}>
+                <Button wrap variant="primary" className="admin-payments-resume" {...control('resume')} busyLabel={words.text('buttons.opening')} onClick={post('resume', `${onboarding}/resume`)}>
                     {words.text('buttons.resume')}
                 </Button>
             )}

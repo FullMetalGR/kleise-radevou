@@ -1,51 +1,35 @@
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus as PlusIcon, StickyNote } from 'lucide-react';
+
 /*
- * The admin's small glyphs, the Calendar's and Shifts', drawn as inline SVG in the text's colour:
- * the admin's build refuses a character outside ASCII in a built asset, so a caret, a chevron, a
- * plus or a tick is never a glyph of a font. Each is decoration; the control it sits in carries
- * the name.
+ * The admin's small glyphs, the Calendar's and Shifts', drawn by the one icon set every screen
+ * draws from, as inline SVG in the text's colour: the admin's build refuses a character outside
+ * ASCII in a built asset, so a caret, a chevron, a plus or a tick is never a glyph of a font. Each
+ * is decoration, hidden from assistive technology; the control it sits in carries the name.
  */
 
 /** The caret of a control that opens a list under it. */
 export function Caret() {
-    return (
-        <svg viewBox="0 0 16 16" className="size-3 shrink-0" aria-hidden="true" fill="currentColor">
-            <path d="M3.5 6h9L8 11z" />
-        </svg>
-    );
+    return <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />;
 }
 
 /** A chevron pointing back or on, Previous's and Next's face. */
 export function Chevron({ to }: { to: 'previous' | 'next' }) {
-    return (
-        <svg viewBox="0 0 16 16" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-            <path d={to === 'previous' ? 'M10 3.5 5.5 8l4.5 4.5' : 'M6 3.5 10.5 8 6 12.5'} />
-        </svg>
-    );
+    const Icon = to === 'previous' ? ChevronLeft : ChevronRight;
+
+    return <Icon className="size-4.5" aria-hidden="true" />;
 }
 
 /** The tick beside the chosen entry of a list. */
 export function Tick() {
-    return (
-        <svg viewBox="0 0 16 16" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3.5 8.5l3 3 6-7" />
-        </svg>
-    );
+    return <Check className="size-4" aria-hidden="true" />;
 }
 
-/** A folded sheet, the mark of a booking the customer wrote a note on. */
+/** A sheet with a folded corner, the mark of a booking the customer wrote a note on. */
 export function NoteSheet() {
-    return (
-        <svg viewBox="0 0 16 16" className="size-3 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
-            <path d="M3.5 2.5h6l3 3v8h-9z M9.5 2.5v3h3 M5.5 8.5h5 M5.5 11h3.5" />
-        </svg>
-    );
+    return <StickyNote className="size-3 shrink-0" aria-hidden="true" />;
 }
 
 /** The plus of a control that adds a row, a pattern day's second window. */
 export function Plus() {
-    return (
-        <svg viewBox="0 0 16 16" className="size-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
-            <path d="M8 3.5v9M3.5 8h9" />
-        </svg>
-    );
+    return <PlusIcon className="size-4" aria-hidden="true" />;
 }

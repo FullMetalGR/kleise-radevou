@@ -76,10 +76,11 @@ describe('the bookings table', () => {
         expect(rows[1]?.className).toContain('line-through');
     });
 
-    it('draws the customer as a link of the theme colour, deepened to read at body size, and in the body colour where the table is told the names are plain, a button that selects either way', () => {
+    it('draws the customer as a link of the theme colour, deepened to read at body size and underlined under the pointer, and in the body colour with no underline where the table is told the names are plain, a button that selects either way', () => {
         const onSelect = vi.fn();
         render([booking('a')], { onSelect });
         expect(q('.admin-row-select')?.classList.contains('text-primary-deep')).toBe(true);
+        expect(q('.admin-row-select')?.classList.contains('enabled:hover:underline')).toBe(true);
         expect(q('.admin-row-select')?.classList.contains('admin-row-select--plain')).toBe(false);
 
         render([booking('a')], { plainNames: true, onSelect });
@@ -88,6 +89,8 @@ describe('the bookings table', () => {
         expect(name?.classList.contains('admin-row-select--plain')).toBe(true);
         expect(name?.classList.contains('text-primary-deep')).toBe(false);
         expect(name?.classList.contains('text-foreground')).toBe(true);
+        expect(name?.classList.contains('enabled:hover:underline')).toBe(false);
+        expect(name?.classList.contains('enabled:hover:no-underline')).toBe(true);
         press(name);
         expect(onSelect).toHaveBeenCalledWith('a');
     });

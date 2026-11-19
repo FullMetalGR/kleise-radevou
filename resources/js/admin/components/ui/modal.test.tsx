@@ -187,6 +187,15 @@ describe('the modal', () => {
         expect([...(frame()?.classList ?? [])].some((name) => name.startsWith('max-h-'))).toBe(true);
     });
 
+    it('lets the footer\'s actions wrap below the breakpoint, every line still ending at the frame\'s end edge, so a row of long labels never runs out of the start edge where no scroll reaches it', () => {
+        openSingle();
+
+        const footer = [...(document.querySelector('.admin-modal__footer')?.classList ?? [])];
+
+        expect(footer).toEqual(expect.arrayContaining(['flex', 'justify-end', 'gap-2', 'max-desktop:flex-wrap']));
+        expect(footer).not.toContain('flex-wrap');
+    });
+
     it('keeps Tab inside the frame, wrapping at both ends', () => {
         openSingle();
 

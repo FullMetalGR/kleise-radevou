@@ -69,7 +69,7 @@ export function BookingsTable({ rows, total, page, pageSize, staffShown, plainNa
                                         name={customerName(booking, words)}
                                         selected={booking.uuid === selected}
                                         onSelect={() => onSelect(booking.uuid)}
-                                        className={plainNames ? 'admin-row-select--plain text-foreground hover:no-underline' : undefined}
+                                        className={plainNames ? 'admin-row-select--plain text-foreground enabled:hover:no-underline' : undefined}
                                     />
                                 </td>
                                 <td className="admin-bookings__services px-4 py-2 max-desktop:hidden">{distinct(booking.items.map((item) => item.service_name)).join(', ')}</td>

@@ -324,6 +324,31 @@ describe('the admin\'s own theme', () => {
         expect(squeezed(pill[0]?.declarations ?? '')).toMatch(/(^|;)color:var\(--destructive-foreground\)(;|$)/);
     });
 
+    it('builds the link\'s deepened primary and the destructive primary\'s ink as rules that name their tokens, so a utility the button writes is never left without a rule', () => {
+        for (const [selector, token] of [
+            ['.text-primary-deep', '--primary-deep'],
+            ['.text-destructive-foreground', '--destructive-foreground'],
+        ]) {
+            const rules = rulesOf(ADMIN).filter((rule) => rule.selector === selector);
+
+            expect(rules).toHaveLength(1);
+            expect(squeezed(rules[0]?.declarations ?? '')).toMatch(new RegExp(`(^|;)color:var\\(${token}\\)(;|$)`));
+        }
+    });
+
+    it('builds the focus ring as a 3px outline of the theme colour on keyboard focus alone, and draws the icon set\'s strokes a little lighter than its own', () => {
+        const ring = rulesOf(ADMIN).filter((rule) => rule.selector === '.focus-ring:focus-visible');
+
+        expect(ring).toHaveLength(1);
+        expect(squeezed(ring[0]?.declarations ?? '')).toMatch(/(^|;)outline:3pxsolidvar\(--primary\)(;|$)/);
+        expect(squeezed(ring[0]?.declarations ?? '')).toMatch(/(^|;)outline-offset:2px(;|$)/);
+
+        const stroke = rulesOf(ADMIN).filter((rule) => rule.selector === '.lucide');
+
+        expect(stroke).toHaveLength(1);
+        expect(squeezed(stroke[0]?.declarations ?? '')).toMatch(/(^|;)stroke-width:1\.8(px)?(;|$)/);
+    });
+
     it('takes the brand\'s primary into the scope from the brand\'s tokens and nothing else', () => {
         const scope = rulesOf(ADMIN).find((rule) => rule.selector === '.brand-scope');
 

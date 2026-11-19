@@ -1245,6 +1245,6 @@ describe('Home\'s To mark', () => {
         expect(classesOf(rowPart('t1', 'complete'))).toContain('max-desktop:flex-1');
         expect(classesOf(rowPart('t1', 'no-show'))).toContain('max-desktop:flex-1');
         expect(classesOf(view.host.querySelector('.admin-home-to-mark__bulk'))).toEqual(expect.arrayContaining(['max-desktop:flex-col', 'max-desktop:items-stretch']));
-        ['mark-completed', 'mark-no-show', 'mark-rest'].forEach((name) => expect(classesOf(view.host.querySelector(`.admin-home-to-mark__${name}`))).toEqual(expect.arrayContaining(['max-desktop:w-full', 'max-desktop:h-auto', 'max-desktop:whitespace-normal'])));
+        ['mark-completed', 'mark-no-show', 'mark-rest'].forEach((name) => expect(classesOf(view.host.querySelector(`.admin-home-to-mark__${name}`))).toEqual(expect.arrayContaining(['max-desktop:w-full', 'max-desktop:h-auto', 'max-desktop:min-h-11', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal'])));
     });
 });

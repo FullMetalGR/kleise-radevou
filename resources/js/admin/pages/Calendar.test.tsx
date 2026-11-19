@@ -487,6 +487,13 @@ describe('the calendar screen', () => {
         expect(view.host.querySelector('.admin-calendar-today')?.textContent).toBe(cal.text('toolbar.today'));
         expect(view.host.querySelector('.admin-calendar-previous')?.getAttribute('aria-label')).toBe(cal.text('toolbar.previous'));
         expect(view.host.querySelector('.admin-calendar-next')?.getAttribute('aria-label')).toBe(cal.text('toolbar.next'));
+        // The toolbar and the filters are dense rows: their buttons take the small height, the two chevrons round with their names kept for a screen reader.
+        expect(['.admin-calendar-today', '.admin-calendar-previous', '.admin-calendar-next', '.admin-calendar-who'].map((hook) => view.host.querySelector(hook)?.classList.contains('admin-button--small'))).toEqual([true, true, true, true]);
+        expect(['previous', 'next'].map((name) => [...(view.host.querySelector(`.admin-calendar-${name}`)?.classList ?? [])].filter((each) => ['admin-button--icon-only', 'size-9', 'w-8', 'px-0'].includes(each)))).toEqual([
+            ['admin-button--icon-only', 'size-9'],
+            ['admin-button--icon-only', 'size-9'],
+        ]);
+        expect(['previous', 'next'].map((name) => view.host.querySelector(`.admin-calendar-${name} .sr-only`)?.textContent)).toEqual([cal.text('toolbar.previous'), cal.text('toolbar.next')]);
         expect([...view.host.querySelectorAll('.admin-calendar-filters label')].map((label) => label.textContent)).toEqual([cal.text('who.label'), cal.text('filters.status'), cal.text('filters.service'), cal.text('filters.colour_by')]);
         expect(view.host.querySelector('.admin-calendar-status option')?.textContent).toBe(cal.text('filters.any_status'));
         expect([...view.host.querySelectorAll('.admin-calendar-service option')].map((option) => option.textContent)).toEqual([cal.text('filters.all_services'), 'Haircut', 'Colour', cal.text('filters.inactive_service', { service: 'Bridal trial' })]);

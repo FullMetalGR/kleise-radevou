@@ -274,6 +274,11 @@ describe('the list', () => {
         expect(text('.admin-staff-screen h1')).toBe(staff.text('page.title'));
         expect(inertia.title).toBe(staff.text('page.title'));
 
+        // The title's row wraps, so its two buttons drop under the title where a phone's row is narrower than the three.
+        const head = document.querySelector('.admin-staff-screen h1')?.parentElement;
+        expect(head?.contains(document.querySelector('.admin-staff-new'))).toBe(true);
+        expect(head?.classList.contains('flex-wrap')).toBe(true);
+
         press(document.querySelector('.admin-staff-shifts'));
         expect(inertia.get.mock.lastCall?.[0]).toBe('/admin/shifts');
     });

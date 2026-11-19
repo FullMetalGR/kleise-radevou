@@ -278,6 +278,8 @@ function ChangeControl({ change, busy, disabled, onPress }: ControlProps & { cha
 /**
  * The payment card: the provider's portal, with the VAT line and, once the router has loaded it,
  * the tax id line above its button; nothing stands in the tax id line's place before it arrives.
+ * The button says in full what the portal is for and is wider than the card on a phone in a
+ * language of longer words, so its label wraps there.
  */
 function Payment({ busy, disabled, onPress, vat, taxId }: ControlProps & { vat: string | null; taxId: string | undefined }) {
     const words = useBilling();
@@ -291,7 +293,7 @@ function Payment({ busy, disabled, onPress, vat, taxId }: ControlProps & { vat: 
                 <p className="text-sm">{words.text('payment.sentence')}</p>
                 {vat !== null && <p className="admin-billing__vat text-sm">{vat}</p>}
                 {taxId !== undefined && <p className="admin-billing__tax-id text-sm">{taxId}</p>}
-                <Button className="admin-billing__portal" busy={busy} busyLabel={words.text('payment.busy')} disabled={disabled} onClick={onPress}>
+                <Button wrap className="admin-billing__portal" busy={busy} busyLabel={words.text('payment.busy')} disabled={disabled} onClick={onPress}>
                     {words.text('payment.button')}
                 </Button>
             </div>

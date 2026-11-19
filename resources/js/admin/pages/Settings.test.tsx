@@ -1385,7 +1385,7 @@ describe('Payments with nothing connected', () => {
         expect(buttons).toHaveLength(3);
 
         for (const button of buttons) {
-            expect([...button.classList]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
+            expect([...button.classList]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:min-h-11', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
         }
     });
 
@@ -1957,6 +1957,14 @@ describe('Payments with a connection', () => {
         expect(inertia.post).toHaveBeenCalledTimes(1);
     });
 
+    it('underlines at rest the link that follows the information sentence, whose colour alone does not tell it from the sentence', () => {
+        const due = { currently_due: ['individual.verification.document'], past_due: [] };
+        render(propsWith({ payments: platformRow({ state: 'active', requirements: due, information_due: true }) }));
+
+        expect(document.querySelector('.admin-payments-due__open')?.classList.contains('underline')).toBe(true);
+        expect(document.querySelector('.admin-payments-due__open')?.classList.contains('admin-button--link')).toBe(true);
+    });
+
     it('carries no information line on an active row whose provider lists nothing, and no link where this build no longer registers the provider', () => {
         render(propsWith({ payments: platformRow({ state: 'active', requirements: null, information_due: false }) }));
         expect(document.querySelector('.admin-payments-due')).toBeNull();
@@ -1978,7 +1986,7 @@ describe('Payments with a connection', () => {
     it('lets the button that resumes an onboarding wrap below the desktop breakpoint, held to its row as a mode\'s button is', () => {
         render(propsWith({ payments: platformRow({ state: 'restricted', last_check_ok: false, requirements: { outstanding: ['bank_account'] } }) }));
 
-        expect([...(document.querySelector('.admin-payments-resume')?.classList ?? [])]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
+        expect([...(document.querySelector('.admin-payments-resume')?.classList ?? [])]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:min-h-11', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
     });
 
     it('resumes the onboarding of a restricted row, busy alone with every other write held, and words the 404 where nothing is left to resume', () => {

@@ -202,7 +202,7 @@ function MemberRow({ member, hue, dates, days, minutes, pattern, words, clock, e
                         <span className="admin-shifts__row-head text-xs text-muted-foreground">{rowHead(minutes, pattern, words, clock)}</span>
                     </span>
                     {editable && (
-                        <Button variant="tertiary" className="admin-shifts__pattern ml-auto px-2" aria-label={words.text('page.edit_pattern', { name: member.name })} onClick={onEditPattern}>
+                        <Button variant="tertiary" size="small" className="admin-shifts__pattern ml-auto px-2" aria-label={words.text('page.edit_pattern', { name: member.name })} onClick={onEditPattern}>
                             {words.text('page.pattern')}
                         </Button>
                     )}
@@ -218,17 +218,17 @@ function MemberRow({ member, hue, dates, days, minutes, pattern, words, clock, e
 function WeekBar({ week, last, loading, words, clock, onRead }: { week: ShiftWeek; last: string; loading: boolean; words: ShiftWords; clock: TenantClock; onRead: (query: Record<string, string>) => void }) {
     return (
         <div className="admin-shifts__bar flex flex-wrap items-center gap-2">
-            <Button className="admin-shifts__this-week" disabled={loading} onClick={() => onRead({})}>
+            <Button size="small" className="admin-shifts__this-week" disabled={loading} onClick={() => onRead({})}>
                 {words.text('page.this_week')}
             </Button>
-            <Button className="admin-shifts__previous w-8 px-0" disabled={loading} aria-label={words.text('page.previous')} onClick={() => onRead({ week: addDays(week.from, -7) })}>
-                <Chevron to="previous" />
+            <Button iconOnly size="small" icon={<Chevron to="previous" />} className="admin-shifts__previous" disabled={loading} aria-label={words.text('page.previous')} onClick={() => onRead({ week: addDays(week.from, -7) })}>
+                {words.text('page.previous')}
             </Button>
             <h2 className="admin-shifts__week text-base font-semibold" aria-busy={loading ? true : undefined}>
                 {words.text('page.week', { from: formatDate(week.from, clock), to: formatDate(last, clock) })}
             </h2>
-            <Button className="admin-shifts__next w-8 px-0" disabled={loading} aria-label={words.text('page.next')} onClick={() => onRead({ week: addDays(week.from, 7) })}>
-                <Chevron to="next" />
+            <Button iconOnly size="small" icon={<Chevron to="next" />} className="admin-shifts__next" disabled={loading} aria-label={words.text('page.next')} onClick={() => onRead({ week: addDays(week.from, 7) })}>
+                {words.text('page.next')}
             </Button>
             {loading && <span className="admin-shifts__loading text-sm text-muted-foreground">{words.text('page.loading')}</span>}
         </div>

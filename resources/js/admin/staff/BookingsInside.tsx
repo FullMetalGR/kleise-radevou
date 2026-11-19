@@ -303,7 +303,9 @@ export function InsideList({ asked, staffShown, clock, reasonTyped }: ListProps)
  * The list step's buttons: Back, then one per answer offered, the press in flight busy and the
  * rest held. held: the owner has another write of its own in flight, a closure being removed from
  * the card the list stands in, and every button waits for it, since a second visit would cut the
- * first one short and lose what it had to say.
+ * first one short and lose what it had to say. An answer names what it does and how many bookings
+ * it does it to, which in a language of longer words is wider than a phone's dialog, so its
+ * label may wrap there.
  */
 export function InsideChoices({ adding, held = false }: { adding: ClosureAdd; held?: boolean }) {
     const shell = useShell();
@@ -323,6 +325,7 @@ export function InsideChoices({ adding, held = false }: { adding: ClosureAdd; he
             {asked.choices.map((choice) => (
                 <Button
                     key={choice}
+                    wrap
                     variant={choice === 'cancel' ? 'primary' : 'secondary'}
                     destructive={choice === 'cancel'}
                     className={`admin-inside__${choice}`}
@@ -379,7 +382,7 @@ export function BookingsToMove({ rows, staffShown, clock, weekStart, onDone }: T
         );
 
     return (
-        <Modal open title={shell.text('shared.closure.to_move')} onClose={booking !== null ? form.back : onDone} footer={<div className="flex justify-end gap-2">{footer}</div>} className="admin-to-move max-w-2xl">
+        <Modal open title={shell.text('shared.closure.to_move')} onClose={booking !== null ? form.back : onDone} footer={<div className="flex flex-wrap justify-end gap-2">{footer}</div>} className="admin-to-move max-w-2xl">
             {form.failure !== null && <Notice kind="error">{form.failure}</Notice>}
             {booking !== null ? (
                 <MoveFields form={form} booking={booking} staffShown={staffShown} clock={clock} weekStart={weekStart} />

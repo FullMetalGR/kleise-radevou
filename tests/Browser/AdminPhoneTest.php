@@ -17,7 +17,9 @@ use Tests\Support\LunaFixture;
  * booking dialog filling the screen; Bookings lists Customer, When, Status and Total and opens the
  * dialog from a row, its footer pinned under a body that scrolls; the dialog's Cancel goes through
  * its confirm to the toast, inside the screen and clear of the dialog's actions. Each walk opens
- * the rail from the control and reaches another screen through it. A walk reads the Menu control
+ * the rail from the control and reaches another screen through it. The dialog of a confirmed
+ * booking is opened once more by an owner who reads Greek, where its three actions are wider than
+ * its footer, and each stands inside the dialog. A walk reads the Menu control
  * carrying the pending count the rail's Bookings entry carries, so a request waiting is seen with
  * the drawer closed, and the others none where none is pending. A last walk reads the wizard,
  * Month, Services, Staff and Settings at the same width, none of them scrolling the page sideways,
@@ -204,6 +206,30 @@ it('cancels a booking from the dialog on a phone through its confirm to the toas
         ->waitForText('Beard trim')
         ->assertPathIs('/admin/services')
         ->assertNotPresent(PHONE_DRAWER)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertNoJavaScriptErrors();
+});
+
+it('keeps the actions of a confirmed booking\'s dialog inside the dialog on a phone in Greek, where Cancel, Move and Close are wider than its footer', function () {
+    phoneBooking('Greta Greek', athensDaysOn(64));
+    // The labels are longer in Greek, and a footer sets its actions against its end edge, so a
+    // row of them too wide runs out of the start edge, where the page never scrolls. The language
+    // is the owner's before the sign-in, as on the walk of every screen.
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/bookings'))
+        ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1'], SiteLanguage::Greek))
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value)
+        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390);
+
+    $page->click('Greta Greek')
+        ->waitForText(adminLine('admin/bookings.dialog.items.title', [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-booking-action--cancel', adminLine('admin/bookings.actions.cancel', [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-booking-move', adminLine('admin/bookings.move.open', [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-booking-close', adminLine('admin/bookings.dialog.close', [], SiteLanguage::Greek))
+        ->assertScript(PhoneScripts::DIALOG_FILLS_SCREEN, true)
+        ->assertScript(PhoneScripts::DIALOG_FOOTER_BUTTONS_INSIDE, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
 });

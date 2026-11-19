@@ -86,7 +86,7 @@ type DayProps = {
  * A weekday's row of the grid: the checkbox, the weekday, the window's line across three
  * columns, the plus and Remove.
  */
-const ROW = 'grid grid-cols-[1.5rem_7.5rem_minmax(0,1fr)_auto_minmax(0,1fr)_2rem_auto] items-center gap-2';
+const ROW = 'grid grid-cols-[1.5rem_7.5rem_minmax(0,1fr)_auto_minmax(0,1fr)_2.25rem_auto] items-center gap-2';
 
 /** The window line's words between and around its two fields. */
 function windowWords(words: string): ReactNode {
@@ -158,8 +158,8 @@ function PatternDay({ weekday, windows, busy, clock, granularity, words, onTick,
                             )}
                         </span>
                         {position === 0 && windows.length < MOST_WINDOWS ? (
-                            <Button variant="tertiary" className="admin-shift-pattern__add w-8 px-0" aria-label={words.text('pattern.add_second')} disabled={busy} onClick={() => onAdd(first)}>
-                                <Plus />
+                            <Button variant="tertiary" iconOnly size="small" icon={<Plus />} className="admin-shift-pattern__add" aria-label={words.text('pattern.add_second')} disabled={busy} onClick={() => onAdd(first)}>
+                                {words.text('pattern.add_second')}
                             </Button>
                         ) : (
                             <span />
@@ -203,7 +203,7 @@ export function PatternEditor({ member, pattern, weekdays, weekFrom, clock, week
     const remove = (at: WeeklyWindow) => setWindows((current) => current.filter((window) => window !== at));
 
     const footer = (
-        <div className="flex w-full justify-end gap-2">
+        <div className="flex w-full flex-wrap justify-end gap-2">
             <Button className="admin-shift-pattern__cancel" onClick={onClose} disabled={busy}>
                 {words.text('pattern.cancel')}
             </Button>

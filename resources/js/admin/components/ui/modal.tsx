@@ -6,6 +6,9 @@ import { cn } from '@/lib/utils';
  * The modal, shadcn/ui's dialog on Radix, copied in and edited where the admin needs it to differ
  * from the primitive. Backdrop and frame, the dialog role, aria-modal, a title, and an optional
  * footer that pins its actions outside the scrolling body so a long body cannot push them away.
+ * The actions are set against the footer's end edge and no button gives up width, so a row of
+ * them wider than a phone would run out of the start edge, where no scroll reaches: below the
+ * admin's breakpoint the row wraps, every line still ending at the end edge.
  * Focus moves into the frame on open, stays there under Tab and Shift+Tab, and goes back on close
  * to whatever held it at open. Escape closes.
  *
@@ -166,7 +169,7 @@ export function Modal({ open, title, onClose, footer, aside, variant = 'centred'
                         >
                             <Heading title={title} aside={aside} />
                             <div className="admin-modal__body min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
-                            {footer !== undefined && <div className="admin-modal__footer flex shrink-0 justify-end gap-2 border-t px-5 py-3">{footer}</div>}
+                            {footer !== undefined && <div className="admin-modal__footer flex shrink-0 justify-end gap-2 border-t px-5 py-3 max-desktop:flex-wrap">{footer}</div>}
                         </DialogPrimitive.Content>
                     </DialogPrimitive.Overlay>
                 </Enclosing.Provider>

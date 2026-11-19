@@ -4,9 +4,12 @@ import { mount, press, type Mounted } from './harness';
 
 /*
  * The button: four variants with secondary the default, a destructive flag orthogonal to them,
- * and a busy state that shows a spinner before the label, sets aria-busy and disables the
- * control, and the busy label is the text stating why it is disabled, required wherever busy is
- * written. A press on a busy or disabled button fires nothing.
+ * three heights, an icon before the label or in its place, a long label let to wrap below the
+ * breakpoint where the button is told to, and a busy state that shows a spinner before the label,
+ * sets aria-busy and disables the control, and the busy label is the text stating why it is
+ * disabled, required wherever busy is written. A press on a busy or disabled button fires
+ * nothing. The look is read by class: hover, press and focus are states a component test cannot
+ * enter, and the browser suite runs with motion off.
  */
 
 let view: Mounted;
@@ -18,6 +21,8 @@ beforeEach(() => {
 afterEach(() => view.unmount());
 
 const button = () => view.host.querySelector<HTMLButtonElement>('button');
+
+const classesOf = (element: Element | null | undefined): string[] => [...(element?.classList ?? [])];
 
 describe('the button', () => {
     it('renders each of the four variants under a class of its own, secondary by default', () => {
@@ -74,6 +79,213 @@ describe('the button', () => {
         );
         expect(button()?.classList.contains('text-destructive')).toBe(true);
         expect(button()?.classList.contains('text-primary-deep')).toBe(false);
+    });
+
+    it('is 44px by default, 36 small, 48 large, a pill in bold type at every height', () => {
+        view.render(<Button>Save</Button>);
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['h-11', 'px-4.5', 'rounded-full', 'font-bold', 'text-body-sm']));
+        expect(classesOf(button())).not.toEqual(expect.arrayContaining(['admin-button--small']));
+        expect(classesOf(button())).not.toEqual(expect.arrayContaining(['admin-button--large']));
+
+        view.render(<Button size="small">Save</Button>);
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['admin-button--small', 'h-9', 'px-3.5', 'text-sm', 'rounded-full']));
+        expect(classesOf(button())).not.toContain('h-11');
+        expect(classesOf(button())).not.toContain('text-body-sm');
+
+        view.render(
+            <Button variant="primary" size="large">
+                Save
+            </Button>,
+        );
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['admin-button--large', 'h-12', 'rounded-full']));
+        expect(classesOf(button())).not.toContain('h-11');
+    });
+
+    it('keeps a link the height of its line at any size, for use inside a sentence or a table cell', () => {
+        view.render(
+            <Button variant="link" size="small">
+                Open
+            </Button>,
+        );
+
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['h-auto', 'p-0']));
+        expect(classesOf(button())).not.toContain('h-9');
+        expect(classesOf(button())).not.toContain('admin-button--small');
+    });
+
+    it('lets a long label wrap below the breakpoint where it is told to: held to its row, as high as its lines and never under its own height, the lines centred, the one line and the height standing above it', () => {
+        const heights = [
+            ['small', 'h-9', 'max-desktop:min-h-9'],
+            ['default', 'h-11', 'max-desktop:min-h-11'],
+            ['large', 'h-12', 'max-desktop:min-h-12'],
+        ] as const;
+
+        for (const [size, height, least] of heights) {
+            view.render(
+                <Button wrap size={size}>
+                    Go back to the weekly pattern
+                </Button>,
+            );
+
+            expect(classesOf(button())).toEqual(expect.arrayContaining(['max-desktop:h-auto', least, 'max-desktop:max-w-full', 'max-desktop:py-1.5', 'max-desktop:text-center', 'max-desktop:whitespace-normal']));
+            expect(classesOf(button()).filter((name) => name.startsWith('max-desktop:min-h-'))).toEqual([least]);
+            expect(classesOf(button())).toEqual(expect.arrayContaining([height, 'whitespace-nowrap']));
+        }
+
+        view.render(<Button>Save</Button>);
+        expect(classesOf(button()).some((name) => name.startsWith('max-desktop:'))).toBe(false);
+    });
+
+    it('wraps nothing on a link, which keeps to its line, nor on an icon-only button, which shows no label', () => {
+        view.render(
+            <Button wrap variant="link">
+                Open
+            </Button>,
+        );
+        expect(classesOf(button()).some((name) => name.startsWith('max-desktop:'))).toBe(false);
+
+        view.render(
+            <Button wrap iconOnly icon={<svg />}>
+                Next week
+            </Button>,
+        );
+        expect(classesOf(button()).some((name) => name.startsWith('max-desktop:'))).toBe(false);
+        expect(classesOf(button())).toContain('size-11');
+    });
+
+    it('an icon-only button keeps its name: round, square at each height, its label kept for a screen reader', () => {
+        view.render(
+            <Button iconOnly icon={<svg className="test-icon" />}>
+                Next week
+            </Button>,
+        );
+
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['admin-button--icon-only', 'size-11', 'rounded-full']));
+        expect(classesOf(button())).not.toContain('h-11');
+        expect(classesOf(button())).not.toContain('px-4.5');
+        expect(button()?.querySelector('.sr-only')?.textContent).toBe('Next week');
+        expect(button()?.textContent).toBe('Next week');
+        expect(button()?.querySelector('.test-icon')).not.toBeNull();
+
+        view.render(
+            <Button iconOnly size="small" icon={<svg />}>
+                Next week
+            </Button>,
+        );
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['admin-button--icon-only', 'admin-button--small', 'size-9']));
+
+        view.render(
+            <Button iconOnly size="large" icon={<svg />}>
+                Next week
+            </Button>,
+        );
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['admin-button--icon-only', 'admin-button--large', 'size-12']));
+
+        view.render(<Button icon={<svg />}>Next week</Button>);
+        expect(button()?.querySelector('.sr-only')).toBeNull();
+        expect(classesOf(button())).not.toContain('admin-button--icon-only');
+    });
+
+    it('the icon comes before the label and is hidden from assistive technology', () => {
+        view.render(<Button icon={<svg className="test-icon" />}>Add</Button>);
+
+        const icon = button()?.querySelector('.admin-button__icon');
+
+        expect(button()?.firstElementChild).toBe(icon);
+        expect(icon?.getAttribute('aria-hidden')).toBe('true');
+        expect(icon?.querySelector('.test-icon')).not.toBeNull();
+        expect(button()?.textContent).toBe('Add');
+    });
+
+    it('draws a glyph that names no size of its own at 18px, and leaves one that names its size to it', () => {
+        view.render(<Button icon={<svg className="test-icon" />}>Add</Button>);
+        expect(classesOf(button()?.querySelector('.admin-button__icon'))).toContain('[&_svg:not([class*=\'size-\'])]:size-4.5');
+
+        view.render(
+            <Button iconOnly icon={<svg className="test-icon" />}>
+                Add
+            </Button>,
+        );
+        expect(classesOf(button()?.querySelector('.admin-button__icon'))).toContain('[&_svg:not([class*=\'size-\'])]:size-4.5');
+    });
+
+    it('while busy shows the spinner in the icon\'s place, and an icon-only button keeps the busy label for a screen reader', () => {
+        view.render(
+            <Button iconOnly busy busyLabel="Saving..." icon={<svg className="test-icon" />}>
+                Save
+            </Button>,
+        );
+
+        expect(button()?.querySelector('.test-icon')).toBeNull();
+        expect(button()?.firstElementChild).toBe(button()?.querySelector('.admin-button__spinner'));
+        expect(button()?.querySelector('.sr-only')?.textContent).toBe('Saving...');
+    });
+
+    it('draws the primary in the theme colour with a glow, deepened with a stronger glow on hover, the glow gone while disabled', () => {
+        view.render(<Button variant="primary">Save</Button>);
+
+        expect(classesOf(button())).toEqual(
+            expect.arrayContaining(['bg-primary', 'text-primary-foreground', 'shadow-glow', 'enabled:hover:bg-primary-deep', 'enabled:hover:shadow-glow-hover', 'disabled:shadow-none']),
+        );
+    });
+
+    it('sets the secondary on the card with a line inside its edge, darkened with the soft fill on hover, and the tertiary with no line', () => {
+        view.render(<Button>Save</Button>);
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['bg-card', 'inset-ring-[1.5px]', 'inset-ring-border', 'enabled:hover:bg-muted', 'enabled:hover:inset-ring-ink-tertiary']));
+
+        view.render(<Button variant="tertiary">Save</Button>);
+        expect(classesOf(button())).toContain('enabled:hover:bg-muted');
+        expect(classesOf(button()).some((name) => name.includes('inset-ring'))).toBe(false);
+    });
+
+    it('underlines a link on hover alone', () => {
+        view.render(<Button variant="link">Open</Button>);
+
+        expect(classesOf(button())).toContain('enabled:hover:underline');
+        expect(classesOf(button())).not.toContain('underline');
+    });
+
+    it('the destructive secondary is the tinted red, its line the red at 40 percent, full and 2px on hover', () => {
+        view.render(<Button destructive>Delete</Button>);
+
+        expect(classesOf(button())).toEqual(
+            expect.arrayContaining(['bg-destructive-soft', 'text-destructive', 'inset-ring-[1.5px]', 'inset-ring-destructive/40', 'enabled:hover:inset-ring-2', 'enabled:hover:inset-ring-destructive']),
+        );
+        expect(classesOf(button())).not.toContain('bg-card');
+        expect(classesOf(button())).not.toContain('inset-ring-border');
+    });
+
+    it('a destructive primary carries no glow and darkens by brightness on hover', () => {
+        view.render(
+            <Button variant="primary" destructive>
+                Delete
+            </Button>,
+        );
+
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['shadow-none', 'enabled:hover:bg-destructive', 'enabled:hover:brightness-92']));
+        expect(classesOf(button())).not.toContain('shadow-glow');
+        expect(classesOf(button())).not.toContain('enabled:hover:bg-primary-deep');
+    });
+
+    it('every variant carries the focus ring, destructive or not, in place of the faint ring it had', () => {
+        for (const variant of ['primary', 'secondary', 'tertiary', 'link'] satisfies ButtonVariant[]) {
+            for (const destructive of [false, true]) {
+                view.render(
+                    <Button variant={variant} destructive={destructive}>
+                        Save
+                    </Button>,
+                );
+                expect(classesOf(button())).toContain('focus-ring');
+                expect(classesOf(button()).some((name) => name.startsWith('focus-visible:ring'))).toBe(false);
+            }
+        }
+    });
+
+    it('fades to 45 percent while disabled, and shrinks a little while pressed where motion is welcome', () => {
+        view.render(<Button>Save</Button>);
+
+        expect(classesOf(button())).toEqual(expect.arrayContaining(['disabled:opacity-45', 'disabled:cursor-not-allowed', 'motion-safe:enabled:active:scale-98']));
+        expect(classesOf(button()).filter((name) => /(^|:)(transition|duration|ease|scale)/.test(name)).every((name) => name.startsWith('motion-safe:'))).toBe(true);
     });
 
     it('is normal with no spinner, no aria-busy and enabled', () => {

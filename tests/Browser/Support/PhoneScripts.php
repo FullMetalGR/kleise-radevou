@@ -79,6 +79,26 @@ final class PhoneScripts
         JS;
 
     /**
+     * True when every button in the footer of each open dialog stands inside that dialog's frame
+     * from side to side. A footer sets its actions against its end edge, so a row of them wider
+     * than the footer runs out of the frame's start edge, where no scroll reaches it and no scroll
+     * size grows to tell of it: each button's own box is held to the frame's.
+     */
+    public const string DIALOG_FOOTER_BUTTONS_INSIDE = <<<'JS'
+        document.fonts.ready.then(() => {
+            const frames = Array.from(document.querySelectorAll('.admin-modal__frame')).filter((frame) => frame.querySelector(':scope > .admin-modal__footer') !== null);
+            return frames.length > 0 && frames.every((frame) => {
+                const box = frame.getBoundingClientRect();
+                const buttons = Array.from(frame.querySelectorAll(':scope > .admin-modal__footer button'));
+                return buttons.length > 0 && buttons.every((button) => {
+                    const own = button.getBoundingClientRect();
+                    return own.left >= box.left - 1 && own.right <= box.right + 1;
+                });
+            });
+        })
+        JS;
+
+    /**
      * True when, in every row of the open dialog's items table, each cell's text stands at least
      * half a rem clear of the next cell's, so two columns at the phone's width never read as one.
      */

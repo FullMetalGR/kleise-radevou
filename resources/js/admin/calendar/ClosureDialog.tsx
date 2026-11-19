@@ -221,7 +221,7 @@ export function ClosureDialog({ onClose, members, clock, weekStart, granularity,
     }
 
     const footer = (
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
             <Button className="admin-closure__cancel" onClick={onClose} disabled={busy}>
                 {words.text('closure.cancel')}
             </Button>

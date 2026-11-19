@@ -280,6 +280,12 @@ describe('the portal', () => {
         expect(text('.admin-billing__portal')).toContain(words.text('payment.busy'));
         expect(button('.admin-billing__change-button').disabled).toBe(true);
     });
+
+    it('holds the portal\'s button to its card and lets its label wrap below the desktop breakpoint, where a label wider than a phone would pass the card\'s edge', () => {
+        render(ACTIVE);
+
+        expect([...button('.admin-billing__portal').classList]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:min-h-11', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
+    });
 });
 
 describe('the tax lines', () => {

@@ -248,14 +248,14 @@ export default function Staff() {
             <StaffProvider words={words}>
                 <Head title={words.text('page.title')} />
                 <div className="admin-staff-screen flex flex-col gap-4">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                         <h1 className="text-2xl font-semibold">{words.text('page.title')}</h1>
                         {editable && (
                             <div className="flex items-center gap-2">
-                                <Button variant="secondary" className="admin-staff-shifts" onClick={() => router.get(SHIFTS_PATH)}>
+                                <Button variant="secondary" size="small" className="admin-staff-shifts" onClick={() => router.get(SHIFTS_PATH)}>
                                     {words.text('page.shifts')}
                                 </Button>
-                                <Button variant="primary" className="admin-staff-new" onClick={() => go(`${LIST}/new`)}>
+                                <Button variant="primary" size="small" className="admin-staff-new" onClick={() => go(`${LIST}/new`)}>
                                     {words.text('page.new')}
                                 </Button>
                             </div>

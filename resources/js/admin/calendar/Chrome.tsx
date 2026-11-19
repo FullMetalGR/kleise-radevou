@@ -50,14 +50,14 @@ export function Toolbar({ views, calendar, title, titleId }: ToolbarProps) {
         <div className="admin-calendar-toolbar flex flex-wrap items-center gap-3">
             <Segmented<View> label={words.text('toolbar.view')} options={views.map((value) => ({ value, label: words.text(VIEW_LABELS[value]) }))} value={calendar.view} onChange={calendar.setView} className="admin-calendar-view" />
             <div className="admin-calendar-moves flex items-center gap-2">
-                <Button className="admin-calendar-today" onClick={calendar.goToday}>
+                <Button size="small" className="admin-calendar-today" onClick={calendar.goToday}>
                     {words.text('toolbar.today')}
                 </Button>
-                <Button className="admin-calendar-previous w-8 px-0" onClick={calendar.previous} aria-label={words.text('toolbar.previous')}>
-                    <Chevron to="previous" />
+                <Button iconOnly size="small" icon={<Chevron to="previous" />} className="admin-calendar-previous" onClick={calendar.previous} aria-label={words.text('toolbar.previous')}>
+                    {words.text('toolbar.previous')}
                 </Button>
-                <Button className="admin-calendar-next w-8 px-0" onClick={calendar.next} aria-label={words.text('toolbar.next')}>
-                    <Chevron to="next" />
+                <Button iconOnly size="small" icon={<Chevron to="next" />} className="admin-calendar-next" onClick={calendar.next} aria-label={words.text('toolbar.next')}>
+                    {words.text('toolbar.next')}
                 </Button>
             </div>
             <h2 id={titleId} className="admin-calendar-title text-base font-semibold">
@@ -178,7 +178,7 @@ function WhoField({ filters, options, own, pinned, shown, colours, onChange }: O
             {(control) => (
                 <Popover open={open && !pinned} onOpenChange={setOpen}>
                     <PopoverTrigger asChild>
-                        <Button {...control} disabled={pinned} aria-haspopup="dialog" className="admin-calendar-who w-full justify-between font-normal">
+                        <Button {...control} size="small" disabled={pinned} aria-haspopup="dialog" className="admin-calendar-who w-full justify-between font-normal">
                             <span className="truncate">{whoSummary(who, picked, options.staff, words)}</span>
                             <Caret />
                         </Button>

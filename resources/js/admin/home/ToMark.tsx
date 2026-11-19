@@ -169,11 +169,10 @@ function Day({ day, first, ...rows }: Rows & { day: ToMarkDay; first: boolean })
 
 /**
  * The bulk controls: the two marks of the selection beside its count while a row is selected,
- * and the rest marked completed whenever a row is listed, whatever is selected.
+ * and the rest marked completed whenever a row is listed, whatever is selected. Below the admin's
+ * breakpoint each takes the card's full width and lets a long label wrap inside it.
  */
 function Bulk({ listed, selected, words, onAsk }: { listed: string[]; selected: string[]; words: HomeWords; onAsk: (asking: Asking, from: HTMLElement) => void }) {
-    const phone = 'max-desktop:h-auto max-desktop:min-h-8 max-desktop:w-full max-desktop:py-1 max-desktop:whitespace-normal';
-
     return (
         <div className="admin-home-to-mark__bulk flex flex-wrap items-center gap-2 border-t px-4 py-3 max-desktop:flex-col max-desktop:items-stretch">
             {selected.length > 0 && (
@@ -181,15 +180,15 @@ function Bulk({ listed, selected, words, onAsk }: { listed: string[]; selected: 
                     <span className="admin-home-to-mark__selected text-sm text-muted-foreground" aria-live="polite">
                         {words.choice('to_mark.selected', selected.length, { count: formatCount(selected.length, words.locale) })}
                     </span>
-                    <Button className={`admin-home-to-mark__mark-completed ${phone}`} onClick={(event) => onAsk({ outcome: 'completed', uuids: selected }, event.currentTarget)}>
+                    <Button wrap className="admin-home-to-mark__mark-completed max-desktop:w-full" onClick={(event) => onAsk({ outcome: 'completed', uuids: selected }, event.currentTarget)}>
                         {words.text('to_mark.mark_completed')}
                     </Button>
-                    <Button className={`admin-home-to-mark__mark-no-show ${phone}`} onClick={(event) => onAsk({ outcome: 'no_show', uuids: selected }, event.currentTarget)}>
+                    <Button wrap className="admin-home-to-mark__mark-no-show max-desktop:w-full" onClick={(event) => onAsk({ outcome: 'no_show', uuids: selected }, event.currentTarget)}>
                         {words.text('to_mark.mark_no_show')}
                     </Button>
                 </>
             )}
-            <Button className={`admin-home-to-mark__mark-rest ${phone} desktop:ml-auto`} onClick={(event) => onAsk({ outcome: 'completed', uuids: listed }, event.currentTarget)}>
+            <Button wrap className="admin-home-to-mark__mark-rest max-desktop:w-full desktop:ml-auto" onClick={(event) => onAsk({ outcome: 'completed', uuids: listed }, event.currentTarget)}>
                 {words.text('to_mark.mark_rest')}
             </Button>
         </div>

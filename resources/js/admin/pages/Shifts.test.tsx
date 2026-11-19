@@ -341,6 +341,7 @@ describe('the week grid', () => {
         expect(texts('.admin-shifts__initials')).toEqual(['EP', 'NG', 'M']);
         expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([2, 3, 4].map((id) => `0 0 0 2px ${hueOf(id, [])}`));
         expect(q('.admin-shifts__row[data-staff="2"] .admin-shifts__member > div')?.lastElementChild?.classList.contains('admin-shifts__pattern')).toBe(true);
+        expect(q('.admin-shifts__row[data-staff="2"] .admin-shifts__pattern')?.classList.contains('admin-button--small')).toBe(true);
         expect([...document.querySelectorAll('.admin-shifts__name')].map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
             ['Elena Papadaki', '/admin/staff/2'],
             ['Nikos Georgiou', '/admin/staff/3'],
@@ -441,7 +442,14 @@ describe('the week\'s controls', () => {
         expect([...(q('.admin-shifts__bar')?.children ?? [])].slice(0, 4).map((element) => element.className.split(' ').find((name) => name.startsWith('admin-shifts__')))).toEqual(['admin-shifts__this-week', 'admin-shifts__previous', 'admin-shifts__week', 'admin-shifts__next']);
         expect([q('.admin-shifts__previous')?.getAttribute('aria-label'), q('.admin-shifts__next')?.getAttribute('aria-label')]).toEqual([words.text('page.previous'), words.text('page.next')]);
         expect([q('.admin-shifts__previous svg'), q('.admin-shifts__next svg')].every((glyph) => glyph !== null)).toBe(true);
-        expect(q('.admin-shifts__previous')?.textContent).toBe('');
+        // The bar is a dense row: its buttons take the small height, the two chevrons round with their names kept for a screen reader.
+        expect(['this-week', 'previous', 'next'].map((name) => q(`.admin-shifts__${name}`)?.classList.contains('admin-button--small'))).toEqual([true, true, true]);
+        expect(['previous', 'next'].map((name) => [...(q(`.admin-shifts__${name}`)?.classList ?? [])].filter((each) => ['admin-button--icon-only', 'size-9', 'w-8', 'px-0'].includes(each)))).toEqual([
+            ['admin-button--icon-only', 'size-9'],
+            ['admin-button--icon-only', 'size-9'],
+        ]);
+        expect([q('.admin-shifts__previous .sr-only')?.textContent, q('.admin-shifts__next .sr-only')?.textContent]).toEqual([words.text('page.previous'), words.text('page.next')]);
+        expect(q('.admin-shifts__previous')?.textContent).toBe(words.text('page.previous'));
 
         press(q('.admin-shifts__next'));
         const [url, query, visit] = lastVisit(inertia.get);
@@ -487,6 +495,8 @@ describe('the day editor', () => {
         expect(q('.admin-shift-day__pattern')?.textContent).toBe(words.text('editor.pattern_gives', { windows: '10:00-19:00' }));
         expect(q('.admin-shift-day__add')?.textContent).toBe(words.text('editor.add_second'));
         expect(q('.admin-shift-day__back')?.textContent).toBe(words.text('editor.back'));
+        // Its label is wider than a phone's dialog in a language of longer words, so it wraps there, held to its row.
+        expect([...(q('.admin-shift-day__back')?.classList ?? [])]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:min-h-11', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
     });
 
     it('is composed as a card: Remove and Not working this day destructive text actions, Add a second window outlined, Not working this day at the foot\'s start and Save last', () => {
@@ -495,7 +505,8 @@ describe('the day editor', () => {
 
         expect(q('.admin-shift-day__remove')?.classList.contains('text-destructive')).toBe(true);
         expect(q('.admin-shift-day__off')?.classList.contains('text-destructive')).toBe(true);
-        expect(q('.admin-shift-day__add')?.classList.contains('border-border')).toBe(true);
+        expect(q('.admin-shift-day__add')?.classList.contains('inset-ring-border')).toBe(true);
+        expect(q('.admin-shift-day__add')?.classList.contains('inset-ring-[1.5px]')).toBe(true);
 
         const foot = q('.admin-shift-day__foot');
         const buttons = [...(foot?.querySelectorAll('button') ?? [])].map((button) => button.className.split(' ').find((name) => name.startsWith('admin-shift-day__')));
@@ -697,6 +708,8 @@ describe('the pattern editor', () => {
         expect([inDay(2, '.admin-shift-pattern__start')?.getAttribute('aria-label'), inDay(2, '.admin-shift-pattern__end')?.getAttribute('aria-label')]).toEqual([words.text('pattern.start'), words.text('pattern.end')]);
         expect(inDay(2, '.admin-shift-pattern__add')?.getAttribute('aria-label')).toBe(words.text('pattern.add_second'));
         expect(inDay(2, '.admin-shift-pattern__add svg')).not.toBeNull();
+        expect([...(inDay(2, '.admin-shift-pattern__add')?.classList ?? [])].filter((each) => ['admin-button--tertiary', 'admin-button--icon-only', 'admin-button--small', 'size-9', 'w-8', 'px-0'].includes(each))).toEqual(['admin-button--tertiary', 'admin-button--icon-only', 'admin-button--small', 'size-9']);
+        expect(inDay(2, '.admin-shift-pattern__add .sr-only')?.textContent).toBe(words.text('pattern.add_second'));
         expect(inDay(2, '.admin-shift-pattern__remove')?.classList.contains('text-destructive')).toBe(true);
         expect(q('.admin-shift-pattern__summary')?.textContent).toBe(words.text('pattern.hours', { hours: unitFigure(45, 'hour', 'en') }));
     });

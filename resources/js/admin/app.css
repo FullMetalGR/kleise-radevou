@@ -437,6 +437,27 @@
         font-family: var(--font-display);
         letter-spacing: -0.03em;
     }
+
+    /*
+     * The icon set's strokes, drawn a little lighter than the set's own 2, so an icon sits with
+     * the text face's weight. Being base, a stroke utility on one icon still wins.
+     */
+    .lucide {
+        stroke-width: 1.8;
+    }
+}
+
+/*
+ * The keyboard's focus: a 3px outline of the theme colour, clear of the control by 2px. It reads
+ * the primary, not the ring token, because Neutral's ring is too faint against white to be seen,
+ * and it is a utility each control carries rather than a rule on every element, because this
+ * stylesheet also reaches the signup page's site header and footer, which keep their own.
+ */
+@utility focus-ring {
+    &:focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+    }
 }
 
 /*

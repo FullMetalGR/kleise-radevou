@@ -20,6 +20,8 @@ import { hoursLine, MOST_WINDOWS, type ShiftWords } from './words';
  * working this day as a destructive text action at its start, then Back to the pattern, Cancel and
  * Save. Save puts the windows as that date's override, Not working this day puts an empty one, and
  * Back to the pattern, shown where the day is an override, deletes it (replace-all for the date).
+ * Back to the pattern is a whole sentence, wider than the dialog on a phone in a language of
+ * longer words, so its button lets the label wrap there.
  *
  * Nothing is optimistic: the action pressed shows busy and the others wait, Cancel, Escape and a
  * backdrop press among them, so the editor stays until the answer arrives; the server's flash
@@ -89,7 +91,7 @@ export function DayEditor({ member, date, windows, source, patternWindows, clock
             </Button>
             <div className="flex flex-wrap gap-2">
                 {source === 'override' && (
-                    <Button className="admin-shift-day__back" disabled={busy && pending !== 'back'} busy={pending === 'back'} busyLabel={words.text('editor.going_back')} onClick={() => write('back')}>
+                    <Button wrap className="admin-shift-day__back" disabled={busy && pending !== 'back'} busy={pending === 'back'} busyLabel={words.text('editor.going_back')} onClick={() => write('back')}>
                         {words.text('editor.back')}
                     </Button>
                 )}

@@ -232,6 +232,16 @@ describe('the closures card over bookings', () => {
         expect(failures).toEqual([]);
     });
 
+    it('lets each answer wrap its label below the desktop breakpoint and holds it to its row, Back staying one line', () => {
+        addOver();
+
+        for (const answer of ['keep', 'move', 'cancel']) {
+            expect([...(one(`.admin-inside__${answer}`)?.classList ?? [])]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:min-h-11', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
+        }
+
+        expect([...(one('.admin-inside__back')?.classList ?? [])].filter((name) => name.startsWith('max-desktop:'))).toEqual([]);
+    });
+
     it('posts an answer as the same body with the answer and the rows shown, and replaces the list where it changed', () => {
         const date = addOver();
         press(one('.admin-inside__cancel'));
