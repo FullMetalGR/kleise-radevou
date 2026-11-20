@@ -292,3 +292,164 @@ describe('the Team screen', () => {
         expect(q('.admin-toast')?.textContent).toContain('The business needs at least one owner.');
     });
 });
+
+/** An element's classes as a list, empty where nothing matches. */
+function classesOf(selector: string): string[] {
+    return [...(q(selector)?.classList ?? [])];
+}
+
+describe('the Team screen\'s layout', () => {
+    it('lays the screen out by its own width', () => {
+        view.render(<Page />);
+
+        expect(classesOf('.admin-team-screen')).toContain('@container');
+    });
+
+    it('puts the count of the team on the header\'s lead line, and nothing beside the title', () => {
+        view.render(<Page />);
+
+        expect(q('.admin-page-header__lead .admin-team-count')?.textContent).toBe(words.choice('page.count', 4));
+        expect(q('.admin-page-header__count')).toBeNull();
+    });
+
+    it('draws Invite someone as a form card and Members as a flush card, neither spelled by hand', () => {
+        view.render(<Page />);
+
+        expect(classesOf('.admin-team-invite')).toEqual(expect.arrayContaining(['bg-card', 'rounded-tile', 'shadow-card', 'px-6.5', 'pt-6', 'pb-6.5']));
+        expect(classesOf('.admin-team-members')).toEqual(expect.arrayContaining(['bg-card', 'rounded-tile', 'shadow-card', 'overflow-clip']));
+
+        for (const card of ['.admin-team-invite', '.admin-team-members']) {
+            expect(q(card)?.tagName).toBe('SECTION');
+            expect(classesOf(card).filter((utility) => ['border', 'rounded-xl', 'p-4', 'overflow-hidden'].includes(utility))).toEqual([]);
+        }
+
+        expect(classesOf('.admin-team-invite > h2#team-invite-title')).toContain('text-card-title');
+        expect(classesOf('.admin-team-members > header > h2#team-members-title')).toContain('text-section-title');
+        expect(classesOf('.admin-team-members > header')).not.toContain('border-b');
+    });
+
+    it('sets Name, Email, the role and Send as one row that stacks where the card holds less than 42rem between its sides and lies on one wrapping line from there', () => {
+        view.render(<Page />);
+
+        const row = q('.admin-team-invite__row');
+        const [name, email, role, send] = [...(row?.children ?? [])];
+
+        expect(classesOf('.admin-team-invite')).toContain('@container');
+        expect(row?.parentElement?.matches('.admin-team-invite')).toBe(true);
+        expect(classesOf('.admin-team-invite__row')).toEqual(expect.arrayContaining(['flex', 'flex-col', '@2xl:flex-row', '@2xl:flex-wrap', '@2xl:items-end']));
+        expect(row?.children).toHaveLength(4);
+        expect(name?.querySelector('#team-invite-name')).not.toBeNull();
+        expect(email?.querySelector('#team-invite-email')).not.toBeNull();
+        expect(role?.querySelector('.admin-team-invite__role')).not.toBeNull();
+        expect(send?.matches('.admin-team-invite__send')).toBe(true);
+
+        for (const field of [name, email]) {
+            expect([...(field?.classList ?? [])]).toEqual(expect.arrayContaining(['@2xl:min-w-48', '@2xl:flex-1']));
+        }
+
+        expect([...(role?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'flex-col', '@2xl:flex-none']));
+        expect([...(send?.classList ?? [])]).toContain('@2xl:ms-auto');
+        expect([...(row?.querySelectorAll('*') ?? [])].flatMap((element) => [...element.classList]).filter((utility) => utility.startsWith('desktop:'))).toEqual([]);
+    });
+
+    it('stretches the invite\'s role across the stacked card under its label, its segments sharing the row', () => {
+        view.render(<Page />);
+
+        expect(classesOf('.admin-team-invite__role')).toContain('*:flex-auto');
+        expect(classesOf('.admin-team-invite__role')).not.toContain('w-fit');
+        expect(classesOf('.admin-team-invite__role-label')).toEqual(expect.arrayContaining(['text-label', 'text-muted-foreground']));
+        expect(q('.admin-team-invite__help')?.classList.contains('admin-field__help')).toBe(true);
+    });
+
+    it('keeps on every member\'s row its role control and Remove, and the You and Invitation out chips on theirs', () => {
+        view.render(<Page />);
+
+        const members = [...document.querySelectorAll('.admin-team-members .admin-team-member')];
+
+        expect(members).toHaveLength(4);
+
+        for (const member of members) {
+            expect(member.querySelector('td .admin-team-role[role="group"]')).not.toBeNull();
+            expect(member.querySelector('td .admin-team-remove')).not.toBeNull();
+        }
+
+        expect(texts(`${row(0)} .admin-chip--past`)).toEqual([words.text('members.you')]);
+        expect(texts(`${row(3)} .admin-chip--provisional`)).toEqual([words.text('members.invited')]);
+    });
+
+    it('sets a member\'s role under its column name and across the row where the table reads as rows', () => {
+        view.render(<Page />);
+
+        const cell = `${row(1)} td:nth-child(4)`;
+
+        expect(classesOf(cell)).toEqual(expect.arrayContaining(['flex-wrap', '*:last:basis-full']));
+        expect(q(`${cell} > :last-child .admin-team-role`)).not.toBeNull();
+        expect(q(`${cell} .admin-table__label`)?.textContent).toBe(words.text('members.role'));
+        expect(classesOf(`${cell} .admin-team-role`)).toEqual(expect.arrayContaining(['w-full', '*:flex-auto']));
+    });
+
+    it('reads the members as rows below the wide breakpoint and wherever their box is narrower than 64rem, the heading keeping the rows\' inset under the same two conditions', () => {
+        view.render(<Page />);
+
+        const conditional = (selector: string) => classesOf(selector).filter((utility) => utility.startsWith('max-wide:') || utility.startsWith('@max-'));
+        const narrowBox = [...document.querySelectorAll('.admin-team-members, .admin-team-members *')].flatMap((element) => [...element.classList]).filter((utility) => utility.startsWith('@max-2xl:'));
+
+        expect(conditional('.admin-team-members table')).toEqual(['max-wide:block', '@max-5xl:block']);
+        expect(classesOf(row(1))).toEqual(expect.arrayContaining(['max-wide:px-[18px]', '@max-5xl:px-[18px]']));
+        expect(classesOf('.admin-team-members > header')).toEqual(expect.arrayContaining(['px-6', 'pt-5', 'pb-3.5']));
+        expect(conditional('.admin-team-members > header')).toEqual(['max-wide:px-4.5', '@max-5xl:px-4.5']);
+        expect(narrowBox).toEqual([]);
+    });
+
+    it('sets Send sign-in link and Remove as links side by side, the first\'s words free to wrap where the grid is tight, its lines starting at the left edge as Remove under it does', () => {
+        view.render(<Page />);
+
+        const link = `${row(1)} .admin-team-link`;
+        const remove = `${row(1)} .admin-team-remove`;
+
+        expect(classesOf(link)).toEqual(expect.arrayContaining(['text-primary-deep', 'whitespace-normal', 'shrink', 'text-left']));
+        expect(classesOf(link).filter((utility) => ['whitespace-nowrap', 'shrink-0', 'text-center', 'text-right'].includes(utility))).toEqual([]);
+        expect(classesOf(remove)).toContain('text-destructive');
+
+        for (const action of [link, remove]) {
+            expect(classesOf(action)).toEqual(expect.arrayContaining(['h-auto', 'p-0']));
+            expect(classesOf(action)).not.toContain('h-11');
+        }
+
+        expect(q(link)?.parentElement?.classList.contains('gap-x-3.5')).toBe(true);
+    });
+
+    it('gives Send sign-in link and Remove a touch area 44 pixels tall below the wide breakpoint, each its own box in the line, and leaves them bare text above it', () => {
+        view.render(<Page />);
+
+        for (const member of [0, 1, 3]) {
+            for (const action of [`${row(member)} .admin-team-link`, `${row(member)} .admin-team-remove`]) {
+                expect(classesOf(action)).toEqual(expect.arrayContaining(['h-auto', 'p-0', 'items-center', 'max-wide:min-h-11']));
+                expect(classesOf(action).filter((utility) => utility.includes('min-h-'))).toEqual(['max-wide:min-h-11']);
+                expect(classesOf(action).filter((utility) => utility.startsWith('after:') || utility.startsWith('before:'))).toEqual([]);
+            }
+        }
+    });
+
+    it('says why Remove is held on the viewer\'s row in that row and in no other, for a screen reader alone, and as the button\'s description', () => {
+        view.render(<Page />);
+
+        const own = q(`${row(0)} .admin-team-remove`);
+        const reason = document.getElementById(own?.getAttribute('aria-describedby') ?? '');
+        const said = [...document.querySelectorAll('body *')].filter((element) => element.children.length === 0 && element.textContent === words.text('members.remove_self'));
+
+        expect(reason?.textContent).toBe(words.text('members.remove_self'));
+        expect(reason?.closest('tr')).toBe(q(row(0)));
+        expect(reason?.closest('td')).toBe(own?.closest('td'));
+        expect(reason?.hidden).toBe(false);
+        expect(reason?.closest('[hidden], [aria-hidden="true"]')).toBeNull();
+        expect([...(reason?.classList ?? [])]).toEqual(['sr-only']);
+        expect(said).toHaveLength(1);
+        expect(said[0]).toBe(reason);
+
+        for (const other of [1, 2, 3]) {
+            expect(q(row(other))?.textContent).not.toContain(words.text('members.remove_self'));
+            expect(q(`${row(other)} [id^="team-remove-self-"]`)).toBeNull();
+        }
+    });
+});

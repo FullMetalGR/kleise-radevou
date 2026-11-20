@@ -5,25 +5,30 @@ import { TableScroll } from './table-scroll';
 /*
  * The admin's data table, in its sideways box. A soft head row over roomy cells, figures in
  * tabular digits, and a soft fill on the body row under the pointer. The grid breaks no word:
- * where it does not fit its box, the box scrolls sideways. A table has one of three modes.
+ * where it does not fit its box, the box scrolls sideways. A table has one of four modes.
  *
  * A rows table has a second layout for where a grid has no room: below the wide breakpoint, and
  * whenever its own box is narrower than 672px, so a table in a narrow card beside the sidebar
  * reads too. There each row is a block and each cell a line with its column name on the left and
  * its value on the right, a long value breaking inside its line, and the head row leaves the
  * screen while staying in the reading order. Each part names its role, so a screen reader still
- * reads a table whatever the parts display as. The two conditions are written out in full, once
- * each, here and nowhere else.
+ * reads a table whatever the parts display as. Every condition is written out in full, once, here;
+ * outside this part only a card's header that keeps its table's inset reads them, the same ones as
+ * its table.
  *
  * A rows-below-wide table takes that layout below the wide breakpoint alone and never by its
  * box. It is for a table of a name and a figure or two, which fits whatever card a wide window
  * gives it: in a card half as wide as the page it stays a grid.
  *
+ * A rows-below-wider-box table takes that layout below the wide breakpoint and whenever its box
+ * is narrower than 1024px. It is for a table whose grid is wide, a row of controls among its
+ * columns, which the card beside the sidebar cannot hold in a narrower window.
+ *
  * A scroll table keeps the grid at every width and scrolls sideways in its box where it does not
  * fit. Its caller keeps its own head and row markup.
  */
 
-type Compact = 'rows' | 'rows-below-wide' | 'scroll';
+type Compact = 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'scroll';
 
 const CompactContext = createContext<Compact>('rows');
 
@@ -43,32 +48,42 @@ const LABEL = 'admin-table__label hidden shrink-0 text-left text-label text-mute
 
 /**
  * What the rows layout changes, part by part: every utility once per condition, the window below
- * the wide breakpoint first and the box narrower than 672px second. A value breaks inside a word
- * here alone: in the grid the same rule would let a column shrink below its longest word.
+ * the wide breakpoint first, the box narrower than 672px second and the box narrower than 1024px
+ * third. A value breaks inside a word here alone: in the grid the same rule would let a column
+ * shrink below its longest word.
  */
 const ROWS = {
-    table: ['max-wide:block', '@max-2xl:block'],
-    head: ['max-wide:sr-only', '@max-2xl:sr-only'],
-    body: ['max-wide:block', '@max-2xl:block'],
+    table: ['max-wide:block', '@max-2xl:block', '@max-5xl:block'],
+    head: ['max-wide:sr-only', '@max-2xl:sr-only', '@max-5xl:sr-only'],
+    body: ['max-wide:block', '@max-2xl:block', '@max-5xl:block'],
     row: [
         'max-wide:block max-wide:border-t max-wide:px-[18px] max-wide:py-3 max-wide:first:border-t-0',
         '@max-2xl:block @max-2xl:border-t @max-2xl:px-[18px] @max-2xl:py-3 @max-2xl:first:border-t-0',
+        '@max-5xl:block @max-5xl:border-t @max-5xl:px-[18px] @max-5xl:py-3 @max-5xl:first:border-t-0',
     ],
     cell: [
         'max-wide:flex max-wide:items-center max-wide:justify-between max-wide:gap-3.5 max-wide:border-t-0 max-wide:px-0 max-wide:py-1 max-wide:text-right max-wide:wrap-anywhere max-wide:first:pl-0 max-wide:last:pr-0',
         '@max-2xl:flex @max-2xl:items-center @max-2xl:justify-between @max-2xl:gap-3.5 @max-2xl:border-t-0 @max-2xl:px-0 @max-2xl:py-1 @max-2xl:text-right @max-2xl:wrap-anywhere @max-2xl:first:pl-0 @max-2xl:last:pr-0',
+        '@max-5xl:flex @max-5xl:items-center @max-5xl:justify-between @max-5xl:gap-3.5 @max-5xl:border-t-0 @max-5xl:px-0 @max-5xl:py-1 @max-5xl:text-right @max-5xl:wrap-anywhere @max-5xl:first:pl-0 @max-5xl:last:pr-0',
     ],
-    label: ['max-wide:block', '@max-2xl:block'],
+    label: ['max-wide:block', '@max-2xl:block', '@max-5xl:block'],
 } as const;
 
 type Part = keyof typeof ROWS;
 
-/** What a part takes of the rows layout in a table's mode: both conditions, the window's alone, or nothing. */
+/**
+ * What a part takes of the rows layout in a table's mode: the window's condition with the narrow
+ * box's, the window's with the wider box's, the window's alone, or nothing.
+ */
 function rowsOf(compact: Compact, part: Part): string | false {
-    const [belowWide, narrowBox] = ROWS[part];
+    const [belowWide, narrowBox, widerBox] = ROWS[part];
 
     if (compact === 'scroll') {
         return false;
+    }
+
+    if (compact === 'rows-below-wider-box') {
+        return `${belowWide} ${widerBox}`;
     }
 
     return compact === 'rows' ? `${belowWide} ${narrowBox}` : belowWide;

@@ -9,8 +9,9 @@ import { Table, TableBody, TableHead, TableRow, Td, Th } from './table';
  * is narrower than 672px: the head leaves the screen but not the reading order, and each cell
  * shows its column name on the left and its value on the right, a long value breaking inside its
  * line. A table of a name and a figure or two turns to rows below the wide breakpoint alone, never
- * by its box. A scroll table stays a grid at every width and scrolls sideways where it does not
- * fit. The grid breaks no word, whatever the table.
+ * by its box. A table whose grid needs a wider box turns to rows below the wide breakpoint and
+ * whenever its box is narrower than 1024px. A scroll table stays a grid at every width and scrolls
+ * sideways where it does not fit. The grid breaks no word, whatever the table.
  */
 
 let view: Mounted;
@@ -21,7 +22,7 @@ beforeEach(() => {
 
 afterEach(() => view.unmount());
 
-function sample(compact?: 'rows' | 'rows-below-wide' | 'scroll'): void {
+function sample(compact?: 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'scroll'): void {
     view.render(
         <Table compact={compact} className="probe">
             <TableHead>
@@ -116,6 +117,26 @@ describe('the data table', () => {
         expect(one('tbody td .admin-table__label')?.textContent).toBe('Email');
         expect(classes(one('tbody td .admin-table__label'))).toContain('hidden');
         expect(one('tbody td .admin-table__value')?.textContent).toBe('row-email-token');
+    });
+
+    it('a table whose grid needs a wider box writes every utility of the rows layout below the wide breakpoint and in a box narrower than 1024px, and none of the narrower box', () => {
+        sample('rows');
+
+        const belowWide = under('max-wide:');
+
+        sample('rows-below-wider-box');
+
+        expect(under('max-wide:')).toEqual(belowWide);
+        expect(under('@max-5xl:')).toEqual(belowWide);
+        expect(written().filter((name) => name.startsWith('@max-') && !name.startsWith('@max-5xl:'))).toEqual([]);
+        expect(one('tbody td .admin-table__label')?.textContent).toBe('Email');
+        expect(one('tbody td .admin-table__value')?.textContent).toBe('row-email-token');
+
+        for (const other of ['rows', 'rows-below-wide', 'scroll'] as const) {
+            sample(other);
+
+            expect(written().filter((name) => name.startsWith('@max-5xl:'))).toEqual([]);
+        }
     });
 
     it('the parts name their roles', () => {
