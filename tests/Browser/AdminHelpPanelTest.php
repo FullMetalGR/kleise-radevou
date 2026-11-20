@@ -263,6 +263,7 @@ it('fills a phone\'s screen with the panel, its tabs and the way back from a thr
         ->assertScript(Help::PANEL_FILLS_SCREEN, true)
         ->assertAttribute(Help::PANEL, 'aria-modal', 'true')
         ->assertPresent('.admin-help-backdrop')
+        ->assertScript(PhoneScripts::BAR_HIDDEN, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertScript(Help::SHOWN_TAB, 'answers')
         ->click(Help::TICKETS_TAB)
@@ -283,6 +284,7 @@ it('fills a phone\'s screen with the panel, its tabs and the way back from a thr
         ->click(Help::CLOSE)
         ->assertMissing(Help::PANEL)
         ->assertScript(Admin::focusIsOn(Help::BUBBLE), true)
+        ->assertScript(PhoneScripts::BAR_HIDDEN, false)
         ->assertNoJavaScriptErrors();
 });
 
@@ -395,4 +397,32 @@ it('stands the toasts beside the open panel at the narrowest desktop width and a
         ->assertVisible(Help::PANEL)
         ->assertScript(HELP_PANEL_TOASTS_BESIDE, true)
         ->assertNoJavaScriptErrors();
+});
+
+it('keeps the bar along the foot, the save bar, the bubble, a toast and the open panel apart below the wide breakpoint', function () {
+    app()->instance(PlatformMessenger::class, new RecordingPlatformMessages);
+    $uuid = Help::ticket(Admin::owner('luna'), 'A ticket to reply on', 'Its first message.');
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(800, 900);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/settings.sections.booking_rules'))
+        ->assertVisible('.admin-save-bar')
+        ->assertVisible('.admin-bottom-bar')
+        ->click(Help::BUBBLE)
+        ->assertVisible(Help::SEARCH)
+        ->click(Help::TICKETS_TAB)
+        ->click(Help::ROW)
+        ->assertSeeIn(Help::BUSINESS_MESSAGE, 'Its first message.');
+
+    // The reply is refused, as the ticket has moved to another business, so an error toast shows
+    // and stays while the panel is still open.
+    DB::table('help_tickets')->where('uuid', $uuid)->update(['tenant_id' => User::query()->where('email', Admin::owner('pier'))->value('tenant_id')]);
+
+    $page->type(Help::REPLY, 'A reply that will not land.')
+        ->click(Help::SEND_REPLY)
+        ->assertVisible('.admin-toast')
+        ->assertVisible(Help::PANEL);
+
+    expect($page->script(PhoneScripts::FLOATERS_APART))->toBe(['drawn' => ['bar', 'save', 'bubble', 'toast', 'panel'], 'overlaps' => []]);
+    $page->assertNoJavaScriptErrors();
 });

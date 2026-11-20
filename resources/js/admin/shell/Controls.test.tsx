@@ -117,4 +117,21 @@ describe('Controls', () => {
         expect(group?.classList.contains('flex')).toBe(true);
         expect(group?.classList.contains('max-desktop:flex-wrap')).toBe(true);
     });
+
+    it('stands its controls in a column where it is stacked, the theme switch with its word beside its icon and the name across the width, in the same order', () => {
+        mounted.render(<Controls stacked userName="Alex Owner" theme="light" onToggleTheme={() => {}} signingOut={false} onSignOut={() => {}} language={<div className="admin-language" />} />);
+
+        const group = mounted.host.querySelector('.admin-controls');
+        const hooks = ['admin-language', 'admin-theme', 'admin-user', 'admin-signout'];
+
+        expect(group?.classList.contains('flex-col')).toBe(true);
+        expect(group?.classList.contains('max-desktop:flex-wrap')).toBe(false);
+        expect([...(group?.children ?? [])].map((child) => hooks.find((hook) => child.classList.contains(hook)))).toEqual(hooks);
+        expect(themeSwitch()?.classList.contains('admin-button--icon-only')).toBe(false);
+        expect(themeSwitch()?.textContent).toBe(shell.text('top_bar.dark'));
+        expect(themeSwitch()?.querySelector('svg')?.classList.contains('lucide-moon')).toBe(true);
+        expect(mounted.host.querySelector('.admin-user')?.classList.contains('max-w-40')).toBe(false);
+        expect(mounted.host.querySelector('.admin-user')?.classList.contains('truncate')).toBe(true);
+        expect(mounted.host.querySelector('.admin-user')?.getAttribute('title')).toBe('Alex Owner');
+    });
 });

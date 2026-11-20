@@ -102,9 +102,10 @@ export function Rail({ nav, onChoose, collapsed = false }: { nav: NavEntry[]; on
 /**
  * The count an entry carries, the amber badge: at the pill's end beside the label, or at the
  * circle's corner in the strip of icons, ringed in the card's colour so it stands off the circle.
- * Its name says what the figure counts, and the figure is its only text.
+ * Its name says what the figure counts, and the figure is its only text. The bottom bar and the
+ * Menu button wear the corner's badge too, each placing it with a class of its own.
  */
-function Pending({ count, corner }: { count: number; corner: boolean }): ReactNode {
+export function Pending({ count, corner, className }: { count: number; corner: boolean; className?: string }): ReactNode {
     const shell = useShell();
 
     return (
@@ -114,6 +115,7 @@ function Pending({ count, corner }: { count: number; corner: boolean }): ReactNo
             className={cn(
                 'admin-rail-pending flex items-center justify-center rounded-full bg-attention-soft-strong font-bold text-attention-ink tabular-nums',
                 corner ? 'absolute -top-0.5 right-1 h-5 min-w-5 border-2 border-card px-1 text-[11px] leading-none' : 'h-6 min-w-6 px-1.75 text-xs ring-1 ring-attention-line',
+                className,
             )}
         >
             {count}

@@ -54,17 +54,6 @@ final class Look
     public const array ALL_THEMES = ['neutral', 'blue', 'green', 'orange', 'red', 'rose', 'violet'];
 
     /**
-     * The widths at which a walk does not check the sideways scroll: between the phone's layout
-     * and about 1030px the top bar's row and the wider tables do not fold, so a screen there runs
-     * past the window beside the rail. A walk still draws every screen at such a stop, reads it
-     * for its language and for script errors and saves it to be read by eye; it checks the scroll
-     * at the widths the layout fits.
-     *
-     * @var list<int>
-     */
-    public const array UNFITTED = [800];
-
-    /**
      * A script that dresses the open page in a theme and a mode, as the root view and the theme
      * switch would: the theme as the body's data-theme, the dark mode as the root's class. It
      * answers the theme the body then carries. The next page loaded is dressed as the server and
@@ -109,12 +98,6 @@ final class Look
     public static function widths(): array
     {
         return self::shooting() ? [390, 800, 1440] : [800, 1440];
-    }
-
-    /** Whether the layout fits the window at this width, so a screen there scrolls no way but down. */
-    public static function fits(int $width): bool
-    {
-        return ! in_array($width, self::UNFITTED, true);
     }
 
     /** Whether LOOK_SHOTS names a run, so a walk dresses and saves each stop. */

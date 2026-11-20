@@ -52,8 +52,11 @@ import { cn } from '@/lib/utils';
  * and the whole viewport below it, the footer still pinned and the body still the one scroller:
  * the booking dialog and the wizard on a phone. Full is the whole viewport at every width, the
  * footer pinned and the body the one scroller: the setup wizard, which is a screen of its own
- * while it is up. The drawer is pinned to the start edge at the viewport's full height: the rail
- * behind the top bar's control. A caller's own width cap wins over the card's.
+ * while it is up. The drawer is a panel pinned to the start edge at the viewport's full height,
+ * 340 pixels wide or 88 parts in a hundred of a narrower screen, rounded at its far side, sliding
+ * in from the edge where motion is welcome: the menu behind the first row's Menu button. Its title
+ * is for a screen reader alone, as what it holds heads itself. A caller's own width cap wins over
+ * the card's.
  *
  * A frame changes shape by its classes alone, so a window crossing the breakpoint with a dialog
  * up keeps the same frame, what was typed in it and the focus. Every frame is on the card's fill.
@@ -79,14 +82,15 @@ const FRAME: Record<ModalVariant, string> = {
     centred: `admin-modal__frame--centred ${CARD} ${RISE} max-desktop:max-h-[94dvh] max-desktop:max-w-none max-desktop:self-end max-desktop:rounded-t-[1.75rem] max-desktop:rounded-b-none max-desktop:motion-safe:starting:translate-y-10`,
     filling: `admin-modal__frame--filling ${CARD} ${RISE} max-desktop:h-full max-desktop:max-h-none max-desktop:max-w-none max-desktop:rounded-none max-desktop:shadow-none`,
     full: 'admin-modal__frame--full h-full max-h-none max-w-none rounded-none',
-    drawer: 'admin-modal__frame--drawer h-full max-w-72 rounded-none border-r shadow-lg',
+    drawer: 'admin-modal__frame--drawer h-dvh w-[min(88vw,340px)] rounded-r-shell shadow-drawer motion-safe:transition-[translate] motion-safe:duration-450 motion-safe:ease-soft motion-safe:starting:-translate-x-full',
 };
 
 /**
  * Each part's room in a frame: a card's, the full frame's with it, set wide with the title at the
  * dialog's size, and below the breakpoint 18 pixels at the sides with the title a step down, so a
  * phone's width goes to the body; a prompt's title that step down at every width, as it asks one
- * short question; and the drawer's, which keeps its own.
+ * short question; and the drawer's, which keeps its own: the title for a screen reader alone, and
+ * the body's foot clear of a phone's home indicator.
  */
 const ROOM = {
     card: {
@@ -96,7 +100,7 @@ const ROOM = {
         body: 'px-6.5 pt-1 pb-5.5 max-desktop:px-4.5 max-desktop:pb-4.5',
         footer: 'px-6.5 py-3.5 max-desktop:px-4.5 max-desktop:py-3',
     },
-    drawer: { title: 'border-b px-5 py-3', type: 'text-lg font-semibold', prompt: 'text-lg font-semibold', body: 'px-5 py-4', footer: 'px-5 py-3' },
+    drawer: { title: 'sr-only', type: '', prompt: '', body: 'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]', footer: 'px-5 py-3' },
 };
 
 /**

@@ -3,21 +3,24 @@ import { join } from 'node:path';
 import { act, type MouseEvent, type ReactNode, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { drag, key, onCompact, onPhone, press, settle } from '@/components/ui/harness';
+import { drag, key, onCompact, onPhone, press, settle, wideWidth } from '@/components/ui/harness';
 import { PageHeader } from '@/components/ui/page-header';
 import { KEYED_SHELL, keyedShell, WithShell } from '@/testing/keyed';
 import type { NavEntry } from '../types';
 import { RAIL_LABEL } from './Rail';
 import { BOUNDARY_NOTICE, BOUNDARY_REST } from './RouteBoundary';
-import { MENU_LABEL, Shell } from './Shell';
+import { MENU_LABEL } from './MenuButton';
+import { Shell } from './Shell';
 
 /*
  * The shell and the boundary each page renders inside. From the wide breakpoint the menu stands
  * in the sidebar beside the page, and the page's first row, its header, carries the shell's
- * controls and no menu button. Below it the sidebar goes and the menu becomes a drawer on the
- * modal primitive, opened by a button first in the page's first row: the same nav list with the
- * same current entry, closing on a choice, on Escape and on the backdrop, focus going back to the
- * button. The framework's link is stood in for by an anchor that makes no visit, as the real one
+ * controls and no menu button. Below it the sidebar goes, the menu's first group stands in a bar
+ * along the foot, and the whole menu becomes a drawer on the modal primitive, opened by a round
+ * button first in the page's first row or by the bar's Menu button: the same nav list with the
+ * same current entry, then the controls, which leave the first row, closing on a choice, on its
+ * twin of the button, on Escape and on the backdrop, focus going back to the button that opened
+ * it. The framework's link is stood in for by an anchor that makes no visit, as the real one
  * makes its own. The shell renders inside the keyed table, its own words read here through it,
  * and the menu's labels are the server's, handed as the keyed table spells them. A skip link to
  * the page's content is the first thing the keyboard reaches. The page here is a header and
@@ -101,6 +104,8 @@ describe('the shell', () => {
         expect(host.querySelector('aside.admin-sidebar .admin-business')?.textContent).toContain('Luna Hair Studio');
         expect(host.querySelector('main h1')?.textContent).toBe('The page');
         expect(host.querySelector('main .admin-topbar .admin-controls .admin-user')?.textContent).toBe('Alex Owner');
+        expect(host.querySelector('.admin-bottom-bar')).toBeNull();
+        expect(host.querySelector('.admin-menu')).toBeNull();
     });
 
     it('puts its own button last in the page\'s first row, after the page\'s, quiet where the page has buttons of its own', () => {
@@ -294,40 +299,88 @@ describe.each([
         return button;
     }
 
-    it('takes the sidebar away and puts the menu\'s button first in the page\'s first row, the page still rendered', () => {
+    function renderNav(nav: NavEntry[]): void {
+        act(() =>
+            root.render(
+                <WithShell>
+                    <Shell route="/admin" nav={nav} brand={() => null} business="Luna Hair Studio" userName="Owner" theme="light" onToggleTheme={() => {}} signingOut={false}>
+                        {PAGE}
+                    </Shell>
+                </WithShell>,
+            ),
+        );
+    }
+
+    it('takes the sidebar away, puts the menu\'s button first in the page\'s first row and the first group in the bar along the foot, the page still rendered', () => {
         render('/admin', PAGE);
 
         expect(host.querySelector('aside')).toBeNull();
-        expect(host.querySelector('nav')).toBeNull();
+        expect(host.querySelector('nav.admin-rail')).toBeNull();
         expect(host.querySelector('.admin-topbar')?.firstElementChild).toBe(control());
         expect(control()?.textContent).toBe(MENU);
         expect(control()?.getAttribute('aria-haspopup')).toBe('dialog');
         expect(control()?.getAttribute('aria-expanded')).toBe('false');
-        expect(host.querySelector('.admin-topbar .admin-controls')).not.toBeNull();
+        expect(host.querySelectorAll('.admin-menu')).toHaveLength(1);
+        expect([...host.querySelectorAll('nav.admin-bottom-bar a')].map((link) => link.getAttribute('href'))).toEqual(['/admin', '/admin/bookings']);
         expect(host.querySelector('main h1')?.textContent).toBe('The page');
     });
 
-    it('carries the pending count the menu shows on the button, so a request waiting is seen with the drawer closed, and none for none', () => {
-        const pending: NavEntry[] = [
-            { key: 'calendar', label: N.calendar, url: '/admin', group: N.groups.schedule, pending: null, current: true },
-            { key: 'bookings', label: N.bookings, url: '/admin/bookings', group: N.groups.schedule, pending: 3, current: false },
-        ];
+    it('moves the controls out of the page\'s first row, which keeps its own button', () => {
+        const action = () => (
+            <button type="button" className="shell-action">
+                New
+            </button>
+        );
+
         act(() =>
             root.render(
                 <WithShell>
-                    <Shell route="/admin" nav={pending} brand={() => null} business="Luna Hair Studio" userName="Owner" theme="light" onToggleTheme={() => {}} signingOut={false}>
+                    <Shell route="/admin" nav={NAV} brand={() => null} business={null} userName="Alex" theme="light" onToggleTheme={() => {}} signingOut={false} onSignOut={() => {}} action={action}>
                         {PAGE}
                     </Shell>
                 </WithShell>,
             ),
         );
 
-        expect(control()?.querySelector('.admin-menu-pending')?.textContent).toBe('3');
-        expect(control()?.textContent).toBe(`${MENU}3`);
+        expect(host.querySelector('.admin-controls')).toBeNull();
+        expect(host.querySelector('.admin-user')).toBeNull();
+        expect(host.querySelector('.admin-topbar .admin-page-header__end')?.lastElementChild?.matches('.shell-action')).toBe(true);
+    });
+
+    it('carries the pending count on the bar\'s entry where the bar holds it, and on the menu\'s button where it does not, and none for none', () => {
+        renderNav([
+            { key: 'calendar', label: N.calendar, url: '/admin', group: N.groups.schedule, pending: null, current: true },
+            { key: 'bookings', label: N.bookings, url: '/admin/bookings', group: N.groups.schedule, pending: 3, current: false },
+        ]);
+
+        expect(host.querySelector('.admin-bottom-bar a[href="/admin/bookings"] [role="img"]')?.textContent).toBe('3');
+        expect(control()?.querySelector('.admin-menu-pending')).toBeNull();
+        expect(control()?.textContent).toBe(MENU);
 
         press(control());
 
         expect(drawer()?.querySelector('a[href="/admin/bookings"] .admin-rail-pending')?.textContent).toBe('3');
+
+        key(document.body, 'Escape');
+
+        renderNav([
+            { key: 'calendar', label: N.calendar, url: '/admin', group: N.groups.schedule, pending: null, current: true },
+            { key: 'bookings', label: N.bookings, url: '/admin/bookings', group: N.groups.business, pending: 3, current: false },
+        ]);
+
+        expect(host.querySelector('.admin-bottom-bar')).toBeNull();
+        expect(control()?.querySelector('.admin-menu-pending')?.textContent).toBe('3');
+        expect(control()?.querySelector('.admin-menu-pending')?.getAttribute('aria-label')).toBe(shell.choice('nav.pending', 3));
+
+        renderNav([
+            { key: 'home', label: N.home, url: '/admin', group: N.groups.schedule, pending: null, current: true },
+            { key: 'calendar', label: N.calendar, url: '/admin/calendar', group: N.groups.schedule, pending: null, current: false },
+            { key: 'bookings', label: N.bookings, url: '/admin/bookings', group: N.groups.business, pending: 3, current: false },
+        ]);
+
+        expect(host.querySelector('.admin-bottom-bar')).not.toBeNull();
+        expect(host.querySelector('.admin-bottom-bar [role="img"]')).toBeNull();
+        expect(control()?.querySelector('.admin-menu-pending')?.textContent).toBe('3');
 
         render('/admin', PAGE);
 
@@ -345,6 +398,86 @@ describe.each([
         expect(drawer()?.querySelector('.brand')?.textContent).toBe('whole');
         expect(drawer()?.querySelector('.admin-business')?.textContent).toContain('Luna Hair Studio');
         expect(control()?.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('holds the whole menu with every label, then the controls stacked, and a twin of the button at its head named Close', () => {
+        open();
+
+        const rail = drawer()?.querySelector(RAIL);
+        const controls = drawer()?.querySelector('.admin-controls');
+        const twin = drawer()?.querySelector<HTMLButtonElement>('.admin-menu');
+
+        expect([...(rail?.querySelectorAll('.admin-rail-entry__label') ?? [])].map((label) => label.textContent)).toEqual([N.calendar, N.bookings]);
+        expect(controls?.classList.contains('flex-col')).toBe(true);
+        expect(controls?.querySelector('.admin-user')?.textContent).toBe('Alex Owner');
+        expect(controls?.querySelector('.admin-signout')).not.toBeNull();
+        expect(controls?.querySelector('.admin-theme')).not.toBeNull();
+        expect(rail?.compareDocumentPosition(controls as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(twin?.textContent).toBe(shell.text('nav.close'));
+        expect(twin?.getAttribute('aria-expanded')).toBe('true');
+        expect(twin?.compareDocumentPosition(rail as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('closes on its twin of the button, focus going back to the button that opened it', async () => {
+        const button = open();
+
+        press(drawer()?.querySelector('.admin-menu') ?? null);
+        await settle();
+
+        expect(drawer()).toBeNull();
+        expect(document.activeElement).toBe(button);
+    });
+
+    it('opens from the bar\'s Menu button too, and hands the focus back to it on Escape', async () => {
+        render('/admin', PAGE);
+
+        const menu = host.querySelector<HTMLButtonElement>('.admin-bottom-bar__menu');
+
+        menu?.focus();
+        press(menu);
+
+        expect(drawer()).not.toBeNull();
+        expect(menu?.getAttribute('aria-expanded')).toBe('true');
+
+        key(document.body, 'Escape');
+        await settle();
+
+        expect(drawer()).toBeNull();
+        expect(document.activeElement).toBe(menu);
+    });
+
+    it('closes as the window widens past the wide breakpoint', () => {
+        const wideQuery = `(min-width: ${wideWidth()})`;
+        const heard = new Set<() => void>();
+        let widened = false;
+        const narrow = window.matchMedia;
+
+        window.matchMedia = (query: string) =>
+            ({
+                matches: query === wideQuery ? widened : narrow(query).matches,
+                media: query,
+                addEventListener: (_type: string, listener: () => void) => heard.add(listener),
+                removeEventListener: (_type: string, listener: () => void) => heard.delete(listener),
+            }) as unknown as MediaQueryList;
+
+        try {
+            open();
+
+            expect(drawer()).not.toBeNull();
+
+            widened = true;
+            act(() => {
+                for (const listener of heard) {
+                    listener();
+                }
+            });
+
+            expect(drawer()).toBeNull();
+            expect(host.querySelector('aside.admin-sidebar')).not.toBeNull();
+            expect(host.querySelector('.admin-bottom-bar')).toBeNull();
+        } finally {
+            window.matchMedia = narrow;
+        }
     });
 
     it('closes on a choice, focus going back to the button', async () => {

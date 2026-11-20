@@ -193,20 +193,100 @@ final class PhoneScripts
         })
         JS;
 
-    /** True when the rail's drawer stands at the left edge, as tall as the screen and narrower than it. */
+    /**
+     * True when the menu's drawer stands at the left edge, as tall as the screen, no wider than 340
+     * pixels and no wider than 88 parts in a hundred of the screen, and holds everything it lists
+     * inside its own width, so nothing in it runs past its edge.
+     */
     public const string DRAWER_AT_EDGE = <<<'JS'
         document.fonts.ready.then(() => {
             const drawer = document.querySelector('.admin-modal__frame--drawer');
-            if (!drawer) {
+            const body = drawer?.querySelector('.admin-modal__body');
+            if (!drawer || !body) {
                 return false;
             }
             const box = drawer.getBoundingClientRect();
-            return Math.abs(box.left) <= 1 && Math.abs(box.top) <= 1 && Math.abs(box.height - window.innerHeight) <= 1 && box.width < document.documentElement.clientWidth;
+            const room = document.documentElement.clientWidth;
+            return Math.abs(box.left) <= 1 && Math.abs(box.top) <= 1 && Math.abs(box.height - window.innerHeight) <= 1
+                && box.width <= 341 && box.width <= room * 0.88 + 1
+                && body.scrollWidth <= body.clientWidth + 1;
         })
         JS;
 
-    /** True while the element holding focus is the top bar's rail control. */
+    /** True while the element holding focus is the first row's Menu button. */
     public const string FOCUS_ON_MENU = "document.activeElement !== null && document.activeElement.classList.contains('admin-menu')";
+
+    /** The words under the icons of the bar along the foot of the screen, in order, its Menu button's last. */
+    public const string BAR_LABELS = "document.fonts.ready.then(() => [...document.querySelectorAll('.admin-bottom-bar .admin-bottom-bar__label')].map((label) => label.textContent))";
+
+    /** True while the bar along the foot of the screen is on the page and drawn nowhere. */
+    public const string BAR_HIDDEN = "(() => { const bar = document.querySelector('.admin-bottom-bar'); return bar !== null && getComputedStyle(bar).display === 'none'; })()";
+
+    /** How far the page scrolls, in pixels: its height past the window's. */
+    public const string PAGE_ROOM = 'document.fonts.ready.then(() => document.documentElement.scrollHeight - window.innerHeight)';
+
+    /**
+     * A script resolving true once the bar along the foot of the screen stands where it is asked
+     * to, slid away with its whole box below the window's foot or whole inside the window, and
+     * false after two seconds. The bar moves a moment after the scroll or the focus that moves
+     * it, once the page has heard of either, so the reading waits for it.
+     */
+    public static function barIs(bool $away): string
+    {
+        $there = $away ? 'box.top >= window.innerHeight' : 'box.height > 0 && box.top >= 0 && box.bottom <= window.innerHeight + 1';
+
+        return <<<JS
+            new Promise((resolve) => {
+                const started = Date.now();
+                const check = () => {
+                    const box = document.querySelector('.admin-bottom-bar')?.getBoundingClientRect();
+                    if (box !== undefined && {$there}) {
+                        resolve(true);
+                    } else if (Date.now() - started > 2000) {
+                        resolve(false);
+                    } else {
+                        setTimeout(check, 25);
+                    }
+                };
+                check();
+            })
+            JS;
+    }
+
+    /** The same reading, taken once the page has been scrolled to the offset given, in pixels from its top. */
+    public static function barAfterScrollTo(int $offset, bool $away): string
+    {
+        return sprintf('(window.scrollTo(0, %d), %s)', $offset, self::barIs($away));
+    }
+
+    /**
+     * The parts that float over the foot of the screen, the bottom bar, the save bar, the help
+     * bubble, each toast and the help panel, as the names of those drawn and the pairs of them
+     * whose boxes overlap: none should, whatever is up at once. A part drawn nowhere, or moved
+     * wholly off the screen, is left out. The reading waits for the faces and two frames, so a part
+     * that has just moved is read where it came to rest.
+     */
+    public const string FLOATERS_APART = <<<'JS'
+        document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+            const parts = [
+                ['bar', '.admin-bottom-bar'],
+                ['save', '.admin-save-bar'],
+                ['bubble', '.admin-help-bubble'],
+                ['toast', '.admin-toast'],
+                ['panel', '.admin-help-panel'],
+            ].flatMap(([name, selector]) => [...document.querySelectorAll(selector)].map((element) => [name, element.getBoundingClientRect()]))
+                .filter(([, box]) => box.width > 0 && box.height > 0 && box.top < window.innerHeight && box.bottom > 0);
+            const overlaps = [];
+            parts.forEach(([name, box], index) => {
+                parts.slice(index + 1).forEach(([other, next]) => {
+                    if (box.left < next.right - 1 && next.left < box.right - 1 && box.top < next.bottom - 1 && next.top < box.bottom - 1) {
+                        overlaps.push(name + '/' + other);
+                    }
+                });
+            });
+            resolve({ drawn: [...new Set(parts.map(([name]) => name))], overlaps });
+        }))))
+        JS;
 
     /** True when the sticky save bar's bottom edge sits inside the screen, wherever the form is scrolled. */
     public const string SAVE_BAR_INSIDE = <<<'JS'

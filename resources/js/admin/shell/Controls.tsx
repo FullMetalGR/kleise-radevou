@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Moon, SignOut, Sun } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
 import { useShell } from '@/lib/strings';
+import { cn } from '@/lib/utils';
 import type { Theme } from '../theme';
 
 /*
@@ -15,6 +16,9 @@ import type { Theme } from '../theme';
  *
  * At the desktop width the group is one row. Below it the group wraps: a row that cannot wrap is
  * as wide as its controls together, which is wider than a phone, and would push the page sideways.
+ * Stacked, in the menu's drawer below the wide breakpoint, the group is a column in the same order:
+ * the theme switch shows its word beside its icon, as a column has the room, and the name runs the
+ * column's width before it is cut.
  */
 
 type Props = {
@@ -26,20 +30,22 @@ type Props = {
     onSignOut?: (() => void) | undefined;
     /** The language control, first in the row; absent where none is offered. */
     language?: ReactNode;
+    /** A column, as the menu's drawer holds the group, in place of a row. */
+    stacked?: boolean;
 };
 
-export function Controls({ userName, theme, onToggleTheme, signingOut, onSignOut, language }: Props) {
+export function Controls({ userName, theme, onToggleTheme, signingOut, onSignOut, language, stacked = false }: Props) {
     const shell = useShell();
 
     return (
-        <div className="admin-controls flex items-center gap-2 max-desktop:flex-wrap">
+        <div className={cn('admin-controls flex', stacked ? 'min-w-0 flex-col items-start gap-1.5' : 'items-center gap-2 max-desktop:flex-wrap')}>
             {language}
-            <Button variant="tertiary" iconOnly icon={theme === 'dark' ? <Sun /> : <Moon />} className="admin-theme" onClick={onToggleTheme}>
+            <Button variant="tertiary" iconOnly={!stacked} icon={theme === 'dark' ? <Sun /> : <Moon />} className="admin-theme" onClick={onToggleTheme}>
                 {shell.text(theme === 'dark' ? 'top_bar.light' : 'top_bar.dark')}
             </Button>
             {onSignOut !== undefined && (
                 <>
-                    <span className="admin-user max-w-40 truncate text-sm text-muted-foreground" title={userName}>
+                    <span className={cn('admin-user truncate text-sm text-muted-foreground', stacked ? 'w-full px-4.5 py-1' : 'max-w-40')} title={userName}>
                         {userName}
                     </span>
                     <Button variant="tertiary" className="admin-signout" icon={<SignOut />} busy={signingOut} busyLabel={shell.text('top_bar.signing_out')} onClick={onSignOut}>

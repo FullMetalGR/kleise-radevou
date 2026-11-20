@@ -861,3 +861,44 @@ body:has(.admin-help-panel) .admin-toaster {
         right: min(400px + 2rem, 100% - 21rem);
     }
 }
+
+/*
+ * Below the wide breakpoint the bar along the foot of the screen takes the bottom 81 pixels or so,
+ * and every other floating part stands clear of it, each in its own place, so none covers another
+ * whatever is up at once: the help bubble just above the bar at the right, the save bar above the
+ * bar too and short of the bubble, as it always is, and at the desktop width the toasts and the
+ * help panel above the save bar's top, so the panel's foot and the toasts beside it stay level.
+ * The page's foot runs past the bubble, so its last control ends above it when scrolled to the
+ * end. Each place adds the phone's home indicator where one takes the foot of the screen, as the
+ * bar does. While a dialog is up, or the help panel fills a phone's screen, the bar is put away:
+ * it would only peek from under the scrim, and nothing under a dialog can be pressed.
+ */
+body:has(.admin-bottom-bar) .admin-page {
+    padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+}
+
+body:has(.admin-bottom-bar) .admin-help-bubble {
+    bottom: calc(5.625rem + env(safe-area-inset-bottom));
+}
+
+body:has(.admin-bottom-bar) .admin-save-bar {
+    bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+body:has(.admin-bottom-bar) .admin-toaster {
+    @variant desktop {
+        bottom: calc(11rem + env(safe-area-inset-bottom));
+    }
+}
+
+body:has(.admin-bottom-bar) .admin-help-panel {
+    @variant desktop {
+        bottom: calc(11rem + env(safe-area-inset-bottom));
+        height: min(600px, calc(100vh - 12rem - env(safe-area-inset-bottom)));
+    }
+}
+
+body:has(.admin-modal__backdrop) .admin-bottom-bar,
+body:has(.admin-help-backdrop) .admin-bottom-bar {
+    display: none;
+}

@@ -6,9 +6,10 @@
  * the translator in the same. Its Greek twin is lang/el/admin/shell.php.
  *
  * nav is the menu: its two groups, its eleven entries as App\Http\AdminNav names them, the menu's
- * own name, the control that opens it below the breakpoint, the link past it to the page's content,
- * the first thing the keyboard reaches, the sidebar's button folding it to its icons and opening it
- * again, and the pending count on an entry said in words, a choice by :count. login is the sign-in
+ * own name, the control that opens it below the breakpoint and the same control's name while the
+ * menu is open and a press closes it, the link past it to the page's content, the first thing the
+ * keyboard reaches, the sidebar's button folding it to its icons and opening it again, and the
+ * pending count on an entry said in words, a choice by :count. login is the sign-in
  * page and its form, which the console's door renders too, in English. set_password is the
  * set-password link's page outside the shell: its title, also its heading, the field, the help with
  * :floor, the button and its busy words, read as the sign-in page's are: with nobody signed in, in
@@ -69,6 +70,7 @@ return [
         'billing' => 'Billing',
         'main' => 'Main',
         'menu' => 'Menu',
+        'close' => 'Close',
         'skip' => 'Skip to content',
         'collapse' => 'Collapse menu',
         'expand' => 'Expand menu',

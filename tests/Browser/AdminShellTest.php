@@ -41,6 +41,13 @@ const SHELL_CUT = "document.fonts.ready.then(() => { const box = document.queryS
 /** True when New booking stands whole inside the window and the page scrolls nothing sideways. */
 const SHELL_NEW_BOOKING_INSIDE = "document.fonts.ready.then(() => { const box = document.querySelector('.admin-new-booking')?.getBoundingClientRect(); const width = document.documentElement.clientWidth; return box !== undefined && box.left >= 0 && box.right <= width + 1 && box.top >= 0 && document.documentElement.scrollWidth <= width + 1; })";
 
+/**
+ * True when the first row's Menu button and New booking, an icon button below the wide breakpoint,
+ * each stand whole inside the window and are round, as wide as they are tall, and the page
+ * scrolls nothing sideways.
+ */
+const SHELL_ROUND_BUTTONS_INSIDE = "document.fonts.ready.then(() => { const width = document.documentElement.clientWidth; const boxes = ['.admin-topbar .admin-menu', '.admin-topbar .admin-new-booking'].map((selector) => document.querySelector(selector)?.getBoundingClientRect()); return boxes.every((box) => box !== undefined && box.left >= 0 && box.right <= width + 1 && box.top >= 0 && Math.round(box.width) === Math.round(box.height)) && document.documentElement.scrollWidth <= width + 1; })";
+
 /** The Services table's rows: as blocks with their column names, or as the grid's rows. */
 const SHELL_SERVICES_ROWS = "document.fonts.ready.then(() => { const box = document.querySelector('.admin-services-screen .admin-table-scroll'); const rows = [...document.querySelectorAll('.admin-services__row')]; return box !== null && rows.length > 0 && box.scrollWidth <= box.clientWidth + 1 ? [...new Set(rows.map((row) => getComputedStyle(row).display))].join() : 'none'; })";
 
@@ -229,7 +236,7 @@ it('starts the sidebar open where the browser refuses site data, whatever was st
         ->assertNoJavaScriptErrors();
 });
 
-it('cuts a sixty-character business name and user name with an ellipsis, each whole in its title, and keeps New booking on screen at 1440 and at 900', function () {
+it('cuts a sixty-character business name and user name with an ellipsis, each whole in its title, and keeps New booking on screen at 1440, at 900 and on a phone, where the two are in the drawer', function () {
     $business = 'Luna Hair Studio and Beauty Lounge of Nea Ionia, Nea Kifisia';
     $user = 'Konstantina-Alexandrina Papadopoulou-Georgiadou-Antonopoulou';
     expect(strlen($business))->toBe(60)->and(strlen($user))->toBe(60);
@@ -247,7 +254,17 @@ it('cuts a sixty-character business name and user name with an ellipsis, each wh
             ->assertScript(SHELL_NEW_BOOKING_INSIDE, true);
     }
 
-    $page->assertNoJavaScriptErrors();
+    // On a phone the first row keeps its two round buttons, and the drawer holds both names.
+    $page->resize(390, 844)
+        ->assertScript(SHELL_ROUND_BUTTONS_INSIDE, true)
+        ->assertNotPresent('.admin-user')
+        ->click('.admin-menu')
+        ->assertAttribute('.admin-modal__frame--drawer .admin-business', 'title', $business)
+        ->assertScript(sprintf(SHELL_CUT, '.admin-modal__frame--drawer .admin-business__name'), true)
+        ->assertAttribute('.admin-modal__frame--drawer .admin-user', 'title', $user)
+        ->assertScript(sprintf(SHELL_CUT, '.admin-modal__frame--drawer .admin-user'), true)
+        ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
+        ->assertNoJavaScriptErrors();
 });
 
 it('keeps the first row inside the window on the Calendar and Services at 900, 1024 and 1130 in English and in Greek', function (SiteLanguage $language) {
@@ -279,12 +296,16 @@ it('shows the Services table as rows at the wide breakpoint with the sidebar ope
     $page->resize(1600, 900)->assertScript(SHELL_SERVICES_ROWS, 'table-row');
 });
 
-it('opens the menu as the drawer from the first row\'s Menu button below the wide breakpoint, the business named in it', function () {
+it('opens the menu as the drawer from the first row\'s Menu button below the wide breakpoint, the business and the controls in it, the first group in the bar along the foot', function () {
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(850, 900);
 
     $page->assertNotPresent('.admin-sidebar')
         ->assertScript("document.querySelector('.admin-page-header__row')?.firstElementChild?.classList.contains('admin-menu')", true)
+        ->assertScript(PhoneScripts::BAR_LABELS, [navLabel('home'), navLabel('calendar'), navLabel('bookings'), navLabel('shifts'), navLabel('menu')])
+        ->assertNotPresent('.admin-topbar .admin-controls')
         ->click('.admin-menu')
+        ->assertScript(PhoneScripts::BAR_HIDDEN, true)
+        ->assertVisible('.admin-modal__frame--drawer .admin-controls .admin-signout')
         ->assertCount('.admin-modal__frame--drawer .admin-rail-entry', 11)
         ->assertSeeIn('.admin-modal__frame--drawer .admin-business', 'Luna Hair Studio')
         ->click('.admin-modal__frame--drawer a[href="/admin/bookings"]')
@@ -294,5 +315,7 @@ it('opens the menu as the drawer from the first row\'s Menu button below the wid
     $page->resize(1440, 900)
         ->assertPresent('.admin-sidebar')
         ->assertNotPresent('.admin-menu')
+        ->assertNotPresent('.admin-bottom-bar')
+        ->assertPresent('.admin-topbar .admin-controls')
         ->assertNoJavaScriptErrors();
 });

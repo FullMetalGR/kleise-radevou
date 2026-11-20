@@ -12,10 +12,9 @@ use Tests\Support\LunaFixture;
 /*
  * Every screen the rail reaches, at a tablet's width and a desktop's, in English and in Greek:
  * each one drawn under the one shared page header holding its one main heading, in the owner's
- * language and free of script errors, and no wider than the window at the widths the layout fits,
- * which Look::UNFITTED leaves the tablet's out of. A line longer in one language widens a screen
- * in that language alone, so the owner reads every screen in each. A
- * screen is loaded afresh at each width, so its first paint is the layout that width is given.
+ * language and free of script errors, and no wider than the window at either width. A line longer
+ * in one language widens a screen in that language alone, so the owner reads every screen in each.
+ * A screen is loaded afresh at each width, so its first paint is the layout that width is given.
  * One more case opens the staff form in Greek at the narrowest width at which its fields stand
  * two abreast beside the rail, where a field is at its narrowest, and holds Clear, beside a
  * member's linked sign-in, inside its field and its card.
@@ -109,7 +108,7 @@ function lookBooking(string $customer, DateTimeImmutable $start, bool $request =
     ]);
 }
 
-it('draws every screen of the admin at a tablet\'s width and a desktop\'s in the owner\'s language with no script error, and with no sideways scroll where the layout fits the window', function (SiteLanguage $language) {
+it('draws every screen of the admin at a tablet\'s width and a desktop\'s in the owner\'s language with no script error and no sideways scroll', function (SiteLanguage $language) {
     lookBooking('Cora Cut', athensDaysOn(0, 10));
     lookBooking('Rita Request', athensDaysOn(1, 11), request: true);
     // The language is the owner's before the sign-in: the server the walk drives keeps the
@@ -125,11 +124,8 @@ it('draws every screen of the admin at a tablet\'s width and a desktop\'s in the
                 ->assertVisible($hook)
                 ->assertScript(LOOK_ONE_HEADER, true)
                 ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
+                ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
                 ->assertNoJavaScriptErrors();
-
-            if (Look::fits($width)) {
-                $page->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
-            }
 
             if (! Look::shooting()) {
                 continue;

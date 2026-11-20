@@ -1,6 +1,6 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, type Mounted, press } from '@/components/ui/harness';
+import { mount, type Mounted, onCompact, press } from '@/components/ui/harness';
 import { PageHeader } from '@/components/ui/page-header';
 import { KEYED_SHELL, KEYED_WIZARD, keyedShell, keyedWizard } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
@@ -121,6 +121,28 @@ describe('the first row\'s New booking button', () => {
         );
         expect(document.querySelector('.admin-new-booking')?.classList.contains('bg-primary')).toBe(false);
         expect(document.querySelector('.admin-new-booking')?.classList.contains('bg-card')).toBe(true);
+    });
+
+    it('is a round icon button below the wide breakpoint, still named New booking, and the word with its icon from it', () => {
+        render(PROPS);
+
+        expect(document.querySelector('.admin-new-booking')?.classList.contains('admin-button--icon-only')).toBe(false);
+
+        const undo = onCompact();
+
+        try {
+            render(PROPS);
+
+            const button = document.querySelector('.admin-topbar .admin-new-booking');
+
+            expect(button?.classList.contains('admin-button--icon-only')).toBe(true);
+            expect(button?.classList.contains('size-11.5')).toBe(true);
+            expect(button?.querySelector('svg')).not.toBeNull();
+            expect(button?.querySelector('.sr-only')?.textContent).toBe(shell.text('top_bar.new_booking'));
+            expect(button?.textContent).toBe(shell.text('top_bar.new_booking'));
+        } finally {
+            undo();
+        }
     });
 });
 

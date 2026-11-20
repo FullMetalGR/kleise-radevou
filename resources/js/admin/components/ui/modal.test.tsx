@@ -485,7 +485,8 @@ describe('the shapes', () => {
 
         view.render(<Shaped key="drawer" variant="drawer" />);
 
-        expect(classesOf(document.querySelector('.admin-modal__title'))).toEqual(expect.arrayContaining(['px-5', 'py-3']));
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toContain('sr-only');
+        expect(classesOf(document.querySelector('.admin-modal__body'))).toEqual(expect.arrayContaining(['px-4', 'pt-4']));
         expect([...classesOf(document.querySelector('.admin-modal__title')), ...classesOf(document.querySelector('.admin-modal__body'))].some((name) => name.startsWith('max-desktop:'))).toBe(false);
     });
 
@@ -546,10 +547,13 @@ describe('the shapes', () => {
         expect(document.querySelector('.admin-modal__title')?.parentElement).toBe(frame());
     });
 
-    it('opens as a drawer pinned to the start edge at the viewport\'s full height, a dialog titled as any modal is', () => {
+    it('opens as a drawer pinned to the start edge at the viewport\'s full height, rounded at its far side, a dialog titled for a screen reader as any modal is', () => {
         view.render(<Shaped variant="drawer" />);
 
-        expect(classesOf(frame())).toEqual(expect.arrayContaining(['admin-modal__frame--drawer', 'bg-card', 'text-card-foreground', 'h-full', 'max-w-72', 'rounded-none', 'border-r']));
+        expect(classesOf(frame())).toEqual(expect.arrayContaining(['admin-modal__frame--drawer', 'bg-card', 'text-card-foreground', 'h-dvh', 'w-[min(88vw,340px)]', 'rounded-r-shell', 'shadow-drawer']));
+        expect(classesOf(frame())).not.toEqual(expect.arrayContaining(['w-full']));
+        expect(classesOf(frame())).not.toContain('max-w-72');
+        expect(classesOf(frame())).not.toContain('rounded-none');
         expect(classesOf(frame()).some((name) => name.startsWith('max-h-'))).toBe(false);
         expect(classesOf(frame())).not.toContain('bg-background');
         expect(classesOf(backdrop())).toEqual(expect.arrayContaining(['bg-scrim', 'items-stretch', 'justify-start']));

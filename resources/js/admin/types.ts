@@ -63,6 +63,7 @@ export type ShellStrings = {
         billing: string;
         main: string;
         menu: string;
+        close: string;
         skip: string;
         collapse: string;
         expand: string;

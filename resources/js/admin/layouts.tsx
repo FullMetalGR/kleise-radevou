@@ -14,6 +14,8 @@ import { Plus } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
 import { clockOf } from '@/lib/format';
 import { useShell } from '@/lib/strings';
+import { cn } from '@/lib/utils';
+import { useWide } from '@/lib/viewport';
 import { NOT_DONE, owningFailure } from '@/lib/visits';
 import { NewBookingProvider, useNewBooking } from './wizard/NewBooking';
 
@@ -130,14 +132,17 @@ function useTheme(): [Theme, () => void] {
 /**
  * The shell's one button in the first row, rendered for manageBookings alone; it opens the wizard
  * with no prefill. The page's main button outranks it, so beside one it steps back to the outlined
- * look.
+ * look. Below the wide breakpoint, where the first row shares a narrow screen with the round Menu
+ * button and the page's title, it is a 46 pixel round button showing its plus alone, named New
+ * booking still.
  */
 function NewBookingButton({ quiet }: { quiet: boolean }) {
     const { open } = useNewBooking();
     const shell = useShell();
+    const wide = useWide();
 
     return (
-        <Button variant={quiet ? 'secondary' : 'primary'} size="large" icon={<Plus />} className="admin-new-booking" onClick={() => open()}>
+        <Button variant={quiet ? 'secondary' : 'primary'} size="large" iconOnly={!wide} icon={<Plus />} className={cn('admin-new-booking', !wide && 'size-11.5')} onClick={() => open()}>
             {shell.text('top_bar.new_booking')}
         </Button>
     );

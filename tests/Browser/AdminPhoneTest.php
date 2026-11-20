@@ -13,7 +13,9 @@ use Tests\Support\LunaFixture;
 
 /*
  * The admin at 390 pixels, on the plugin's iPhone 15: the owner who approves a request from the
- * chair. The rail is behind a control in the top bar and opens as a drawer; the Calendar opens on
+ * chair. The menu's first group, Home, Calendar, Bookings and Shifts, stands in a bar along the
+ * foot of the screen beside a Menu button, and the whole menu is behind the round Menu button
+ * first in the page's first row, a drawer from the left edge; the Calendar opens on
  * Day, and Week, pressed, says it needs a wider screen and offers Day back, where a block opens the
  * booking dialog filling the screen; Bookings lists Customer, When, Status and Total and opens the
  * dialog from a row, its footer pinned under a body that scrolls; the dialog's Cancel goes through
@@ -23,15 +25,22 @@ use Tests\Support\LunaFixture;
  * its footer, and each stands inside the dialog. The confirm over the dialog rises from the bottom
  * edge as a sheet; one more walk opens a request's Reject at a tablet's width, types a reason, and
  * narrows the window to the phone's and widens it back, the confirm a card, then a sheet, then a
- * card again, the reason and the focus kept throughout. A walk reads the Menu control
- * carrying the pending count the rail's Bookings entry carries, so a request waiting is seen with
- * the drawer closed, and the others none where none is pending. A last walk reads the wizard,
+ * card again, the reason and the focus kept throughout. A walk reads the bar's Bookings entry
+ * carrying the pending count the drawer's Bookings entry carries, so a request waiting is seen with
+ * the drawer closed, the Menu button carrying none, and the others none where none is pending.
+ * Another scrolls a long screen down and up and reads the bar slid below the window and back:
+ * before anything in it is pressed, after a press on one of its entries, and after the drawer its
+ * own Menu button opened is closed by a press, since the focus a press leaves holds nothing up,
+ * while the keyboard's focus moving inside a bar that is away brings it back; and it closes that
+ * drawer with Escape, focus returning to the bar's Menu button. A
+ * last walk reads the wizard,
  * Month, Services, Staff and Settings at the same width, none of them scrolling the page sideways,
  * Month's day its number and how many bookings it has with no chip, the whole cell its date menu,
  * whose Open day opens Day view on it, Settings' save bar beside the help bubble and resting after
  * the form's last control at its end, and one more opens every screen of the admin, as an owner
  * who reads English and as one who reads Greek, and reads that none is wider than the phone, the
- * Team screen's members read as rows, each value beside its column name; an email of sixty
+ * Team screen's members read as rows, each value beside its column name, and the drawer open over
+ * a screen holds the whole menu and the controls inside its width; an email of sixty
  * characters with no break wraps inside its row there. A walk in Greek holds a field's control to
  * its place: the selects of Bookings' filters, listing a member and a service whose names run to
  * sixty characters, stand inside their fields with the page not scrolling sideways. Another reads
@@ -51,6 +60,12 @@ const PHONE_WEEK_NOTICE = 'admin/calendar.grid.week_needs_width';
 const PHONE_FOOTNOTE = 'admin/calendar.page.footnote';
 
 const PHONE_DRAWER = '.admin-modal__frame--drawer';
+
+/**
+ * The first row's own Menu button. Its twin at the drawer's head and a dropdown's list carry the
+ * same class, and neither stands in the first row.
+ */
+const PHONE_MENU = '.admin-topbar .admin-menu';
 
 beforeEach(function () {
     dropDemoSchemas();
@@ -99,6 +114,8 @@ it('opens a booking from a block of the Day calendar on a phone, Week saying it 
     $page->assertPathIs('/admin/calendar')
         ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)
         ->assertNotPresent('.admin-menu .admin-menu-pending')
+        ->assertScript(PhoneScripts::BAR_LABELS, [navLabel('home'), navLabel('calendar'), navLabel('bookings'), navLabel('shifts'), navLabel('menu')])
+        ->assertAttribute('.admin-bottom-bar [aria-current="page"]', 'href', '/admin/calendar')
         ->assertNotPresent('.admin-aside')
         ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'))
         ->assertNotPresent('.admin-calendar-narrow')
@@ -133,8 +150,17 @@ it('opens a booking from a block of the Day calendar on a phone, Week saying it 
         ->assertPathIs('/admin/calendar')
         ->assertSeeIn('.admin-modal__title', 'Cora Cut')
         ->assertScript(PhoneScripts::DIALOG_FILLS_SCREEN, true)
+        ->assertScript(PhoneScripts::BAR_HIDDEN, true)
         ->click('.admin-booking-close')
         ->assertNotPresent('.admin-booking-dialog');
+
+    // The drawer shuts on Escape and hands the focus back to the button that opened it.
+    $page->click('.admin-menu')
+        ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
+        ->assertScript(PhoneScripts::BAR_HIDDEN, true)
+        ->keys(PHONE_DRAWER.' .admin-menu', 'Escape')
+        ->assertNotPresent(PHONE_DRAWER)
+        ->assertScript(Admin::focusIsOn(PHONE_MENU), true);
 
     $page->click('.admin-menu')
         ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
@@ -297,12 +323,13 @@ it('keeps a confirm\'s typed reason and its focus as the window narrows to a pho
     Look::shot($page, 'confirm-over-dialog-1440');
 });
 
-it('carries the pending count on the Menu control with the drawer closed, the count the rail\'s Bookings entry carries inside it', function () {
+it('carries the pending count on the bar\'s Bookings entry with the drawer closed, the count the drawer\'s Bookings entry carries, and none on the Menu button', function () {
     phoneBooking('Rita Request', athensDaysOn(2, 14), request: true);
 
     $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
     $page->assertNotPresent(PHONE_DRAWER)
-        ->assertSeeIn('.admin-menu .admin-menu-pending', '1')
+        ->assertSeeIn('.admin-bottom-bar a[href="/admin/bookings"] .admin-rail-pending', '1')
+        ->assertNotPresent('.admin-menu-pending')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
 
     $page->click('.admin-menu')
@@ -310,7 +337,54 @@ it('carries the pending count on the Menu control with the drawer closed, the co
         ->click(PHONE_DRAWER.' a[href="/admin/bookings"]')
         ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']))
         ->assertNotPresent(PHONE_DRAWER)
-        ->assertSeeIn('.admin-menu .admin-menu-pending', '1')
+        ->assertSeeIn('.admin-bottom-bar a[href="/admin/bookings"] .admin-rail-pending', '1')
+        ->assertNotPresent('.admin-menu-pending')
+        ->assertNoJavaScriptErrors();
+});
+
+it('slides the bar along the foot below the window as a long screen scrolls down and back as it scrolls up, the same after a press on one of its entries and on its Menu button, brings it back for the keyboard\'s focus, and hands focus to its Menu button when the drawer that button opened closes', function () {
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+
+    // Settings, reached by its address, so nothing in the bar has been pressed.
+    $page->navigate(Admin::url('luna', '/settings'))->waitForText(adminLine('admin/settings.sections.booking_rules'));
+    expect($page->script(PhoneScripts::PAGE_ROOM))->toBeGreaterThan(600);
+    $page->assertScript(PhoneScripts::barIs(away: false), true)
+        ->assertScript(PhoneScripts::barAfterScrollTo(400, away: true), true)
+        ->assertScript(PhoneScripts::barAfterScrollTo(300, away: false), true);
+
+    // A press on an entry leaves the focus on it, and the entry keeps it on the screen it leads
+    // to. That focus is not the keyboard's, so the bar goes there as it did before the press.
+    $page->click('.admin-bottom-bar a[href="/admin"]')
+        ->assertVisible(Admin::HOME)
+        ->assertScript(Admin::focusIsOn('.admin-bottom-bar a[href="/admin"]'), true);
+    expect($page->script(PhoneScripts::PAGE_ROOM))->toBeGreaterThan(600);
+    $page->assertScript(PhoneScripts::barAfterScrollTo(400, away: true), true)
+        ->assertScript(PhoneScripts::barAfterScrollTo(300, away: false), true);
+
+    // Tab moves the keyboard's focus to the next entry while the bar is away, and the bar comes
+    // back: no control the keyboard is on sits below the window.
+    $page->assertScript(PhoneScripts::barAfterScrollTo(400, away: true), true)
+        ->keys('.admin-bottom-bar a[href="/admin"]', 'Tab')
+        ->assertScript(Admin::focusIsOn('.admin-bottom-bar a[href="/admin/calendar"]'), true)
+        ->assertScript(PhoneScripts::barIs(away: false), true)
+        ->assertScript(PhoneScripts::barAfterScrollTo(300, away: false), true);
+
+    // The bar's own Menu button opens the drawer. Closed by a press on the button's twin, the
+    // drawer hands focus back to the bar's button, and that focus holds nothing up either.
+    $page->click('.admin-bottom-bar__menu')
+        ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
+        ->click(PHONE_DRAWER.' .admin-menu')
+        ->assertNotPresent(PHONE_DRAWER)
+        ->assertScript(Admin::focusIsOn('.admin-bottom-bar__menu'), true)
+        ->assertScript(PhoneScripts::barAfterScrollTo(400, away: true), true)
+        ->assertScript(PhoneScripts::barAfterScrollTo(300, away: false), true);
+
+    // Closed by Escape, it hands focus back to the same button.
+    $page->click('.admin-bottom-bar__menu')
+        ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
+        ->keys(PHONE_DRAWER.' .admin-menu', 'Escape')
+        ->assertNotPresent(PHONE_DRAWER)
+        ->assertScript(Admin::focusIsOn('.admin-bottom-bar__menu'), true)
         ->assertNoJavaScriptErrors();
 });
 
@@ -353,8 +427,11 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
             ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     }
 
-    // Settings' save bar floats beside the help bubble and, at the end of the form, rests after its last control.
+    // Settings' save bar floats beside the help bubble, both above the bar along the foot, and, at
+    // the end of the form, rests after its last control.
+    expect($page->script(PhoneScripts::FLOATERS_APART))->toBe(['drawn' => ['bar', 'save', 'bubble'], 'overlaps' => []]);
     $page->assertScript(PhoneScripts::SAVE_BAR_INSIDE, true)
+        ->assertScript(PhoneScripts::BUBBLE_INSIDE, true)
         ->assertScript(PhoneScripts::SAVE_BAR_BESIDE_BUBBLE, true)
         ->assertScript(PhoneScripts::SAVE_BAR_CLEARS_LAST_CONTROL, true);
 
@@ -441,6 +518,16 @@ it('keeps every screen of the admin no wider than a phone, a customer\'s page am
         ->click('.admin-customers__row:first-child .admin-customers__name')
         ->assertVisible('.admin-customer-screen')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+
+    // The drawer over the customer's page: the whole menu, then the controls, inside its width.
+    $page->click('.admin-menu')
+        ->assertCount(PHONE_DRAWER.' .admin-rail-entry', 11)
+        ->assertVisible(PHONE_DRAWER.' .admin-signout')
+        ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->click(PHONE_DRAWER.' .admin-menu')
+        ->assertNotPresent(PHONE_DRAWER)
+        ->assertScript(Admin::focusIsOn(PHONE_MENU), true);
 
     // The members table has no room for its columns on a phone: each member is a block of
     // labelled lines, nothing scrolls sideways, and the bubble fixed to the screen's corner stays
