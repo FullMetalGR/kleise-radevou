@@ -5,6 +5,7 @@ use App\Billing\PlanChangeRefused;
 use App\Billing\TaxId;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Site\SiteLanguage;
 use App\Tenancy\TenantUrls;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,17 @@ use Tests\Support\FakeBillingProvider;
  * reading active on it, as a canceled owner subscribes again. The provider is the fake the test
  * environment binds, answering in this process. Each success toast is dismissed as seen, so no
  * assertion rides on the auto-clear timer.
+ *
+ * The cards are measured too. On a wide screen the plan the business is on sits beside the change
+ * it offers, a trial's plans sit side by side, and a free account's one banner, no wider than
+ * 760px, holds its 60px tick beside the sentence. On a phone, in each language, each of them
+ * stacks and the page is never wider than the screen.
+ *
+ * Greek's longer labels are measured against the cards that hold them. The change's button keeps
+ * to one line, so the plan row takes two cards only where that line has room, read at the widths
+ * around the step. A plan's button of the choice shows a longer line while its press is sent, and
+ * wraps inside its card, as the one button of a way back that posts its plan wraps inside the
+ * notice on a phone: the write is held in the page so the line stays to be read.
  */
 
 beforeEach(function () {
@@ -243,4 +255,227 @@ it('chooses a plan in a trial through the checkout and its completion, reading a
         ->assertNoJavaScriptErrors();
 
     expect(DB::table('tenants')->where('slug', 'pier')->value('trial_ends_at'))->toBeNull();
+});
+
+// The page is no wider than the window: the document's scroll width against its client width,
+// which leaves the scrollbar out.
+const BILLING_NO_SIDEWAYS = 'document.fonts.ready.then(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)';
+
+/**
+ * A script answering whether the boxes the selector finds, two or more in the page's order, stand
+ * one under another on one left edge, or side by side on one top edge.
+ */
+function billingBoxes(string $selector, bool $stacked): string
+{
+    $placed = $stacked
+        ? 'box.top >= boxes[index - 1].bottom - 1 && Math.abs(box.left - boxes[0].left) <= 1'
+        : 'box.left >= boxes[index - 1].right - 1 && Math.abs(box.top - boxes[0].top) <= 1';
+
+    return "document.fonts.ready.then(() => { const boxes = [...document.querySelectorAll('{$selector}')].map((node) => node.getBoundingClientRect()); return boxes.length > 1 && boxes.every((box, index) => index === 0 || ({$placed})); })";
+}
+
+/**
+ * A script answering whether the free account's banner is at most 760px wide and inside the
+ * window, its tick a 60px square, and the sentence beside the tick or under it.
+ */
+function billingBanner(bool $beside): string
+{
+    $placed = $beside ? 'sentence.left >= tick.right && sentence.top < tick.bottom' : 'sentence.top >= tick.bottom';
+
+    return "document.fonts.ready.then(() => { const card = document.querySelector('.admin-billing__free'); const mark = card?.querySelector('.admin-billing__tick'); const words = card?.querySelector('.admin-billing__sentence'); if (!card || !mark || !words) { return false; } const box = card.getBoundingClientRect(); const tick = mark.getBoundingClientRect(); const sentence = words.getBoundingClientRect(); return box.width <= 760.5 && box.right <= document.documentElement.clientWidth + 1 && Math.abs(tick.width - 60) < 0.5 && Math.abs(tick.height - 60) < 0.5 && ({$placed}); })";
+}
+
+/** pier in a trial with no subscriptions row, its end five days on, as the trial's walk sets it. */
+function billingTrial(): void
+{
+    DB::table('subscriptions')->delete();
+    DB::table('tenants')->where('slug', 'pier')->update([
+        'subscription_state' => 'trial',
+        'entitlements' => '{staff}',
+        'plan_ref' => null,
+        'trial_ends_at' => (new DateTimeImmutable('now', new DateTimeZone('UTC')))->add(new DateInterval('P5D'))->format('Y-m-d H:i:sP'),
+    ]);
+}
+
+/** pier in the free shape: active, with no subscriptions row and no trial end. */
+function billingFree(): void
+{
+    DB::table('subscriptions')->delete();
+    DB::table('tenants')->where('slug', 'pier')->update(['subscription_state' => 'active', 'entitlements' => '{}', 'plan_ref' => null, 'trial_ends_at' => null]);
+}
+
+it('lays the plan cards and a trial\'s plans side by side on a wide screen, and a free account\'s banner with its tick beside the sentence, stacked on a narrow one', function () {
+    $page = Admin::signedIn($this, 'pier', Admin::owner('pier'));
+
+    $page->resize(1440, 900)
+        ->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::ACTIVE))
+        ->assertScript(billingBoxes('.admin-billing__current, .admin-billing__change', false), true)
+        ->assertScript(BILLING_NO_SIDEWAYS, true);
+
+    billingTrial();
+
+    $page->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::TRIAL))
+        ->click('.admin-billing__resubscribe')
+        ->assertVisible('[data-plan="staff"] .admin-billing__option-button')
+        ->assertScript(billingBoxes('.admin-billing__option', false), true)
+        ->assertScript(BILLING_NO_SIDEWAYS, true);
+
+    billingFree();
+
+    $page->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::FREE))
+        ->assertMissing('.admin-billing__plan')
+        ->assertMissing('.admin-billing__portal')
+        ->assertScript(billingBanner(true), true)
+        ->assertScript(BILLING_NO_SIDEWAYS, true)
+        ->resize(390, 844)
+        ->assertScript(billingBanner(false), true)
+        ->assertScript(BILLING_NO_SIDEWAYS, true)
+        ->assertNoJavaScriptErrors();
+});
+
+it('stacks the plan cards, a trial\'s plans and a free account\'s banner on a phone, the page never wider than the screen', function (SiteLanguage $language) {
+    // A longer line in one language widens a card in that language alone, so the owner reads the
+    // screen in each, chosen before the sign-in.
+    DB::table('users')->where('email', Admin::owner('pier'))->update(['locale' => $language->value]);
+    $page = Admin::signInOnPhone($this, 'pier', Admin::owner('pier'))->assertVisible(Admin::HOME);
+
+    $page->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::ACTIVE, [], $language))
+        ->assertScript(billingBoxes('.admin-billing__current, .admin-billing__change', true), true)
+        ->assertScript(BILLING_NO_SIDEWAYS, true);
+
+    billingTrial();
+
+    $page->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::TRIAL, [], $language))
+        ->click('.admin-billing__resubscribe')
+        ->assertVisible('[data-plan="staff"] .admin-billing__option-button')
+        ->assertScript(billingBoxes('.admin-billing__option', true), true)
+        ->assertScript(BILLING_NO_SIDEWAYS, true);
+
+    billingFree();
+
+    $page->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::FREE, [], $language))
+        ->assertMissing('.admin-billing__plan')
+        ->assertScript(billingBanner(false), true)
+        ->assertScript(BILLING_NO_SIDEWAYS, true)
+        ->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+/**
+ * A script answering where the control leaves the box it stands in, the card around it unless
+ * another box is named: by how many pixels its right edge passes the room inside the box's own
+ * border and padding, and by how many the box passes the one around it, with the window's width.
+ * It answers an empty string where both are held, so a failure reads as its measure. A box that
+ * clips what it holds keeps a control past its edge out of the page's scroll width, so the edges
+ * themselves are compared. A window resized across the width at which the rail comes or goes is
+ * laid out again a moment later, so the measure is taken once the box around has kept its place
+ * for a few frames.
+ */
+function billingHeld(string $control, string $around, string $card = 'section'): string
+{
+    $atRest = "new Promise((resolve) => { let last = null; let calm = 0; const look = () => { const box = document.querySelector('{$around}')?.getBoundingClientRect(); const now = box ? box.left + ':' + box.width : ''; calm = now === last ? calm + 1 : 0; last = now; if (calm >= 5) { resolve(); } else { requestAnimationFrame(look); } }; look(); })";
+
+    return "document.fonts.ready.then(() => {$atRest}).then(() => { const control = document.querySelector('{$control}'); const card = control?.closest('{$card}'); const around = card?.parentElement?.closest('{$around}'); if (!control || !card || !around) { return 'not on the page'; } const edge = card.getBoundingClientRect().right; const style = getComputedStyle(card); const past = control.getBoundingClientRect().right - (edge - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth)); const out = edge - around.getBoundingClientRect().right; const found = [past > 0.5 ? 'the control ' + past.toFixed(1) + 'px past the room in its card' : '', out > 0.5 ? 'the card ' + out.toFixed(1) + 'px past the box around it' : ''].filter(Boolean); return found.length === 0 ? '' : 'at ' + document.documentElement.clientWidth + 'px: ' + found.join(', '); })";
+}
+
+it('keeps the change\'s one-line button inside its card in Greek, the plan row taking two cards only where the longer label has room', function () {
+    $el = SiteLanguage::Greek;
+    DB::table('users')->where('email', Admin::owner('pier'))->update(['locale' => $el->value]);
+    $page = Admin::signedIn($this, 'pier', Admin::owner('pier'));
+
+    $page->resize(900, 900)
+        ->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::ACTIVE, [], $el))
+        ->assertSeeIn('.admin-billing__change-button', adminLine('admin/billing.change.add', [], $el))
+        ->assertScript("getComputedStyle(document.querySelector('.admin-billing__change-button')).whiteSpace", 'nowrap');
+
+    // The narrowest window that shows the rail, where the section is at its narrowest beside it;
+    // each side of the step at which the row takes two cards, with the rail and without it; the
+    // widths at which a row taking two cards a step sooner is too narrow for the label; and a
+    // phone's width, where the one card under the plan's is at its narrowest.
+    foreach ([900, 1084, 1083, 988, 816, 815, 640, 390] as $width) {
+        $page->resize($width, 900)->assertScript(billingHeld('.admin-billing__change-button', '.admin-billing__plan'), '');
+    }
+
+    $page->assertNoJavaScriptErrors();
+});
+
+// The checkout's own write held in the page: it is opened, counted and never sent, so the button
+// pressed keeps the words it shows while its write is on its way for as long as the page is read.
+const BILLING_HOLD_CHECKOUT = "(() => { const open = XMLHttpRequest.prototype.open; const send = XMLHttpRequest.prototype.send; window.heldCheckouts = 0; XMLHttpRequest.prototype.open = function (method, url, ...rest) { this.heldCheckout = String(method).toUpperCase() === 'POST' && String(url).includes('/admin/billing/checkout'); return open.call(this, method, url, ...rest); }; XMLHttpRequest.prototype.send = function (...body) { if (this.heldCheckout) { window.heldCheckouts += 1; return; } return send.apply(this, body); }; return true; })()";
+
+it('wraps the words a plan\'s button shows while its press is sent inside its card in Greek, beside the rail and on a phone\'s width, the page never wider than the window', function () {
+    $el = SiteLanguage::Greek;
+    DB::table('users')->where('email', Admin::owner('pier'))->update(['locale' => $el->value]);
+    billingTrial();
+
+    $pressed = '[data-plan="staff"] .admin-billing__option-button';
+    $page = Admin::signedIn($this, 'pier', Admin::owner('pier'));
+
+    $page->resize(1024, 900)
+        ->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::TRIAL, [], $el))
+        ->click('.admin-billing__resubscribe')
+        ->assertSeeIn($pressed, adminLine('admin/billing.checkout.choose', ['plan' => 'Team'], $el))
+        ->assertScript(billingHeld($pressed, '.admin-billing__notice'), '')
+        ->assertScript(BILLING_HOLD_CHECKOUT, true)
+        ->click($pressed)
+        ->waitForText(adminLine('admin/billing.checkout.busy', [], $el))
+        ->assertAttribute($pressed, 'aria-busy', 'true')
+        ->assertScript('window.heldCheckouts', 1);
+
+    foreach ([[1024, 900], [900, 900], [390, 844]] as [$width, $height]) {
+        $page->resize($width, $height)
+            ->assertSeeIn($pressed, adminLine('admin/billing.checkout.busy', [], $el))
+            ->assertScript(billingHeld($pressed, '.admin-billing__notice'), '')
+            ->assertScript(BILLING_NO_SIDEWAYS, true);
+    }
+
+    $page->assertNoJavaScriptErrors();
+
+    // The write never left the page, so the provider was asked for no checkout.
+    expect(billingPortWrites())->toBe([]);
+});
+
+it('wraps the words the one checkout button of a way back shows while its press is sent inside the notice in Greek, on a phone\'s width and beside the rail, the page never wider than the window', function () {
+    // pier's subscription ended on the staff plan, which the catalogue lists and its one member
+    // fits, so the way back is one button posting that plan with no choice under it.
+    $el = SiteLanguage::Greek;
+    DB::table('users')->where('email', Admin::owner('pier'))->update(['locale' => $el->value]);
+    DB::table('subscriptions')->update(['status' => 'canceled', 'items' => json_encode([['price' => 'price_staff_test', 'quantity' => 1]], JSON_THROW_ON_ERROR)]);
+    DB::table('tenants')->where('slug', 'pier')->update(['plan_ref' => 'price_staff_test', 'entitlements' => '{staff}', 'subscription_state' => 'canceled']);
+
+    $pressed = '.admin-billing__resubscribe';
+    $inNotice = billingHeld($pressed, '.admin-billing', '.admin-billing__notice');
+    $page = Admin::signedIn($this, 'pier', Admin::owner('pier'));
+
+    $page->resize(390, 844)
+        ->navigate(Admin::url('pier', '/billing'))
+        ->waitForText(adminLine(BillingController::CANCELED, [], $el))
+        ->assertSeeIn($pressed, adminLine(BillingController::SUBSCRIBE_AGAIN, [], $el))
+        ->assertCount('.admin-billing__choice', 0)
+        ->assertScript($inNotice, '')
+        ->assertScript(BILLING_HOLD_CHECKOUT, true)
+        ->click($pressed)
+        ->waitForText(adminLine('admin/billing.checkout.busy', [], $el))
+        ->assertAttribute($pressed, 'aria-busy', 'true')
+        ->assertScript('window.heldCheckouts', 1)
+        ->assertCount('.admin-billing__choice', 0);
+
+    foreach ([[390, 844], [900, 900]] as [$width, $height]) {
+        $page->resize($width, $height)
+            ->assertSeeIn($pressed, adminLine('admin/billing.checkout.busy', [], $el))
+            ->assertScript($inNotice, '')
+            ->assertScript(BILLING_NO_SIDEWAYS, true);
+    }
+
+    $page->assertNoJavaScriptErrors();
+
+    // The write never left the page, so the provider was asked for no checkout.
+    expect(billingPortWrites())->toBe([]);
 });

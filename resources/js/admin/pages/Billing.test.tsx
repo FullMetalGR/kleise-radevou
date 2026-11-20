@@ -318,17 +318,46 @@ describe('no subscription on file', () => {
 });
 
 describe('a free tenant', () => {
-    it('renders the one free sentence as a success notice and nothing else: no plan section, no change, no checkout and no portal', () => {
-        render({ notice: { kind: 'success', sentence: 'free-sentence-token', paused: null }, plan: null, change: null, unavailable: null, portal: false, vat: null, resubscribe: null });
+    it('renders the one free sentence in a green banner card and nothing else: no plan section, no change, no checkout and no portal', () => {
+        render({ notice: { kind: 'success', sentence: 'free-sentence-token', paused: null }, plan: null, change: null, unavailable: null, portal: false, vat: null, resubscribe: null }, { state: 'active' }, [], { free: true });
 
-        expect(text('.admin-billing__sentence')).toBe('free-sentence-token');
-        expect(document.querySelector('.admin-billing__notice')?.className).toContain('success');
+        const banner = document.querySelector('.admin-billing__notice');
+
+        expect(text('.admin-billing__notice .admin-billing__sentence')).toBe('free-sentence-token');
+        expect(banner?.tagName).toBe('SECTION');
+        expect(banner?.getAttribute('role')).toBe('status');
+        expect([...(banner?.classList ?? [])]).toEqual(expect.arrayContaining(['admin-billing__free', 'bg-positive-soft', 'ring-1', 'ring-positive/35', 'max-w-[47.5rem]', 'rounded-tile', 'text-positive-ink']));
+        expect(banner?.classList.contains('admin-notice')).toBe(false);
         expect(document.querySelector('.admin-billing__plan')).toBeNull();
         expect(document.querySelector('.admin-billing__unavailable')).toBeNull();
         expect(document.querySelector('.admin-billing__change-button')).toBeNull();
         expect(document.querySelector('.admin-billing__resubscribe')).toBeNull();
         expect(document.querySelector('.admin-billing__portal')).toBeNull();
         expect(document.querySelector('.admin-billing__paused')).toBeNull();
+    });
+
+    it('puts a hidden tick in a 60px green circle beside the sentence, cut in the card\'s own colour, the two stacking below the desktop breakpoint', () => {
+        render({ notice: { kind: 'success', sentence: 'free-sentence-token', paused: null }, plan: null, change: null, unavailable: null, portal: false, vat: null, resubscribe: null }, { state: 'active' }, [], { free: true });
+
+        const banner = document.querySelector('.admin-billing__free');
+        const tick = banner?.querySelector('.admin-billing__tick');
+
+        expect([...(tick?.classList ?? [])]).toEqual(expect.arrayContaining(['size-15', 'rounded-full', 'bg-positive', 'shrink-0']));
+        // White on the green of dark mode is too faint to read, so the tick takes the card's
+        // colour, which is white in light mode and near black in dark mode.
+        expect([...(tick?.classList ?? [])]).toContain('text-card');
+        expect([...(tick?.classList ?? [])].filter((name) => name.startsWith('text-'))).toEqual(['text-card']);
+        expect(tick?.getAttribute('aria-hidden')).toBe('true');
+        expect(tick?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+        expect(tick?.nextElementSibling?.querySelector('.admin-billing__sentence')).not.toBeNull();
+        expect([...(banner?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'items-center', 'max-desktop:flex-col', 'max-desktop:items-start']));
+    });
+
+    it('keeps a tenant that is not free on the success notice, the banner the free state\'s alone', () => {
+        render(ACTIVE, { state: 'active' }, [], { free: false });
+
+        expect(document.querySelector('.admin-billing__free')).toBeNull();
+        expect(document.querySelector('.admin-billing__notice')?.classList.contains('admin-notice--success')).toBe(true);
     });
 
     it('keeps the plan section where a narrowing record is all it holds', () => {
@@ -354,6 +383,12 @@ describe('the way back from canceled', () => {
         expect(text('.admin-billing__resubscribe')).toBe('subscribe-again-token');
         expect(document.querySelector('.admin-billing__pending')).toBeNull();
         expect(document.querySelector('.admin-billing__portal')).not.toBeNull();
+    });
+
+    it('holds the one checkout button to the notice and lets its label wrap below the desktop breakpoint, where the words it shows while its press is sent are wider than a phone\'s notice in a language of longer words', () => {
+        render(CANCELED, { state: 'canceled' });
+
+        expect([...button('.admin-billing__resubscribe').classList]).toEqual(expect.arrayContaining(['max-desktop:h-auto', 'max-desktop:min-h-11', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal']));
     });
 
     it('adds the on-its-way sentence and the server\'s Continue label while a checkout is open', () => {
@@ -647,12 +682,167 @@ describe('a closing account', () => {
     it('renders a free tenant\'s closing notice with support as the way back, and no plan, no choice and no portal', () => {
         const free = 'free-closing-notice-token';
 
-        render({ notice: { kind: 'warning', sentence: free, paused: 'paused-token' }, plan: null, change: null, unavailable: null, portal: false, vat: null, resubscribe: null });
+        render({ notice: { kind: 'warning', sentence: free, paused: 'paused-token' }, plan: null, change: null, unavailable: null, portal: false, vat: null, resubscribe: null }, { state: 'active' }, [], { free: true });
 
         expect(text('.admin-billing__sentence')).toBe(free);
+        expect(document.querySelector('.admin-billing__notice')?.classList.contains('admin-notice--warning')).toBe(true);
+        expect(document.querySelector('.admin-billing__free')).toBeNull();
         expect(document.querySelector('.admin-billing__resubscribe')).toBeNull();
         expect(document.querySelector('.admin-billing__plan')).toBeNull();
         expect(document.querySelector('.admin-billing__portal')).toBeNull();
+    });
+});
+
+describe('the cards', () => {
+    function classes(selector: string): string[] {
+        return [...(document.querySelector(selector)?.classList ?? [])];
+    }
+
+    it('makes the screen a query container, its plan and payment form sections that keep their hooks', () => {
+        render(ACTIVE);
+
+        expect(classes('.admin-billing')).toContain('@container');
+
+        for (const [hook, id] of [['.admin-billing__plan', 'billing-plan'], ['.admin-billing__payment', 'billing-payment']] as const) {
+            expect(document.querySelector(hook)?.tagName).toBe('SECTION');
+            expect(classes(hook)).toEqual(expect.arrayContaining(['admin-section', `admin-section--${id}`, '@container', 'rounded-tile']));
+            expect(document.querySelector(hook)?.getAttribute('aria-labelledby')).toBe(`section-${id}`);
+        }
+    });
+
+    it('draws the plan the business is on as an inner card ringed in the theme colour, and the change it offers as an inner card beside it only where the section is 48rem wide, the two stacking where it is narrower', () => {
+        render(ACTIVE);
+
+        const current = document.querySelector('.admin-billing__current');
+
+        expect(current?.tagName).toBe('SECTION');
+        expect(current?.querySelector('.admin-billing__plan-name')).not.toBeNull();
+        expect(classes('.admin-billing__current')).toEqual(expect.arrayContaining(['rounded-inner', 'ring-2', 'ring-primary']));
+        expect(classes('.admin-billing__current')).not.toContain('ring-border');
+        expect(document.querySelector('.admin-billing__change')?.tagName).toBe('SECTION');
+        expect(classes('.admin-billing__change')).toEqual(expect.arrayContaining(['rounded-inner', 'ring-[1.5px]', 'ring-border']));
+        expect(classes('.admin-billing__change')).not.toContain('ring-primary');
+        expect(classes('.admin-billing__change')).not.toContain('border-t');
+        expect(current?.nextElementSibling).toBe(document.querySelector('.admin-billing__change'));
+        // The change's button keeps to one line, and in a language of longer words a card of a
+        // narrower row has no room for it.
+        expect([...(current?.parentElement?.classList ?? [])]).toEqual(expect.arrayContaining(['grid', '@3xl:grid-cols-2']));
+        expect([...(current?.parentElement?.classList ?? [])].filter((name) => name.endsWith(':grid-cols-2'))).toEqual(['@3xl:grid-cols-2']);
+    });
+
+    it('leaves the ring off the plan card wherever the checkout is offered, the plan there being one to choose again: a trial, an ended subscription offered the choice, and one offered its last plan', () => {
+        const ended = { ...ACTIVE, notice: { kind: 'warning', sentence: 'canceled-sentence-token', paused: 'paused-token' }, change: null, unavailable: 'ended-token' } as const;
+        const states: [BillingProps, Record<string, string>][] = [
+            [TRIAL, TRIAL_ENDS],
+            [{ ...ended, resubscribe: { label: 'subscribe-again-token', pending: null, plan: null, choice: CHOICE } }, { state: 'canceled' }],
+            [{ ...ended, resubscribe: { label: 'subscribe-again-token', pending: null, plan: 'floor', choice: null } }, { state: 'canceled' }],
+        ];
+
+        for (const [billing, subscription] of states) {
+            render(billing, subscription);
+
+            expect(document.querySelector('.admin-billing__current')?.tagName).toBe('SECTION');
+            expect(document.querySelector('.admin-billing__current .admin-billing__plan-name')).not.toBeNull();
+            expect(classes('.admin-billing__current')).toEqual(expect.arrayContaining(['rounded-inner', 'ring-[1.5px]', 'ring-border']));
+            expect(classes('.admin-billing__current')).not.toContain('ring-primary');
+            expect(classes('.admin-billing__current')).not.toContain('ring-2');
+        }
+    });
+
+    it('keeps the ring on the plan card while the subscription stands and no checkout is offered, whatever its state', () => {
+        for (const state of ['active', 'grace', 'past_due', 'incomplete']) {
+            render({ ...ACTIVE, change: null, unavailable: 'unavailable-token' }, { state });
+
+            expect(classes('.admin-billing__current')).toEqual(expect.arrayContaining(['rounded-inner', 'ring-2', 'ring-primary']));
+        }
+    });
+
+    it('gives the plan card the whole row where no change is offered', () => {
+        render({ ...ACTIVE, change: null, unavailable: 'unavailable-token' });
+
+        const row = [...(document.querySelector('.admin-billing__current')?.parentElement?.classList ?? [])];
+
+        expect(row).toContain('grid');
+        expect(row.filter((name) => name.endsWith('grid-cols-2'))).toEqual([]);
+        expect(text('.admin-billing__unavailable')).toBe('unavailable-token');
+    });
+
+    it('draws each plan of the choice as an inner card with no ring of the theme colour, side by side where the control is wide and stacked where it is narrow', () => {
+        render(TRIAL, TRIAL_ENDS);
+        press(button('.admin-billing__resubscribe'));
+
+        const options = Array.from(document.querySelectorAll('.admin-billing__option'));
+        const choice = document.querySelector('.admin-billing__choice');
+
+        expect(options).toHaveLength(2);
+
+        for (const option of options) {
+            const card = option.firstElementChild;
+
+            expect(card?.tagName).toBe('SECTION');
+            expect([...(card?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-inner', 'ring-[1.5px]', 'ring-border']));
+            expect(card?.classList.contains('ring-primary')).toBe(false);
+            expect(card?.querySelector('.admin-billing__option-button')).not.toBeNull();
+        }
+
+        expect([...(choice?.classList ?? [])]).toEqual(expect.arrayContaining(['grid', 'self-stretch', '@lg:grid-cols-2']));
+        expect(choice?.parentElement?.classList.contains('@container')).toBe(true);
+    });
+
+    it('holds each plan\'s button to its card and lets its label wrap at every width, where the words it shows while its press is sent are wider than the card in a language of longer words', () => {
+        render(TRIAL, TRIAL_ENDS);
+        press(button('.admin-billing__resubscribe'));
+
+        for (const plan of ['floor', 'staff']) {
+            const names = [...button(`[data-plan="${plan}"] .admin-billing__option-button`).classList];
+
+            expect(names).toEqual(expect.arrayContaining(['h-auto', 'min-h-11', 'max-w-full', 'py-1.5', 'text-center', 'whitespace-normal']));
+            expect(names).not.toContain('whitespace-nowrap');
+            expect(names).not.toContain('h-11');
+        }
+    });
+
+    it('sets a plan\'s name over its price in the choice: the name semibold and the price at the regular weight, the notice around them being semibold itself', () => {
+        render(TRIAL, TRIAL_ENDS);
+        press(button('.admin-billing__resubscribe'));
+
+        expect(classes('.admin-billing__option-name')).toContain('font-semibold');
+        expect(classes('.admin-billing__option-price')).toContain('font-normal');
+    });
+
+    it('shows the narrowing record as a warning notice inside the plan section', () => {
+        render(ACTIVE, { state: 'active' }, ['staff']);
+
+        const record = document.querySelector('.admin-billing__narrowed');
+
+        expect(record?.classList.contains('admin-notice--warning')).toBe(true);
+        expect(record?.getAttribute('role')).toBe('status');
+        expect(record?.closest('.admin-billing__plan')).not.toBeNull();
+    });
+
+    it('keeps grace, the paused paragraph and a checkout on its way as lines of the one state notice', () => {
+        render({ ...ACTIVE, notice: { kind: 'warning', sentence: 'grace-sentence-token', paused: 'after-grace-token' }, resubscribe: { label: 'continue-token', pending: 'on-its-way-token', plan: 'staff', choice: null } }, { state: 'grace', grace_ends_at: '2026-10-06T22:30:00+00:00' });
+
+        expect(document.querySelectorAll('.admin-notice')).toHaveLength(1);
+
+        for (const line of ['__sentence', '__pending', '__grace', '__paused', '__resubscribe']) {
+            expect(document.querySelector(`.admin-billing__notice.admin-notice--warning .admin-billing${line}`)).not.toBeNull();
+        }
+    });
+
+    it('spells every price in the text face with tabular figures', () => {
+        render(ACTIVE);
+
+        for (const hook of ['.admin-billing__price', '.admin-billing__change-price']) {
+            expect(classes(hook)).toContain('tabular-nums');
+            expect(classes(hook)).not.toContain('font-mono');
+        }
+
+        render(TRIAL, TRIAL_ENDS);
+        press(button('.admin-billing__resubscribe'));
+
+        expect(classes('.admin-billing__option-price')).toContain('tabular-nums');
+        expect(classes('.admin-billing__option-price')).not.toContain('font-mono');
     });
 });
 

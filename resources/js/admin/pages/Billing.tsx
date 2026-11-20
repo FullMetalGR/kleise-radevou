@@ -1,6 +1,8 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
+import { Tick } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
 import { Section } from '@/components/ui/section';
@@ -8,6 +10,7 @@ import { namedFeatures } from '@/lib/features';
 import { clockOf, formatAmount, formatInstant, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
 import { placed, useShell } from '@/lib/strings';
+import { cn } from '@/lib/utils';
 import { NOT_DONE, owningFailure } from '@/lib/visits';
 import { BillingProvider, type BillingWords, billingWordsOf, useBilling } from '@/settings/words';
 import { useToasts } from '@/toast/toasts';
@@ -25,9 +28,18 @@ import type { BillingStrings, SharedProps } from '@/types';
  * trial's end in a trial and in a trial that ended unpaid, canceled with the end still on the prop.
  * Both are date and time in the tenant's zone and formats, the admin's shape for a wire timestamp:
  * each closes at an hour of its last day and the hourly lapse follows, so the date alone would read
- * as the whole day. The narrowing record is named beside the plan; a trial's plan card is the Free
+ * as the whole day. The narrowing record is named under the plan; a trial's plan card is the Free
  * trial's full set, with no price. A free tenant's page is its one success sentence, the Plan
  * section left out where it would hold nothing, no plan card, no record, no reason and no change.
+ *
+ * The plan card and each plan offered are inner cards: the plan the business is on ringed in the
+ * theme colour, the section's title the words that name it, and the change it offers unringed
+ * beside it where the section has room for two, as each plan of the choice is beside the next.
+ * The ring says the subscription stands, so the plan card carries none where the checkout is
+ * offered, in a trial and once a subscription has ended: the plan there is one to choose again.
+ * The ring follows the offer and nothing else, so a trial whose plans cannot be read, which is
+ * offered no checkout, shows it too.
+ * The free sentence is a green banner card in place of the success notice, for that state alone.
  *
  * Nothing is optimistic. Each write shows its busy state on the pressed control and disables the
  * others; the server's answer arrives as the redirect back and its flash, the refusal's sentence
@@ -138,28 +150,74 @@ function trialEndOf(subscription: SharedProps['subscription'], clock: TenantCloc
 /** The control's busy state, which plan a press is posting, and the press itself with the plan it posts. */
 type CheckoutProps = { busy: boolean; disabled: boolean; posting: string | null; onPost: (plan: string) => void };
 
-type NoticeProps = { notice: BillingProps['notice']; graceEnds: string | null; trialEnd: string | null; resubscribe: BillingResubscribe | null; checkout: CheckoutProps };
+type NoticeProps = { free: boolean; notice: BillingProps['notice']; graceEnds: string | null; trialEnd: string | null; resubscribe: BillingResubscribe | null; checkout: CheckoutProps };
 
-function StateNotice({ notice, graceEnds, trialEnd, resubscribe, checkout }: NoticeProps) {
+/**
+ * The state notice: the server's sentence with the state's own lines under it. A free tenant's
+ * success is the green banner instead, holding the same lines; a free tenant's closing notice is
+ * a warning and stays a notice.
+ */
+function StateNotice({ free, ...state }: NoticeProps) {
+    if (free && state.notice.kind === 'success') {
+        return (
+            <FreeBanner>
+                <StateLines {...state} large />
+            </FreeBanner>
+        );
+    }
+
+    return (
+        <Notice kind={state.notice.kind} className="admin-billing__notice">
+            <StateLines {...state} />
+        </Notice>
+    );
+}
+
+/** The server's sentence, larger in the banner, and the state's own lines under it. */
+function StateLines({ notice, graceEnds, trialEnd, resubscribe, checkout, large = false }: Omit<NoticeProps, 'free'> & { large?: boolean }) {
     const words = useBilling();
 
     return (
-        <Notice kind={notice.kind} className="admin-billing__notice">
-            <div className="flex flex-col gap-2">
-                <p className="admin-billing__sentence">{notice.sentence}</p>
-                {resubscribe !== null && resubscribe.pending !== null && <p className="admin-billing__pending">{resubscribe.pending}</p>}
-                {graceEnds !== null && <p className="admin-billing__grace">{words.text('grace_end', { end: graceEnds })}</p>}
-                {trialEnd !== null && <p className="admin-billing__trial">{trialEnd}</p>}
-                {notice.paused !== null && <p className="admin-billing__paused">{notice.paused}</p>}
-                {resubscribe !== null && <CheckoutControl resubscribe={resubscribe} {...checkout} />}
-            </div>
-        </Notice>
+        <div className="flex min-w-0 flex-col gap-2">
+            <p className={cn('admin-billing__sentence', large && 'text-card-title')}>{notice.sentence}</p>
+            {resubscribe !== null && resubscribe.pending !== null && <p className="admin-billing__pending">{resubscribe.pending}</p>}
+            {graceEnds !== null && <p className="admin-billing__grace">{words.text('grace_end', { end: graceEnds })}</p>}
+            {trialEnd !== null && <p className="admin-billing__trial">{trialEnd}</p>}
+            {notice.paused !== null && <p className="admin-billing__paused">{notice.paused}</p>}
+            {resubscribe !== null && <CheckoutControl resubscribe={resubscribe} {...checkout} />}
+        </div>
+    );
+}
+
+/**
+ * The free account's banner: a card on the green's soft ground inside a faint green ring, at most
+ * 760px wide, a tick in a 60px green circle beside the words and above them below the desktop
+ * breakpoint. The tick is cut in the card's own colour, white in light mode and near black in
+ * dark mode, where the green is too light for white to read on it. It takes the notice's hook and
+ * its status role, so the sentence is found and announced as the notice's was.
+ */
+function FreeBanner({ children }: { children: ReactNode }) {
+    return (
+        <Card
+            flush
+            role="status"
+            className="admin-billing__notice admin-billing__free flex max-w-[47.5rem] items-center gap-5 bg-positive-soft px-8.5 py-9 text-positive-ink shadow-none ring-1 ring-positive/35 max-desktop:flex-col max-desktop:items-start max-desktop:px-5.5 max-desktop:py-6.5"
+        >
+            <span className="admin-billing__tick grid size-15 shrink-0 place-items-center rounded-full bg-positive text-card [&_svg]:size-6.5" aria-hidden="true">
+                <Tick />
+            </span>
+            {children}
+        </Card>
     );
 }
 
 /**
  * The checkout's control. Naming a plan, the press posts it. Carrying a choice, the press opens
- * the choice under it, and each plan's own button posts that plan.
+ * the choice under it, and each plan's own button posts that plan. The control's column is a size
+ * container, so the plans stand side by side where it is at least 32rem wide and stack where it is
+ * narrower, a phone among them. The one button that posts its plan lets its label wrap below the
+ * desktop breakpoint: the words it shows while its press is sent are wider than a phone's notice
+ * in a language of longer words, and from the breakpoint up the notice holds them on one line.
  */
 function CheckoutControl({ resubscribe, busy, disabled, posting, onPost }: CheckoutProps & { resubscribe: BillingResubscribe }) {
     const words = useBilling();
@@ -170,7 +228,7 @@ function CheckoutControl({ resubscribe, busy, disabled, posting, onPost }: Check
 
         return (
             <div>
-                <Button className="admin-billing__resubscribe" busy={busy} busyLabel={words.text('checkout.busy')} disabled={disabled} onClick={() => onPost(plan)}>
+                <Button wrap className="admin-billing__resubscribe" busy={busy} busyLabel={words.text('checkout.busy')} disabled={disabled} onClick={() => onPost(plan)}>
                     {resubscribe.label}
                 </Button>
             </div>
@@ -178,12 +236,12 @@ function CheckoutControl({ resubscribe, busy, disabled, posting, onPost }: Check
     }
 
     return (
-        <div className="flex flex-col items-start gap-3">
+        <div className="@container flex flex-col items-start gap-3">
             <Button className="admin-billing__resubscribe" aria-expanded={open} aria-controls="billing-choice" disabled={busy || disabled} onClick={() => setOpen((was) => !was)}>
                 {resubscribe.label}
             </Button>
             {open && (
-                <ul id="billing-choice" className="admin-billing__choice flex flex-col gap-2" aria-label={words.text('checkout.plans')}>
+                <ul id="billing-choice" className="admin-billing__choice grid gap-3 self-stretch @lg:grid-cols-2" aria-label={words.text('checkout.plans')}>
                     {resubscribe.choice.map((option) => (
                         <PlanOption key={option.plan} option={option} busy={busy && posting === option.plan} disabled={disabled || (busy && posting !== option.plan)} onPost={onPost} />
                     ))}
@@ -193,74 +251,95 @@ function CheckoutControl({ resubscribe, busy, disabled, posting, onPost }: Check
     );
 }
 
+/**
+ * A plan's button lets its label wrap at every width. The words it shows while its press is sent
+ * are wider than a plan's card in a language of longer words, beside the other plan and on a phone
+ * alike, so the button holds to its card's width and grows with its lines, the lines centred and
+ * the button never lower than its own height. The plan's name on it at rest is one short line.
+ */
+const WRAPPING = 'h-auto min-h-11 max-w-full py-1.5 text-center whitespace-normal';
+
+/**
+ * One plan of the choice: its name over its price, the name semibold and the price at the regular
+ * weight since the notice around them is semibold itself, and the button that posts it.
+ */
 function PlanOption({ option, busy, disabled, onPost }: { option: BillingOption; busy: boolean; disabled: boolean; onPost: (plan: string) => void }) {
     const words = useBilling();
     const reason = `billing-choice-${option.plan}-blocked`;
 
     return (
-        <li className="admin-billing__option flex flex-col items-start gap-1" data-plan={option.plan}>
-            <p className="text-sm">
-                {placed(words.text('checkout.option'), {
-                    plan: (
-                        <span className="admin-billing__option-name font-medium">
-                            {option.name}
-                        </span>
-                    ),
-                    price: (
-                        <span className="admin-billing__option-price font-mono">
-                            {monthly(option, words)}
-                        </span>
-                    ),
-                })}
-            </p>
-            <Button
-                variant="primary"
-                className="admin-billing__option-button"
-                busy={busy}
-                busyLabel={words.text('checkout.busy')}
-                disabled={disabled || option.blocked !== null}
-                aria-describedby={option.blocked === null ? undefined : reason}
-                onClick={() => onPost(option.plan)}
-            >
-                {words.text('checkout.choose', { plan: option.name })}
-            </Button>
-            {option.blocked !== null && (
-                <p id={reason} className="admin-billing__option-blocked text-sm">
-                    {option.blocked}
+        <li className="admin-billing__option flex min-w-0" data-plan={option.plan}>
+            <Card variant="inner" className="flex min-w-0 flex-1 flex-col items-start gap-2 text-foreground">
+                <p className="text-sm">
+                    {placed(words.text('checkout.option'), {
+                        plan: (
+                            <span className="admin-billing__option-name font-semibold">
+                                {option.name}
+                            </span>
+                        ),
+                        price: (
+                            <span className="admin-billing__option-price font-normal tabular-nums">
+                                {monthly(option, words)}
+                            </span>
+                        ),
+                    })}
                 </p>
-            )}
+                <Button
+                    variant="primary"
+                    className={cn('admin-billing__option-button', WRAPPING)}
+                    busy={busy}
+                    busyLabel={words.text('checkout.busy')}
+                    disabled={disabled || option.blocked !== null}
+                    aria-describedby={option.blocked === null ? undefined : reason}
+                    onClick={() => onPost(option.plan)}
+                >
+                    {words.text('checkout.choose', { plan: option.name })}
+                </Button>
+                {option.blocked !== null && (
+                    <p id={reason} className="admin-billing__option-blocked text-sm">
+                        {option.blocked}
+                    </p>
+                )}
+            </Card>
         </li>
     );
 }
 
-function PlanSummary({ plan }: { plan: BillingPlan }) {
+/**
+ * The plan card: an inner card, ringed in the theme colour while the page offers no checkout, the
+ * plan then the one the business stands on, which the section's title names. Where the checkout
+ * is offered, a trial's set and the plan of a subscription that ended keep the inner card's own
+ * line; a trial's set is ringed only where its plans cannot be read and no checkout is offered.
+ */
+function PlanSummary({ plan, standing }: { plan: BillingPlan; standing: boolean }) {
     const words = useBilling();
 
     return (
-        <div className="flex flex-col gap-1">
-            <p className="admin-billing__plan-name font-medium">{plan.name}</p>
-            {plan.amount !== null && <p className="admin-billing__price font-mono text-sm">{monthly(plan, words)}</p>}
+        <Card variant="inner" className={cn('admin-billing__current flex min-w-0 flex-col gap-1', standing && 'ring-2 ring-primary')}>
+            <p className="admin-billing__plan-name font-semibold">{plan.name}</p>
+            {plan.amount !== null && <p className="admin-billing__price text-sm tabular-nums">{monthly(plan, words)}</p>}
             <ul className="admin-billing__includes list-disc pl-5 text-sm">
                 {plan.includes.map((line) => (
                     <li key={line}>{line}</li>
                 ))}
             </ul>
-        </div>
+        </Card>
     );
 }
 
 type ControlProps = { busy: boolean; disabled: boolean; onPress: () => void };
 
+/** The change the plan card offers, the other plan with its price: an inner card with no ring of the theme colour. */
 function ChangeControl({ change, busy, disabled, onPress }: ControlProps & { change: BillingChange }) {
     const words = useBilling();
     const price = (
-        <span className="admin-billing__change-price font-mono">
+        <span className="admin-billing__change-price tabular-nums">
             {monthly(change, words)}
         </span>
     );
 
     return (
-        <div className="admin-billing__change flex flex-col items-start gap-2 border-t pt-3">
+        <Card variant="inner" className="admin-billing__change flex min-w-0 flex-col items-start gap-2">
             <p className="text-sm">{placed(words.text(change.adds ? 'change.add_line' : 'change.remove_line'), { plan: change.name, price })}</p>
             <Button variant={change.adds ? 'primary' : 'secondary'} destructive={!change.adds} className="admin-billing__change-button" busy={busy} busyLabel={words.text('change.busy')} disabled={disabled} onClick={onPress}>
                 {words.text(change.adds ? 'change.add' : 'change.remove')}
@@ -273,6 +352,24 @@ function ChangeControl({ change, busy, disabled, onPress }: ControlProps & { cha
                     </Link>
                 </p>
             )}
+        </Card>
+    );
+}
+
+/**
+ * The plan card and the change it offers, sharing a row where the section has room for two: from
+ * 48rem, since the change's button keeps to one line and a card of a narrower row is too narrow
+ * for that line in a language of longer words.
+ */
+function PlanRow({ plan, standing, change, busy, disabled, onPost }: Omit<ControlProps, 'onPress'> & { plan: BillingPlan | null; standing: boolean; change: BillingChange | null; onPost: (plan: string) => void }) {
+    if (plan === null && change === null) {
+        return null;
+    }
+
+    return (
+        <div className={cn('grid gap-3', plan !== null && change !== null && '@3xl:grid-cols-2')}>
+            {plan !== null && <PlanSummary plan={plan} standing={standing} />}
+            {change !== null && <ChangeControl change={change} busy={busy} disabled={disabled} onPress={() => onPost(change.plan)} />}
         </div>
     );
 }
@@ -343,7 +440,7 @@ export default function Billing() {
 
     return (
         <BillingProvider words={words}>
-            <div className="admin-billing flex flex-col gap-4">
+            <div className="admin-billing @container flex flex-col gap-4">
                 <PageHeader title={words.text('title')} />
 
                 {limited !== null && (
@@ -353,6 +450,7 @@ export default function Billing() {
                 )}
 
                 <StateNotice
+                    free={props.free === true}
                     notice={billing.notice}
                     graceEnds={graceEndOf(subscription, clock)}
                     trialEnd={trialEndOf(subscription, clock, words)}
@@ -367,12 +465,13 @@ export default function Billing() {
 
                 {planSectionHolds(billing, narrowed) && (
                     <Section id="billing-plan" title={words.text('plan.title')} wide className="admin-billing__plan">
-                        <div className="flex flex-col gap-3">
-                            {billing.plan !== null && <PlanSummary plan={billing.plan} />}
-                            {narrowed.length > 0 && <p className="admin-billing__narrowed text-sm">{words.text('plan.narrowed', { features: listOf(narrowed, shell.language) })}</p>}
-                            {billing.unavailable !== null && <p className="admin-billing__unavailable text-sm text-muted-foreground">{billing.unavailable}</p>}
-                            {change !== null && <ChangeControl change={change} busy={inFlight === 'plan'} disabled={othersBusy(inFlight, 'plan')} onPress={() => send('plan', PLAN_PATH, { plan: change.plan })} />}
-                        </div>
+                        <PlanRow plan={billing.plan} standing={resubscribe === null} change={change} busy={inFlight === 'plan'} disabled={othersBusy(inFlight, 'plan')} onPost={(plan) => send('plan', PLAN_PATH, { plan })} />
+                        {narrowed.length > 0 && (
+                            <Notice kind="warning" className="admin-billing__narrowed">
+                                {words.text('plan.narrowed', { features: listOf(narrowed, shell.language) })}
+                            </Notice>
+                        )}
+                        {billing.unavailable !== null && <p className="admin-billing__unavailable text-sm text-muted-foreground">{billing.unavailable}</p>}
                     </Section>
                 )}
 
