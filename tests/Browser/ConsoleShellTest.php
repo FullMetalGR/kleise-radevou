@@ -10,11 +10,38 @@ use Tests\Browser\Support\Console;
  * console's shell; an operator the console command added signs in through it over a session that
  * lives across requests, lands on the home, the tenant list, inside the shell naming them, and
  * signs out again to a toast. The rail's Audit opens the platform audit log, where the sign-in
- * just made is the newest row, its instant on the clock the top bar names.
+ * just made is the newest row, its instant on the clock the first row names.
  */
 
 // The rail's Audit entry, reached by its target: the rail carries Tenants before it.
 const CONSOLE_SHELL_AUDIT = '.admin-rail a[href="/audit"]';
+
+/**
+ * True where the console's name fits the sidebar's head: the head scrolls nothing sideways, the
+ * name is whole, the word console ends inside the head, on the name's line or under the name and
+ * never under the mark, the word is set in the page's own face at its plain weight and spacing,
+ * not the brand's, and the whole of it is the title a pointer reads.
+ */
+const CONSOLE_SHELL_HEAD_FITS = <<<'JS'
+(() => {
+    const head = document.querySelector('.admin-sidebar__head');
+    const whole = head.querySelector('.admin-console-wordmark');
+    const name = head.querySelector('.brand-wordmark__name');
+    const mark = head.querySelector('.brand-wordmark__mark').getBoundingClientRect();
+    const label = head.querySelector('.admin-console-label').getBoundingClientRect();
+    const face = getComputedStyle(head.querySelector('.admin-console-label'));
+
+    return head.scrollWidth <= head.clientWidth
+        && name.scrollWidth === name.clientWidth
+        && label.width > 0
+        && label.left >= mark.right
+        && label.right <= head.getBoundingClientRect().right + 0.5
+        && face.fontFamily === getComputedStyle(document.body).fontFamily
+        && face.fontWeight === '400'
+        && face.letterSpacing === 'normal'
+        && whole.getAttribute('title') === whole.textContent;
+})()
+JS;
 
 /**
  * Adds the operator the cases sign in as, through the command, the one way an operator is made.
@@ -45,8 +72,10 @@ it('signs in an operator the command added, lands on the home inside the shell n
         ->waitForText('No tenants yet')
         ->assertPathIs('/')
         ->assertPresent('.admin-shell')
-        ->assertSeeIn('.admin-business .brand-wordmark__name', siteName())
-        ->assertSeeIn('.admin-business .admin-console-label', 'console')
+        ->assertSeeIn('.admin-sidebar .admin-console-wordmark .brand-wordmark__name', siteName())
+        ->assertSeeIn('.admin-sidebar .admin-console-label', 'console')
+        ->resize(1440, 900)
+        ->assertScript(CONSOLE_SHELL_HEAD_FITS, true)
         ->assertSeeIn('.admin-topbar', 'Pat Operator')
         ->assertTitle('Tenants - '.siteName())
         ->assertNoJavaScriptErrors();

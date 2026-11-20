@@ -10,7 +10,7 @@ use Tests\Browser\Support\Console;
  * The provisional brand in a real browser: the site's pages and the signup's frame carry the
  * wordmark and are set in the brand's type and colours; the console's shell and door wear the
  * brand's scope, the admin's primary taking the brand's; and the admin keeps its own theme, the
- * platform's mark with the site's name in its top bar the one thing of the brand it carries. Every
+ * platform's mark with the site's name on its sidebar the one thing of the brand it carries. Every
  * name is the configured public name. The build gate wrote the stylesheets this suite serves.
  *
  * The type splits along the same line: the site and the signup are set in the brand's system
@@ -76,7 +76,7 @@ it('wears the brand on the console\'s door and shell, the wordmark naming the pu
 
     Console::signIn($this, 'pat@inbox.example', 'operator password')
         ->waitForText('No tenants yet')
-        ->assertSeeIn('.admin-topbar .admin-business .brand-wordmark__name', siteName())
+        ->assertSeeIn('.admin-sidebar .admin-console-wordmark .brand-wordmark__name', siteName())
         ->assertPresent('.admin-shell.brand-scope')
         ->assertScript(sprintf(BRAND_PROPERTY, '.admin-shell', '--primary'), '#1d5b8f')
         ->assertScript(sprintf(BRAND_FACE_FIRST, 'body', 'Inter Variable'), true)
@@ -86,14 +86,14 @@ it('wears the brand on the console\'s door and shell, the wordmark naming the pu
         ->assertNoJavaScriptErrors();
 });
 
-it('keeps the admin\'s own theme, the platform\'s mark beside the business\'s name the one thing of the brand in it, the text in the admin\'s faces', function () {
+it('keeps the admin\'s own theme, the platform\'s mark above the business\'s name the one thing of the brand in it, the text in the admin\'s faces', function () {
     dropDemoSchemas();
     $this->seed(DemoTenantsSeeder::class);
 
     Admin::signedIn($this, 'luna', Admin::owner('luna'))
-        ->assertPresent('.admin-topbar .admin-mark img[alt=""]')
-        ->assertSeeIn('.admin-topbar .admin-mark .admin-mark__name', siteName())
-        ->assertNotPresent('.admin-topbar .brand-wordmark')
+        ->assertPresent('.admin-sidebar .admin-mark img[alt=""]')
+        ->assertSeeIn('.admin-sidebar .admin-mark .admin-mark__name', siteName())
+        ->assertNotPresent('.admin-sidebar .brand-wordmark')
         ->assertSeeIn('.admin-business', 'Luna Hair Studio')
         ->assertNotPresent('.brand-scope')
         // The tenant's own theme, written on the body (luna is seeded violet), and not the brand's.

@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import MARK from './mark.svg';
 
 /*
- * The platform's mark in a business's admin, beside the business's own name in the top bar: the
+ * The platform's mark in a business's admin, at the sidebar's head above the business's chip: the
  * artwork from its one file, drawn through an image so it keeps its own blue whatever theme the
  * business picked, then the site's name in the display face, a domain ending such as ".gr" set
  * lighter in the tertiary ink. The artwork is decoration, its alt empty, as the name beside it

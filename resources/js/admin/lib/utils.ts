@@ -15,7 +15,7 @@ const twMerge = extendTailwindMerge({
             radius: ['tile', 'tile-compact', 'shell', 'inner', 'menu', 'notice', 'field', 'event'],
             shadow: ['card', 'glow', 'glow-hover', 'float', 'dock', 'modal', 'drawer'],
             ease: ['soft'],
-            container: ['page'],
+            container: ['page', 'shell-narrow'],
         },
     },
 });

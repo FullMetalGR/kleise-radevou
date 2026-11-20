@@ -4,6 +4,7 @@ import { mount, type Mounted, press } from '@/components/ui/harness';
 import { COPIED, COPY_BOOKING_LINK, LINK_COPIED } from '@/lib/copy';
 import { formatCount } from '@/lib/format';
 import { unitFigure } from '@/lib/names';
+import { FirstRowProvider } from '@/shell/first-row';
 import { listOf, weekdayName } from '@/lib/names';
 import { BIO_LIMIT, type CatalogService, type ClosureLine, type StaffMember, type TenantUser, type View } from '@/staff/model';
 import { BIO_HELP, bioCount, IMPLICIT_ONLINE_HELP, ONLINE_HELP as STAFF_ONLINE_HELP, PHOTO_HELP, TITLE_HELP } from '@/staff/StaffForm';
@@ -891,6 +892,27 @@ describe('the booking link', () => {
 
             expect(text('.admin-booking-link__copied')).toBe(shell.text(COPIED));
             expect(inertia.post).toHaveBeenCalledWith(LINK_COPIED, {}, { async: true, preserveState: true, preserveScroll: true });
+        }
+    });
+
+    it('keeps the shell\'s button quiet in the first row of the form, whose Save is the main button, and asks it to stand filled on the read-only page, the copy being no main button', () => {
+        const cases = [
+            { props: propsWith({ kind: 'detail', id: 2 }), asked: 'true' },
+            { props: withoutFeature({ kind: 'detail', id: 2 }), asked: 'false' },
+        ];
+
+        for (const { props, asked } of cases) {
+            inertia.props = props;
+            view.render(
+                <FirstRowProvider value={{ start: null, controls: null, action: (quiet) => <span className="shell-action" data-quiet={String(quiet)} /> }}>
+                    <ToastProvider>
+                        <Staff />
+                    </ToastProvider>
+                </FirstRowProvider>,
+            );
+
+            expect(document.querySelector('.admin-staff-title .admin-booking-link__copy')).not.toBeNull();
+            expect(document.querySelector('.admin-staff-title .shell-action')?.getAttribute('data-quiet')).toBe(asked);
         }
     });
 

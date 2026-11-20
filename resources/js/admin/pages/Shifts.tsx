@@ -333,6 +333,7 @@ export default function Shifts() {
                     title={words.text('page.title')}
                     lead={<span className="admin-shifts__lead">{words.text('page.lead')}</span>}
                     actions={<WeekBar week={props.week} last={last} loading={read.loading} words={words} clock={clock} onRead={(query) => read.read(SHIFTS, query)} />}
+                    quiet={false}
                 />
                 {!props.editable && props.members.some((member) => !member.is_implicit) && !props.narrowed.includes('staff') && (
                     <Notice kind="info" className="admin-shifts-readonly">

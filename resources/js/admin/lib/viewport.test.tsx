@@ -2,15 +2,16 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { desktopWidth, mount, type Mounted, onPhone } from '@/components/ui/harness';
-import { BREAKPOINT, useDesktop } from './viewport';
+import { desktopWidth, mount, type Mounted, onCompact, onPhone, wideWidth } from '@/components/ui/harness';
+import { BREAKPOINT, useDesktop, useWide, WIDE } from './viewport';
 
 /*
- * The admin's desktop breakpoint: a token the stylesheet declares once, read off the root by its
- * name, never a number spelled in a component. At or above it the admin is the desktop layout it
- * always was; below it, the phone layout. Where the token cannot be read or the environment
- * answers no media query, the answer is the desktop, so nothing that cannot measure the viewport
- * is ever handed the phone layout by accident.
+ * The admin's two breakpoints: tokens the stylesheet declares once, read off the root by name,
+ * never a number spelled in a component. At or above the desktop one the admin is the desktop
+ * layout it always was; below it, the phone layout. At or above the wide one the sidebar stands
+ * beside the page; below it, the shell is compact. Where a token cannot be read or the
+ * environment answers no media query, the answer is yes, so nothing that cannot measure the
+ * viewport is ever handed the smaller layout by accident.
  */
 
 let view: Mounted;
@@ -25,7 +26,13 @@ function Probe() {
     return <p className="probe">{useDesktop() ? 'desktop' : 'phone'}</p>;
 }
 
+function WideProbe() {
+    return <p className="wide-probe">{useWide() ? 'wide' : 'compact'}</p>;
+}
+
 const answer = () => view.host.querySelector('.probe')?.textContent;
+
+const wideAnswer = () => view.host.querySelector('.wide-probe')?.textContent;
 
 type Listener = () => void;
 
@@ -49,6 +56,7 @@ function stubQueries(matches: boolean): { queries: string[]; set: (next: boolean
         } as unknown as MediaQueryList;
     };
     document.documentElement.style.setProperty(BREAKPOINT, desktopWidth());
+    document.documentElement.style.setProperty(WIDE, wideWidth());
 
     return {
         queries,
@@ -59,6 +67,7 @@ function stubQueries(matches: boolean): { queries: string[]; set: (next: boolean
         undo: () => {
             window.matchMedia = original;
             document.documentElement.style.removeProperty(BREAKPOINT);
+            document.documentElement.style.removeProperty(WIDE);
         },
     };
 }
@@ -116,6 +125,55 @@ describe('the breakpoint', () => {
     });
 });
 
+describe('the wide breakpoint', () => {
+    it('answers wide where the environment answers no media query, or the token is not on the root', () => {
+        view.render(<WideProbe />);
+        expect(wideAnswer()).toBe('wide');
+
+        const stub = stubQueries(false);
+        document.documentElement.style.removeProperty(WIDE);
+        view.render(<WideProbe key="again" />);
+
+        expect(wideAnswer()).toBe('wide');
+        stub.undo();
+    });
+
+    it('asks for the width at or above its own token, read off the root by name, and follows the viewport across the line', () => {
+        const stub = stubQueries(true);
+
+        view.render(<WideProbe />);
+
+        expect(wideAnswer()).toBe('wide');
+        expect(stub.queries).toContain(`(min-width: ${wideWidth()})`);
+
+        stub.set(false);
+        expect(wideAnswer()).toBe('compact');
+        stub.undo();
+    });
+
+    it('answers no for both on a phone, and desktop but not wide on the compact screen the harness stands in for', () => {
+        const phone = onPhone();
+        view.render(
+            <>
+                <Probe />
+                <WideProbe />
+            </>,
+        );
+        expect([answer(), wideAnswer()]).toEqual(['phone', 'compact']);
+        phone();
+
+        const compact = onCompact();
+        view.render(
+            <div key="compact">
+                <Probe />
+                <WideProbe />
+            </div>,
+        );
+        expect([answer(), wideAnswer()]).toEqual(['desktop', 'compact']);
+        compact();
+    });
+});
+
 const ADMIN = join(process.cwd(), 'resources/js/admin');
 
 /*
@@ -138,10 +196,10 @@ function sourcesUnder(directory: string): string[] {
 }
 
 /*
- * The stylesheet's two breakpoints: the phone switch the hook reads, and the wide switch below
- * which the page takes its compact layout.
+ * The stylesheet's two breakpoints: the phone switch useDesktop reads, and the wide switch useWide
+ * reads, below which the shell and the page take their compact layout.
  */
-const BREAKPOINTS = [BREAKPOINT, '--breakpoint-wide'];
+const BREAKPOINTS = [BREAKPOINT, WIDE];
 
 describe('the token', () => {
     it.each(BREAKPOINTS)('each breakpoint is declared once, in the stylesheet\'s static theme block, so the root carries it: %s', (token) => {
@@ -153,7 +211,7 @@ describe('the token', () => {
     });
 
     it('is the only width any admin source asks a media query about: no arbitrary breakpoint variant, no media query of its own', () => {
-        // The hook asks the one question; the harness stands in for the answer in the tests.
+        // The hooks ask the questions; the harness stands in for the answers in the tests.
         const exempt = [join('lib', 'viewport.ts'), join('components', 'ui', 'harness.tsx')];
         const offenders = sourcesUnder(ADMIN)
             .filter((path) => !exempt.some((name) => path.endsWith(name)))
@@ -161,6 +219,15 @@ describe('the token', () => {
             .map((path) => relative(ADMIN, path));
 
         expect(offenders).toEqual([]);
+    });
+
+    it('lets the hooks ask about the stylesheet\'s two breakpoints and nothing else: every token the hooks name is one of them', () => {
+        const source = readFileSync(join(ADMIN, 'lib', 'viewport.ts'), 'utf8');
+        const named = [...new Set(source.match(/--[a-z][a-z-]*/g) ?? [])];
+
+        expect(named.sort()).toEqual([...BREAKPOINTS].sort());
+        expect(source.match(/matchMedia\(/g)).toHaveLength(1);
+        expect(source).toContain('`(min-width: ${width})`');
     });
 
     it('counts a breakpoint variant and a media query, and leaves a container variant alone', () => {

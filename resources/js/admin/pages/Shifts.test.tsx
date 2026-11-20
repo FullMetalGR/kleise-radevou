@@ -6,6 +6,7 @@ import { formatCount, formatDayMonth } from '@/lib/format';
 import { hueOf } from '@/lib/hue';
 import { unitFigure, weekdayName } from '@/lib/names';
 import { stringsOf } from '@/lib/strings';
+import { FirstRowProvider } from '@/shell/first-row';
 import type { ShiftDay, ShiftPattern } from '@/shifts/model';
 import { keyedTable } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
@@ -451,6 +452,19 @@ describe('the week grid', () => {
 });
 
 describe('the week\'s controls', () => {
+    it('asks the shell\'s button to stand filled in the first row, the week\'s controls holding no main button', () => {
+        inertia.props = propsWith();
+        view.render(
+            <FirstRowProvider value={{ start: null, controls: null, action: (quiet) => <span className="shell-action" data-quiet={String(quiet)} /> }}>
+                <ToastProvider>
+                    <Shifts />
+                </ToastProvider>
+            </FirstRowProvider>,
+        );
+
+        expect(q('.admin-page-header__end .shell-action')?.getAttribute('data-quiet')).toBe('false');
+    });
+
     it('move the week through a partial reload of the week\'s props, the URL replaced, busy while it reads', () => {
         render();
 

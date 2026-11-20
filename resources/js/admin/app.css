@@ -1,7 +1,7 @@
 /*
  * The admin's one stylesheet, Tailwind v4 with the tokens the copied shadcn components read.
  * The admin has no byte budget and no containment rule: it owns its whole page. The dark theme
- * is a class on the root element, set from the per-machine choice the top bar remembers. The
+ * is a class on the root element, set from the per-machine choice the first row remembers. The
  * brand's tokens and the wordmark's look come from the one tokens file the site's stylesheet
  * imports too (brand/brand.css); they redefine none of the admin's own.
  */
@@ -13,7 +13,7 @@
 
 /*
  * The admin's two breakpoints, each with one job. The desktop one: at or above it the desktop
- * layout, below it the phone layout, the rail behind a control in the top bar. 48rem keeps every
+ * layout, below it the phone layout, the rail behind a control in the first row. 48rem keeps every
  * width the desktop layout served before it, a tablet held upright included, on that layout. The
  * wide one: below it the compact layout, where cards take a smaller radius and less room. They
  * are the desktop:, max-desktop:, wide: and max-wide: variants, and static so the root carries
@@ -129,6 +129,7 @@
     --radius-event: 0.75rem;
     --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
     --container-page: 87.5rem;
+    --container-shell-narrow: 92.5rem;
 }
 
 /*
@@ -381,9 +382,9 @@
  * its primary into the admin's own tokens inside the scope alone, so the admin's primitives keep
  * their shapes, the one rule mixes the scope's tints from that primary, and the admin, which
  * never enters the scope, keeps its theme unchanged. On the dark theme the primary is lightened
- * to read on the dark page and carries the brand's ink. The console's top bar carries the primary
- * as a rule along its top edge. The scope sets no type: each frame keeps its body's, the admin's
- * faces in the console and the brand's system stack in the signup.
+ * to read on the dark page and carries the brand's ink. The console's shell carries the primary
+ * as a rule along the window's top edge. The scope sets no type: each frame keeps its body's, the
+ * admin's faces in the console and the brand's system stack in the signup.
  */
 .brand-scope {
     --primary: var(--brand-primary);
@@ -397,7 +398,7 @@
     --ring: color-mix(in oklab, var(--brand-primary) 45%, white);
 }
 
-.brand-scope .admin-topbar {
+.admin-shell.brand-scope {
     box-shadow: inset 0 3px 0 var(--primary);
 }
 

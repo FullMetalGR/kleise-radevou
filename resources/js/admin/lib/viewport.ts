@@ -1,42 +1,60 @@
 import { useSyncExternalStore } from 'react';
 
 /*
- * The admin's desktop breakpoint. The stylesheet declares it once, as a theme token Tailwind turns
- * into the desktop: and max-desktop: variants and writes onto the root, and this reads it off
- * the root by its name, so no component spells its number. At or above it the admin is the
- * desktop layout; below it, the phone layout, where a branch is React's to take rather than a
- * class's: the rail behind its control, Week's notice in place of the grid. The query is the one
- * the build writes for the desktop: variant, min-width, so the two cannot disagree.
+ * The admin's two breakpoints. The stylesheet declares each once, as a theme token Tailwind turns
+ * into a pair of variants and writes onto the root, and this reads them off the root by name, so
+ * no component spells a number.
  *
- * Where the environment answers no media query, or the token is not on the root, the answer is
- * the desktop: what cannot measure the viewport is never handed the phone layout by accident.
+ * The desktop breakpoint splits the phone from everything wider. At or above it the admin is the
+ * desktop layout; below it, the phone layout, where a branch is React's to take rather than a
+ * class's: Week's notice in place of the grid, the help panel's sheet. The wide breakpoint splits
+ * the full shell from the compact one: at or above it the sidebar stands beside the page; below
+ * it, the menu waits behind its button at the start of the page's first row. Each query is the
+ * one the build writes for its variant, min-width, so the two cannot disagree.
+ *
+ * Where the environment answers no media query, or a token is not on the root, the answer is yes:
+ * what cannot measure the viewport is never handed the smaller layout by accident.
  */
 
 export const BREAKPOINT = '--breakpoint-desktop';
 
-function desktopQuery(): MediaQueryList | null {
-    if (typeof window.matchMedia !== 'function') {
-        return null;
-    }
+export const WIDE = '--breakpoint-wide';
 
-    const width = getComputedStyle(document.documentElement).getPropertyValue(BREAKPOINT).trim();
+type Watch = { subscribe: (changed: () => void) => () => void; snapshot: () => boolean };
 
-    return width === '' ? null : window.matchMedia(`(min-width: ${width})`);
+function watch(token: string): Watch {
+    const query = (): MediaQueryList | null => {
+        if (typeof window.matchMedia !== 'function') {
+            return null;
+        }
+
+        const width = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+
+        return width === '' ? null : window.matchMedia(`(min-width: ${width})`);
+    };
+
+    return {
+        subscribe: (changed) => {
+            const list = query();
+
+            list?.addEventListener('change', changed);
+
+            return () => list?.removeEventListener('change', changed);
+        },
+        snapshot: () => query()?.matches ?? true,
+    };
 }
 
-function subscribe(changed: () => void): () => void {
-    const query = desktopQuery();
+const desktop = watch(BREAKPOINT);
 
-    query?.addEventListener('change', changed);
+const wide = watch(WIDE);
 
-    return () => query?.removeEventListener('change', changed);
-}
-
-function snapshot(): boolean {
-    return desktopQuery()?.matches ?? true;
-}
-
-/** Whether the viewport is at or above the admin's breakpoint, following it as it moves. */
+/** Whether the viewport is at or above the desktop breakpoint, following it as it moves. */
 export function useDesktop(): boolean {
-    return useSyncExternalStore(subscribe, snapshot);
+    return useSyncExternalStore(desktop.subscribe, desktop.snapshot);
+}
+
+/** Whether the viewport is at or above the wide breakpoint, where the sidebar stands beside the page. */
+export function useWide(): boolean {
+    return useSyncExternalStore(wide.subscribe, wide.snapshot);
 }

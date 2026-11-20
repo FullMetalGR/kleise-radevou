@@ -50,7 +50,7 @@ function entry(key: string, label: string, url: string, group: string, current =
     return { key, label, url, group, pending, current };
 }
 
-function render(nav: NavEntry[], onChoose?: () => void): void {
+function render(nav: NavEntry[], onChoose?: (entry: NavEntry, press: MouseEvent) => void): void {
     act(() =>
         root.render(
             <WithShell>
@@ -60,7 +60,7 @@ function render(nav: NavEntry[], onChoose?: () => void): void {
     );
 }
 
-const labels = () => [...host.querySelectorAll('a')].map((link) => link.querySelector('span')?.textContent);
+const labels = () => [...host.querySelectorAll('a')].map((link) => link.querySelector('.admin-rail-entry__label')?.textContent);
 
 describe('the rail', () => {
     it('renders group headings when more than one group exists', () => {
@@ -111,16 +111,22 @@ describe('the rail', () => {
         expect(labels()).toEqual([N.billing]);
     });
 
-    it('hands a press on any entry to onChoose, the current one included, once each', () => {
+    it('hands a press on any entry to onChoose with the entry pressed and the press itself, the current one included, once each', () => {
         const chose = vi.fn();
+        const calendar = entry('calendar', N.calendar, '/admin', N.groups.schedule, true);
+        const bookings = entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule);
 
-        render([entry('calendar', N.calendar, '/admin', N.groups.schedule, true), entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule)], chose);
+        render([calendar, bookings], chose);
 
         press(host.querySelector('a[href="/admin/bookings"]'));
-        expect(chose).toHaveBeenCalledOnce();
+        expect(chose).toHaveBeenCalledExactlyOnceWith(bookings, expect.objectContaining({ type: 'click', ctrlKey: false }));
 
         press(host.querySelector('a[aria-current="page"]'));
         expect(chose).toHaveBeenCalledTimes(2);
+        expect(chose).toHaveBeenLastCalledWith(calendar, expect.objectContaining({ type: 'click' }));
+
+        press(host.querySelector('a[href="/admin/bookings"]'), { ctrlKey: true });
+        expect(chose).toHaveBeenLastCalledWith(bookings, expect.objectContaining({ type: 'click', ctrlKey: true }));
     });
 
     it('needs no onChoose where the rail stands in its aside', () => {
@@ -129,7 +135,7 @@ describe('the rail', () => {
         expect(() => press(host.querySelector('a'))).not.toThrow();
     });
 
-    it('draws each entry\'s icon before its label, hidden from assistive technology, a plain circle for a word it does not know', () => {
+    it('draws each entry\'s icon in a circle before its label, hidden from assistive technology, a plain circle for a word it does not know', () => {
         render([
             entry('calendar', N.calendar, '/admin', N.groups.schedule, true),
             entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule, false, 2),
@@ -137,14 +143,23 @@ describe('the rail', () => {
         ]);
 
         const links = [...host.querySelectorAll('a')];
-        const icons = links.map((link) => link.firstElementChild);
+        const circles = links.map((link) => link.firstElementChild);
+        const icons = circles.map((circle) => circle?.firstElementChild);
 
-        expect(icons.map((icon) => icon?.classList.contains('admin-rail-entry__icon'))).toEqual([true, true, true]);
+        expect(circles.map((circle) => circle?.classList.contains('admin-rail-entry__icon'))).toEqual([true, true, true]);
+        expect(circles.map((circle) => circle?.classList.contains('rounded-full'))).toEqual([true, true, true]);
+        expect(circles.map((circle) => circle?.children.length)).toEqual([1, 1, 1]);
         expect(icons.map((icon) => icon?.tagName.toLowerCase())).toEqual(['svg', 'svg', 'svg']);
         expect([icons[0]?.classList.contains('lucide-calendar'), icons[1]?.classList.contains('lucide-list'), icons[2]?.classList.contains('lucide-circle')]).toEqual([true, true, true]);
-        expect(icons.map((icon) => icon?.getAttribute('aria-hidden'))).toEqual(['true', 'true', 'true']);
-        expect(icons.map((icon) => icon?.nextElementSibling?.textContent)).toEqual([N.calendar, N.bookings, 'Later']);
+        expect(circles.map((circle) => circle?.getAttribute('aria-hidden'))).toEqual(['true', 'true', 'true']);
+        expect(circles.map((circle) => circle?.nextElementSibling?.textContent)).toEqual([N.calendar, N.bookings, 'Later']);
         expect(links.map((link) => link.textContent)).toEqual([N.calendar, `${N.bookings}2`, 'Later']);
+    });
+
+    it('gives every entry the keyboard\'s focus ring, the current one included', () => {
+        render([entry('calendar', N.calendar, '/admin', N.groups.schedule, true), entry('bookings', N.bookings, '/admin/bookings', N.groups.schedule, false, 4)]);
+
+        expect([...host.querySelectorAll('.admin-rail-entry')].map((link) => link.classList.contains('focus-ring'))).toEqual([true, true]);
     });
 
     it('keys each row by the entry\'s word, so two entries at one address stand side by side', () => {

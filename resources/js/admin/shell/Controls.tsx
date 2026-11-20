@@ -5,7 +5,7 @@ import { useShell } from '@/lib/strings';
 import type { Theme } from '../theme';
 
 /*
- * The top bar's controls at its end, one group: the language control where one is handed, then
+ * The first row's controls at its end, one group: the language control where one is handed, then
  * the light and dark switch, a round icon button showing the moon while the page is light and the
  * sun while it is dark, named for the theme it switches to; then the signed-in user's name, cut
  * short with an ellipsis where it runs long and shown whole in its tooltip, and Sign out with its

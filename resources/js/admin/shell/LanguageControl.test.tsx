@@ -4,7 +4,7 @@ import type { LanguageChoice } from '../types';
 import { LanguageControl } from './LanguageControl';
 
 /*
- * The top bar's language control: each language labelled by its own name as the server hands it,
+ * The first row's language control: each language labelled by its own name as the server hands it,
  * here the keyed names in brackets, each carrying its language as its lang; the page's language
  * pressed; a press on the other choosing it, a press on the pressed one or any press while a write
  * is in flight choosing nothing; the language being written busy under its own name. The two sit in

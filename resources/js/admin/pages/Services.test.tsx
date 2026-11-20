@@ -7,6 +7,7 @@ import { type Member, type Service, type View } from '@/services/model';
 import { CATEGORY_HELP, ONLINE_HELP } from '@/services/ServiceForm';
 import { NOT_ONLINE, ONLINE } from '@/services/ServicesTable';
 import { saving } from '@/services/saving';
+import { FirstRowProvider } from '@/shell/first-row';
 import { KEYED_SERVICES, keyedServices, keyedShell } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
 import type { ServicesStrings } from '@/types';
@@ -348,6 +349,20 @@ describe('the detail page', () => {
 });
 
 describe('the booking link', () => {
+    it('keeps the shell\'s button quiet in the first row of the form, whose Save is the main button', () => {
+        inertia.props = propsWith({ kind: 'detail', id: 9 }, [HAIRCUT, COLOUR]);
+        view.render(
+            <FirstRowProvider value={{ start: null, controls: null, action: (quiet) => <span className="shell-action" data-quiet={String(quiet)} /> }}>
+                <ToastProvider>
+                    <Services />
+                </ToastProvider>
+            </FirstRowProvider>,
+        );
+
+        expect(document.querySelector('.admin-service-title .admin-booking-link__copy')).not.toBeNull();
+        expect(document.querySelector('.admin-service-title .shell-action')?.getAttribute('data-quiet')).toBe('true');
+    });
+
     it('copies a persisted service\'s link as the server spelled it from its title row, and records the press once the clipboard write lands', async () => {
         const writeText = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });

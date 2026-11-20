@@ -49,6 +49,7 @@ export function StaffView({ member, services, users, clock, notice, listHref, on
                 title={member.name}
                 status={<StatusChip status={member.status} label={statusWord(member.status, words)} />}
                 actions={copyLink ?? undefined}
+                quiet={false}
             />
             {notice}
 

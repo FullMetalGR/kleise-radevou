@@ -1296,10 +1296,12 @@ describe('the Add menu', () => {
         expect(add()?.classList.contains('admin-button--primary')).toBe(true);
         expect(add()?.querySelector('svg')).not.toBeNull();
         const actions = add()?.closest('.admin-calendar-heading .admin-page-header__actions');
+        const end = actions?.parentElement;
 
-        expect(actions?.classList.contains('ms-auto')).toBe(true);
-        expect(actions?.parentElement?.lastElementChild).toBe(actions);
-        expect(actions?.parentElement?.querySelector(':scope > h1')?.textContent).toBe(cal.text('page.title'));
+        expect(end?.classList.contains('admin-page-header__end')).toBe(true);
+        expect(end?.classList.contains('ms-auto')).toBe(true);
+        expect(end?.parentElement?.lastElementChild).toBe(end);
+        expect(end?.parentElement?.querySelector(':scope > h1')?.textContent).toBe(cal.text('page.title'));
         expect(actions?.lastElementChild).toBe(add());
         await openAdd();
 

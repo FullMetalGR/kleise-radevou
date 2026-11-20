@@ -5,19 +5,20 @@
  * prop's shell section in the language of the request, the user's, and read on the server through
  * the translator in the same. Its Greek twin is lang/el/admin/shell.php.
  *
- * nav is the rail: its two groups, its eleven entries as App\Http\AdminNav names them, the rail's
- * own name, the control that opens it below the breakpoint and the link past it to the page's
- * content, the first thing the keyboard reaches. login is the sign-in page and its
- * form, which the console's door renders too, in English. set_password is the set-password link's
- * page outside the shell: its title, also its heading, the field, the help with :floor, the button
- * and its busy words, read as the sign-in page's are: with nobody signed in, in the tenant default.
- * top_bar is the bar's controls. banners holds the support session's and the narrowing record's:
- * the support line with :operator the operator's name, :end the session's end on the tenant's clock
- * and :zone that clock, and each feature's name and its gone sentences, :billing the Billing
- * screen's name, which the banner sets as a link or as plain text. boundary is the error boundary's
- * two sentences, not_found the 404 page inside the shell, its title, also its heading, and its
- * sentence, toaster the toast's dismiss and the two sentences a refusal reads where the server
- * worded nothing, and copy the copy controls.
+ * nav is the menu: its two groups, its eleven entries as App\Http\AdminNav names them, the menu's
+ * own name, the control that opens it below the breakpoint, the link past it to the page's content,
+ * the first thing the keyboard reaches, the sidebar's button folding it to its icons and opening it
+ * again, and the pending count on an entry said in words, a choice by :count. login is the sign-in
+ * page and its form, which the console's door renders too, in English. set_password is the
+ * set-password link's page outside the shell: its title, also its heading, the field, the help with
+ * :floor, the button and its busy words, read as the sign-in page's are: with nobody signed in, in
+ * the tenant default. top_bar is the bar's controls. banners holds the support session's and the
+ * narrowing record's: the support line with :operator the operator's name, :end the session's end
+ * on the tenant's clock and :zone that clock, and each feature's name and its gone sentences,
+ * :billing the Billing screen's name, which the banner sets as a link or as plain text. boundary is
+ * the error boundary's two sentences, not_found the 404 page inside the shell, its title, also its
+ * heading, and its sentence, toaster the toast's dismiss and the two sentences a refusal reads
+ * where the server worded nothing, and copy the copy controls.
  *
  * kit is the shared control set's words: the status chip's nine labels of a booking's status (a
  * catalog row's active and inactive take the word its own screen holds), counted, the compact
@@ -69,6 +70,9 @@ return [
         'main' => 'Main',
         'menu' => 'Menu',
         'skip' => 'Skip to content',
+        'collapse' => 'Collapse menu',
+        'expand' => 'Expand menu',
+        'pending' => '{1} :count booking awaiting approval|[2,*] :count bookings awaiting approval',
     ],
     'login' => [
         'title' => 'Sign in',

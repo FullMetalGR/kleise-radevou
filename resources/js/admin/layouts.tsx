@@ -10,6 +10,7 @@ import { ConsoleWordmark } from './shell/Wordmark';
 import { applyTheme, readTheme, type Theme, writeTheme } from './theme';
 import { FlashToast, useToasts } from './toast/toasts';
 import type { ConsoleProps, GuestProps, SharedProps } from './types';
+import { Plus } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
 import { clockOf } from '@/lib/format';
 import { useShell } from '@/lib/strings';
@@ -23,21 +24,22 @@ import { NewBookingProvider, useNewBooking } from './wizard/NewBooking';
  * consumes the flash prop into a toast. They are Inertia persistent layouts, so a shell's own
  * state, the theme and a sign-out in flight, lives across visits.
  *
- * The brand: the admin's top bar carries the platform's mark with the site's name beside the
- * business's name and nothing else of the brand, so the admin's theme applies to all of it; the
- * console's shell carries the wordmark in place of the console's name and wears the brand's scope,
+ * The brand: the admin's sidebar carries the platform's mark with the site's name at its head,
+ * above the business's name, and nothing else of the brand, so the admin's theme applies to all of
+ * it; the console's sidebar carries the wordmark in place of the console's name and the shell wears
+ * the brand's scope,
  * and so do the signup's pages, inside the central host's frame, and the console's door, each
  * keeping the admin's primitives. The mark and every wordmark name the brand prop's public name.
  *
  * The admin's banner slot holds two notices, the support session's first and the narrowing
  * record's under it; each renders nothing while it has nothing to say. The support banner's End
- * session posts the admin's sign-out as the top bar's Sign out does, each control with a busy
+ * session posts the admin's sign-out as the first row's Sign out does, each control with a busy
  * state of its own.
  *
  * The language: the root view writes the page's language as the document's lang on a full load,
  * and the admin's frames keep it in step on every visit after, so a sign-in that lands a user in
  * their own language, a sign-out back to the door in the tenant's, and a change of the user's own
- * language each leave the document in the page's. The top bar's language control renders where the
+ * language each leave the document in the page's. The first row's language control renders where the
  * server shares its choices, to a signed-in user outside a support session; its press writes the
  * user's own language, busy until the next page arrives in it, a refusal an error toast that
  * stays.
@@ -57,7 +59,7 @@ const BRAND_SCOPE = 'brand-scope';
 /** The console's door, which renders outside the console's shell. */
 const CONSOLE_DOOR = 'console/Login';
 
-/** The console's top bar names its clock once for every instant on the screen. */
+/** The console's first row names its clock once for every instant on the screen. */
 export function consoleZoneLine(zone: string): string {
     return `Times are in ${zone}`;
 }
@@ -125,13 +127,17 @@ function useTheme(): [Theme, () => void] {
     return [theme, () => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))];
 }
 
-/** The top bar's one control, rendered for manageBookings alone; it opens the wizard with no prefill. */
-function NewBookingButton() {
+/**
+ * The shell's one button in the first row, rendered for manageBookings alone; it opens the wizard
+ * with no prefill. The page's main button outranks it, so beside one it steps back to the outlined
+ * look.
+ */
+function NewBookingButton({ quiet }: { quiet: boolean }) {
     const { open } = useNewBooking();
     const shell = useShell();
 
     return (
-        <Button variant="primary" className="admin-new-booking" onClick={() => open()}>
+        <Button variant={quiet ? 'secondary' : 'primary'} size="large" icon={<Plus />} className="admin-new-booking" onClick={() => open()}>
             {shell.text('top_bar.new_booking')}
         </Button>
     );
@@ -161,14 +167,14 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <Shell
                 route={page.url}
                 nav={page.props.nav}
-                wordmark={<Mark name={page.props.brand.name} />}
+                brand={(collapsed) => <Mark name={page.props.brand.name} bare={collapsed} />}
                 business={page.props.tenant.name}
                 userName={page.props.auth.user?.name ?? ''}
                 theme={theme}
                 onToggleTheme={toggleTheme}
                 signingOut={signingOut}
                 onSignOut={signOut}
-                actions={page.props.permissions.includes('manageBookings') ? <NewBookingButton /> : undefined}
+                action={page.props.permissions.includes('manageBookings') ? (quiet) => <NewBookingButton quiet={quiet} /> : undefined}
                 language={languages === undefined ? undefined : <LanguageControl choices={languages} current={page.props.language} choosing={choosing} onChoose={choose} />}
                 banner={
                     <>
@@ -204,9 +210,10 @@ function GuestLayout({ branded, children }: { branded: boolean; children: ReactN
 }
 
 /*
- * The console's shell: the admin's shell in the brand's scope with the console's wordmark in the
- * top bar and, beside it, the line naming the console's zone, the one place a console screen names
- * the clock its instants are spelled on; the rail the server hands as nav, rendered verbatim as
+ * The console's shell: the admin's shell in the brand's scope with the console's wordmark at the
+ * sidebar's head and no business under it, and last in the first row the line naming the console's
+ * zone, the one place a console screen names the clock its instants are spelled on, whatever the
+ * page's own buttons; the menu the server hands as nav, rendered verbatim as
  * the admin's is, and the flash as a toast. The operator and the Sign out control render once the
  * operator prop names one; while it is null nothing posts to a sign-out. The theme switch is the
  * admin's.
@@ -228,13 +235,14 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
                 className={BRAND_SCOPE}
                 route={page.url}
                 nav={page.props.nav}
-                business={<ConsoleWordmark name={page.props.brand.name} />}
+                brand={(collapsed) => <ConsoleWordmark name={page.props.brand.name} bare={collapsed} />}
+                business={null}
                 userName={operator ?? ''}
                 theme={theme}
                 onToggleTheme={toggleTheme}
                 signingOut={signingOut}
                 onSignOut={operator === null ? undefined : signOut}
-                actions={<p className="admin-console-zone text-sm text-muted-foreground">{consoleZoneLine(page.props.zone)}</p>}
+                action={() => <p className="admin-console-zone text-sm text-muted-foreground">{consoleZoneLine(page.props.zone)}</p>}
             >
                 {children}
             </Shell>

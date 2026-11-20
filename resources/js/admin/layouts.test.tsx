@@ -1,20 +1,21 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type Mounted, press } from '@/components/ui/harness';
+import { PageHeader } from '@/components/ui/page-header';
 import { KEYED_SHELL, KEYED_WIZARD, keyedShell, keyedWizard } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
 import type { ConsoleProps, SharedProps } from '@/types';
 import { AdminLayout, ConsoleLayout, consoleZoneLine, pageLayout } from './layouts';
 
 /*
- * The shell's frame: the top bar's one control is the New booking button, rendered for
+ * The shell's frame: the shell's one button in the page's first row is New booking, rendered for
  * manageBookings alone, and it opens the wizard over whatever page is showing. The brand: the
- * platform's mark with the site's name beside the business's name in the admin's top bar and
- * nothing else of the brand there, the wordmark in place of the console's name on the console's
- * shell, which wears the brand's scope, and the brand's scope around the signup's pages and the
- * console's door. The name is the brand prop's, never one compiled into the bundle. The frames
- * render inside the shell's keyed table, as a page renders inside the shell's words, and read what
- * they expect through it.
+ * platform's mark with the site's name at the head of the admin's sidebar above the business's
+ * name and nothing else of the brand there, the wordmark in place of the console's name on the
+ * console's sidebar, which wears the brand's scope, and the brand's scope around the signup's
+ * pages and the console's door. The name is the brand prop's, never one compiled into the bundle.
+ * The frames render inside the shell's keyed table, as a page renders inside the shell's words,
+ * and read what they expect through it. A page here is its header, as every screen opens with one.
  */
 
 const shell = keyedShell();
@@ -73,6 +74,7 @@ beforeEach(() => {
 afterEach(() => {
     mounted.unmount();
     vi.unstubAllGlobals();
+    window.localStorage.clear();
 });
 
 function render(props: SharedProps): void {
@@ -80,13 +82,13 @@ function render(props: SharedProps): void {
     mounted.render(
         <ToastProvider>
             <AdminLayout>
-                <h1>The page</h1>
+                <PageHeader title="The page" />
             </AdminLayout>
         </ToastProvider>,
     );
 }
 
-describe('the top bar\'s New booking button', () => {
+describe('the first row\'s New booking button', () => {
     it('renders for manageBookings and opens the wizard over the page', async () => {
         render(PROPS);
 
@@ -104,21 +106,45 @@ describe('the top bar\'s New booking button', () => {
 
         expect(document.querySelector('.admin-new-booking')).toBeNull();
     });
+
+    it('is the loud button on a page with no buttons of its own, and the outlined one beside a page\'s own', () => {
+        render(PROPS);
+        expect(document.querySelector('.admin-new-booking')?.classList.contains('bg-primary')).toBe(true);
+
+        inertia.props = PROPS;
+        mounted.render(
+            <ToastProvider>
+                <AdminLayout>
+                    <PageHeader title="The page" actions={<button type="button">Own</button>} />
+                </AdminLayout>
+            </ToastProvider>,
+        );
+        expect(document.querySelector('.admin-new-booking')?.classList.contains('bg-primary')).toBe(false);
+        expect(document.querySelector('.admin-new-booking')?.classList.contains('bg-card')).toBe(true);
+    });
 });
 
-describe('the admin\'s top bar and the brand', () => {
-    it('carries the platform\'s mark naming the brand prop\'s name beside the business\'s name, and no wordmark of the brand', () => {
+describe('the admin\'s sidebar and the brand', () => {
+    it('carries the platform\'s mark naming the brand prop\'s name at its head, the business\'s name under it, and no wordmark of the brand', () => {
         render(PROPS);
 
-        const bar = document.querySelector('.admin-topbar');
-        const mark = bar?.querySelector('.admin-mark');
+        const sidebar = document.querySelector('.admin-sidebar');
+        const mark = sidebar?.querySelector('.admin-mark');
 
-        expect(bar?.querySelector('.brand-wordmark')).toBeNull();
+        expect(document.querySelector('.brand-wordmark')).toBeNull();
         expect(mark?.querySelector('img')?.getAttribute('alt')).toBe('');
         expect(mark?.querySelector('.admin-mark__name')?.textContent).toBe('Example Bookings');
         expect(mark?.querySelector('.admin-mark__name')?.classList.contains('sr-only')).toBe(false);
-        expect(mark?.nextElementSibling?.classList.contains('admin-business')).toBe(true);
-        expect(bar?.querySelector('.admin-business')?.textContent).toBe('Luna');
+        expect(mark?.compareDocumentPosition(sidebar?.querySelector('.admin-business') as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(sidebar?.querySelector('.admin-business .admin-business__name')?.textContent).toBe('Luna');
+    });
+
+    it('keeps the mark alone, its name for a screen reader, once the sidebar is collapsed', () => {
+        render(PROPS);
+
+        press(document.querySelector('.admin-sidebar-toggle'));
+
+        expect(document.querySelector('.admin-sidebar .admin-mark .admin-mark__name')?.classList.contains('sr-only')).toBe(true);
     });
 
     it('keeps the admin outside the brand\'s scope, so its own theme applies everywhere in it', () => {
@@ -131,7 +157,7 @@ describe('the admin\'s top bar and the brand', () => {
     it('names whatever the server names, nothing compiled in', () => {
         render({ ...PROPS, brand: { name: 'Another Name' } });
 
-        expect(document.querySelector('.admin-topbar .admin-mark__name')?.textContent).toBe('Another Name');
+        expect(document.querySelector('.admin-sidebar .admin-mark__name')?.textContent).toBe('Another Name');
     });
 });
 
@@ -209,7 +235,7 @@ describe('the support session\'s banner', () => {
     });
 });
 
-describe('the top bar\'s language control', () => {
+describe('the first row\'s language control', () => {
     // The names as the server hands them, here the keyed names in brackets.
     const LANGUAGES = [
         { value: 'en', name: '[site.language.en]' },
@@ -296,17 +322,18 @@ function renderConsole(props: ConsoleProps): void {
     mounted.render(
         <ToastProvider>
             <ConsoleLayout>
-                <h1>Tenants</h1>
+                <PageHeader title="Tenants" />
             </ConsoleLayout>
         </ToastProvider>,
     );
 }
 
 describe('the console\'s shell', () => {
-    it('names the console in the top bar, renders an empty rail and the page, and no operator or Sign out while the operator is null', () => {
+    it('names the console at the head of the sidebar, renders an empty menu and the page, and no operator or Sign out while the operator is null', () => {
         renderConsole(CONSOLE);
 
-        expect(document.querySelector('.admin-topbar .admin-business')?.textContent).toBe('Example Bookings console');
+        expect(document.querySelector('.admin-sidebar .admin-console-wordmark')?.textContent).toBe('Example Bookings console');
+        expect(document.querySelector('.admin-business')).toBeNull();
         expect(document.querySelector('.admin-rail')).not.toBeNull();
         expect(document.querySelectorAll('.admin-rail-entry')).toHaveLength(0);
         expect(document.querySelector('.admin-signout')).toBeNull();
@@ -323,18 +350,19 @@ describe('the console\'s shell', () => {
     it('carries the wordmark in place of the console\'s name, the brand prop\'s name in it, and wears the brand\'s scope', () => {
         renderConsole({ ...CONSOLE, brand: { name: 'Another Name' } });
 
-        const business = document.querySelector('.admin-topbar .admin-business');
+        const head = document.querySelector('.admin-sidebar .admin-console-wordmark');
 
-        expect(business?.querySelector('.brand-wordmark .brand-wordmark__name')?.textContent).toBe('Another Name');
-        expect(business?.querySelector('.admin-console-label')?.textContent).toBe('console');
+        expect(head?.querySelector('.brand-wordmark .brand-wordmark__name')?.textContent).toBe('Another Name');
+        expect(head?.querySelector('.admin-console-label')?.textContent).toBe('console');
         expect(document.querySelector('.admin-shell')?.classList.contains('brand-scope')).toBe(true);
         expect(document.querySelector('.admin-mark')).toBeNull();
     });
 
-    it('names the console\'s zone once, in the top bar, as the shared prop names it', () => {
+    it('names the console\'s zone once, last in the first row, as the shared prop names it', () => {
         renderConsole(CONSOLE);
 
         expect(document.querySelectorAll('.admin-console-zone')).toHaveLength(1);
+        expect(document.querySelector('.admin-topbar .admin-page-header__end')?.lastElementChild?.matches('.admin-console-zone')).toBe(true);
         expect(document.querySelector('.admin-topbar .admin-console-zone')?.textContent).toBe('Times are in Europe/Athens');
         expect(consoleZoneLine('UTC')).toBe('Times are in UTC');
     });
@@ -375,7 +403,7 @@ describe('the console\'s shell', () => {
 describe('the frame a page renders in, by its name', () => {
     function renderPage(name: string, props: Record<string, unknown>): void {
         inertia.props = props;
-        mounted.render(<ToastProvider>{pageLayout(name)(<h1>{name}</h1>)}</ToastProvider>);
+        mounted.render(<ToastProvider>{pageLayout(name)(<PageHeader title={name} />)}</ToastProvider>);
     }
 
     it('renders the console\'s door alone, outside the console\'s shell', () => {
@@ -388,7 +416,7 @@ describe('the frame a page renders in, by its name', () => {
     it('renders every other console page inside the console\'s shell', () => {
         renderPage('console/Tenants', CONSOLE);
 
-        expect(document.querySelector('.admin-shell .admin-business')?.textContent).toBe('Example Bookings console');
+        expect(document.querySelector('.admin-shell .admin-sidebar .admin-console-wordmark')?.textContent).toBe('Example Bookings console');
         expect(document.querySelector('.admin-page h1')?.textContent).toBe('console/Tenants');
     });
 
@@ -410,7 +438,7 @@ describe('the frame a page renders in, by its name', () => {
         expect(document.querySelector('.admin-shell')).toBeNull();
 
         renderPage('Settings', PROPS);
-        expect(document.querySelector('.admin-shell .admin-business')?.textContent).toBe('Luna');
+        expect(document.querySelector('.admin-shell .admin-business .admin-business__name')?.textContent).toBe('Luna');
     });
 
     it('wraps the signup\'s pages and the console\'s door in the brand\'s scope, and leaves the admin\'s door in the admin\'s own theme', () => {

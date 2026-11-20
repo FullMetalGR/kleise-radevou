@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { Language } from '../../../booking/language';
-import { BREAKPOINT } from '@/lib/viewport';
+import { BREAKPOINT, WIDE } from '@/lib/viewport';
 import { WithShell } from '@/testing/keyed';
 
 /*
@@ -35,13 +35,13 @@ export function mount(language: Language = 'en'): Mounted {
     };
 }
 
-/** A click as a pointer produces it, bubbling, inside act. */
-export function press(element: Element | null): void {
+/** A click as a pointer produces it, bubbling, inside act; with a key held where one is named. */
+export function press(element: Element | null, init: MouseEventInit = {}): void {
     if (element === null) {
         throw new Error('Nothing to press.');
     }
 
-    act(() => element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
+    act(() => element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...init })));
 }
 
 /** A key pressed on an element, bubbling, inside act. */
@@ -118,41 +118,67 @@ export async function settle(): Promise<void> {
 }
 
 /**
- * The breakpoint's width as the admin's stylesheet declares it, read from app.css, the one place
- * it is spelled, so no test spells the number beside it. Throws where the stylesheet declares no
- * such token, rather than handing a test an empty width.
+ * A breakpoint's width as the admin's stylesheet declares it, read from app.css, the one place it
+ * is spelled, so no test spells the number beside it. Throws where the stylesheet declares no such
+ * token, rather than handing a test an empty width.
  */
-export function desktopWidth(): string {
+function declaredWidth(token: string): string {
     const css = readFileSync(join(process.cwd(), 'resources/js/admin/app.css'), 'utf8');
-    const width = new RegExp(`${BREAKPOINT}\\s*:\\s*([^;]+);`).exec(css)?.[1]?.trim();
+    const width = new RegExp(`${token}\\s*:\\s*([^;]+);`).exec(css)?.[1]?.trim();
 
     if (width === undefined || width === '') {
-        throw new Error(`The admin's stylesheet declares no ${BREAKPOINT}.`);
+        throw new Error(`The admin's stylesheet declares no ${token}.`);
     }
 
     return width;
 }
 
+/** The desktop breakpoint's width, as the stylesheet declares it. */
+export function desktopWidth(): string {
+    return declaredWidth(BREAKPOINT);
+}
+
+/** The wide breakpoint's width, as the stylesheet declares it. */
+export function wideWidth(): string {
+    return declaredWidth(WIDE);
+}
+
 /**
- * The admin below its breakpoint, as useDesktop reads it: the token on the root, as the
- * stylesheet puts it there, and every media query answering no. Answers its own undoing, which an
- * afterEach calls, so a test that forgets cannot leave the next one on a phone.
+ * The viewport the hooks read, put where a test wants it: both tokens on the root, as the
+ * stylesheet puts them there, and every media query answering whether its width is one of those
+ * given. Answers its own undoing, which an afterEach calls, so a test that forgets cannot leave
+ * the next one on a smaller screen.
  */
-export function onPhone(): () => void {
+function viewport(wider: string[]): () => void {
     const original = window.matchMedia;
     const root = document.documentElement;
 
     window.matchMedia = (query: string) =>
         ({
-            matches: false,
+            matches: wider.some((width) => query === `(min-width: ${width})`),
             media: query,
             addEventListener: () => {},
             removeEventListener: () => {},
         }) as unknown as MediaQueryList;
     root.style.setProperty(BREAKPOINT, desktopWidth());
+    root.style.setProperty(WIDE, wideWidth());
 
     return () => {
         window.matchMedia = original;
         root.style.removeProperty(BREAKPOINT);
+        root.style.removeProperty(WIDE);
     };
+}
+
+/** The admin on a phone: below both breakpoints, as useDesktop and useWide read them. */
+export function onPhone(): () => void {
+    return viewport([]);
+}
+
+/**
+ * The admin on a screen at or above the desktop breakpoint and below the wide one, a tablet or a
+ * narrow window: the desktop layout inside the compact shell.
+ */
+export function onCompact(): () => void {
+    return viewport([desktopWidth()]);
 }

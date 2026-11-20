@@ -19,7 +19,9 @@
  * Greek, neuter as the unit is; both cases are kept, the unit's abbreviation not bending. The
  * eight bounded lines of kit.counted are read as choices by their count too, :count the figure
  * formatCount writes, grouped as Greek groups it (1.234). The three answers of shared.closure are
- * choices by the count too, the booking in the genitive singular for one and plural from two. Its
+ * choices by the count too, the booking in the genitive singular for one and plural from two. The
+ * menu's pending count is a choice by the count as well, the booking and its verb singular for one
+ * and plural from two. Its
  * two row lines keep the English order, layouts of placeholders and commas alone. Email, Instagram,
  * Facebook and Google are the same in both languages and on the shared list, as those two are.
  */
@@ -45,6 +47,9 @@ return [
         'main' => 'Κύρια πλοήγηση',
         'menu' => 'Μενού',
         'skip' => 'Μετάβαση στο περιεχόμενο',
+        'collapse' => 'Σύμπτυξη μενού',
+        'expand' => 'Ανάπτυξη μενού',
+        'pending' => '{1} :count κράτηση περιμένει έγκριση|[2,*] :count κρατήσεις περιμένουν έγκριση',
     ],
     'login' => [
         'title' => 'Σύνδεση',

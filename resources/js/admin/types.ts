@@ -29,7 +29,7 @@ export type Flash = {
 };
 
 /**
- * One choice of the top bar's language control: the language's code and its own name in its own
+ * One choice of the first row's language control: the language's code and its own name in its own
  * language, read on the server as the site's switch reads it.
  */
 export type LanguageChoice = {
@@ -39,7 +39,7 @@ export type LanguageChoice = {
 
 /**
  * The admin's shell section, lang/{en,el}/admin/shell.php, in the language the page is answered in:
- * the words every admin page carries, the rail's, the sign-in's, the top bar's, the banners', the
+ * the words every admin page carries, the rail's, the sign-in's, the first row's, the banners', the
  * boundary's, the toaster's, the copy controls', the shared kit's and the words two other screens
  * share. A sentence with a value keeps the translator's :name placeholder, which the component
  * fills through fill() in booking/placeholders. The server's own groups, validation, refusals and
@@ -64,6 +64,9 @@ export type ShellStrings = {
         main: string;
         menu: string;
         skip: string;
+        collapse: string;
+        expand: string;
+        pending: string;
     };
     login: { title: string; heading: string; email: string; password: string; submit: string; submitting: string };
     set_password: {
@@ -1588,7 +1591,7 @@ export type GuestProps = {
  * signed-in operator's name or null, the validation errors the framework hands every Inertia page,
  * the rail as nav, App\Http\ConsoleNav's entries for an operator and empty for anyone else, the
  * console's zone, the IANA name of the clock every console screen spells its instants on, which the
- * top bar names once, the brand the top bar's wordmark names, and the admin's shell section in
+ * first row names once, the brand the sidebar's wordmark names, and the admin's shell section in
  * English, which the console renders through the admin's kit.
  */
 export type ConsoleProps = {
@@ -1696,6 +1699,6 @@ export type SharedProps = GuestProps &
     wizard?: WizardStrings | null;
     /** The open support session the shell's banner names: null for a user; for support the operator and the session's end, a UTC instant with its offset, sixty minutes from the console's press. */
     support?: { operator: string; ends_at: string } | null;
-    /** The top bar's language control, each language named in its own: shared to a signed-in user alone and never to a support session, so absent otherwise and the bar renders no control. */
+    /** The first row's language control, each language named in its own: shared to a signed-in user alone and never to a support session, so absent otherwise and the row renders no control. */
     languages?: LanguageChoice[];
 };

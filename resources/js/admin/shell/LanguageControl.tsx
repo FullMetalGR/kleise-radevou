@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import type { LanguageChoice } from '../types';
 
 /*
- * The top bar's language control: English and Greek, each labelled by its language's own name as
+ * The first row's language control: English and Greek, each labelled by its language's own name as
  * the server reads it and carrying that language as its lang, so it is read in the language it
  * names; the one the page is answered in is pressed. Pressing the other writes the signed-in
  * user's own language and the page comes back in it; the pressed one stays busy, its own name its

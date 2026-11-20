@@ -1,4 +1,6 @@
 import MARK_FILE from '../../../../public/favicon.svg?raw';
+import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 /*
  * The wordmark: the brand's mark beside the public name, the same markup the site's header draws
@@ -12,23 +14,46 @@ import MARK_FILE from '../../../../public/favicon.svg?raw';
 /** The mark's markup, the file's text without its last line's end, as the site's layout inlines it. */
 const MARK = MARK_FILE.trim();
 
-/** What the console is called after the wordmark in its top bar and on its door. */
+/** What the console is called after the wordmark at its sidebar's head and on its door. */
 export const CONSOLE_LABEL = 'console';
 
-export function Wordmark({ name }: { name: string }) {
+/*
+ * The wordmark; bare, the mark alone shows and the name is kept for a screen reader. In a place
+ * narrower than its words the name gives way and is cut with an ellipsis, on a line as tall as
+ * the mark so the cut takes no letter's tail. What is handed to follow the name shares its line
+ * where the two fit and wraps to a line of its own under the name, beside the mark, where they do
+ * not, so the name is cut only where it alone is wider than its line.
+ */
+export function Wordmark({ name, bare = false, children }: { name: string; bare?: boolean; children?: ReactNode }) {
+    const words = <span className={cn('brand-wordmark__name min-w-0 truncate leading-normal', bare && 'sr-only')}>{name}</span>;
+
     return (
-        <span className="brand-wordmark">
+        <span className="brand-wordmark min-w-0">
             <span className="brand-wordmark__mark" dangerouslySetInnerHTML={{ __html: MARK }} />
-            <span className="brand-wordmark__name">{name}</span>
+            {children === undefined ? (
+                words
+            ) : (
+                <span className={cn('brand-wordmark__words', bare ? 'contents' : 'flex min-w-0 flex-wrap items-center gap-x-1.5')}>
+                    {words} {children}
+                </span>
+            )}
         </span>
     );
 }
 
-/** The console's name: the wordmark, then the word console. */
-export function ConsoleWordmark({ name }: { name: string }) {
+/*
+ * The console's name: the wordmark, then the word console; bare, the mark alone, as the folded
+ * sidebar shows it. Where the two do not fit on one line, as at the sidebar's head, the word
+ * console goes under the name, and the whole of it is the title a pointer reads, as the
+ * business's chip keeps its name. The word sits inside the wordmark and keeps the admin's own
+ * face, weight and spacing, not the brand's.
+ */
+export function ConsoleWordmark({ name, bare = false }: { name: string; bare?: boolean }) {
     return (
-        <span className="admin-console-wordmark inline-flex items-center gap-1.5">
-            <Wordmark name={name} /> <span className="admin-console-label font-normal text-muted-foreground">{CONSOLE_LABEL}</span>
+        <span className="admin-console-wordmark inline-flex max-w-full min-w-0" title={`${name} ${CONSOLE_LABEL}`}>
+            <Wordmark name={name} bare={bare}>
+                <span className={cn('admin-console-label font-text leading-normal font-normal tracking-normal text-muted-foreground', bare && 'sr-only')}>{CONSOLE_LABEL}</span>
+            </Wordmark>
         </span>
     );
 }

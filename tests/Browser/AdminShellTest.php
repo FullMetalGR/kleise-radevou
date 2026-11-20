@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Middleware\RequiresActiveSubscription;
+use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Browser\Support\Admin;
 use Tests\Browser\Support\FlowScripts;
+use Tests\Browser\Support\PhoneScripts;
 
 /*
  * The door and the frame of the admin in a real browser: a tenant's user signs in at their own
@@ -20,6 +22,27 @@ beforeEach(function () {
 });
 
 afterEach(fn () => dropDemoSchemas());
+
+/** The sidebar's column width once its eased change of width has settled. */
+const SHELL_SIDEBAR_WIDTH = "new Promise((done) => setTimeout(() => done(Math.round(document.querySelector('.admin-sidebar').getBoundingClientRect().width)), 700))";
+
+/** What the tooltip beside a folded entry reads, once the pause before it shows has passed. */
+const SHELL_TOOLTIP = "new Promise((done) => setTimeout(() => done(document.querySelector('.admin-tooltip')?.firstChild?.textContent ?? null), 700))";
+
+/** True where no tooltip shows once the pause before one has passed. */
+const SHELL_NO_TOOLTIP = "new Promise((done) => setTimeout(() => done(document.querySelector('.admin-tooltip') === null), 700))";
+
+/** True when the keyboard's focus is on the button that folds the sidebar. */
+const SHELL_FOCUS_ON_TOGGLE = "document.activeElement !== null && document.activeElement === document.querySelector('.admin-sidebar-toggle')";
+
+/** True when the element is cut with an ellipsis: its text runs wider than its box. */
+const SHELL_CUT = "document.fonts.ready.then(() => { const box = document.querySelector('%s'); return box !== null && box.scrollWidth > box.clientWidth && getComputedStyle(box).textOverflow === 'ellipsis'; })";
+
+/** True when New booking stands whole inside the window and the page scrolls nothing sideways. */
+const SHELL_NEW_BOOKING_INSIDE = "document.fonts.ready.then(() => { const box = document.querySelector('.admin-new-booking')?.getBoundingClientRect(); const width = document.documentElement.clientWidth; return box !== undefined && box.left >= 0 && box.right <= width + 1 && box.top >= 0 && document.documentElement.scrollWidth <= width + 1; })";
+
+/** The Services table's rows: as blocks with their column names, or as the grid's rows. */
+const SHELL_SERVICES_ROWS = "document.fonts.ready.then(() => { const box = document.querySelector('.admin-services-screen .admin-table-scroll'); const rows = [...document.querySelectorAll('.admin-services__row')]; return box !== null && rows.length > 0 && box.scrollWidth <= box.clientWidth + 1 ? [...new Set(rows.map((row) => getComputedStyle(row).display))].join() : 'none'; })";
 
 it('signs luna\'s owner in, lands on Home inside the shell, and signs out to a toast', function () {
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
@@ -140,4 +163,136 @@ it('carries no subscription gate on a read even when the subscription has lapsed
     Admin::signedIn($this, 'luna', Admin::owner('luna'))
         ->assertPathIs('/admin')
         ->assertDontSee(adminLine(RequiresActiveSubscription::DETAIL));
+});
+
+it('stands the sidebar beside the page from the wide breakpoint, 276px on a wide window, 252 on a narrower one and 104 folded, the fold remembered across a reload', function () {
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1600, 900);
+
+    $page->assertPresent('.admin-sidebar')
+        ->assertNotPresent('.admin-menu')
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'true')
+        ->assertScript(SHELL_SIDEBAR_WIDTH, 276);
+
+    $page->resize(1440, 900)->assertScript(SHELL_SIDEBAR_WIDTH, 252);
+
+    // Open, an entry shows its own words: the pointer resting on one shows no label, then or once
+    // the pointer has gone and the sidebar folds.
+    $page->hover('.admin-rail a[href="/admin/services"]')
+        ->assertScript(SHELL_NO_TOOLTIP, true)
+        ->hover('.admin-page-title');
+
+    $page->click('.admin-sidebar-toggle')
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'false')
+        ->assertScript(SHELL_SIDEBAR_WIDTH, 104)
+        ->assertScript("getComputedStyle(document.querySelector('.admin-rail a[href=\"/admin/bookings\"] .admin-rail-entry__label')).position", 'absolute');
+
+    // Folded, the pointer resting on an entry shows its label beside it.
+    $page->assertNotPresent('.admin-tooltip')
+        ->hover('.admin-rail a[href="/admin/bookings"]')
+        ->assertScript(SHELL_TOOLTIP, 'Bookings');
+
+    $page->refresh()
+        ->assertVisible(Admin::RAIL)
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'false')
+        ->assertScript(SHELL_SIDEBAR_WIDTH, 104);
+
+    $page->click('.admin-sidebar-toggle')
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'true')
+        ->assertScript(SHELL_SIDEBAR_WIDTH, 252);
+
+    // From the keyboard the button keeps the focus as it folds the sidebar and as it opens it again.
+    $page->keys('.admin-sidebar-toggle', 'Enter')
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'false')
+        ->assertScript(SHELL_FOCUS_ON_TOGGLE, true)
+        ->keys('.admin-sidebar-toggle', 'Enter')
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'true')
+        ->assertScript(SHELL_FOCUS_ON_TOGGLE, true)
+        ->assertNoJavaScriptErrors();
+});
+
+it('starts the sidebar open where the browser refuses site data, whatever was stored, and still folds and opens it', function () {
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1440, 900);
+
+    $page->click('.admin-sidebar-toggle')->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'false');
+    $page->script("Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('blocked', 'SecurityError'); } })");
+
+    // Below the wide breakpoint the sidebar leaves; back above it, it is built again and reads the refused storage.
+    $page->resize(850, 900)->assertNotPresent('.admin-sidebar');
+    $page->resize(1440, 900)
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'true')
+        ->assertScript(SHELL_SIDEBAR_WIDTH, 252)
+        ->click('.admin-sidebar-toggle')
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'false')
+        ->assertScript(SHELL_SIDEBAR_WIDTH, 104)
+        ->click('.admin-sidebar-toggle')
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'true')
+        ->assertNoJavaScriptErrors();
+});
+
+it('cuts a sixty-character business name and user name with an ellipsis, each whole in its title, and keeps New booking on screen at 1440 and at 900', function () {
+    $business = 'Luna Hair Studio and Beauty Lounge of Nea Ionia, Nea Kifisia';
+    $user = 'Konstantina-Alexandrina Papadopoulou-Georgiadou-Antonopoulou';
+    expect(strlen($business))->toBe(60)->and(strlen($user))->toBe(60);
+    DB::table('tenants')->where('slug', 'luna')->update(['name' => $business]);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['name' => $user]);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+
+    foreach ([1440, 900] as $width) {
+        $page->resize($width, 900)
+            ->assertAttribute('.admin-business', 'title', $business)
+            ->assertScript(sprintf(SHELL_CUT, '.admin-business__name'), true)
+            ->assertAttribute('.admin-user', 'title', $user)
+            ->assertScript(sprintf(SHELL_CUT, '.admin-user'), true)
+            ->assertScript(SHELL_NEW_BOOKING_INSIDE, true);
+    }
+
+    $page->assertNoJavaScriptErrors();
+});
+
+it('keeps the first row inside the window on the Calendar and Services at 900, 1024 and 1130 in English and in Greek', function (SiteLanguage $language) {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+
+    foreach (['/calendar' => 'admin/calendar.page.title', '/services' => 'admin/services.page.title'] as $path => $title) {
+        $page->navigate(Admin::url('luna', $path))->waitForText(adminLine($title, [], $language));
+
+        foreach ([900, 1024, 1130] as $width) {
+            $page->resize($width, 900)
+                ->assertScript(SHELL_NEW_BOOKING_INSIDE, true)
+                ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+        }
+    }
+
+    $page->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('shows the Services table as rows at the wide breakpoint with the sidebar open, and as the grid on a wide window', function () {
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(900, 900);
+
+    $page->navigate(Admin::url('luna', '/services'))
+        ->waitForText('Haircut')
+        ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'true')
+        ->assertScript(SHELL_SERVICES_ROWS, 'block')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+
+    $page->resize(1600, 900)->assertScript(SHELL_SERVICES_ROWS, 'table-row');
+});
+
+it('opens the menu as the drawer from the first row\'s Menu button below the wide breakpoint, the business named in it', function () {
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(850, 900);
+
+    $page->assertNotPresent('.admin-sidebar')
+        ->assertScript("document.querySelector('.admin-page-header__row')?.firstElementChild?.classList.contains('admin-menu')", true)
+        ->click('.admin-menu')
+        ->assertCount('.admin-modal__frame--drawer .admin-rail-entry', 11)
+        ->assertSeeIn('.admin-modal__frame--drawer .admin-business', 'Luna Hair Studio')
+        ->click('.admin-modal__frame--drawer a[href="/admin/bookings"]')
+        ->assertPathIs('/admin/bookings')
+        ->assertNotPresent('.admin-modal__frame--drawer');
+
+    $page->resize(1440, 900)
+        ->assertPresent('.admin-sidebar')
+        ->assertNotPresent('.admin-menu')
+        ->assertNoJavaScriptErrors();
 });
