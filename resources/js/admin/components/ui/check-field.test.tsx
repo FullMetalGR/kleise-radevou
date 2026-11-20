@@ -3,9 +3,10 @@ import { CHECK_BOX, CheckField } from './check-field';
 import { mount, press, type Mounted } from './harness';
 
 /*
- * The check field: a 20px box tinted by the theme colour with its label beside it and a help line
- * under both, the label pointing at the box by id and the help hung off aria-describedby, drawn
- * as every other field draws its help.
+ * The check field: a 20px box tinted by the theme colour with its label beside it, the label
+ * pointing at the box by id. Where it is given help, a line under both hangs off
+ * aria-describedby, drawn as every other field draws its help; given none, it draws no line and
+ * the box points at none.
  */
 
 let view: Mounted;
@@ -47,6 +48,21 @@ describe('the check field', () => {
         expect(help?.classList.contains('admin-field__help')).toBe(true);
         expect(help?.classList.contains('text-label')).toBe(true);
         expect(box()?.checked).toBe(true);
+    });
+
+    it('puts the hook a place names on the box beside the box\'s own', () => {
+        view.render(<CheckField id="inactive" label="Show inactive (2)" tickClassName="admin-list-toggle__tick" checked={false} onChange={() => {}} />);
+
+        expect(box()?.className).toBe(`admin-check-field__tick ${CHECK_BOX} admin-list-toggle__tick`);
+    });
+
+    it('draws no help line and points the box at none when the place has nothing to explain', () => {
+        view.render(<CheckField id="inactive" label="Show inactive (2)" checked={false} onChange={() => {}} />);
+
+        expect(view.host.querySelector('.admin-field__help')).toBeNull();
+        expect(view.host.querySelectorAll('p')).toHaveLength(0);
+        expect(box()?.hasAttribute('aria-describedby')).toBe(false);
+        expect(view.host.querySelector('label')?.getAttribute('for')).toBe('inactive');
     });
 
     it('hands the new state to its owner', () => {

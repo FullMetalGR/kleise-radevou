@@ -708,6 +708,143 @@ describe('the staff checklist without the staff feature', () => {
     });
 });
 
+/*
+ * The screen's layout: the catalog's header and its inactive switch, the form on its own query
+ * container, two columns of cards where the form is wide, and the members as check cards.
+ */
+describe('the layout', () => {
+    const classes = (selector: string): string[] => [...(document.querySelector(selector)?.classList ?? [])];
+
+    it('heads the catalog with New service as the primary action and draws the inactive switch as a check field, its box keeping the toggle\'s hook', () => {
+        render(propsWith({ kind: 'list' }, [HAIRCUT, PERM]));
+
+        expect(document.querySelector('.admin-page-header__actions .admin-services-new')).not.toBeNull();
+        expect(classes('.admin-services-new')).toContain('admin-button--primary');
+        expect(classes('.admin-services-toggle')).toContain('admin-check-field');
+        expect(classes('#services-show-inactive')).toEqual(expect.arrayContaining(['admin-check-field__tick', 'admin-services-toggle__tick']));
+        expect(document.querySelector('.admin-services-toggle label.admin-check-field__label')?.getAttribute('for')).toBe('services-show-inactive');
+        // A switch with nothing to explain draws no help line and points the box at none.
+        expect(document.querySelector('.admin-services-toggle .admin-field__help')).toBeNull();
+        expect(document.querySelector('#services-show-inactive')?.hasAttribute('aria-describedby')).toBe(false);
+
+        press(document.querySelector('#services-show-inactive'));
+        expect([...document.querySelectorAll('.admin-services__id .admin-table__value')].map((cell) => cell.textContent)).toEqual(['7', '12']);
+    });
+
+    it('makes the catalog\'s screen a query container, so its card\'s heading takes the rows\' narrower sides wherever the rows show: below the wide breakpoint and in a card too narrow for a grid', () => {
+        render(propsWith({ kind: 'list' }, [HAIRCUT]));
+
+        expect(classes('.admin-services-screen')).toContain('@container');
+        expect(document.querySelector('.admin-services-screen > .admin-services')).not.toBeNull();
+        expect(classes('.admin-services > header')).toEqual(expect.arrayContaining(['px-6', 'max-wide:px-4.5', '@max-2xl:px-4.5']));
+    });
+
+    it('shows a service\'s status chip in the header\'s title row, its Save in the save bar, and a refused delete as a warning notice', () => {
+        render(propsWith({ kind: 'detail', id: 7 }, [HAIRCUT]));
+
+        expect(text('.admin-page-header__row .admin-chip')).toBe(words.text('statuses.active'));
+        expect(document.querySelector('.admin-save-bar .admin-service-save')).not.toBeNull();
+        expect(classes('.admin-service-save')).toContain('admin-button--primary');
+
+        press(document.querySelector('.admin-service-delete'));
+        const visit = lastVisit(inertia.delete)[2];
+        start(visit);
+        fail(visit, { status: 409, data: { code: 'referenced', message: 'referenced', data: { status: 409, detail: 'DETAIL_REFERENCED' } } });
+
+        expect(classes('.admin-service-conflict')).toEqual(expect.arrayContaining(['admin-notice', 'admin-notice--warning']));
+    });
+
+    it('lays the form on its own query container, its cards two columns from a wide form with Basics and the danger zone across both', () => {
+        render(propsWith({ kind: 'detail', id: 7 }, [HAIRCUT]));
+
+        const form = document.querySelector('.admin-service-form');
+        const sections = [...document.querySelectorAll('.admin-section')];
+        const grid = sections[0]?.parentElement;
+
+        expect(classes('.admin-service-form')).toContain('@container');
+        expect(grid?.parentElement).toBe(form);
+        expect(sections.every((section) => section.parentElement === grid)).toBe(true);
+        expect([...(grid?.classList ?? [])]).toEqual(expect.arrayContaining(['grid', '@4xl:grid-cols-2']));
+        expect(sections.map((section) => [[...section.classList].find((name) => name.startsWith('admin-section--')), section.classList.contains('@4xl:col-span-2')])).toEqual([
+            ['admin-section--basics', true],
+            ['admin-section--timing', false],
+            ['admin-section--staff', false],
+            ['admin-section--rules', false],
+            ['admin-section--payment', false],
+            ['admin-section--danger', true],
+        ]);
+        // The header and the save bar sit outside the grid, the bar last in the form.
+        expect(form?.firstElementChild?.classList.contains('admin-page-header')).toBe(true);
+        expect(form?.lastElementChild?.classList.contains('admin-save-bar')).toBe(true);
+    });
+
+    it('draws the approval box as a check field, keeping its hooks across the card', () => {
+        render(propsWith({ kind: 'detail', id: 7 }, [HAIRCUT]));
+
+        expect(classes('.admin-section--rules .admin-approval')).toEqual(expect.arrayContaining(['admin-check-field', '@xl:col-span-2']));
+        expect(classes('#service-requires-approval')).toEqual(expect.arrayContaining(['admin-check-field__tick', 'admin-approval__tick']));
+        expect(text('label[for="service-requires-approval"]')).toBe(words.text('form.approval'));
+    });
+
+    it('draws each member as a check card: the card is the label around the live box, ringed when chosen and ticked', () => {
+        render(propsWith({ kind: 'detail', id: 7 }, [HAIRCUT], ROSTER, ['staff']));
+
+        const rows = [...document.querySelectorAll<HTMLLabelElement>('.admin-staff-checklist__row')];
+        const box = (row: Element | undefined) => row?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+        const marked = () => rows.map((row) => row.querySelector('.admin-staff-checklist__mark svg') !== null);
+
+        expect(rows.map((row) => row.tagName)).toEqual(['LABEL', 'LABEL']);
+        expect(rows.map((row) => row.parentElement?.tagName)).toEqual(['LI', 'LI']);
+        expect(rows.map((row) => box(row)?.id)).toEqual(['service-staff-1', 'service-staff-2']);
+        expect(rows.every((row) => row.control === box(row))).toBe(true);
+        expect([...(box(rows[0])?.classList ?? [])]).toEqual(expect.arrayContaining(['admin-staff-checklist__tick', 'size-5', 'accent-primary', 'focus-ring-field']));
+        // The box stays a box a key reaches: in the tab order and drawn.
+        expect(rows.every((row) => !box(row)?.hidden && box(row)?.getAttribute('tabindex') === null)).toBe(true);
+        expect([...(rows[0]?.classList ?? [])]).toEqual(expect.arrayContaining(['items-center', 'ring-[1.5px]', 'ring-border', 'has-checked:ring-2', 'has-checked:ring-primary', 'has-checked:bg-muted/60']));
+        expect(rows[0]?.classList.contains('items-baseline')).toBe(false);
+        expect(rows.map((row) => row.querySelector('.admin-staff-checklist__name')?.textContent)).toEqual(['Elena Papadaki', words.text('staff.inactive', { staff: 'Nikos Georgiou' })]);
+        expect(document.querySelector('.admin-staff-checklist label label')).toBeNull();
+        expect(marked()).toEqual([false, true]);
+
+        // A press anywhere on the card is a press on its box.
+        press(rows[0]?.querySelector('.admin-staff-checklist__windows') ?? null);
+        expect(box(rows[0])?.checked).toBe(true);
+        expect(marked()).toEqual([true, true]);
+        expect(text('.admin-section--staff .admin-section__meta')).toBe(words.choice('staff.ticked', 2, { ticked: '2' }));
+    });
+
+    it('announces each member\'s box under the member\'s name alone, that member\'s weekly hours its description, whether the member has hours or none', () => {
+        render(propsWith({ kind: 'detail', id: 7 }, [HAIRCUT], ROSTER, ['staff']));
+
+        // The text of the elements an attribute of the box lists by id, in the order it lists them.
+        const listed = (box: Element | undefined, attribute: string) =>
+            (box?.getAttribute(attribute) ?? '')
+                .split(' ')
+                .filter((id) => id !== '')
+                .map((id) => document.getElementById(id)?.textContent)
+                .join(' ');
+        // The name a box is announced under: what its aria-labelledby lists, which wins over every
+        // label of the box, and otherwise the whole text of those labels, one wrapped around it included.
+        const announced = (box: HTMLInputElement) => (box.hasAttribute('aria-labelledby') ? listed(box, 'aria-labelledby') : [...(box.labels ?? [])].map((label) => label.textContent).join(' '));
+        const checkbox = (name: string) => [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:not([role])')].find((box) => announced(box) === name);
+        const monday = new Intl.DateTimeFormat(localeOf('en'), { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 0, 1)));
+
+        const elena = checkbox('Elena Papadaki');
+        const nikos = checkbox(words.text('staff.inactive', { staff: 'Nikos Georgiou' }));
+
+        expect(elena?.id).toBe('service-staff-1');
+        expect(listed(elena, 'aria-describedby')).toBe(words.text('staff.window', { weekday: monday, time: '09:00', end: '13:00' }));
+        expect(nikos?.id).toBe('service-staff-2');
+        expect(listed(nikos, 'aria-describedby')).toBe(words.text('staff.no_hours'));
+    });
+
+    it('lays the members on a grid of cards no narrower than the card they sit in allows', () => {
+        render(propsWith({ kind: 'detail', id: 7 }, [HAIRCUT], ROSTER, ['staff']));
+
+        expect(classes('.admin-staff-checklist')).toEqual(expect.arrayContaining(['grid', 'grid-cols-[repeat(auto-fill,minmax(min(17.5rem,100%),1fr))]', '@xl:col-span-2']));
+    });
+});
+
 describe('the services section', () => {
     it('is typed as the keys of lang/en/admin/services.php, no more and no fewer', () => {
         expectTypeOf<Shape<typeof ADMIN_LINES_EN.services>>().toEqualTypeOf<ServicesStrings>();

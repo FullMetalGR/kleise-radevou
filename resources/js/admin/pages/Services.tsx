@@ -4,7 +4,7 @@ import { Scissors } from 'lucide-react';
 import { ListDetail, SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CHECK_BOX } from '@/components/ui/check-field';
+import { CheckField } from '@/components/ui/check-field';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { type BookingLink, copyLinkOf } from '@/lib/booking-link';
@@ -195,7 +195,7 @@ export default function Services() {
         return (
             <ServicesProvider words={words}>
                 <Head title={words.text('page.title')} />
-                <div className="admin-services-screen flex flex-col gap-4">
+                <div className="admin-services-screen @container flex flex-col gap-4">
                     <PageHeader
                         title={words.text('page.title')}
                         actions={
@@ -204,10 +204,14 @@ export default function Services() {
                             </Button>
                         }
                     />
-                    <div className="admin-services-toggle flex items-center gap-2 text-sm">
-                        <input type="checkbox" id="services-show-inactive" className={`admin-services-toggle__tick ${CHECK_BOX}`} checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
-                        <label htmlFor="services-show-inactive">{words.text('page.show_inactive', { count: String(inactive) })}</label>
-                    </div>
+                    <CheckField
+                        id="services-show-inactive"
+                        className="admin-services-toggle"
+                        tickClassName="admin-services-toggle__tick"
+                        label={words.text('page.show_inactive', { count: String(inactive) })}
+                        checked={showInactive}
+                        onChange={setShowInactive}
+                    />
                     <SettledList
                         count={rows.length}
                         state={{ loading, error }}

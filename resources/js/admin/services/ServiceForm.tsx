@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Tick } from '@/components/glyphs';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { CHECK_BOX, CheckField } from '@/components/ui/check-field';
@@ -20,6 +21,11 @@ import { type ServicesKey, useServices } from './words';
  * persisted row, the Copy booking link button, the named sections in order and a sticky save
  * bar. Basics, Timing, Staff who perform this (only where the staff axis is shown), Booking
  * rules, Payment, and the Danger zone on a persisted row only.
+ *
+ * The form is a size container, and its cards stand on two columns where the form itself is at
+ * least 56rem wide, whatever the window around it: Basics runs across both above the pairs and
+ * the Danger zone across both below them. Narrower, every card takes the whole width, one under
+ * the other, and each card's own fields follow its width as every form card's do.
  *
  * The only client gate is the name: Save is disabled while it is blank after trimming.
  * Everything else is the server's to refuse, and its sentence reaches the page as an error toast
@@ -75,6 +81,17 @@ type NumberKey = { [K in keyof Form]: Form[K] extends string ? K : never }[keyof
 
 const GAP_HELP = 'form.gap_help' satisfies ServicesKey;
 
+/** A card that runs across both of the form's columns where the form stands on two. */
+const ACROSS = '@4xl:col-span-2';
+
+/**
+ * A member's check card: a notice's radius inside a line ring, which turns into a thicker ring in
+ * the theme colour on the soft tint while its box is ticked. It takes the hover tint only while
+ * its box can change, and a locked box makes the whole card read as locked to the pointer.
+ */
+const CHECK_CARD =
+    'admin-staff-checklist__row flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-notice px-3.5 py-3 ring-[1.5px] ring-border motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft has-enabled:hover:bg-muted has-checked:bg-muted/60 has-checked:ring-2 has-checked:ring-primary has-disabled:cursor-not-allowed';
+
 export function ServiceForm({ form, onChange, creating, categories, title, status, currency, granularity, clock, staff, staged, onStage, busy, onSave, onBack, listHref, danger, copyLink }: Props) {
     const words = useServices();
     const set = <K extends keyof Form>(key: K) => (value: Form[K]) => onChange({ ...form, [key]: value });
@@ -86,7 +103,7 @@ export function ServiceForm({ form, onChange, creating, categories, title, statu
 
     return (
         <form
-            className="admin-service-form flex flex-col gap-4"
+            className="admin-service-form @container flex flex-col gap-4"
             onSubmit={(event) => {
                 event.preventDefault();
                 onSave();
@@ -100,67 +117,73 @@ export function ServiceForm({ form, onChange, creating, categories, title, statu
                 actions={copyLink ?? undefined}
             />
 
-            <Section id="basics" title={words.text('form.basics')}>
-                <Field id="service-name" label={words.text('form.name')}>
-                    {(control) => <TextInput {...control} value={form.name} onChange={(event) => set('name')(event.target.value)} />}
-                </Field>
-                {!creating && (
-                    <Field id="service-status" label={words.text('form.status')}>
-                        {(control) => <Select {...control} options={optionsIn(STATUSES, words)} value={form.status} onChange={set('status')} />}
+            <div className="grid gap-4 @4xl:grid-cols-2">
+                <Section id="basics" title={words.text('form.basics')} className={ACROSS}>
+                    <Field id="service-name" label={words.text('form.name')}>
+                        {(control) => <TextInput {...control} value={form.name} onChange={(event) => set('name')(event.target.value)} />}
                     </Field>
-                )}
-                <Field id="service-description" label={words.text('form.description')} help={words.text('form.description_help')} className="@xl:col-span-2">
-                    {(control) => <Textarea {...control} rows={3} value={form.description} onChange={(event) => set('description')(event.target.value)} />}
-                </Field>
-                <Field id="service-category" label={words.text('form.category')} help={words.text(CATEGORY_HELP)}>
-                    {(control) => <TextInput {...control} list="service-category-options" maxLength={60} value={form.category} onChange={(event) => set('category')(event.target.value)} />}
-                </Field>
-                <datalist id="service-category-options" className="admin-service-categories">
-                    {categories.map((category) => (
-                        <option key={category} value={category} />
-                    ))}
-                </datalist>
-                <CheckField id="service-online" label={words.text('form.online')} help={words.text(ONLINE_HELP)} checked={form.online} onChange={set('online')} />
-            </Section>
-
-            <Section id="timing" title={words.text('form.timing')}>
-                {number('duration_min', 'form.duration', words.text('form.duration_help', { n: String(granularity) }), granularity)}
-                {number('processing_gap_min', 'form.gap', words.text(GAP_HELP))}
-                {number('buffer_before_min', 'form.buffer_before', words.text('form.buffer_before_help'))}
-                {number('buffer_after_min', 'form.buffer_after', words.text('form.buffer_after_help'))}
-            </Section>
-
-            {staff !== null && <StaffChecklist staff={staff} staged={staged} onStage={onStage} clock={clock} />}
-
-            <Section id="rules" title={words.text('form.rules')}>
-                {number('lead_time_min', 'form.lead_time', words.text('form.lead_time_help'))}
-                {number('horizon_days', 'form.horizon', words.text('form.horizon_help'), undefined, HORIZON_MAX_DAYS)}
-                {number('cancel_window_hours', 'form.cancel_window', words.text('form.cancel_window_help'))}
-                {number('reschedule_window_hours', 'form.reschedule_window', words.text('form.reschedule_window_help'))}
-                <div className="admin-approval flex items-center gap-2 @xl:col-span-2">
-                    <input type="checkbox" id="service-requires-approval" className={`admin-approval__tick ${CHECK_BOX}`} checked={form.requires_approval} onChange={(event) => set('requires_approval')(event.target.checked)} />
-                    <label htmlFor="service-requires-approval">{words.text('form.approval')}</label>
-                </div>
-                {form.requires_approval && (
-                    <>
-                        {number('approval_hold_hours', 'form.hold', words.text('form.hold_help'))}
-                        <Field id="service-timeout" label={words.text('form.timeout')}>
-                            {(control) => <Select {...control} options={optionsIn(TIMEOUTS, words)} value={form.on_approval_timeout} onChange={set('on_approval_timeout')} />}
+                    {!creating && (
+                        <Field id="service-status" label={words.text('form.status')}>
+                            {(control) => <Select {...control} options={optionsIn(STATUSES, words)} value={form.status} onChange={set('status')} />}
                         </Field>
-                    </>
-                )}
-            </Section>
+                    )}
+                    <Field id="service-description" label={words.text('form.description')} help={words.text('form.description_help')} className="@xl:col-span-2">
+                        {(control) => <Textarea {...control} rows={3} value={form.description} onChange={(event) => set('description')(event.target.value)} />}
+                    </Field>
+                    <Field id="service-category" label={words.text('form.category')} help={words.text(CATEGORY_HELP)}>
+                        {(control) => <TextInput {...control} list="service-category-options" maxLength={60} value={form.category} onChange={(event) => set('category')(event.target.value)} />}
+                    </Field>
+                    <datalist id="service-category-options" className="admin-service-categories">
+                        {categories.map((category) => (
+                            <option key={category} value={category} />
+                        ))}
+                    </datalist>
+                    <CheckField id="service-online" label={words.text('form.online')} help={words.text(ONLINE_HELP)} checked={form.online} onChange={set('online')} />
+                </Section>
 
-            <Section id="payment" title={words.text('form.payment')}>
-                <Field id="service-price" label={words.text('form.price', { currency })} help={words.text('form.price_help')}>
-                    {(control) => <TextInput {...control} inputMode="decimal" className="tabular-nums" value={form.price} onChange={(event) => set('price')(event.target.value)} />}
-                </Field>
-                <Field id="service-payment-mode" label={words.text('form.payment_mode')}>
-                    {(control) => <Select {...control} options={optionsIn(PAYMENT_MODES, words)} value={form.payment_mode} onChange={set('payment_mode')} />}
-                </Field>
-            </Section>
+                <Section id="timing" title={words.text('form.timing')}>
+                    {number('duration_min', 'form.duration', words.text('form.duration_help', { n: String(granularity) }), granularity)}
+                    {number('processing_gap_min', 'form.gap', words.text(GAP_HELP))}
+                    {number('buffer_before_min', 'form.buffer_before', words.text('form.buffer_before_help'))}
+                    {number('buffer_after_min', 'form.buffer_after', words.text('form.buffer_after_help'))}
+                </Section>
 
-            {!creating && danger}
+                {staff !== null && <StaffChecklist staff={staff} staged={staged} onStage={onStage} clock={clock} />}
+
+                <Section id="rules" title={words.text('form.rules')}>
+                    {number('lead_time_min', 'form.lead_time', words.text('form.lead_time_help'))}
+                    {number('horizon_days', 'form.horizon', words.text('form.horizon_help'), undefined, HORIZON_MAX_DAYS)}
+                    {number('cancel_window_hours', 'form.cancel_window', words.text('form.cancel_window_help'))}
+                    {number('reschedule_window_hours', 'form.reschedule_window', words.text('form.reschedule_window_help'))}
+                    <CheckField
+                        id="service-requires-approval"
+                        className="admin-approval @xl:col-span-2"
+                        tickClassName="admin-approval__tick"
+                        label={words.text('form.approval')}
+                        checked={form.requires_approval}
+                        onChange={set('requires_approval')}
+                    />
+                    {form.requires_approval && (
+                        <>
+                            {number('approval_hold_hours', 'form.hold', words.text('form.hold_help'))}
+                            <Field id="service-timeout" label={words.text('form.timeout')}>
+                                {(control) => <Select {...control} options={optionsIn(TIMEOUTS, words)} value={form.on_approval_timeout} onChange={set('on_approval_timeout')} />}
+                            </Field>
+                        </>
+                    )}
+                </Section>
+
+                <Section id="payment" title={words.text('form.payment')}>
+                    <Field id="service-price" label={words.text('form.price', { currency })} help={words.text('form.price_help')}>
+                        {(control) => <TextInput {...control} inputMode="decimal" className="tabular-nums" value={form.price} onChange={(event) => set('price')(event.target.value)} />}
+                    </Field>
+                    <Field id="service-payment-mode" label={words.text('form.payment_mode')}>
+                        {(control) => <Select {...control} options={optionsIn(PAYMENT_MODES, words)} value={form.payment_mode} onChange={set('payment_mode')} />}
+                    </Field>
+                </Section>
+
+                {!creating && danger}
+            </div>
 
             <SaveBar reason={canSave(form) ? null : words.text('form.needs_name')}>
                 <Button type="submit" variant="primary" className="admin-service-save" disabled={!canSave(form)} busy={busy} busyLabel={words.text('form.saving')}>
@@ -175,12 +198,21 @@ type ChecklistProps = { staff: Roster; staged: readonly number[]; onStage: (stag
 
 /**
  * Staff who perform this, 3.3, under the staff axis alone: one checkbox per member, inactive
- * ones suffixed, that member's weekly windows printed read-only beside the row in the tenant's
+ * ones suffixed, that member's weekly windows printed read-only under the name in the tenant's
  * clock, and a link to the Shifts screen for a viewer who may open it (manageSettings), none for
  * any other. The meta counts the staged ticks and is omitted entirely while the roster is
  * loading. Without the staff feature the rows half of 6.1 still shows who performs the service,
  * but a tick is a staff write the server refuses, so every tick is disabled as linked, one line
  * says why, and the link reads as a way to see the hours.
+ *
+ * Each member is a check card: the card is the label around the live checkbox, so a press
+ * anywhere on it is a press on the box, and the box keeps its place in the tab order and its keys.
+ * A label names its box by everything inside it, which here would read the whole week out before
+ * the box's state, once per member. So the box takes its name from the member's name alone and
+ * its description from the weekly windows, each by id, and the label is left the pointer's work.
+ * A chosen card says so three ways, never by colour alone: the box's own tick, a thicker ring in
+ * the theme colour on a soft tint, and a tick at its end. The cards fill as many columns of at
+ * least 17.5rem as the section has room for, and one where it has less.
  */
 function StaffChecklist({ staff, staged, onStage, clock }: ChecklistProps) {
     const shell = useShell();
@@ -192,29 +224,41 @@ function StaffChecklist({ staff, staged, onStage, clock }: ChecklistProps) {
 
     return (
         <Section id="staff" title={words.text('staff.title')} meta={staff.loading ? undefined : words.choice('staff.ticked', staff.members.length, { ticked: String(staged.length) })}>
-            <ul className="admin-staff-checklist flex flex-col gap-2 @xl:col-span-2">
-                {staff.members.map((member) => (
-                    <li key={member.id} className="admin-staff-checklist__row flex flex-wrap items-baseline gap-3">
-                        <input
-                            type="checkbox"
-                            id={`service-staff-${member.id}`}
-                            className={`admin-staff-checklist__tick ${CHECK_BOX}`}
-                            checked={staged.includes(member.id)}
-                            disabled={!staff.editable}
-                            onChange={(event) => {
-                                if (staff.editable) {
-                                    onStage(event.target.checked ? [...staged, member.id] : staged.filter((id) => id !== member.id));
-                                }
-                            }}
-                        />
-                        <label htmlFor={`service-staff-${member.id}`} className="admin-staff-checklist__name">
-                            {member.active ? member.name : words.text('staff.inactive', { staff: member.name })}
-                        </label>
-                        <span className="admin-staff-checklist__windows text-xs text-muted-foreground">
-                            {windows(member)}
-                        </span>
-                    </li>
-                ))}
+            <ul className="admin-staff-checklist grid grid-cols-[repeat(auto-fill,minmax(min(17.5rem,100%),1fr))] gap-x-5 gap-y-3 @xl:col-span-2">
+                {staff.members.map((member) => {
+                    const chosen = staged.includes(member.id);
+                    const boxId = `service-staff-${member.id}`;
+
+                    return (
+                        <li key={member.id} className="flex min-w-0">
+                            <label className={CHECK_CARD}>
+                                <input
+                                    type="checkbox"
+                                    id={boxId}
+                                    className={`admin-staff-checklist__tick ${CHECK_BOX}`}
+                                    checked={chosen}
+                                    disabled={!staff.editable}
+                                    aria-labelledby={`${boxId}-name`}
+                                    aria-describedby={`${boxId}-windows`}
+                                    onChange={(event) => {
+                                        if (staff.editable) {
+                                            onStage(event.target.checked ? [...staged, member.id] : staged.filter((id) => id !== member.id));
+                                        }
+                                    }}
+                                />
+                                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                    <span id={`${boxId}-name`} className="admin-staff-checklist__name text-body font-semibold wrap-break-word">
+                                        {member.active ? member.name : words.text('staff.inactive', { staff: member.name })}
+                                    </span>
+                                    <span id={`${boxId}-windows`} className="admin-staff-checklist__windows text-small wrap-break-word text-muted-foreground">
+                                        {windows(member)}
+                                    </span>
+                                </span>
+                                <span className="admin-staff-checklist__mark inline-flex size-4 shrink-0 text-primary-deep">{chosen && <Tick />}</span>
+                            </label>
+                        </li>
+                    );
+                })}
             </ul>
             {!staff.editable && <p className="admin-staff-checklist__readonly text-sm text-muted-foreground @xl:col-span-2">{words.text(READ_ONLY)}</p>}
             {staff.shifts && (
@@ -245,7 +289,7 @@ export function DangerZone({ conflict, deleting, deactivating, onDelete, onDeact
     const words = useServices();
 
     return (
-        <Section id="danger" title={words.text('danger.title')} wide danger>
+        <Section id="danger" title={words.text('danger.title')} wide danger className={ACROSS}>
             <div className="flex flex-col gap-3">
                 <Button destructive className="admin-service-delete self-start" busy={deleting} busyLabel={words.text('danger.deleting')} onClick={onDelete}>
                     {words.text('danger.delete')}
