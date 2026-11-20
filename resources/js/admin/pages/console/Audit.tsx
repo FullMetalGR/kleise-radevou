@@ -1,8 +1,10 @@
 import { Head, usePage } from '@inertiajs/react';
+import { ScrollText } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { usePartialRead } from '@/lib/partial-read';
@@ -169,9 +171,11 @@ export default function Audit() {
                     state={{ loading: list.loading, error: list.error }}
                     errorSentence={AUDIT_LIST_ERROR}
                     empty={
-                        <div className="admin-audit-empty rounded-xl border p-6 text-center">
-                            <p className="text-muted-foreground">{tenant === null ? NO_ACTIONS : NO_TENANT_ACTIONS}</p>
-                        </div>
+                        <Card flush>
+                            <EmptyState className="admin-audit-empty" icon={<ScrollText />}>
+                                {tenant === null ? NO_ACTIONS : NO_TENANT_ACTIONS}
+                            </EmptyState>
+                        </Card>
                     }
                 >
                     <Card flush className="admin-card admin-audit" aria-labelledby="audit-head">

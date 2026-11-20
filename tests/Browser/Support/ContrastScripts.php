@@ -13,7 +13,9 @@ use Pest\Browser\Api\Webpage;
  * out in the stylesheet by mixing the theme's primary into the mode's bases, which only a browser
  * resolves, so the measure is taken there: each token painted onto a canvas pixel and read back
  * as the sRGB the screen shows, then held against the contrast floor its use asks for. The page's
- * own ground is read back the same way, as its three channels.
+ * own ground is read back the same way, as its three channels. A mark that stands on more than one
+ * ground, a dot on a tab that is filled when chosen, is measured where the page draws it instead:
+ * its own fill against whatever is behind it at the time.
  */
 final class ContrastScripts
 {
@@ -159,6 +161,116 @@ final class ContrastScripts
                 }
                 root.classList.toggle('dark', was.dark);
                 return [...new Set(failures)];
+            })()
+            JS;
+    }
+
+    /**
+     * A script answering every theme and mode in which the mark the selector finds is not seen
+     * where it stands, as "<theme> <mode>: the mark on its ground = <ratio>", with the two ratios
+     * of its line after it where it has one; an empty list when it is seen in all fourteen, and
+     * one line saying so when the page draws no such mark. The mark is read as the page draws it
+     * and not from a token: its own fill, the line round it, and its ground, which is every fill
+     * behind it from the page's down to its parent's, painted in turn so one with any transparency
+     * is measured as it shows. A mark is seen where its fill holds the floor against the ground,
+     * or where it holds it against its line and the line holds it against the ground. A fill that
+     * follows the theme may be part way through a transition when it is read, so every transition
+     * is switched off while the script measures. A colour the canvas does not read is reported.
+     * The page's theme and mode are put back at the end.
+     */
+    public static function markFailures(string $mark, float $floor = 3.0): string
+    {
+        $themes = json_encode(Look::ALL_THEMES, JSON_THROW_ON_ERROR);
+        $selector = json_encode($mark, JSON_THROW_ON_ERROR);
+        $least = json_encode($floor, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
+
+        return <<<JS
+            (() => {
+                const themes = {$themes};
+                const floor = {$least};
+                const mark = document.querySelector({$selector});
+                if (mark === null) {
+                    return ['the page draws no mark'];
+                }
+                const body = document.body;
+                const root = document.documentElement;
+                const was = { theme: body.dataset.theme, dark: root.classList.contains('dark') };
+                const still = document.createElement('style');
+                still.textContent = '*, *::before, *::after { transition: none !important; }';
+                document.head.appendChild(still);
+                const behind = [];
+                for (let box = mark.parentElement; box !== null; box = box.parentElement) {
+                    behind.unshift(box);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = 1;
+                canvas.height = 1;
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                const unread = (colour) => {
+                    context.fillStyle = '#010203';
+                    context.fillStyle = colour;
+                    return context.fillStyle === '#010203';
+                };
+                const paint = (colours) => {
+                    context.clearRect(0, 0, 1, 1);
+                    for (const colour of colours) {
+                        context.fillStyle = colour;
+                        context.fillRect(0, 0, 1, 1);
+                    }
+                    return Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3);
+                };
+                const luminance = (rgb) => {
+                    const [r, g, b] = rgb.map((channel) => {
+                        const c = channel / 255;
+                        return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+                    });
+                    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                };
+                const ratio = (one, other) => {
+                    const [light, deep] = [luminance(one), luminance(other)].sort((a, b) => b - a);
+                    return (light + 0.05) / (deep + 0.05);
+                };
+                const failures = [];
+                for (const theme of themes) {
+                    for (const dark of [false, true]) {
+                        body.dataset.theme = theme;
+                        root.classList.toggle('dark', dark);
+                        const label = theme + ' ' + (dark ? 'dark' : 'light') + ': ';
+                        const own = getComputedStyle(mark);
+                        const grounds = behind.map((box) => getComputedStyle(box).backgroundColor);
+                        const lined = parseFloat(own.borderTopWidth) > 0;
+                        const lost = [...grounds, own.backgroundColor, ...(lined ? [own.borderTopColor] : [])].filter(unread);
+                        if (lost.length > 0) {
+                            failures.push(label + lost.join(', ') + ' is no colour the canvas reads');
+                            continue;
+                        }
+                        const ground = paint(grounds);
+                        const fill = paint([...grounds, own.backgroundColor]);
+                        const onGround = ratio(fill, ground);
+                        if (onGround >= floor) {
+                            continue;
+                        }
+                        const short = label + 'the mark on its ground = ' + onGround.toFixed(2);
+                        if (!lined) {
+                            failures.push(short);
+                            continue;
+                        }
+                        const line = paint([...grounds, own.borderTopColor]);
+                        const inLine = ratio(fill, line);
+                        const lineOnGround = ratio(line, ground);
+                        if (inLine < floor || lineOnGround < floor) {
+                            failures.push(short + ', in its line = ' + inLine.toFixed(2) + ', its line on the ground = ' + lineOnGround.toFixed(2));
+                        }
+                    }
+                }
+                still.remove();
+                if (was.theme === undefined) {
+                    delete body.dataset.theme;
+                } else {
+                    body.dataset.theme = was.theme;
+                }
+                root.classList.toggle('dark', was.dark);
+                return failures;
             })()
             JS;
     }

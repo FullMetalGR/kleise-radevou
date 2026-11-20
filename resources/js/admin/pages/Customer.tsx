@@ -1,5 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import { List } from 'lucide-react';
 import { BookingDialog } from '@/bookings/BookingDialog';
 import { BookingsTable } from '@/bookings/BookingsTable';
 import { type Detail, type ListPage, staffShown } from '@/bookings/model';
@@ -8,6 +9,8 @@ import { BookingsProvider, bookingsWordsOf } from '@/bookings/words';
 import { SettledList } from '@/components/settled-list';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
 import { CustomerDangerZone, type Erasure } from '@/customers/CustomerDangerZone';
@@ -175,7 +178,18 @@ export default function CustomerPage() {
                         {manage && <CustomerNotesCard url={props.customer.url} notes={props.notes} clock={clock} />}
                         {manage && <CustomerBlockCard key={props.block.blocked_at ?? 'open'} url={props.customer.url} block={props.block} clock={clock} />}
                     </div>
-                    <SettledList count={rows.length} state={{ loading: list.loading, error: list.error }} errorSentence={own.text(BOOKINGS_ERROR)} empty={<p className="admin-customer-empty rounded-xl border p-6 text-center text-muted-foreground">{own.text(BOOKINGS_EMPTY)}</p>}>
+                    <SettledList
+                        count={rows.length}
+                        state={{ loading: list.loading, error: list.error }}
+                        errorSentence={own.text(BOOKINGS_ERROR)}
+                        empty={
+                            <Card flush>
+                                <EmptyState className="admin-customer-empty" icon={<List />}>
+                                    {own.text(BOOKINGS_EMPTY)}
+                                </EmptyState>
+                            </Card>
+                        }
+                    >
                         <BookingsTable
                             rows={rows}
                             total={props.bookings.total}

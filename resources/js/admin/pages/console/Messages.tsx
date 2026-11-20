@@ -1,9 +1,11 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import { Mail } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { Segmented } from '@/components/ui/segmented';
 import { usePartialRead } from '@/lib/partial-read';
@@ -212,9 +214,11 @@ export default function Messages() {
                     state={{ loading: list.loading, error: list.error }}
                     errorSentence={MESSAGES_LIST_ERROR}
                     empty={
-                        <div className="admin-messages-empty rounded-xl border p-6 text-center">
-                            <p className="text-muted-foreground">{current === 'open' ? NO_OPEN : NO_ARCHIVED}</p>
-                        </div>
+                        <Card flush>
+                            <EmptyState className="admin-messages-empty" icon={<Mail />}>
+                                {current === 'open' ? NO_OPEN : NO_ARCHIVED}
+                            </EmptyState>
+                        </Card>
                     }
                 >
                     <Card flush className="admin-card admin-messages" aria-labelledby="messages-head">

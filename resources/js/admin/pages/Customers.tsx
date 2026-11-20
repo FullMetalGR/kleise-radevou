@@ -1,6 +1,9 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { User } from 'lucide-react';
 import { SettledList } from '@/components/settled-list';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
@@ -108,16 +111,18 @@ export default function Customers() {
                     state={{ loading: list.loading, error: list.error }}
                     errorSentence={words.text(LIST_ERROR)}
                     empty={
-                        <div className="admin-customers-empty rounded-xl border p-6 text-center">
-                            {searched ? (
-                                <p className="text-muted-foreground">{words.text(NO_MATCH)}</p>
-                            ) : (
-                                <>
-                                    <p className="font-medium">{words.text(NO_CUSTOMERS)}</p>
-                                    <p className="text-muted-foreground">{words.text(NO_CUSTOMERS_SENTENCE)}</p>
-                                </>
-                            )}
-                        </div>
+                        <Card flush>
+                            <EmptyState className="admin-customers-empty" icon={<User />}>
+                                {searched ? (
+                                    words.text(NO_MATCH)
+                                ) : (
+                                    <>
+                                        <p className="text-foreground">{words.text(NO_CUSTOMERS)}</p>
+                                        <p>{words.text(NO_CUSTOMERS_SENTENCE)}</p>
+                                    </>
+                                )}
+                            </EmptyState>
+                        </Card>
                     }
                 >
                     <CustomersTable rows={rows} total={props.customers.total} page={props.customers.page} pageSize={props.customers.page_size} clock={clock} onSelect={open} onPage={(page) => load(search, page)} />

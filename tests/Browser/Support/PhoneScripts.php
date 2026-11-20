@@ -221,6 +221,63 @@ final class PhoneScripts
         JS;
 
     /**
+     * True when, with the page scrolled to its end, the last control before the save bar ends at
+     * or above the bar's top: the bar floats while the form scrolls and comes to rest after the
+     * form at its end, so it never covers the form's last field. The scroll is the script's own,
+     * and the reading waits two frames for the page to settle where it was put.
+     */
+    public const string SAVE_BAR_CLEARS_LAST_CONTROL = <<<'JS'
+        document.fonts.ready.then(() => new Promise((resolve) => {
+            const bar = document.querySelector('.admin-save-bar');
+            if (bar === null) {
+                resolve(false);
+                return;
+            }
+            document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                const controls = Array.from(document.querySelectorAll('a[href], button, input, select, textarea'))
+                    .filter((control) => !bar.contains(control) && (bar.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_PRECEDING) !== 0)
+                    .filter((control) => control.getClientRects().length > 0 && control.closest('.admin-help-bubble, .admin-toaster') === null);
+                const last = controls.at(-1);
+                resolve(last !== undefined && last.getBoundingClientRect().bottom <= bar.getBoundingClientRect().top + 1);
+            }));
+        }))
+        JS;
+
+    /**
+     * True when the save bar ends to the left of the help bubble, so the two stand side by side at
+     * the width read and neither covers the other while the bar floats over the foot of the
+     * screen.
+     */
+    public const string SAVE_BAR_BESIDE_BUBBLE = <<<'JS'
+        document.fonts.ready.then(() => {
+            const bar = document.querySelector('.admin-save-bar');
+            const bubble = document.querySelector('.admin-help-bubble');
+            if (bar === null || bubble === null) {
+                return false;
+            }
+            return bar.getBoundingClientRect().right <= bubble.getBoundingClientRect().left + 1;
+        })
+        JS;
+
+    /**
+     * True when the save bar says why Save is unavailable and the sentence stays in its own
+     * column of the bar: a run of letters wider than the column, an address with no space in it,
+     * is broken onto the next line rather than drawn past the column's edge, and the column ends
+     * inside the bar.
+     */
+    public const string SAVE_BAR_REASON_INSIDE = <<<'JS'
+        document.fonts.ready.then(() => {
+            const bar = document.querySelector('.admin-save-bar');
+            const reason = bar === null ? null : bar.querySelector('.admin-save-bar__reason');
+            if (reason === null) {
+                return false;
+            }
+            return reason.scrollWidth <= reason.clientWidth + 1 && reason.getBoundingClientRect().right <= bar.getBoundingClientRect().right + 1;
+        })
+        JS;
+
+    /**
      * True when the page draws a select inside a field and each one stands inside its field from
      * side to side. A select is as wide as its longest option unless its frame holds it, and a
      * field's own box does not grow with it, so each select's box is held to its field's.

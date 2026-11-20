@@ -1,8 +1,10 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { Building2 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { DateField } from '@/components/ui/date-field';
 import { PageHeader } from '@/components/ui/page-header';
 import { Field } from '@/components/ui/field';
@@ -211,16 +213,18 @@ export default function Tenants() {
                     state={{ loading: list.loading, error: list.error }}
                     errorSentence={TENANTS_LIST_ERROR}
                     empty={
-                        <div className="admin-tenants-empty rounded-xl border p-6 text-center">
-                            {emptySentence === null ? (
-                                <>
-                                    <p className="font-medium">{NO_TENANTS}</p>
-                                    <p className="text-muted-foreground">{NO_TENANTS_SENTENCE}</p>
-                                </>
-                            ) : (
-                                <p className="text-muted-foreground">{emptySentence}</p>
-                            )}
-                        </div>
+                        <Card flush>
+                            <EmptyState className="admin-tenants-empty" icon={<Building2 />}>
+                                {emptySentence === null ? (
+                                    <>
+                                        <p className="text-foreground">{NO_TENANTS}</p>
+                                        <p>{NO_TENANTS_SENTENCE}</p>
+                                    </>
+                                ) : (
+                                    emptySentence
+                                )}
+                            </EmptyState>
+                        </Card>
                     }
                 >
                     <Card flush className="admin-card admin-tenants" aria-labelledby="tenants-head">

@@ -8,6 +8,7 @@ import { Field, type FieldControl } from '@/components/ui/field';
 import { Textarea, TextInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
+import { SaveBar } from '@/components/ui/save-bar';
 import { Section } from '@/components/ui/section';
 import { Select } from '@/components/ui/select';
 import { StatusChip } from '@/components/ui/status-chip';
@@ -172,16 +173,11 @@ export function StaffForm({ form, onChange, creating, implicit, title, status, u
             {!creating && exceptions}
             {!creating && danger}
 
-            <div className="admin-save-bar sticky bottom-0 flex items-center gap-3 border-t bg-background py-3">
+            <SaveBar reason={wait ?? (canSave(form) ? null : words.text(NAME_NEEDED))}>
                 <Button type="submit" form={FORM_ID} variant="primary" className="admin-staff-save" disabled={!canSave(form) || wait !== null} busy={busy} busyLabel={words.text('form.saving')}>
                     {words.text('form.save')}
                 </Button>
-                {(wait !== null || !canSave(form)) && (
-                    <p className="admin-save-bar__reason text-sm text-muted-foreground" role="status">
-                        {wait ?? words.text(NAME_NEEDED)}
-                    </p>
-                )}
-            </div>
+            </SaveBar>
         </div>
     );
 }

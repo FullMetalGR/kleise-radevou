@@ -28,13 +28,17 @@ use Tests\Support\LunaFixture;
  * the drawer closed, and the others none where none is pending. A last walk reads the wizard,
  * Month, Services, Staff and Settings at the same width, none of them scrolling the page sideways,
  * Month's day its number and how many bookings it has with no chip, the whole cell its date menu,
- * whose Open day opens Day view on it, and one more opens every screen of the admin, as an owner
+ * whose Open day opens Day view on it, Settings' save bar beside the help bubble and resting after
+ * the form's last control at its end, and one more opens every screen of the admin, as an owner
  * who reads English and as one who reads Greek, and reads that none is wider than the phone, the
  * Team screen's members read as rows, each value beside its column name; an email of sixty
  * characters with no break wraps inside its row there. A walk in Greek holds a field's control to
  * its place: the selects of Bookings' filters, listing a member and a service whose names run to
- * sixty characters, stand inside their fields with the page not scrolling sideways. The rest of
- * the suite stays on the plugin's desktop device.
+ * sixty characters, stand inside their fields with the page not scrolling sideways. Another reads
+ * Settings' save bar in Greek while it says why Save is unavailable, the sentence wrapped inside
+ * its column with the address in it broken, then widens the window to where the bar is as wide as
+ * what it holds: at both widths the bar ends before the help bubble. The rest of the suite stays
+ * on the plugin's desktop device.
  *
  * The bookings are written straight to luna's rows, dated whole days from the tenant's today in
  * Athens on the real clock, which the browser and the application both read.
@@ -349,7 +353,10 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
             ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     }
 
-    $page->assertScript(PhoneScripts::SAVE_BAR_INSIDE, true);
+    // Settings' save bar floats beside the help bubble and, at the end of the form, rests after its last control.
+    $page->assertScript(PhoneScripts::SAVE_BAR_INSIDE, true)
+        ->assertScript(PhoneScripts::SAVE_BAR_BESIDE_BUBBLE, true)
+        ->assertScript(PhoneScripts::SAVE_BAR_CLEARS_LAST_CONTROL, true);
 
     $page->navigate(Admin::url('luna', '/services'))->waitForText('Beard trim')->click('Beard trim')
         ->waitForText(adminLine('admin/services.form.payment_mode'))
@@ -360,6 +367,37 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
         ->waitForText(adminLine('admin/staff.form.weekly'))
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertScript(PhoneScripts::SAVE_BAR_INSIDE, true)
+        ->assertNoJavaScriptErrors();
+});
+
+it('keeps Settings\' save bar clear of the help bubble in Greek while it says why Save is unavailable, the sentence wrapped inside its column on a phone with the address in it broken, and at a width where the bar is as wide as what it holds', function () {
+    // The sentence is one line in English on a desktop. In Greek it runs to several on a phone,
+    // beside a wider button, and to more than a row holds at 1000 pixels, so at both widths the
+    // bar reaches as far as it is let, toward the corner the bubble stands over.
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+    $reason = adminLine('admin/settings.validation.public_email', [], SiteLanguage::Greek);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/settings.sections.booking_rules', [], SiteLanguage::Greek))
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value)
+        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)
+        ->type('#settings-public-email', 'x')
+        ->assertSeeIn('.admin-save-bar__reason', $reason)
+        ->assertScript(PhoneScripts::SAVE_BAR_REASON_INSIDE, true)
+        ->assertScript(PhoneScripts::SAVE_BAR_INSIDE, true)
+        ->assertScript(PhoneScripts::SAVE_BAR_BESIDE_BUBBLE, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+
+    // The field is typed in again, so the walk does not lean on the form keeping its state
+    // across the two layouts.
+    $page->resize(1000, 800)
+        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 1000)
+        ->type('#settings-public-email', 'x')
+        ->assertSeeIn('.admin-save-bar__reason', $reason)
+        ->assertScript(PhoneScripts::SAVE_BAR_REASON_INSIDE, true)
+        ->assertScript(PhoneScripts::SAVE_BAR_INSIDE, true)
+        ->assertScript(PhoneScripts::SAVE_BAR_BESIDE_BUBBLE, true)
         ->assertNoJavaScriptErrors();
 });
 

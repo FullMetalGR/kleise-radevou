@@ -6,6 +6,7 @@ import { Field } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
+import { SaveBar } from '@/components/ui/save-bar';
 import { Section } from '@/components/ui/section';
 import { Select } from '@/components/ui/select';
 import { StatusChip } from '@/components/ui/status-chip';
@@ -161,16 +162,11 @@ export function ServiceForm({ form, onChange, creating, categories, title, statu
 
             {!creating && danger}
 
-            <div className="admin-save-bar sticky bottom-0 flex items-center gap-3 border-t bg-background py-3">
+            <SaveBar reason={canSave(form) ? null : words.text('form.needs_name')}>
                 <Button type="submit" variant="primary" className="admin-service-save" disabled={!canSave(form)} busy={busy} busyLabel={words.text('form.saving')}>
                     {words.text('form.save')}
                 </Button>
-                {!canSave(form) && (
-                    <p className="admin-save-bar__reason text-sm text-muted-foreground" role="status">
-                        {words.text('form.needs_name')}
-                    </p>
-                )}
-            </div>
+            </SaveBar>
         </form>
     );
 }

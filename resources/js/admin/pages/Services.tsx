@@ -1,8 +1,11 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
+import { Scissors } from 'lucide-react';
 import { ListDetail, SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { CHECK_BOX } from '@/components/ui/check-field';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { type BookingLink, copyLinkOf } from '@/lib/booking-link';
 import { clockOf, type TenantClock } from '@/lib/format';
@@ -210,10 +213,12 @@ export default function Services() {
                         state={{ loading, error }}
                         errorSentence={words.text(LIST_ERROR)}
                         empty={
-                            <div className="admin-services-empty rounded-xl border p-6 text-center">
-                                <p className="font-medium">{words.text('page.none')}</p>
-                                <p className="text-muted-foreground">{words.text('page.none_sentence')}</p>
-                            </div>
+                            <Card flush>
+                                <EmptyState className="admin-services-empty" icon={<Scissors />}>
+                                    <p className="text-foreground">{words.text('page.none')}</p>
+                                    <p>{words.text('page.none_sentence')}</p>
+                                </EmptyState>
+                            </Card>
                         }
                     >
                         <ServicesTable rows={rows} onSelect={(selected) => go(`${LIST}/${selected}`)} />

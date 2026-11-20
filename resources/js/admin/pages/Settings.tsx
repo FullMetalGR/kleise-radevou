@@ -5,6 +5,7 @@ import { CHECK_BOX } from '@/components/ui/check-field';
 import { Field, type FieldControl, HelpLine } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
+import { SaveBar } from '@/components/ui/save-bar';
 import { Section } from '@/components/ui/section';
 import { Select } from '@/components/ui/select';
 import { useCopy } from '@/lib/copy';
@@ -421,16 +422,11 @@ function Editor({ seed, initial, settings, urls, links, limits, countries, langu
                 </ul>
             </Section>
 
-            <div className="admin-save-bar sticky bottom-0 flex items-center gap-3 border-t bg-background py-3">
+            <SaveBar reason={reason}>
                 <Button type="submit" variant="primary" className="admin-settings-save" disabled={!saveable(form, settings.granularity) || wait !== null} busy={saving} busyLabel={words.text('save.saving')}>
                     {words.text('save.save')}
                 </Button>
-                {reason !== null && (
-                    <p className="admin-save-bar__reason text-sm text-muted-foreground" role="status">
-                        {reason}
-                    </p>
-                )}
-            </div>
+            </SaveBar>
         </form>
     );
 }

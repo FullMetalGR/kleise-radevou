@@ -1,7 +1,9 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { LifeBuoy } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
@@ -128,9 +130,11 @@ export default function Tickets() {
                     state={{ loading: list.loading, error: list.error }}
                     errorSentence={TICKETS_LIST_ERROR}
                     empty={
-                        <div className="admin-tickets-empty rounded-xl border p-6 text-center">
-                            <p className="text-muted-foreground">{NO_TICKETS}</p>
-                        </div>
+                        <Card flush>
+                            <EmptyState className="admin-tickets-empty" icon={<LifeBuoy />}>
+                                {NO_TICKETS}
+                            </EmptyState>
+                        </Card>
                     }
                 >
                     <Card flush className="admin-card admin-tickets" aria-labelledby="tickets-head">

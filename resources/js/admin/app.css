@@ -833,19 +833,20 @@
 
 /*
  * Room for the help bubble, which stands over the bottom corner of every screen that shows it, so
- * it never hides a control: the page's foot runs past it, a form's save bar keeps its end clear
- * of it, and at the desktop width the toasts rise above it rather than under it. While its panel
- * is open at that width the toasts stand beside the panel, not over its foot: past the panel's
- * width and a gap on each side of it, or as far as the window lets them go while keeping their
- * own width and a gap from its left edge. Outside a layer, so these outrank the utilities that
- * place the page, the bar and the toaster.
+ * it never hides a control: the page's foot runs past it, a form's save bar ends short of it at
+ * every width and floats beside it, since the bar runs to the page's edge both where it spans the
+ * page and where the line it holds fills its row, and at the desktop width the toasts rise above
+ * it rather than under it. While its panel is open at that width the toasts stand beside the
+ * panel, not over its foot: past the panel's width and a gap on each side of it, or as far as the
+ * window lets them go while keeping their own width and a gap from its left edge. Outside a layer,
+ * so these outrank the utilities that place the page, the bar and the toaster.
  */
 body:has(.admin-help-bubble) .admin-page {
     padding-bottom: 5rem;
 }
 
 body:has(.admin-help-bubble) .admin-save-bar {
-    padding-right: 4rem;
+    margin-right: 4rem;
 }
 
 body:has(.admin-help-bubble) .admin-toaster {

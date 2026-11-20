@@ -402,6 +402,46 @@ describe('the help bubble', () => {
 });
 
 describe('the help panel\'s answers', () => {
+    it('draws its two tabs as a pill row the panel\'s heading names, the chosen one filled in the ink', () => {
+        render();
+        openPanel();
+
+        const row = q('.admin-help-tabs');
+        const [answers, tickets] = all('.admin-help-tab');
+
+        expect(row?.getAttribute('role')).toBe('tablist');
+        expect(row?.getAttribute('aria-label')).toBe(shell.text('help.name'));
+        expect([...(row?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-full', 'bg-muted']));
+        expect(answers?.getAttribute('aria-selected')).toBe('true');
+        expect([...(answers?.classList ?? [])]).toEqual(expect.arrayContaining(['bg-foreground', 'text-background']));
+        expect(tickets?.classList.contains('bg-foreground')).toBe(false);
+
+        chooseTab(words.text('tabs.tickets'));
+
+        expect(all('.admin-help-tab')[1]?.classList.contains('bg-foreground')).toBe(true);
+        expect(all('.admin-help-tab')[0]?.classList.contains('bg-foreground')).toBe(false);
+    });
+
+    it('moves between its tabs on the arrow keys, the tab reached shown', async () => {
+        render();
+        openPanel();
+
+        const [answers, tickets] = all('[role="tab"]');
+        (answers as HTMLElement | undefined)?.focus();
+        key(answers ?? null, 'ArrowRight');
+        await settle();
+
+        expect(document.activeElement).toBe(tickets);
+        expect(tickets?.getAttribute('aria-selected')).toBe('true');
+        expect(hiddenTabs()).toEqual([true, false]);
+
+        key(tickets ?? null, 'ArrowLeft');
+        await settle();
+
+        expect(document.activeElement).toBe(answers);
+        expect(hiddenTabs()).toEqual([false, true]);
+    });
+
     it('hides the tab not chosen after each change of tab, both staying in the page with what was typed in them', () => {
         render();
         openPanel();
@@ -517,6 +557,19 @@ describe('the help panel\'s tickets', () => {
         land(lastReload(), { help_panel: PANEL, help: bubbled({ unread: true }) });
 
         expect(all('[role="tab"]')[1]?.getAttribute('aria-label')).toBe(words.text('tabs.tickets_unread'));
+    });
+
+    it('draws the Tickets tab\'s dot inside a line in the page\'s colour, as the bubble\'s is, so it is seen on the tab filled in the ink', () => {
+        inertia.props = propsWith(bubbled({ unread: true }));
+        render();
+        press(bubble());
+        land(lastReload(), { help_panel: PANEL, help: bubbled({ unread: true }) });
+
+        const dot = q('.admin-help-tab__dot');
+
+        expect(dot?.closest('[role="tab"]')).toBe(all('[role="tab"]')[1]);
+        expect(dot?.getAttribute('aria-hidden')).toBe('true');
+        expect([...(dot?.classList ?? [])]).toEqual(expect.arrayContaining(['size-3', 'rounded-full', 'border-2', 'border-background', 'bg-destructive']));
     });
 
     it('says there are no tickets yet when there is none, under the button that opens one', () => {

@@ -1,5 +1,7 @@
+import { LifeBuoy } from 'lucide-react';
 import { type FormEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Field, HelpLine, useFocusFirstFailing } from '@/components/ui/field';
 import { Textarea, TextInput } from '@/components/ui/input';
 import { formatInstant, type TenantClock } from '@/lib/format';
@@ -56,7 +58,11 @@ function Rows({ list, words, clock, onOpen }: { list: ListState; words: HelpWord
     }
 
     if (list.rows.length === 0) {
-        return <p className="admin-help-empty text-sm text-muted-foreground">{words.text('list.empty')}</p>;
+        return (
+            <EmptyState className="admin-help-empty" icon={<LifeBuoy />}>
+                {words.text('list.empty')}
+            </EmptyState>
+        );
     }
 
     return (

@@ -1,11 +1,12 @@
-import { Dialog as DialogPrimitive, Tabs as TabsPrimitive } from 'radix-ui';
+import { Dialog as DialogPrimitive } from 'radix-ui';
 import { type KeyboardEvent, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tab, TabList, TabPanel, Tabs } from '@/components/ui/tabs';
 import type { TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
 import { Answers } from './Answers';
-import type { HelpSession, Tab } from './session';
+import type { HelpSession, Tab as HelpTab } from './session';
 import { TicketsTab } from './TicketsTab';
 import type { HelpBubble } from './types';
 import type { HelpWords } from './words';
@@ -20,12 +21,12 @@ import type { HelpWords } from './words';
  * hands focus back to the bubble. Below that width it fills the screen as a dialog, focus kept
  * inside and the page behind not scrolling.
  *
- * Its heading is the bubble's name; under it, two tabs, the answers and the tickets, or the
- * answers alone for a viewer with no tickets. Each view marks the control focus goes to when it
- * is shown, the search, the button that opens a ticket, the subject or the way back to the list,
- * and focus moves there when the panel opens and each time the tickets' view changes. Moving
- * focus never scrolls: each view of the tickets starts at its top, and a thread then brings its
- * reply box into view itself.
+ * Its heading is the bubble's name; under it, two tabs, the answers and the tickets, in a row the
+ * heading's words name, or the answers alone for a viewer with no tickets. Each view marks the
+ * control focus goes to when it is shown, the search, the button that opens a ticket, the subject
+ * or the way back to the list, and focus moves there when the panel opens and each time the
+ * tickets' view changes. Moving focus never scrolls: each view of the tickets starts at its top,
+ * and a thread then brings its reply box into view itself.
  *
  * Neither the panel nor its backdrop is printed.
  */
@@ -43,7 +44,15 @@ function inToasts(target: EventTarget | null): boolean {
 
 const BODY = 'admin-help-body min-h-0 flex-1 overflow-y-auto p-4 outline-none';
 
-const TAB = 'admin-help-tab relative flex-1 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=active]:border-primary data-[state=active]:text-foreground';
+/** Each tab shares the row's width with the other. */
+const TAB = 'admin-help-tab relative flex-1';
+
+/**
+ * The dot on the Tickets tab while a reply is unread: the bubble's own, the red inside a line in
+ * the page's colour. The tab under it is the row's tint until it is chosen and the ink after, and
+ * in dark mode the ink is nearly as light as the red, so there the dot is seen by its line.
+ */
+const DOT = 'admin-help-tab__dot ml-1 inline-block size-3 rounded-full border-2 border-background bg-destructive align-middle';
 
 /**
  * The control focus goes to in the view shown: inside the tab now chosen, since both tabs stay in
@@ -56,11 +65,12 @@ function focusIn(frame: HTMLElement | null): HTMLElement | null {
     return scope?.querySelector<HTMLElement>(FOCUS) ?? null;
 }
 
-function tabOf(value: string): Tab {
+function tabOf(value: string): HelpTab {
     return value === 'tickets' ? 'tickets' : 'answers';
 }
 
-function Tabs({ session, words, help, clock }: Pick<Props, 'session' | 'words' | 'help' | 'clock'>) {
+function Views({ session, words, help, clock }: Pick<Props, 'session' | 'words' | 'help' | 'clock'>) {
+    const shell = useShell();
     const tickets = useRef<HTMLDivElement>(null);
     const view = session.tickets.view;
     const shown = view.kind === 'thread' ? view.uuid : view.kind;
@@ -77,23 +87,23 @@ function Tabs({ session, words, help, clock }: Pick<Props, 'session' | 'words' |
     }
 
     return (
-        <TabsPrimitive.Root value={session.tab} onValueChange={(value) => session.chooseTab(tabOf(value))} className="flex min-h-0 flex-1 flex-col">
-            <TabsPrimitive.List className="admin-help-tabs flex shrink-0 border-b px-2">
-                <TabsPrimitive.Trigger value="answers" className={TAB}>
+        <Tabs value={session.tab} onValueChange={(value) => session.chooseTab(tabOf(value))} className="flex min-h-0 flex-1 flex-col">
+            <TabList label={shell.text('help.name')} className="admin-help-tabs mx-4 mt-3 flex shrink-0">
+                <Tab value="answers" className={TAB}>
                     {words.text('tabs.answers')}
-                </TabsPrimitive.Trigger>
-                <TabsPrimitive.Trigger value="tickets" className={TAB} aria-label={help.unread ? words.text('tabs.tickets_unread') : undefined}>
+                </Tab>
+                <Tab value="tickets" className={TAB} aria-label={help.unread ? words.text('tabs.tickets_unread') : undefined}>
                     {words.text('tabs.tickets')}
-                    {help.unread && <span className="admin-help-tab__dot ml-1.5 inline-block size-2 rounded-full bg-destructive align-middle" aria-hidden="true" />}
-                </TabsPrimitive.Trigger>
-            </TabsPrimitive.List>
-            <TabsPrimitive.Content forceMount hidden={session.tab !== 'answers'} value="answers" className={BODY}>
+                    {help.unread && <span className={DOT} aria-hidden="true" />}
+                </Tab>
+            </TabList>
+            <TabPanel value="answers" forceMount className={BODY}>
                 {answers}
-            </TabsPrimitive.Content>
-            <TabsPrimitive.Content ref={tickets} forceMount hidden={session.tab !== 'tickets'} value="tickets" className={BODY}>
+            </TabPanel>
+            <TabPanel ref={tickets} value="tickets" forceMount className={BODY}>
                 <TicketsTab tickets={session.tickets} words={words} clock={clock} />
-            </TabsPrimitive.Content>
-        </TabsPrimitive.Root>
+            </TabPanel>
+        </Tabs>
     );
 }
 
@@ -268,7 +278,7 @@ export function Panel({ session, words, help, desktop, clock, bubble }: Props) {
                             </Button>
                         </DialogPrimitive.Close>
                     </div>
-                    <Tabs session={session} words={words} help={help} clock={clock} />
+                    <Views session={session} words={words} help={help} clock={clock} />
                 </div>
             </DialogPrimitive.Content>
         </Frame>

@@ -1,8 +1,11 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
+import { Users } from 'lucide-react';
 import { ListDetail, SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { CHECK_BOX } from '@/components/ui/check-field';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
 import { type BookingLink, copyLinkOf } from '@/lib/booking-link';
@@ -281,14 +284,18 @@ export default function Staff() {
                         state={{ loading, error }}
                         errorSentence={words.text(LIST_ERROR)}
                         empty={
-                            query.trim() !== '' ? (
-                                <p className="admin-staff-no-match rounded-xl border p-6 text-center text-muted-foreground">{words.text('page.no_match')}</p>
-                            ) : (
-                                <div className="admin-staff-empty rounded-xl border p-6 text-center">
-                                    <p className="font-medium">{words.text('page.none')}</p>
-                                    <p className="text-muted-foreground">{words.text('page.none_sentence')}</p>
-                                </div>
-                            )
+                            <Card flush>
+                                {query.trim() !== '' ? (
+                                    <EmptyState className="admin-staff-no-match" icon={<Users />}>
+                                        {words.text('page.no_match')}
+                                    </EmptyState>
+                                ) : (
+                                    <EmptyState className="admin-staff-empty" icon={<Users />}>
+                                        <p className="text-foreground">{words.text('page.none')}</p>
+                                        <p>{words.text('page.none_sentence')}</p>
+                                    </EmptyState>
+                                )}
+                            </Card>
                         }
                     >
                         <StaffTable rows={rows} clock={clock} onSelect={(selected) => go(`${LIST}/${selected}`)} />

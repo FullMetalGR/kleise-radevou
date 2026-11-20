@@ -1,6 +1,9 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
+import { List } from 'lucide-react';
 import { SettledList } from '@/components/settled-list';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { useActs } from '@/bookings/acting';
 import { BookingDialog, type DialogState } from '@/bookings/BookingDialog';
@@ -131,7 +134,13 @@ export default function Bookings() {
                     count={rows.length}
                     state={{ loading: list.loading, error: list.error }}
                     errorSentence={words.text(LIST_ERROR)}
-                    empty={<p className="admin-bookings-empty rounded-xl border p-6 text-center text-muted-foreground">{words.text('page.empty')}</p>}
+                    empty={
+                        <Card flush>
+                            <EmptyState className="admin-bookings-empty" icon={<List />}>
+                                {words.text('page.empty')}
+                            </EmptyState>
+                        </Card>
+                    }
                 >
                     <BookingsTable
                         rows={rows}
