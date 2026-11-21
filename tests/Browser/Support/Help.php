@@ -232,12 +232,15 @@ final class Help
         return app(HelpTickets::class)->open($user->tenant_id, new HelpAuthor($user->id, $user->name, $user->role), $subject, $body);
     }
 
-    /** Writes the business's next message on a ticket, as the user with the email given. */
-    public static function write(string $email, string $uuid, string $body): void
+    /**
+     * Writes the business's next message on a ticket, as the user with the email given, under the
+     * name given or else the user's own: a message keeps the name its writer had when it was sent.
+     */
+    public static function write(string $email, string $uuid, string $body, ?string $name = null): void
     {
         $user = User::query()->where('email', $email)->sole();
 
-        app(HelpTickets::class)->reply($user->tenant_id, new HelpAuthor($user->id, $user->name, $user->role), $uuid, $body);
+        app(HelpTickets::class)->reply($user->tenant_id, new HelpAuthor($user->id, $name ?? $user->name, $user->role), $uuid, $body);
     }
 
     /** The operator's reply on a ticket, straight through the desk. */

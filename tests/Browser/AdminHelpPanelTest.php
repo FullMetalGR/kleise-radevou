@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Browser\Support\Admin;
 use Tests\Browser\Support\Help;
+use Tests\Browser\Support\Look;
 use Tests\Browser\Support\PhoneScripts;
 use Tests\Support\RecordingPlatformMessages;
 
@@ -21,7 +22,9 @@ use Tests\Support\RecordingPlatformMessages;
  * the tabs and the way from a thread back to the list, and at both widths the bubble stands over
  * no control at the foot of any screen. In Greek the search finds an answer by a word with its
  * accents or without them, in capitals or small letters, and with either sigma at its end, and a
- * search finding nothing offers a ticket beside the line saying so.
+ * search finding nothing offers a ticket beside the line saying so. Its look: a rounded card on a
+ * desktop and a square-cornered screen on a phone, the bubble, Close and each question at their
+ * sizes, a thread's messages on their sides, and every view of it with nothing scrolling sideways.
  *
  * The help tables are central, so the truncation between tests empties them with the rest; the
  * business made here for the setup wizard is dropped as the demo ones are.
@@ -84,6 +87,76 @@ const HELP_PANEL_TOASTS_BESIDE = <<<'JS'
         const beside = (b) => b.left >= 0 && b.right <= panel.left && Math.abs(b.bottom - panel.bottom) <= 1;
         return beside(toaster) && (toast === null || beside(toast));
     })()
+    JS;
+
+/** A ticket's first message long enough to wrap in a thread at any width the panel takes. */
+const HELP_PANEL_LONG_MESSAGE = 'Where are the opening hours for the summer set, and can each member of the team keep hours of their own for the season?';
+
+/** A writer's name of sixty letters with no place to break it, wider than a message can be. */
+const HELP_PANEL_LONG_NAME = 'WilhelminaWilhelminaWilhelminaWilhelminaWilhelminaWilhelmina';
+
+/**
+ * Whether the view the open panel shows scrolls no way but down. The panel is held to the window
+ * and its view is a scroll box of its own, so a line too wide for it widens that box and never
+ * the document: the box itself is asked. Both tabs' views stay in the page, so the one drawn is
+ * the one read.
+ */
+const HELP_PANEL_NO_SIDEWAYS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const body = [...document.querySelectorAll('.admin-help-panel .admin-help-body')].find((view) => view.getClientRects().length > 0);
+        return body !== undefined && body.scrollWidth <= body.clientWidth + 1;
+    })
+    JS;
+
+/** The open panel's top left corner radius, as the browser computes it. */
+const HELP_PANEL_RADIUS = "getComputedStyle(document.querySelector('.admin-help-panel')).borderTopLeftRadius";
+
+/**
+ * The sizes a touch needs, read off the page in whole pixels: the bubble's box, the panel's
+ * Close's box, and the height of the lowest question shown.
+ */
+const HELP_PANEL_SIZES = <<<'JS'
+    document.fonts.ready.then(() => {
+        const box = (selector) => {
+            const element = document.querySelector(selector);
+            if (element === null) {
+                return null;
+            }
+            const rect = element.getBoundingClientRect();
+            return [Math.round(rect.width), Math.round(rect.height)];
+        };
+        const questions = [...document.querySelectorAll('.admin-help-question')]
+            .filter((question) => question.getClientRects().length > 0)
+            .map((question) => question.getBoundingClientRect().height);
+        return {
+            bubble: box('.admin-help-bubble'),
+            close: box('.admin-help-close'),
+            question: questions.length === 0 ? 0 : Math.floor(Math.min(...questions)),
+        };
+    })
+    JS;
+
+/**
+ * Whether every message of the thread shown stands on its side of the list, the business's
+ * against its end and the platform's against its start, and the widest message's share of the
+ * list's width in whole percent.
+ */
+const HELP_PANEL_MESSAGE_SIDES = <<<'JS'
+    document.fonts.ready.then(() => {
+        const list = document.querySelector('.admin-help-messages');
+        const messages = [...document.querySelectorAll('.admin-help-message')];
+        if (list === null || messages.length === 0) {
+            return null;
+        }
+        const l = list.getBoundingClientRect();
+        const near = (a, b) => Math.abs(a - b) <= 1;
+        const sides = messages.every((message) => {
+            const m = message.getBoundingClientRect();
+            return message.classList.contains('admin-help-message--business') ? near(m.right, l.right) : near(m.left, l.left);
+        });
+        const widest = Math.max(...messages.map((message) => message.getBoundingClientRect().width));
+        return { sides, widest: Math.round((widest / l.width) * 100) };
+    })
     JS;
 
 beforeEach(function () {
@@ -426,3 +499,84 @@ it('keeps the bar along the foot, the save bar, the bubble, a toast and the open
     expect($page->script(PhoneScripts::FLOATERS_APART))->toBe(['drawn' => ['bar', 'save', 'bubble', 'toast', 'panel'], 'overlaps' => []]);
     $page->assertNoJavaScriptErrors();
 });
+
+it('floats the panel as a rounded card on a desktop and fills a phone\'s screen square-cornered, every view of it drawn with nothing scrolling sideways, a reply and a ticket sent', function (bool $phone, SiteLanguage $language) {
+    app()->instance(PlatformMessenger::class, new RecordingPlatformMessages);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+    $uuid = Help::ticket(Admin::owner('luna'), 'Hours for the summer', HELP_PANEL_LONG_MESSAGE);
+    Help::write(Admin::owner('luna'), $uuid, 'The winter set too.', HELP_PANEL_LONG_NAME);
+    Help::answer($uuid, addOperator(), 'Under Settings.');
+    $width = $phone ? 390 : 1440;
+    $shot = fn (string $view): string => sprintf('help-%s-%d-%s', $view, $width, $language->value);
+    $first = Help::answerNames($language)[0];
+
+    $page = $phone
+        ? Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME)
+        : Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1440, 900);
+
+    $page->assertScript(PhoneScripts::VIEWPORT_WIDTH, $width)
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
+        ->assertVisible(Help::DOT)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    Look::shot($page, $shot('bubble'));
+
+    $page->click(Help::BUBBLE)
+        ->assertVisible(Help::SEARCH)
+        ->assertScript(Help::PANEL_FILLS_SCREEN, $phone)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(HELP_PANEL_NO_SIDEWAYS, true);
+
+    $radius = $page->script(HELP_PANEL_RADIUS);
+    $phone ? expect($radius)->toBe('0px') : expect($radius)->not->toBe('0px');
+
+    // One answer open, then the sizes a touch needs.
+    $page->click('.admin-help-question[aria-controls="admin-help-answer-'.$first.'"]')
+        ->assertVisible('#admin-help-answer-'.$first)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(HELP_PANEL_NO_SIDEWAYS, true);
+    $sizes = $page->script(HELP_PANEL_SIZES);
+    assert(is_array($sizes));
+    expect($sizes['bubble'])->toBe([48, 48])
+        ->and($sizes['close'])->toBe([40, 40])
+        ->and($sizes['question'])->toBeGreaterThanOrEqual(44);
+    Look::shot($page, $shot('answers'));
+
+    $page->type(Help::SEARCH, 'qqzzxx')
+        ->assertSeeIn('.admin-help-count', adminLine('admin/help.search.none', [], $language))
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(HELP_PANEL_NO_SIDEWAYS, true);
+    Look::shot($page, $shot('no-match'));
+
+    $page->click(Help::TICKETS_TAB)
+        ->assertSeeIn(Help::ROW, 'Hours for the summer')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(HELP_PANEL_NO_SIDEWAYS, true);
+    Look::shot($page, $shot('list'));
+
+    $page->click(Help::ROW)
+        ->assertSeeIn(Help::PLATFORM_MESSAGE, 'Under Settings.')
+        ->type(Help::REPLY, 'Thank you, found them.')
+        ->click(Help::SEND_REPLY)
+        ->assertSeeIn('.admin-help-messages > li:last-child', 'Thank you, found them.')
+        ->assertSeeIn('.admin-help-messages > li:nth-child(2)', HELP_PANEL_LONG_NAME)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(HELP_PANEL_NO_SIDEWAYS, true);
+    expect($page->script(HELP_PANEL_MESSAGE_SIDES))->toBe(['sides' => true, 'widest' => 88]);
+    Look::shot($page, $shot('thread'));
+
+    $page->click(Help::BACK_FROM_THREAD)
+        ->click(Help::LIST_OPEN)
+        ->assertScript(Admin::focusIsOn(Help::SUBJECT), true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(HELP_PANEL_NO_SIDEWAYS, true);
+    Look::shot($page, $shot('form'));
+
+    $page->type(Help::SUBJECT, 'Asked at '.$width)
+        ->type(Help::MESSAGE, 'Sent from the form.')
+        ->click(Help::SEND)
+        ->assertSeeIn(Help::THREAD_SUBJECT, 'Asked at '.$width)
+        ->assertNoJavaScriptErrors();
+})->with([
+    'on a desktop in English' => [false, SiteLanguage::English],
+    'on a phone in Greek' => [true, SiteLanguage::Greek],
+]);

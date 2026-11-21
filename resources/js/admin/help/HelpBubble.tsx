@@ -10,11 +10,12 @@ import { useHelpSession } from './session';
 import type { HelpBubble as Bubbled } from './types';
 
 /*
- * The round "?" in the bottom corner of every admin screen, and the panel it opens. It sits under
- * every dialog and its backdrop, so a dialog open over the screen covers it: it neither takes the
- * dialog's focus nor hears its Escape. A dot on it says a ticket has a reply this user has not
- * read, in words too, as its name. A screen whose props carry no help, a support session's, shows
- * no bubble at all.
+ * The round "?" in the bottom corner of every admin screen, and the panel it opens. The bubble is
+ * a floating circle in the theme colour, the "?" a character in the display face and not an icon.
+ * It sits under every dialog and its backdrop, so a dialog open over the screen covers it: it
+ * neither takes the dialog's focus nor hears its Escape. A red dot at its top right, ringed in the
+ * page's colour, says a ticket has a reply this user has not read, in words too, as its name. A
+ * screen whose props carry no help, a support session's, shows no bubble at all.
  *
  * A link from a mail opens the admin on a ticket: the panel opens on its thread once no dialog is
  * open over the screen, the setup wizard first of all, so it never takes a dialog's place.
@@ -114,12 +115,14 @@ function Bubble({ help, path, clock }: { help: Bubbled; path: string; clock: Ten
                 <button
                     ref={bubble}
                     type="button"
-                    className="admin-help-bubble fixed right-4 bottom-4 z-40 flex size-12 items-center justify-center rounded-full bg-primary text-xl font-semibold text-primary-foreground shadow-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 print:hidden"
+                    className="admin-help-bubble focus-ring fixed right-4 bottom-4 z-40 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-float outline-none hover:bg-primary-deep print:hidden motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-soft"
                     aria-label={shell.text(help.unread ? 'help.unread' : 'help.name')}
                     aria-busy={session.opening ? true : undefined}
                 >
-                    <span aria-hidden="true">?</span>
-                    {help.unread && <span className="admin-help-bubble__dot absolute top-0 right-0 size-3 rounded-full border-2 border-background bg-destructive" aria-hidden="true" />}
+                    <span className="font-display text-xl leading-none font-bold" aria-hidden="true">
+                        ?
+                    </span>
+                    {help.unread && <span className="admin-help-bubble__dot absolute top-0 right-0 size-3 rounded-full bg-destructive ring-2 ring-background" aria-hidden="true" />}
                 </button>
             </DialogPrimitive.Trigger>
             {session.words !== null && <Panel session={session} words={session.words} help={help} desktop={desktop} clock={clock} bubble={bubble} />}

@@ -1,5 +1,7 @@
+import { Caret } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
 import { TextInput } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { type Found, matchesOf } from './search';
 import type { HelpSession } from './session';
 import type { HelpAnswer } from './types';
@@ -10,12 +12,16 @@ import type { HelpWords } from './words';
  * something is searched for, one list of the answers that match and a line counting them. An
  * answer shows its question; pressing it opens its paragraphs and closes the one open before. No
  * answer matching says so beside the button that opens a ticket, which the foot of the tab offers
- * too; a viewer with no tickets is offered neither.
+ * too; a viewer with no tickets is offered neither. The search keeps its label for a screen reader
+ * alone, its placeholder saying the same words to the eye.
  */
 
 type Props = { session: HelpSession; words: HelpWords; tickets: boolean };
 
-/** One answer's question, which opens and closes its paragraphs. */
+/**
+ * One answer's question, which opens and closes its paragraphs: a button at least 44 pixels high
+ * whose caret turns over while its answer is open.
+ */
 function Item({ id, answer, open, onToggle }: { id: string; answer: HelpAnswer; open: boolean; onToggle: (id: string) => void }) {
     const body = `admin-help-answer-${id}`;
 
@@ -24,18 +30,18 @@ function Item({ id, answer, open, onToggle }: { id: string; answer: HelpAnswer; 
             <h4>
                 <button
                     type="button"
-                    className="admin-help-question flex w-full items-start justify-between gap-3 rounded-md py-2.5 text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="admin-help-question focus-ring flex min-h-11 w-full items-center justify-between gap-3 rounded-field py-2.5 text-left text-body-sm font-semibold outline-none"
                     aria-expanded={open}
                     aria-controls={body}
                     onClick={() => onToggle(id)}
                 >
                     <span>{answer.question}</span>
-                    <span className="shrink-0 text-muted-foreground" aria-hidden="true">
-                        {open ? '-' : '+'}
+                    <span className={cn('inline-flex shrink-0 text-muted-foreground motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-soft', open && 'rotate-180')} aria-hidden="true">
+                        <Caret />
                     </span>
                 </button>
             </h4>
-            <div id={body} hidden={!open} className="admin-help-answer flex flex-col gap-2 pb-3 text-sm text-muted-foreground">
+            <div id={body} hidden={!open} className="admin-help-answer flex flex-col gap-2 pb-3 text-body-sm text-muted-foreground">
                 {answer.answer.map((paragraph, index) => (
                     <p key={index}>{paragraph}</p>
                 ))}
@@ -49,7 +55,7 @@ function Topics({ session }: { session: HelpSession }) {
         <div className="admin-help-topics flex flex-col gap-4">
             {session.topics.map((topic) => (
                 <section key={topic.key} className="admin-help-topic flex flex-col">
-                    <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{topic.title}</h3>
+                    <h3 className="text-eyebrow text-muted-foreground uppercase">{topic.title}</h3>
                     <ul>
                         {topic.answers.map((answer) => {
                             const id = `${topic.key}-${answer.key}`;
@@ -66,7 +72,7 @@ function Topics({ session }: { session: HelpSession }) {
 function Matches({ session, words, tickets, found }: Props & { found: Found[] }) {
     return (
         <div className="admin-help-matches flex flex-col gap-2">
-            <div role="status" className="admin-help-count flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <div role="status" className="admin-help-count flex flex-wrap items-center gap-2 text-body-sm text-muted-foreground">
                 {found.length > 0 ? words.choice('search.found', found.length) : words.text('search.none')}
             </div>
             {found.length === 0 && tickets && (
@@ -100,7 +106,7 @@ export function Answers({ session, words, tickets }: Props) {
             />
             {searching === null ? <Topics session={session} /> : <Matches session={session} words={words} tickets={tickets} found={searching} />}
             {tickets && (searching === null || searching.length > 0) && (
-                <div className="admin-help-still flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm">
+                <div className="admin-help-still flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-body-sm">
                     <span>{words.text('still')}</span>
                     <Button onClick={session.newTicket}>{words.text('open')}</Button>
                 </div>

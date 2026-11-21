@@ -1,5 +1,6 @@
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { type KeyboardEvent, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
+import { Cross } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
 import { Tab, TabList, TabPanel, Tabs } from '@/components/ui/tabs';
 import type { TenantClock } from '@/lib/format';
@@ -12,21 +13,22 @@ import type { HelpBubble } from './types';
 import type { HelpWords } from './words';
 
 /*
- * The panel the bubble opens. At the desktop width it stands over the bottom corner above the
- * bubble and is not a dialog the page waits on: the page stays usable around it, and it closes on
- * a press outside it, on focus leaving it, on the bubble, on Close and on Escape. Tab walks out of
- * it at either end instead of round inside it. The bubble and the toasts are not outside it: a
- * press on a toast, or focus on one, leaves it open. A press counts when its click arrives. A
- * close that came from outside leaves focus where the press or the Tab put it; every other close
- * hands focus back to the bubble. Below that width it fills the screen as a dialog, focus kept
- * inside and the page behind not scrolling.
+ * The panel the bubble opens. At the desktop width it is a rounded card floating over the bottom
+ * corner above the bubble and is not a dialog the page waits on: the page stays usable around it,
+ * and it closes on a press outside it, on focus leaving it, on the bubble, on Close and on Escape.
+ * Tab walks out of it at either end instead of round inside it. The bubble and the toasts are not
+ * outside it: a press on a toast, or focus on one, leaves it open. A press counts when its click
+ * arrives. A close that came from outside leaves focus where the press or the Tab put it; every
+ * other close hands focus back to the bubble. Below that width it fills the screen as a dialog,
+ * square-cornered, focus kept inside and the page behind not scrolling.
  *
- * Its heading is the bubble's name; under it, two tabs, the answers and the tickets, in a row the
- * heading's words name, or the answers alone for a viewer with no tickets. Each view marks the
- * control focus goes to when it is shown, the search, the button that opens a ticket, the subject
- * or the way back to the list, and focus moves there when the panel opens and each time the
- * tickets' view changes. Moving focus never scrolls: each view of the tickets starts at its top,
- * and a thread then brings its reply box into view itself.
+ * Its head holds its heading, the bubble's name, and Close, the round icon button of the dialogs;
+ * under the head, two tabs, the answers and the tickets, in a row the heading's words name, or
+ * the answers alone for a viewer with no tickets. Each view marks the control focus goes to when
+ * it is shown, the search, the button that opens a ticket, the subject or the way back to the
+ * list, and focus moves there when the panel opens and each time the tickets' view changes.
+ * Moving focus never scrolls: each view of the tickets starts at its top, and a thread then brings
+ * its reply box into view itself.
  *
  * Neither the panel nor its backdrop is printed.
  */
@@ -43,6 +45,12 @@ function inToasts(target: EventTarget | null): boolean {
 }
 
 const BODY = 'admin-help-body min-h-0 flex-1 overflow-y-auto p-4 outline-none';
+
+/**
+ * Close, the round icon button the dialogs close by, 40 pixels across, its touch area a layer of
+ * its own reaching 2 pixels past each side; its name is kept for a screen reader.
+ */
+const CLOSE = 'admin-help-close relative size-10 after:absolute after:-inset-0.5';
 
 /** Each tab shares the row's width with the other. */
 const TAB = 'admin-help-tab relative flex-1';
@@ -253,8 +261,8 @@ export function Panel({ session, words, help, desktop, clock, bubble }: Props) {
                 aria-modal={desktop ? undefined : 'true'}
                 aria-describedby={undefined}
                 className={cn(
-                    'admin-help-panel z-40 flex flex-col bg-background text-foreground outline-none print:hidden',
-                    desktop ? 'fixed right-4 bottom-20 h-[min(600px,calc(100vh-6rem))] w-[400px] max-w-[calc(100vw-2rem)] rounded-xl border shadow-lg' : 'fixed inset-0',
+                    'admin-help-panel z-40 flex flex-col bg-card text-card-foreground outline-none print:hidden',
+                    desktop ? 'fixed right-4 bottom-20 h-[min(600px,calc(100vh-6rem))] w-[400px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-tile-compact shadow-modal' : 'fixed inset-0',
                 )}
                 onOpenAutoFocus={focusFirst}
                 onCloseAutoFocus={focusAfter}
@@ -270,10 +278,10 @@ export function Panel({ session, words, help, desktop, clock, bubble }: Props) {
                 onFocusOutside={(event) => outside(event, inToasts(event.target))}
             >
                 <div className="contents" onKeyDown={tabOut}>
-                    <div className="admin-help-head flex shrink-0 items-center gap-2 border-b py-1.5 pr-2 pl-4">
-                        <DialogPrimitive.Title className="admin-help-title min-w-0 flex-1 text-base font-semibold">{shell.text('help.name')}</DialogPrimitive.Title>
+                    <div className="admin-help-head flex shrink-0 items-center gap-3 px-4 pt-4">
+                        <DialogPrimitive.Title className="admin-help-title min-w-0 flex-1 text-card-title break-words">{shell.text('help.name')}</DialogPrimitive.Title>
                         <DialogPrimitive.Close asChild>
-                            <Button variant="tertiary" className="admin-help-close">
+                            <Button iconOnly icon={<Cross />} className={CLOSE}>
                                 {words.text('close')}
                             </Button>
                         </DialogPrimitive.Close>

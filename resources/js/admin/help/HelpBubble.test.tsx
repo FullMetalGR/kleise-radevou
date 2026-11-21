@@ -494,7 +494,7 @@ describe('the help panel\'s answers', () => {
 
         typeInto(q('input[type="search"]'), 'invite');
         expect(q('[role="status"]')?.textContent).toBe(words.choice('search.found', 1));
-        expect(all('.admin-help-question').map((question) => question.textContent)).toEqual(['How do I invite a colleague?+']);
+        expect(all('.admin-help-question').map((question) => question.textContent)).toEqual(['How do I invite a colleague?']);
 
         typeInto(q('input[type="search"]'), 'refund policy');
         expect(q('[role="status"]')?.textContent).toBe(words.text('search.none'));
@@ -1431,5 +1431,136 @@ describe('the help panel\'s place on the screen', () => {
         land(lastPost()[2], { help_thread: SLOW, help: bubbled() });
         expect(q('[role="tab"][aria-selected="true"]')?.textContent).toBe(words.text('tabs.tickets'));
         expect(q('.admin-help-thread h3')?.textContent).toBe('The calendar is slow');
+    });
+});
+
+/** The classes an element wears, as a list a matcher reads. */
+function classesOf(element: Element | null | undefined): string[] {
+    return [...(element?.classList ?? [])];
+}
+
+/** The classes an element wears that match the pattern: a look it must not have, named by its start alone. */
+function wearing(element: Element | null | undefined, pattern: RegExp): string[] {
+    return classesOf(element).filter((name) => pattern.test(name));
+}
+
+describe('the help bubble\'s and panel\'s look', () => {
+    it('draws the bubble as a 48px circle in the theme colour, its "?" text in the display face, and its dot red inside a ring of the page\'s colour', () => {
+        inertia.props = propsWith(bubbled({ unread: true }));
+        render();
+
+        const mark = bubble()?.firstElementChild;
+        const dot = q('.admin-help-bubble__dot');
+
+        expect(classesOf(bubble())).toEqual(expect.arrayContaining(['size-12', 'rounded-full', 'bg-primary', 'text-primary-foreground', 'shadow-float', 'focus-ring']));
+        expect(bubble()?.querySelector('svg')).toBeNull();
+        expect(mark?.textContent).toBe('?');
+        expect(mark?.getAttribute('aria-hidden')).toBe('true');
+        expect(classesOf(mark)).toEqual(expect.arrayContaining(['font-display', 'font-bold']));
+        expect(classesOf(dot)).toEqual(expect.arrayContaining(['bg-destructive', 'ring-2', 'ring-background']));
+        expect(wearing(dot, /^border/)).toEqual([]);
+    });
+
+    it('floats the panel from the desktop width as a rounded card on the card fill, in its place and size, with no line drawn round it', async () => {
+        render();
+        openPanel();
+        await settle();
+
+        expect(classesOf(panel())).toEqual(
+            expect.arrayContaining(['rounded-tile-compact', 'shadow-modal', 'bg-card', 'fixed', 'right-4', 'bottom-20', 'w-[400px]', 'max-w-[calc(100vw-2rem)]', 'h-[min(600px,calc(100vh-6rem))]']),
+        );
+        expect(wearing(panel(), /^border/)).toEqual([]);
+        expect(q('.admin-help-backdrop')).toBeNull();
+    });
+
+    it('fills the screen below the breakpoint with square corners and no shadow, over the backdrop the bottom bar\'s rule reads', async () => {
+        undo = onPhone();
+        render();
+        openPanel();
+        await settle();
+
+        expect(classesOf(panel())).toEqual(expect.arrayContaining(['fixed', 'inset-0', 'bg-card']));
+        expect(wearing(panel(), /^(rounded|shadow|border)/)).toEqual([]);
+        expect(q('.admin-help-backdrop')).not.toBeNull();
+    });
+
+    it('heads the panel with its title at the card title\'s size and Close as the dialogs\' round 40px icon button named in words, the pill tabs under the head', () => {
+        render();
+        openPanel();
+
+        const close = q('.admin-help-close');
+
+        expect(classesOf(q('.admin-help-title'))).toContain('text-card-title');
+        expect(close?.tagName).toBe('BUTTON');
+        expect(classesOf(close)).toEqual(expect.arrayContaining(['admin-button--icon-only', 'size-10', 'rounded-full']));
+        expect(classesOf(close)).not.toContain('size-11');
+        expect(close?.querySelector('.sr-only')?.textContent).toBe(words.text('close'));
+        expect(close?.querySelector('svg')?.closest('[aria-hidden="true"]')).not.toBeNull();
+        expect(q('.admin-help-head')?.nextElementSibling?.firstElementChild).toBe(q('.admin-help-tabs'));
+    });
+
+    it('keeps the search a field whose label is hidden, sets each topic as an eyebrow and each question as a 44px button whose caret turns while its answer is open', () => {
+        render();
+        openPanel();
+
+        const search = q('input[type="search"]');
+        const [question] = all('.admin-help-question');
+        const caret = () => question?.querySelector('svg')?.parentElement;
+
+        expect(classesOf(search)).toContain('admin-input');
+        expect(search?.getAttribute('aria-label')).toBe(words.text('search.label'));
+        expect(search?.getAttribute('placeholder')).toBe(words.text('search.label'));
+        expect(search?.hasAttribute('data-help-focus')).toBe(true);
+        expect(q('.admin-help-answers label')).toBeNull();
+        expect(all('.admin-help-topic h3').map((heading) => heading.classList.contains('text-eyebrow'))).toEqual([true, true]);
+        expect(classesOf(question)).toEqual(expect.arrayContaining(['min-h-11', 'focus-ring']));
+        expect(caret()?.getAttribute('aria-hidden')).toBe('true');
+        expect(classesOf(caret())).not.toContain('rotate-180');
+
+        press(question ?? null);
+        expect(classesOf(caret())).toContain('rotate-180');
+    });
+
+    it('draws each ticket as a row inside a line that darkens under the pointer, its unread dot and word kept', () => {
+        render();
+        openList();
+
+        const [row] = all('.admin-help-row');
+        const unread = row?.querySelector('.admin-help-unread');
+
+        expect(row?.tagName).toBe('BUTTON');
+        expect(classesOf(row)).toEqual(expect.arrayContaining(['rounded-notice', 'ring-1', 'ring-border', 'hover:bg-muted', 'focus-ring']));
+        expect(wearing(row, /^border/)).toEqual([]);
+        expect(unread?.querySelector('.bg-destructive')?.getAttribute('aria-hidden')).toBe('true');
+        expect(unread?.textContent).toBe(words.text('list.unread'));
+    });
+
+    it('sets a thread\'s status in words in a pill under its subject, the business\'s messages on the tint at the end and the platform\'s on the soft fill at the start, none wider than 88 percent', () => {
+        render();
+        openList();
+        press(all('.admin-help-row')[0] ?? null);
+        land(lastPost()[2], { help_thread: SLOW, help: bubbled() });
+
+        const status = q('.admin-help-thread h3 + span');
+        const business = q('.admin-help-message--business');
+        const platform = q('.admin-help-message--platform');
+
+        expect(status?.textContent).toBe(words.text('statuses.closed'));
+        expect(classesOf(status)).toEqual(expect.arrayContaining(['rounded-full', 'bg-muted']));
+        expect(classesOf(business)).toEqual(expect.arrayContaining(['bg-tint-strong', 'rounded-notice', 'self-end', 'max-w-[88%]']));
+        expect(classesOf(platform)).toEqual(expect.arrayContaining(['bg-muted', 'rounded-notice', 'self-start', 'max-w-[88%]']));
+        expect([...wearing(business, /^border/), ...wearing(platform, /^border/)]).toEqual([]);
+        expect(business?.querySelector('time')?.textContent).toBe(formatInstant('2026-11-16T07:00:00Z', CLOCK));
+        expect(platform?.querySelector('span')?.textContent).toBe('Brand Support');
+        expect(classesOf(q('#admin-help-reply'))).toEqual(expect.arrayContaining(['admin-input', 'rounded-field']));
+    });
+
+    it('builds the new ticket\'s form of the kit\'s fields', () => {
+        render();
+        openList();
+        press(button(words.text('open')));
+
+        expect(classesOf(q('#admin-help-subject'))).toEqual(expect.arrayContaining(['admin-input', 'rounded-field', 'h-11.5']));
+        expect(classesOf(q('#admin-help-body'))).toEqual(expect.arrayContaining(['admin-input', 'rounded-field']));
     });
 });

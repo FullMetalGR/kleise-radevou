@@ -16,15 +16,20 @@ import type { HelpWords } from './words';
  * zone and, where the platform has replied since this user last read it, a dot said in words.
  * The form: a subject and a message, each refused under itself. The thread: its messages oldest
  * first, each with its writer and its time, the text as written with its line breaks, then the
- * reply box; a closed ticket says a reply opens it again. A thread opens on its newest message,
- * the reply box in view under it, and comes back there each time a message is added. A view whose
- * read is under way says so and marks itself busy; one whose read did not come back says that and
- * offers to try again.
+ * reply box; a closed ticket says a reply opens it again. A message is at most 88 percent of the
+ * thread's width, the business's on the strong tint against the end and the platform's on the soft
+ * fill against the start, so who wrote it is seen by its side as well as said by its name; the
+ * status is a word in a pill under the subject. A thread opens on its newest message, the reply
+ * box in view under it, and comes back there each time a message is added. A view whose read is
+ * under way says so and marks itself busy; one whose read did not come back says that and offers
+ * to try again.
  */
 
 type Props = { tickets: Tickets; words: HelpWords; clock: TenantClock };
 
-const ROW = 'admin-help-row flex w-full flex-col gap-0.5 rounded-lg border px-3 py-2 text-left outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50';
+/** A ticket's row: a button inside a line, darker under the pointer. */
+const ROW =
+    'admin-help-row focus-ring flex w-full flex-col gap-1 rounded-notice px-4 py-3 text-left ring-1 ring-border outline-none hover:bg-muted motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-soft';
 
 function submitted(send: () => void) {
     return (event: FormEvent) => {
@@ -36,7 +41,7 @@ function submitted(send: () => void) {
 /** A line saying a read did not come back, with the button that asks again. */
 function Failed({ text, words, onRetry }: { text: string; words: HelpWords; onRetry: () => void }) {
     return (
-        <div className="admin-help-failed flex flex-wrap items-center gap-2 text-sm">
+        <div className="admin-help-failed flex flex-wrap items-center gap-2 text-body-sm">
             <span>{text}</span>
             <Button onClick={onRetry}>{words.text('retry')}</Button>
         </div>
@@ -45,7 +50,7 @@ function Failed({ text, words, onRetry }: { text: string; words: HelpWords; onRe
 
 function Unread({ words }: { words: HelpWords }) {
     return (
-        <span className="admin-help-unread inline-flex items-center gap-1.5 text-xs font-medium text-primary-deep">
+        <span className="admin-help-unread inline-flex shrink-0 items-center gap-1.5 text-small font-semibold text-primary-deep">
             <span className="size-2 rounded-full bg-destructive" aria-hidden="true" />
             {words.text('list.unread')}
         </span>
@@ -71,10 +76,10 @@ function Rows({ list, words, clock, onOpen }: { list: ListState; words: HelpWord
                 <li key={row.uuid}>
                     <button type="button" className={ROW} onClick={() => onOpen(row.uuid)}>
                         <span className="flex items-center justify-between gap-2">
-                            <span className="min-w-0 truncate text-sm font-medium">{row.subject}</span>
+                            <span className="min-w-0 truncate text-body-sm font-semibold">{row.subject}</span>
                             {row.unread && <Unread words={words} />}
                         </span>
-                        <span className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                        <span className="flex flex-wrap gap-x-3 text-small text-muted-foreground">
                             <span>{words.text(`statuses.${row.status}`)}</span>
                             <span>{words.text('list.last', { time: formatInstant(row.last_message_at, clock) })}</span>
                         </span>
@@ -108,7 +113,7 @@ function TicketForm({ tickets, words }: Omit<Props, 'clock'>) {
             <Button variant="link" className="self-start" onClick={tickets.showList}>
                 {words.text('back')}
             </Button>
-            <h3 className="text-base font-semibold">{words.text('form.title')}</h3>
+            <h3 className="text-body font-semibold">{words.text('form.title')}</h3>
             <Field id="admin-help-subject" label={words.text('form.subject')} error={draft.errors.subject}>
                 {(control) => <TextInput {...control} value={draft.subject} maxLength={LONGEST_SUBJECT} onChange={(event) => tickets.typeSubject(event.target.value)} data-help-focus="" />}
             </Field>
@@ -122,14 +127,29 @@ function TicketForm({ tickets, words }: Omit<Props, 'clock'>) {
     );
 }
 
+/**
+ * Each side's place and fill. The business's time is in the ink, as the quieter ink is not held
+ * to the text floor on the strong tint; the platform's is in the quieter ink on the soft fill.
+ */
+const SIDES = {
+    business: { box: 'admin-help-message--business self-end bg-tint-strong', time: 'text-foreground' },
+    platform: { box: 'admin-help-message--platform self-start bg-muted', time: 'text-muted-foreground' },
+};
+
+/**
+ * One message: its writer's name and its instant over its body. A name with no place to break it
+ * is broken inside the message, its instant going under it, as a long word of the body is.
+ */
 function Message({ message, clock }: { message: HelpMessage; clock: TenantClock }) {
+    const side = SIDES[message.side];
+
     return (
-        <li className={cn('admin-help-message flex flex-col gap-1 rounded-lg p-3', message.side === 'platform' ? 'admin-help-message--platform bg-muted' : 'admin-help-message--business border')}>
-            <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{message.name}</span>
+        <li className={cn('admin-help-message flex max-w-[88%] min-w-0 flex-col gap-1 rounded-notice px-3.5 py-3', side.box)}>
+            <p className={cn('flex flex-wrap items-baseline justify-between gap-x-3 text-small', side.time)}>
+                <span className="min-w-0 font-semibold break-words text-foreground">{message.name}</span>
                 <time dateTime={message.at}>{formatInstant(message.at, clock)}</time>
             </p>
-            <p className="text-sm break-words whitespace-pre-line">{message.body}</p>
+            <p className="text-body-sm break-words whitespace-pre-line">{message.body}</p>
         </li>
     );
 }
@@ -161,9 +181,9 @@ function Reply({ tickets, words, count }: Omit<Props, 'clock'> & { count: number
 function Conversation({ thread, tickets, words, clock }: Props & { thread: HelpThread }) {
     return (
         <>
-            <div className="flex flex-col gap-1">
-                <h3 className="text-base font-semibold break-words">{thread.subject}</h3>
-                <span className="text-xs text-muted-foreground">{words.text(`statuses.${thread.status}`)}</span>
+            <div className="flex flex-col gap-1.5">
+                <h3 className="text-body font-semibold break-words">{thread.subject}</h3>
+                <span className="self-start rounded-full bg-muted px-2.5 py-0.5 text-small font-semibold text-muted-foreground">{words.text(`statuses.${thread.status}`)}</span>
             </div>
             {thread.status === 'closed' && <HelpLine className="admin-help-closed">{words.text('thread.closed')}</HelpLine>}
             <ol className="admin-help-messages flex flex-col gap-2">
