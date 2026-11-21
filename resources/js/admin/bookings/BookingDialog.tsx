@@ -1,31 +1,42 @@
+import { wallClockOf } from '../../booking/time';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { Notice } from '@/components/ui/notice';
 import { StatusChip, statusLabel } from '@/components/ui/status-chip';
-import { TableScroll } from '@/components/ui/table-scroll';
-import { formatAmount, formatCount, formatInstant, type TenantClock } from '@/lib/format';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
+import { isoWeekday } from '@/lib/day';
+import { formatAmount, formatCount, formatInstant, formatInstantDay, formatInstantTime, type TenantClock } from '@/lib/format';
+import { unitFigure, weekdayName } from '@/lib/names';
 import { type ShellWords, useShell } from '@/lib/strings';
 import { SUPPORT_ACTOR, supportNamed } from '@/lib/support';
 import { cn } from '@/lib/utils';
-import { type Act, ActionBar } from './ActionBar';
+import { type Act, ActionBar, HALF_ON_PHONE } from './ActionBar';
 import { MoveFields, MoveFooter, useMoveForm } from './MoveForm';
-import { type Booking, CHANNEL_WORDS, customerName, type Detail, inWords, SOURCE_WORDS, type TrailEntry } from './model';
+import { type Booking, CHANNEL_WORDS, customerName, type Detail, inWords, SOURCE_WORDS, startOf, type TrailEntry } from './model';
 import { type BookingsKey, type BookingsWords, useBookings } from './words';
 
 /*
- * The booking dialog: the customer's name as its title, the facts, what was booked, and the audit
- * trail oldest first. The email and phone show where the payload carries them, which is the
- * whitelist's decision for this viewer; a booking whose customer was erased carries neither and is
- * titled "Customer erased". Where the booking came from, its source and the channel where one was
- * tagged, and the customer's note where they wrote one, close the facts; the note arrives beside
- * the booking, never in it. Every instant converts to the tenant's zone. The footer is pinned
- * outside the scrolling body, so a long trail cannot push the actions away; it always holds Close,
- * and beside it the action bar with exactly the actions the server allows this viewer now, and no
- * bar at all when that list is empty. A detail that failed to load or names no booking renders
+ * The booking dialog. Its head holds the customer's name as the title, the booking's status chip
+ * and the dialog's own round close. The body opens on the when panel: the day under its weekday,
+ * the time from the first service's start to the last one's end with how long that is, and the
+ * total. The time is struck through where the visit did not happen, and a request still awaiting
+ * a decision sits on the attention fill. The contact facts follow, then what was booked as rows,
+ * then the audit trail oldest first, each entry a dot on a rail. The email and phone show where
+ * the payload carries them, which is the whitelist's decision for this viewer; a booking whose
+ * customer was erased carries neither and is titled "Customer erased". Where the booking came
+ * from, its source and the channel where one was tagged, the rejection reason and the customer's
+ * note close the contact facts; the note arrives beside the booking, never in it. Every instant
+ * converts to the tenant's zone.
+ *
+ * The footer is pinned outside the scrolling body, so a long trail cannot push the actions away.
+ * It splits in two: on the left the action bar with exactly the actions the server allows this
+ * viewer now, and no bar at all when that list is empty; on the right Move, where the server says
+ * the booking is movable, and Close. A detail that failed to load or names no booking renders
  * inside the dialog, and so does a failure the screen reports over it, such as a close that could
- * not return to the list. Below the admin's breakpoint it fills the viewport, the footer still
- * pinned and the body the one scroller, and the items table, its cells kept apart, scrolls sideways
- * inside it where it is wider than the screen.
+ * not return to the list. Below the admin's breakpoint the dialog fills the viewport, the body
+ * the one scroller, each service a block of labelled lines, and the footer's buttons two to a
+ * line.
  *
  * Every word is a key of the bookings section the screen provides: the trail's actions, facts,
  * actors and hold classes stay machine values on the wire and only their display words are keys, a
@@ -236,79 +247,182 @@ export const CHANNEL_LABEL: BookingsKey = 'dialog.facts.channel';
 export const NOTE_LABEL: BookingsKey = 'dialog.facts.note';
 
 
-/** One fact, its term and its value, or nothing at all where the booking carries no value. */
-function Fact({ term, block, value, className }: { term: string; block: string; value: string | null | undefined; className?: string }) {
+/**
+ * The booking's status at the end of the title's row, its chip kept whole, with its term for a
+ * screen reader alone. It is set down by the difference between the title's room above its line
+ * and below it, so the chip's middle meets the line's rather than the room's.
+ */
+function BookingStatus({ status }: { status: string }) {
+    const words = useBookings();
+
+    return (
+        <span className="admin-booking-status mt-2.5 shrink-0">
+            <span className="sr-only">{words.text('dialog.facts.status')}</span>
+            <StatusChip status={status} />
+        </span>
+    );
+}
+
+/** The statuses whose visit did not happen, whose time the when panel strikes through. */
+const STRUCK = new Set(['cancelled', 'rejected', 'no_show']);
+
+/** The booking's own end: its latest item's. */
+function endOf(booking: Booking): string {
+    return booking.items.reduce((latest, item) => (Date.parse(item.end) > Date.parse(latest) ? item.end : latest), booking.items[0]?.end ?? '');
+}
+
+/**
+ * Whether every service of the booking starts and ends at an instant the tenant's clock can read,
+ * and there is one at least: only then has the booking a day, a time and a length to show.
+ */
+function isTimed(booking: Booking, clock: TenantClock): boolean {
+    try {
+        booking.items.forEach((item) => [item.start, item.end].forEach((wire) => wallClockOf(wire, clock.timezone)));
+
+        return booking.items.length > 0;
+    } catch {
+        return false;
+    }
+}
+
+/** The long weekday of an instant in the tenant's zone. */
+function weekdayOf(wire: string, clock: TenantClock, words: BookingsWords): string {
+    return weekdayName(isoWeekday(wallClockOf(wire, clock.timezone).date), 'long', words.language);
+}
+
+/**
+ * How long the booking runs, from its start to its end, as one figure with its unit and no word
+ * joining two: whole hours in hours, anything else in minutes.
+ */
+function lengthOf(start: string, end: string, words: BookingsWords): string {
+    const minutes = Math.round((Date.parse(end) - Date.parse(start)) / 60000);
+
+    return minutes > 0 && minutes % 60 === 0 ? unitFigure(minutes / 60, 'hour', words.language) : unitFigure(minutes, 'minute', words.language);
+}
+
+/**
+ * The when panel: an inner card of the day, the time and the total, three columns where the
+ * dialog is wide; below that the day and the total share the first row and the time takes the
+ * second, set a step smaller. A booking with no items shows its total alone, and so does one
+ * with a start or an end that is no instant: the three are read off instants, and the items below
+ * still show each time as it came.
+ */
+function When({ booking, clock }: { booking: Booking; clock: TenantClock }) {
+    const words = useBookings();
+    const start = startOf(booking);
+    const end = endOf(booking);
+    const timed = isTimed(booking, clock);
+
+    return (
+        <Card
+            variant="inner"
+            className={cn(
+                'admin-booking-facts grid grid-cols-[1fr_auto] items-end gap-x-5 gap-y-3 px-5.5 py-4 @xl:grid-cols-[1.1fr_1.2fr_auto]',
+                booking.status === 'awaiting_approval' && 'bg-attention-soft ring-attention-line',
+            )}
+        >
+            {timed && (
+                <p className="flex min-w-0 flex-col">
+                    <span className="admin-booking-facts__weekday text-label text-muted-foreground">{weekdayOf(start, clock, words)}</span>
+                    <span className="admin-booking-facts__date font-display text-tile-title tabular-nums">{formatInstantDay(start, clock)}</span>
+                </p>
+            )}
+            {timed && (
+                <p className="col-span-2 row-start-2 flex min-w-0 flex-col @xl:col-span-1 @xl:row-start-auto">
+                    <span className={cn('admin-booking-facts__time font-display text-dialog-title tabular-nums @xl:text-page-title-compact', STRUCK.has(booking.status) && 'text-ink-tertiary line-through decoration-2')}>
+                        {words.text('move.confirm.window', { start: formatInstantTime(start, clock), end: formatInstantTime(end, clock) })}
+                    </span>
+                    <span className="admin-booking-facts__length text-small text-muted-foreground">{lengthOf(start, end, words)}</span>
+                </p>
+            )}
+            <p className="col-start-2 row-start-1 flex flex-col items-end text-right @xl:col-start-auto @xl:row-start-auto">
+                <span className="text-label text-muted-foreground">{words.text('dialog.facts.total')}</span>
+                <span className="admin-booking-facts__total font-display text-[1.625rem] leading-tight font-semibold tabular-nums">{formatAmount(booking.total_minor, booking.currency)}</span>
+            </p>
+        </Card>
+    );
+}
+
+/**
+ * One contact fact, its term over its value, or nothing at all where the booking carries no
+ * value. A long one runs across the list on the soft fill.
+ */
+function Fact({ term, block, value, across = false, className }: { term: string; block: string; value: string | null | undefined; across?: boolean; className?: string }) {
     if (value === undefined || value === null) {
         return null;
     }
 
     return (
-        <>
-            <dt>{term}</dt>
-            <dd className={cn(`admin-booking-facts__${block}`, className)}>{value}</dd>
-        </>
+        <div className={cn('flex min-w-0 flex-col gap-0.5', across && 'rounded-notice bg-muted px-4 py-3 @xl:col-span-3')}>
+            <dt className="text-label text-muted-foreground">{term}</dt>
+            <dd className={cn(`admin-booking-facts__${block}`, 'font-semibold wrap-anywhere', className)}>{value}</dd>
+        </div>
     );
 }
 
-function Facts({ booking, note }: { booking: Booking; note: string | null }) {
+/** The contact facts: three columns where the dialog is wide and one below, the reason and the note across them. */
+function Contact({ booking, note }: { booking: Booking; note: string | null }) {
     const shell = useShell();
     const words = useBookings();
 
     return (
-        <dl className="admin-booking-facts grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-            <dt>{words.text('dialog.facts.status')}</dt>
-            <dd>
-                <StatusChip status={booking.status} />
-            </dd>
-            <Fact term={words.text('dialog.facts.total')} block="total" className="font-mono" value={formatAmount(booking.total_minor, booking.currency)} />
+        <dl className="admin-booking-contact grid grid-cols-1 gap-x-5 gap-y-3 @xl:grid-cols-3">
             <Fact term={words.text('dialog.facts.email')} block="email" value={booking.customer_email} />
             <Fact term={words.text('dialog.facts.phone')} block="phone" value={booking.customer_phone} />
-            <Fact term={words.text('dialog.facts.reason')} block="reason" value={booking.rejection_reason} />
             <Fact term={words.text(SOURCE_LABEL)} block="source" value={booking.source === null || booking.source === undefined ? null : inWords(SOURCE_WORDS, booking.source, shell)} />
             <Fact term={words.text(CHANNEL_LABEL)} block="channel" value={booking.channel === null || booking.channel === undefined ? null : inWords(CHANNEL_WORDS, booking.channel, shell)} />
-            <Fact term={words.text(NOTE_LABEL)} block="note" className="whitespace-pre-line" value={note} />
+            <Fact term={words.text('dialog.facts.reason')} block="reason" across value={booking.rejection_reason} />
+            <Fact term={words.text(NOTE_LABEL)} block="note" across className="whitespace-pre-line" value={note} />
         </dl>
     );
 }
 
-/**
- * A cell of the items table: a rem clear of the next and the last flush with the dialog's edge,
- * so at the phone's width two columns never run together, 1.6.
- */
-const CELL = 'py-1 pr-4 last:pr-0';
+/** A section's heading inside the dialog's body. */
+const HEADING = 'mb-2.5 font-display text-lg font-semibold';
 
+/**
+ * What was booked: the shared table, a grid where the dialog is wide, and below that each service
+ * a block of lines, every value beside its column's name.
+ */
 function Items({ booking, staffShown, clock }: { booking: Booking; staffShown: boolean; clock: TenantClock }) {
     const words = useBookings();
+    const service = words.text('dialog.items.service');
+    const staff = words.text('dialog.items.staff');
+    const start = words.text('dialog.items.start');
+    const end = words.text('dialog.items.end');
+    const price = words.text('dialog.items.price');
 
     return (
         <section aria-labelledby="booking-items-head">
-            <h3 id="booking-items-head" className="mt-4 mb-2 font-semibold">
+            <h3 id="booking-items-head" className={HEADING}>
                 {words.text('dialog.items.title')}
             </h3>
-            <TableScroll>
-                <table className="admin-booking-items w-full text-sm">
-                    <thead>
-                        <tr className="text-left [&_th]:font-semibold">
-                            <th className={CELL}>{words.text('dialog.items.service')}</th>
-                            {staffShown && <th className={CELL}>{words.text('dialog.items.staff')}</th>}
-                            <th className={CELL}>{words.text('dialog.items.start')}</th>
-                            <th className={CELL}>{words.text('dialog.items.end')}</th>
-                            <th className={cn(CELL, 'text-right')}>{words.text('dialog.items.price')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <Card variant="inner" flush>
+                <Table className="admin-booking-items">
+                    <TableHead>
+                        <TableRow>
+                            <Th>{service}</Th>
+                            {staffShown && <Th>{staff}</Th>}
+                            <Th>{start}</Th>
+                            <Th>{end}</Th>
+                            <Th className="text-right">{price}</Th>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
                         {booking.items.map((item) => (
-                            <tr key={item.sort} className="admin-booking-items__row border-t">
-                                <td className={CELL}>{item.service_name}</td>
-                                {staffShown && <td className={CELL}>{item.staff_name ?? ''}</td>}
-                                <td className={cn(CELL, 'font-mono')}>{formatInstant(item.start, clock)}</td>
-                                <td className={cn(CELL, 'font-mono')}>{formatInstant(item.end, clock)}</td>
-                                <td className={cn(CELL, 'text-right font-mono')}>{formatAmount(item.price_minor, booking.currency)}</td>
-                            </tr>
+                            <TableRow key={item.sort} className="admin-booking-items__row">
+                                <Td label={service}>{item.service_name}</Td>
+                                {staffShown && <Td label={staff}>{item.staff_name ?? ''}</Td>}
+                                <Td label={start}>{formatInstant(item.start, clock)}</Td>
+                                <Td label={end}>{formatInstant(item.end, clock)}</Td>
+                                <Td label={price} className="text-right">
+                                    {formatAmount(item.price_minor, booking.currency)}
+                                </Td>
+                            </TableRow>
                         ))}
-                    </tbody>
-                </table>
-            </TableScroll>
+                    </TableBody>
+                </Table>
+            </Card>
         </section>
     );
 }
@@ -328,25 +442,31 @@ function FactValue({ value }: { value: string | string[] }) {
     ));
 }
 
+/**
+ * The audit trail oldest first: each entry a dot on a rail drawn down its left, its action in
+ * bold, then when it happened and who did it, and under them the facts it recorded.
+ */
 function Trail({ trail, clock }: { trail: TrailEntry[]; clock: TenantClock }) {
     const shell = useShell();
     const words = useBookings();
 
     return (
         <section aria-labelledby="booking-trail-head">
-            <h3 id="booking-trail-head" className="mt-4 mb-2 font-semibold">
+            <h3 id="booking-trail-head" className={HEADING}>
                 {words.text('dialog.history')}
             </h3>
             {trail.length === 0 ? (
-                <p className="admin-booking-trail__none text-sm text-muted-foreground">{words.text('dialog.no_history')}</p>
+                <p className="admin-booking-trail__none text-small text-muted-foreground">{words.text('dialog.no_history')}</p>
             ) : (
-                <ol className="admin-booking-trail flex flex-col gap-2 text-sm">
+                <ol className="admin-booking-trail relative flex flex-col gap-3.5 text-small before:absolute before:top-2 before:bottom-2 before:left-1 before:w-0.5 before:bg-border">
                     {trail.map((entry, index) => (
-                        <li key={index} className="admin-booking-trail__entry">
-                            <span className="font-mono">{formatInstant(entry.at, clock)}</span> <strong>{wordOf(ACTIONS, entry.action, words)}</strong>{' '}
-                            <span className="admin-booking-trail__actor">{actorOf(entry, shell, words)}</span>
+                        <li key={index} className="admin-booking-trail__entry relative pl-6">
+                            <span aria-hidden="true" className="admin-booking-trail__dot absolute top-1.5 left-0 size-2.5 rounded-full bg-primary ring-4 ring-card" />
+                            <strong className="admin-booking-trail__action font-semibold">{wordOf(ACTIONS, entry.action, words)}</strong>{' '}
+                            <span className="text-muted-foreground tabular-nums">{formatInstant(entry.at, clock)}</span>{' '}
+                            <span className="admin-booking-trail__actor text-muted-foreground">{actorOf(entry, shell, words)}</span>
                             {Object.keys(entry.facts).length > 0 && (
-                                <dl className="admin-booking-trail__facts ml-4 grid grid-cols-[auto_1fr] gap-x-3 text-muted-foreground">
+                                <dl className="admin-booking-trail__facts mt-1 grid grid-cols-[auto_1fr] gap-x-3 text-muted-foreground">
                                     {listedEntries(entry.facts, words.locale).map(([fact, value]) => (
                                         <div key={fact} className="contents">
                                             <dt>{wordOf(FACTS, fact, words)}</dt>
@@ -366,8 +486,9 @@ function Trail({ trail, clock }: { trail: TrailEntry[]; clock: TenantClock }) {
 }
 
 /**
- * The detail's footer: the action bar where the viewer may act, Move where the server says the
- * booking is movable, and Close.
+ * The detail's footer in two groups: the action bar on the left where the viewer may act, and on
+ * the right Move, where the server says the booking is movable, and Close. Below the breakpoint
+ * each group takes the footer's width and its buttons go two to a line.
  */
 function DetailFooter({ actions, movable, busy, onAct, onMove, onClose }: { actions: string[]; movable: boolean; busy: string | null; onAct: Act | undefined; onMove: () => void; onClose: () => void }) {
     const words = useBookings();
@@ -376,14 +497,16 @@ function DetailFooter({ actions, movable, busy, onAct, onMove, onClose }: { acti
     return (
         <>
             {bar && <ActionBar actions={actions} busy={busy} onAct={onAct} />}
-            {movable && (
-                <Button className={cn('admin-booking-move', !bar && 'mr-auto')} disabled={busy !== null} onClick={onMove}>
-                    {words.text('move.open')}
+            <div className="admin-booking-neutral flex gap-2 max-desktop:w-full">
+                {movable && (
+                    <Button wrap className={cn('admin-booking-move', HALF_ON_PHONE)} disabled={busy !== null} onClick={onMove}>
+                        {words.text('move.open')}
+                    </Button>
+                )}
+                <Button wrap className={cn('admin-booking-close', HALF_ON_PHONE)} onClick={onClose}>
+                    {words.text('dialog.close')}
                 </Button>
-            )}
-            <Button className="admin-booking-close" onClick={onClose}>
-                {words.text('dialog.close')}
-            </Button>
+            </div>
         </>
     );
 }
@@ -400,7 +523,15 @@ export function BookingDialog({ state, staffShown, clock, weekStart = 1, onClose
     const said = failure ?? move.failure;
 
     return (
-        <Modal open title={found === null ? words.text('dialog.title') : customerName(found.booking, words)} onClose={onClose} footer={footer} variant="filling" className="admin-booking-dialog max-w-2xl">
+        <Modal
+            open
+            title={found === null ? words.text('dialog.title') : customerName(found.booking, words)}
+            aside={found === null ? undefined : <BookingStatus status={found.booking.status} />}
+            onClose={onClose}
+            footer={footer}
+            variant="filling"
+            className="admin-booking-dialog"
+        >
             {said !== null && <Notice kind="error">{said}</Notice>}
             {state.kind === 'loading' && <span className="admin-spinner" role="status" aria-label={words.text('dialog.loading')} />}
             {state.kind === 'error' && <Notice kind="error">{words.text('dialog.load_error')}</Notice>}
@@ -416,11 +547,12 @@ export function BookingDialog({ state, staffShown, clock, weekStart = 1, onClose
             )}
             {found !== null && move.moving && <MoveFields form={move} booking={found.booking} staffShown={staffShown} clock={clock} weekStart={weekStart} />}
             {found !== null && !move.moving && (
-                <>
-                    <Facts booking={found.booking} note={found.note} />
+                <div className="@container flex flex-col gap-5">
+                    <When booking={found.booking} clock={clock} />
+                    <Contact booking={found.booking} note={found.note} />
                     <Items booking={found.booking} staffShown={staffShown} clock={clock} />
                     <Trail trail={found.trail} clock={clock} />
-                </>
+                </div>
             )}
         </Modal>
     );

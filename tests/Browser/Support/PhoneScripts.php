@@ -150,20 +150,37 @@ final class PhoneScripts
         JS;
 
     /**
-     * True when, in every row of the open dialog's items table, each cell's text stands at least
-     * half a rem clear of the next cell's, so two columns at the phone's width never read as one.
+     * True when every item of the open dialog's items table reads as a block of lines, each line
+     * a cell with its column's label showing beside its value, the label's text at least half a
+     * rem clear of the value's so the two never read as one, every block and line inside the
+     * dialog's frame from side to side, and the table's box not scrolling sideways. A cell with no
+     * value has nothing for its label to run into.
      */
-    public const string ITEMS_CELLS_APART = <<<'JS'
+    public const string ITEMS_AS_ROWS = <<<'JS'
         document.fonts.ready.then(() => {
-            const rows = Array.from(document.querySelectorAll('.admin-booking-items tr'));
-            const textBox = (cell) => {
+            const frame = document.querySelector('.admin-modal__frame--filling');
+            const box = document.querySelector('.admin-booking-items')?.closest('.admin-table-scroll');
+            const rows = Array.from(document.querySelectorAll('.admin-booking-items__row'));
+            if (!frame || !box || rows.length === 0) {
+                return false;
+            }
+            const edge = frame.getBoundingClientRect();
+            const inside = (own, outer) => own.left >= outer.left - 1 && own.right <= outer.right + 1;
+            const textBox = (part) => {
                 const range = document.createRange();
-                range.selectNodeContents(cell);
+                range.selectNodeContents(part);
                 return range.getBoundingClientRect();
             };
-            return rows.length > 1 && rows.every((row) => {
-                const boxes = Array.from(row.children).map(textBox);
-                return boxes.every((box, at) => at === 0 || box.left - boxes[at - 1].right >= 8 - 1);
+            return box.scrollWidth <= box.clientWidth + 1 && rows.every((row) => {
+                const block = row.getBoundingClientRect();
+                const cells = Array.from(row.children);
+                return getComputedStyle(row).display === 'block' && inside(block, edge) && cells.length > 1 && cells.every((cell) => {
+                    const label = cell.querySelector('.admin-table__label');
+                    const value = cell.querySelector('.admin-table__value');
+                    return label !== null && value !== null && getComputedStyle(label).display !== 'none' && (label.textContent ?? '') !== ''
+                        && inside(cell.getBoundingClientRect(), block)
+                        && ((value.textContent ?? '') === '' || textBox(value).left - textBox(label).right >= 8 - 1);
+                });
             });
         })
         JS;

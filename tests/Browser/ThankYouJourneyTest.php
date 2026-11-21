@@ -72,7 +72,7 @@ it('completes a begun booking from the dialog and thanks the customer with the r
         ->assertSeeIn('.admin-booking-actions', adminLine('admin/bookings.actions.complete'))
         ->click('.admin-booking-action--complete')
         ->waitForText(adminLine(BookingActionController::COMPLETED))
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.completed'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.completed'))
         ->assertCount('.admin-booking-actions', 0)
         ->assertNoJavaScriptErrors();
 

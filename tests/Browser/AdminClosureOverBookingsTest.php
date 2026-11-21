@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\ClosureOverBookings;
+use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\PhoneScripts;
 use Tests\Support\LunaFixture;
 
 /*
@@ -18,6 +20,10 @@ use Tests\Support\LunaFixture;
  * that day: Add and move it writes the closure, marks the booking's block inside it, and opens the
  * list of bookings to move, whose Move is the usual Move form; the booking moves to the other
  * member at another time, its row is ticked Moved, and Done closes the list.
+ *
+ * That list is read once more on a phone by an owner who reads Greek, where Save is a longer word
+ * than Back: the Move form's two buttons stand on one line inside the footer's room, while Save
+ * waits on a time and once one is chosen and the line saying why it waited is gone.
  *
  * The bookings are written straight to luna's rows on the next Wednesday in Athens, a day Elena
  * works 09:00-13:00 and 14:00-18:00 and Nikos 10:00-19:00, whole days from today, since the
@@ -179,4 +185,94 @@ it('adds a member\'s closure from her Day column over her one booking and moves 
         ->and($item->staff_id)->toBe($nikos)
         ->and($item->status)->toBe('confirmed')
         ->and((new DateTimeImmutable($item->start_utc, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/Athens'))->format('Y-m-d H:i'))->toBe($day.' 11:00');
+});
+
+/**
+ * A script answering an empty string where Back and Save of the Move form, open in the list of
+ * bookings to move, stand on one line, Back first, inside the room the dialog's footer leaves
+ * between its paddings, each holding its label inside itself. Otherwise what is out of place, with
+ * the width read.
+ */
+const TO_MOVE_FOOTER_HOLDS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const footer = document.querySelector('.admin-to-move > .admin-modal__footer');
+        const back = footer?.querySelector('.admin-move__back');
+        const save = footer?.querySelector('.admin-move__save');
+        if (!footer || !back || !save) {
+            return 'not on the page';
+        }
+        const style = getComputedStyle(footer);
+        const row = footer.getBoundingClientRect();
+        const start = row.left + parseFloat(style.paddingLeft);
+        const end = row.right - parseFloat(style.paddingRight);
+        const boxes = [back, save].map((button) => button.getBoundingClientRect());
+        const found = [];
+        [['Back', back], ['Save', save]].forEach(([name, button], at) => {
+            if (boxes[at].left < start - 1) {
+                found.push(name + ' starts ' + (start - boxes[at].left).toFixed(1) + 'px before the room');
+            }
+            if (boxes[at].right > end + 1) {
+                found.push(name + ' ends ' + (boxes[at].right - end).toFixed(1) + 'px past the room');
+            }
+            if (button.scrollWidth > button.clientWidth + 1) {
+                found.push(name + ' cuts its label');
+            }
+        });
+        if (Math.abs(boxes[0].top - boxes[1].top) > 1) {
+            found.push('not on one line');
+        }
+        if (boxes[0].right > boxes[1].left + 0.5) {
+            found.push('Back over Save');
+        }
+        return found.length === 0 ? '' : 'at ' + document.documentElement.clientWidth + 'px, the room ' + (end - start).toFixed(1) + 'px: ' + found.join(', ');
+    })
+    JS;
+
+it('keeps Back and Save of the Move form on one line inside the footer of the list of bookings to move on a phone in Greek, while Save waits on a time and once one is chosen', function () {
+    $day = overBookingsWednesday();
+    overBookingsBooking('Dora Inside', $day, '10:00', 'Elena Papadaki');
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $nikos = LunaFixture::id('staff', 'Nikos Georgiou');
+    $el = SiteLanguage::Greek;
+    $target = overBookingsStart($day, '11:00');
+    $free = json_encode(adminLine('admin/bookings.move.group_free', [], $el), JSON_THROW_ON_ERROR);
+    $groupOfTarget = "() => document.querySelector('#move-time option[value=\"{$target}\"]')?.closest('optgroup')?.label === {$free}";
+    // The language is the owner's before the sign-in. The list is opened at the width the walk
+    // above opens it at, and read once the window is a phone's.
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $el->value]);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day&date='.$day))
+        ->waitForText(adminLine('admin/calendar.grid.block', ['customer' => 'Dora Inside', 'service' => 'Haircut'], $el))
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, $el->value);
+
+    $page->click('.admin-calendar-column[data-column="member-'.$elena.'"] .admin-calendar-head__menu')
+        ->click('.admin-calendar-column__close')
+        ->waitForText(adminLine('admin/calendar.closure.title', [], $el))
+        ->click('.admin-closure__add')
+        ->waitForText(adminChoice(ClosureOverBookings::INSIDE, 1, [], $el))
+        ->click('.admin-inside__move')
+        ->waitForText(adminLine('admin/shell.shared.closure.to_move', [], $el))
+        ->assertSeeIn('.admin-to-move__row', 'Dora Inside');
+
+    $page->resize(390, 844)
+        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)
+        ->click('.admin-to-move__move')
+        ->waitForText(adminLine('admin/bookings.move.time_help', [], $el))
+        ->assertSeeIn('.admin-move__why', adminLine('admin/bookings.move.save_why', [], $el))
+        ->assertSeeIn('.admin-move__back', adminLine('admin/bookings.move.back', [], $el))
+        ->assertSeeIn('.admin-move__save', adminLine('admin/bookings.move.save', [], $el))
+        ->assertScript(TO_MOVE_FOOTER_HOLDS, '')
+        ->assertScript(PhoneScripts::DIALOG_FOOTER_BUTTONS_INSIDE, true);
+
+    // A time chosen takes the line away, and the footer is then as wide as its two labels alone:
+    // the times are read for Nikos, whose Wednesday no closure holds.
+    $page->select('#move-staff-0', (string) $nikos)
+        ->assertScript($groupOfTarget, true)
+        ->select('#move-time', $target)
+        ->assertMissing('.admin-move__why')
+        ->assertScript(TO_MOVE_FOOTER_HOLDS, '')
+        ->assertScript(PhoneScripts::DIALOG_FOOTER_BUTTONS_INSIDE, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertNoJavaScriptErrors();
 });

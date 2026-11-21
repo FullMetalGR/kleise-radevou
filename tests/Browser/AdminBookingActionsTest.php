@@ -2,10 +2,13 @@
 
 use App\Http\Controllers\Admin\BookingActionController;
 use App\Http\ErrorEnvelope;
+use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Look;
+use Tests\Browser\Support\PhoneScripts;
 
 /*
  * The booking dialog's actions in a real browser: an owner approves one request and rejects
@@ -118,13 +121,13 @@ it('approves a request, rejects another with a reason, cancels a confirmed booki
 
     $page->click('Rita Request')
         ->waitForText(adminLine('admin/bookings.dialog.items.title'))
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.awaiting_approval'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.awaiting_approval'))
         ->assertSeeIn('.admin-booking-actions', adminLine('admin/bookings.actions.approve'))
         ->assertSeeIn('.admin-booking-actions', adminLine('admin/bookings.actions.reject'))
         ->assertCount('.admin-booking-trail__entry', 0)
         ->click('.admin-booking-action--approve')
         ->waitForText(adminLine(BookingActionController::APPROVED))
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.confirmed'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.confirmed'))
         ->assertCount('.admin-booking-trail__entry', 1)
         ->assertDontSeeIn('.admin-booking-actions', adminLine('admin/bookings.actions.approve'))
         ->assertSeeIn('.admin-rail-pending', '1');
@@ -139,7 +142,7 @@ it('approves a request, rejects another with a reason, cancels a confirmed booki
         ->click('.admin-reject-prompt__confirm')
         ->waitForText(adminLine(BookingActionController::REJECTED))
         ->assertCount('.admin-reject-prompt', 0)
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.rejected'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.rejected'))
         ->assertSeeIn('.admin-booking-facts__reason', 'Fully booked that week')
         ->assertCount('.admin-rail-pending', 0);
 
@@ -151,7 +154,7 @@ it('approves a request, rejects another with a reason, cancels a confirmed booki
         ->waitForText(adminLine('admin/bookings.cancel.warning'))
         ->click('.admin-cancel-prompt__confirm')
         ->waitForText(adminLine(BookingActionController::CANCELLED))
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.cancelled'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.cancelled'))
         ->assertCount('.admin-booking-actions', 0);
 
     $page->click('.admin-booking-close')->waitForText(adminLine('admin/bookings.table.count', ['count' => '4', 'total' => '4']));
@@ -162,7 +165,7 @@ it('approves a request, rejects another with a reason, cancels a confirmed booki
         ->assertSeeIn('.admin-booking-actions', adminLine('admin/bookings.actions.no_show'))
         ->click('.admin-booking-action--complete')
         ->waitForText(adminLine(BookingActionController::COMPLETED))
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.completed'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.completed'))
         ->assertCount('.admin-booking-actions', 0)
         ->assertNoJavaScriptErrors();
 
@@ -219,7 +222,7 @@ it('answers a press on a request whose window closed after the dialog rendered w
         ->assertAttribute('.admin-toast', 'data-kind', 'error')
         ->assertCount('.admin-booking-dialog', 1)
         ->assertPathIs('/admin/bookings/'.$uuid)
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.awaiting_approval'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.awaiting_approval'))
         ->assertCount('.admin-booking-trail__entry', 0);
 
     // The toast sits over the dialog's backdrop, not under it: the operator reads it and
@@ -231,4 +234,198 @@ it('answers a press on a request whose window closed after the dialog rendered w
         ->assertNoJavaScriptErrors();
 
     expect(DB::table('tenant_luna.bookings')->where('uuid', $uuid)->value('status'))->toBe('awaiting_approval');
+});
+
+/**
+ * The dialog's when panel as the browser draws it: whether its time is struck through, and
+ * whether the panel sits on a fill of its own rather than the dialog's.
+ */
+const WHEN_LOOK = <<<'JS'
+    document.fonts.ready.then(() => {
+        const panel = document.querySelector('.admin-booking-dialog .admin-booking-facts');
+        const time = panel?.querySelector('.admin-booking-facts__time');
+        if (!panel || !time) {
+            return null;
+        }
+        const frame = getComputedStyle(document.querySelector('.admin-booking-dialog')).backgroundColor;
+        return [getComputedStyle(time).textDecorationLine.includes('line-through'), getComputedStyle(panel).backgroundColor !== frame];
+    })
+    JS;
+
+/**
+ * True when the dialog's footer holds its buttons on one line, the state's actions starting at
+ * the footer's start edge and Move and Close ending at its end edge.
+ */
+const FOOTER_SPLIT = <<<'JS'
+    document.fonts.ready.then(() => {
+        const footer = document.querySelector('.admin-booking-dialog > .admin-modal__footer');
+        const neutral = footer?.querySelector('.admin-booking-neutral');
+        if (!footer || !neutral) {
+            return false;
+        }
+        const style = getComputedStyle(footer);
+        const box = footer.getBoundingClientRect();
+        const start = box.left + parseFloat(style.paddingLeft);
+        const end = box.right - parseFloat(style.paddingRight);
+        const actions = footer.querySelector('.admin-booking-actions');
+        const tops = new Set(Array.from(footer.querySelectorAll('button')).map((button) => Math.round(button.getBoundingClientRect().top)));
+        return tops.size === 1 && Math.abs(neutral.getBoundingClientRect().right - end) <= 1
+            && (actions === null || Math.abs(actions.getBoundingClientRect().left - start) <= 1);
+    })
+    JS;
+
+/**
+ * True when every button of the dialog's footer is at least 44 pixels tall and holds its label
+ * inside itself, no line holds more than two, at least one line holds two, and each button takes
+ * at least half the footer's row less half the gap between two.
+ */
+const FOOTER_TWO_TO_A_LINE = <<<'JS'
+    document.fonts.ready.then(() => {
+        const footer = document.querySelector('.admin-booking-dialog > .admin-modal__footer');
+        const buttons = Array.from(footer?.querySelectorAll('button') ?? []);
+        if (!footer || buttons.length < 2) {
+            return false;
+        }
+        const style = getComputedStyle(footer);
+        const room = footer.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        const lines = new Map();
+        buttons.forEach((button) => {
+            const top = Math.round(button.getBoundingClientRect().top);
+            lines.set(top, [...(lines.get(top) ?? []), button.getBoundingClientRect()]);
+        });
+        return buttons.every((button) => button.getBoundingClientRect().height >= 43.5 && button.scrollWidth <= button.clientWidth + 1)
+            && [...lines.values()].every((line) => line.length <= 2 && line.every((own) => own.width >= (room - 8) / 2 - 1))
+            && [...lines.values()].some((line) => line.length === 2);
+    })
+    JS;
+
+/** How many columns a grid of the dialog lays out, by the selector of the grid. */
+function dialogColumns(string $selector): string
+{
+    $selector = json_encode('.admin-booking-dialog '.$selector, JSON_THROW_ON_ERROR);
+
+    return "document.fonts.ready.then(() => getComputedStyle(document.querySelector({$selector})).gridTemplateColumns.split(' ').length)";
+}
+
+it('draws a booking of each state with its status beside the name, the time struck where the visit did not happen, a request on the attention fill, and the state\'s actions apart from Move and Close', function () {
+    $states = [
+        'Ava Asking' => ['awaiting_approval', 61, [false, true]],
+        'Cleo Confirmed' => ['confirmed', 62, [false, false]],
+        'Cass Cancelled' => ['cancelled', 63, [true, false]],
+        'Rhea Rejected' => ['rejected', 64, [true, false]],
+        'Coco Completed' => ['completed', -30, [false, false]],
+        'Nora Noshow' => ['no_show', -31, [true, false]],
+    ];
+    foreach ($states as $customer => [$status, $days]) {
+        actionBooking($customer, $status, athensDaysOn($days));
+    }
+    $count = adminLine('admin/bookings.table.count', ['count' => '6', 'total' => '6']);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1440, 900);
+    $page->click(navLabel('bookings'))->waitForText($count);
+
+    foreach ($states as $customer => [$status, , $look]) {
+        $page->click($customer)
+            ->waitForText(adminLine('admin/bookings.dialog.items.title'))
+            ->assertSeeIn('.admin-modal__title', $customer)
+            ->assertAttribute('.admin-modal__head .admin-booking-status .admin-chip', 'data-status', $status)
+            ->assertScript(WHEN_LOOK, $look)
+            ->assertScript(dialogColumns('.admin-booking-facts'), 3)
+            ->assertScript(dialogColumns('.admin-booking-contact'), 3)
+            ->assertScript(FOOTER_SPLIT, true)
+            ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+        Look::shot($page, 'booking-dialog-'.$status.'-1440');
+        $page->click('.admin-booking-close')->waitForText($count);
+    }
+
+    // The cancel confirm over a confirmed booking, kept, then the Move form in its place.
+    $page->click('Cleo Confirmed')
+        ->waitForText(adminLine('admin/bookings.dialog.items.title'))
+        ->click('.admin-booking-action--cancel')
+        ->waitForText(adminLine('admin/bookings.cancel.warning'));
+    Look::shot($page, 'booking-dialog-cancel-prompt-1440');
+
+    $page->click('.admin-cancel-prompt__keep')
+        ->assertMissing('.admin-cancel-prompt')
+        ->assertScript(Admin::focusIsOn('.admin-booking-action--cancel'), true)
+        ->click('.admin-booking-move')
+        ->waitForText(adminLine('admin/bookings.move.save_why'))
+        ->assertMissing('.admin-booking-facts')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    Look::shot($page, 'booking-dialog-move-1440');
+
+    $page->click('.admin-move__back')
+        ->assertVisible('.admin-booking-facts')
+        ->assertNoJavaScriptErrors();
+
+    expect(DB::table('tenant_luna.bookings')->orderBy('id')->pluck('status')->all())
+        ->toBe(['awaiting_approval', 'confirmed', 'cancelled', 'rejected', 'completed', 'no_show']);
+});
+
+it('fits the dialog to a phone in Greek, its footer\'s buttons 44 pixels tall and two to a line with every label inside its button, and keeps it whole with the focus where it was as the window crosses the breakpoint and back', function () {
+    actionBooking('Paula Past', 'confirmed', athensDaysOn(-30));
+    // The labels are longer in Greek. The language is the owner's before the sign-in.
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+    $count = adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1'], SiteLanguage::Greek);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1440, 900);
+    $page->navigate(Admin::url('luna', '/bookings'))
+        ->waitForText($count)
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value);
+
+    $page->click('Paula Past')
+        ->waitForText(adminLine('admin/bookings.dialog.items.title', [], SiteLanguage::Greek))
+        ->assertSeeIn('.admin-booking-actions', adminLine('admin/bookings.actions.no_show', [], SiteLanguage::Greek))
+        ->assertScript(FOOTER_SPLIT, true);
+    Look::shot($page, 'booking-dialog-el-1440');
+
+    $page->script("document.querySelector('.admin-booking-close').focus()");
+    $page->resize(390, 844)
+        ->assertScript(PhoneScripts::DIALOG_FILLS_SCREEN, true)
+        ->assertScript(PhoneScripts::ITEMS_AS_ROWS, true)
+        ->assertScript(PhoneScripts::DIALOG_NO_SIDEWAYS, true)
+        ->assertScript(PhoneScripts::DIALOG_FOOTER_BUTTONS_INSIDE, true)
+        ->assertScript(FOOTER_TWO_TO_A_LINE, true)
+        ->assertScript(dialogColumns('.admin-booking-facts'), 2)
+        ->assertScript(dialogColumns('.admin-booking-contact'), 1)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(Admin::focusIsOn('.admin-booking-close'), true);
+    Look::shot($page, 'booking-dialog-el-390');
+
+    $page->resize(1440, 900)
+        ->assertScript(FOOTER_SPLIT, true)
+        ->assertScript(dialogColumns('.admin-booking-facts'), 3)
+        ->assertScript(Admin::focusIsOn('.admin-booking-close'), true)
+        ->keys('.admin-booking-close', 'Enter')
+        ->waitForText($count)
+        ->assertCount('.admin-booking-dialog', 0)
+        ->assertNoJavaScriptErrors();
+});
+
+it('keeps the Move form\'s Back and Save two to a line in the dialog on a phone in Greek, each half the footer\'s row under the line saying why Save waits', function () {
+    actionBooking('Mona Movable', 'confirmed', athensDaysOn(66));
+    $el = SiteLanguage::Greek;
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $el->value]);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(390, 844);
+    $page->navigate(Admin::url('luna', '/bookings'))
+        ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1'], $el))
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, $el->value);
+
+    // Save is the longer word in Greek, and the two still halve the row here: the dialog's footer
+    // gives their group its whole width.
+    $page->click('Mona Movable')
+        ->waitForText(adminLine('admin/bookings.dialog.items.title', [], $el))
+        ->click('.admin-booking-move')
+        ->waitForText(adminLine('admin/bookings.move.time_help', [], $el))
+        ->assertSeeIn('.admin-move__why', adminLine('admin/bookings.move.save_why', [], $el))
+        ->assertSeeIn('.admin-move__back', adminLine('admin/bookings.move.back', [], $el))
+        ->assertSeeIn('.admin-move__save', adminLine('admin/bookings.move.save', [], $el))
+        ->assertScript(PhoneScripts::DIALOG_FILLS_SCREEN, true)
+        ->assertScript(FOOTER_TWO_TO_A_LINE, true)
+        ->assertScript(PhoneScripts::DIALOG_FOOTER_BUTTONS_INSIDE, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->click('.admin-move__back')
+        ->assertVisible('.admin-booking-facts')
+        ->assertNoJavaScriptErrors();
 });

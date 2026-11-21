@@ -169,7 +169,7 @@ describe('the bookings screen', () => {
         // The answer is held: the visit has started and has not finished.
         act(() => visit.onStart?.());
 
-        expect(document.body.querySelector('.admin-booking-facts .admin-chip')?.textContent).toBe(shell.text('kit.statuses.awaiting_approval'));
+        expect(document.body.querySelector('.admin-booking-status .admin-chip')?.textContent).toBe(shell.text('kit.statuses.awaiting_approval'));
         expect(document.body.querySelector('.admin-booking-action--approve')?.getAttribute('aria-busy')).toBe('true');
 
         // A second press while the first is in flight sends nothing.

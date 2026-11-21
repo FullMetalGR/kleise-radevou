@@ -347,6 +347,23 @@ describe('the Move form', () => {
         expect(looks(one('#move-time'))).toEqual(waiting);
     });
 
+    it('lays its footer as the detail\'s: why Save waits on the left, Back and Save on the right, the two sharing the row evenly on a phone, each from nothing and never from a share of the row', async () => {
+        await openMove();
+
+        const footer = [...(one('.admin-modal__footer')?.children ?? [])];
+        const group = one('.admin-move__buttons');
+        const buttons = [...(group?.children ?? [])];
+
+        expect(footer).toEqual([one('.admin-move__why'), group]);
+        expect([...(one('.admin-move__why')?.classList ?? [])]).toEqual(expect.arrayContaining(['mr-auto', 'max-desktop:w-full']));
+        expect([...(group?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'gap-2', 'max-desktop:w-full']));
+        expect(buttons).toEqual([one('.admin-move__back'), save()]);
+        // A share of the row is cut from the labels themselves where a host makes the group only
+        // as wide as its two labels, and the longer one then runs past the footer.
+        expect(buttons.map((button) => [...button.classList].filter((name) => /^max-desktop:(grow|basis)/.test(name)))).toEqual(Array(2).fill(['max-desktop:grow', 'max-desktop:basis-0']));
+        expect(buttons.map((button) => button.classList.contains('max-desktop:whitespace-normal'))).toEqual([true, true]);
+    });
+
     it('holds Save until a time is chosen, saying why beside it, and Back returns to the detail moving nothing', async () => {
         await openMove();
 

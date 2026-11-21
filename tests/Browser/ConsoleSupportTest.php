@@ -97,7 +97,7 @@ it('opens support on luna from the console, cancels a booking as support under t
         ->waitForText(adminLine('admin/bookings.cancel.warning'))
         ->click('.admin-cancel-prompt__confirm')
         ->waitForText(adminLine(BookingActionController::CANCELLED))
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.cancelled'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.cancelled'))
         ->assertCount('.admin-booking-trail__entry', 1)
         ->assertSeeIn('.admin-booking-trail__actor', adminLine(AdminProps::SUPPORT_NAME, ['operator' => 'Pat Operator']))
         ->assertNoJavaScriptErrors();

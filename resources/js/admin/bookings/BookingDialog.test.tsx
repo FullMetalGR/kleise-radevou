@@ -2,15 +2,17 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mount, type Mounted } from '@/components/ui/harness';
 import { formatAmount, formatCount } from '@/lib/format';
+import { unitFigure } from '@/lib/names';
 import { SUPPORT_ACTOR, supportNamed } from '@/lib/support';
 import { keyedBookings, keyedShell, WithBookings } from '@/testing/keyed';
 import { BookingDialog, CHANNEL_LABEL, NOTE_LABEL, SOURCE_LABEL } from './BookingDialog';
 import { type Booking, CHANNEL_WORDS, CUSTOMER_ERASED, type TrailEntry } from './model';
 
 /*
- * The booking dialog, read-only: the facts, what was booked, the trail oldest first with every
- * instant in the tenant's zone, and the states a detail can fail into. Every word renders from
- * the keyed bookings section and is read through it.
+ * The booking dialog, read-only: the status in its head, the when panel and the contact facts,
+ * what was booked as the shared table, the trail oldest first with every instant in the tenant's
+ * zone, and the states a detail can fail into. Every word renders from the keyed bookings section
+ * and is read through it.
  */
 
 const shell = keyedShell();
@@ -70,14 +72,128 @@ describe('the booking dialog', () => {
         expect(inDialog('.admin-booking-close')).not.toBeNull();
     });
 
-    it('sets the head cells of the items table semibold from their row, no cell spelling a weight of its own', () => {
+    it('heads itself with the customer as its title, the status chip and the round close, and keeps Close in the footer', () => {
         show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: BOOKING, note: null, trail: TRAIL, actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
 
-        const row = inDialog('.admin-booking-items thead tr');
+        const head = inDialog('.admin-modal__head');
 
-        expect(row?.querySelectorAll('th')).toHaveLength(5);
-        expect([...(row?.classList ?? [])]).toContain('[&_th]:font-semibold');
-        expect(row?.querySelectorAll('th[class*="font-"]')).toHaveLength(0);
+        expect(head?.querySelector('.admin-modal__title')?.textContent).toBe('Ada North');
+        expect(head?.querySelector('.admin-booking-status .admin-chip')?.getAttribute('data-status')).toBe('rejected');
+        expect(head?.querySelector('.admin-booking-status .admin-chip')?.textContent).toBe(shell.text('kit.statuses.rejected'));
+        expect(head?.querySelector('.admin-booking-status .sr-only')?.textContent).toBe(words.text('dialog.facts.status'));
+        expect(inDialog('.admin-modal__close')).not.toBeNull();
+        expect(head?.querySelector('.admin-booking-close')).toBeNull();
+        expect(inDialog('.admin-modal__footer .admin-booking-close')).not.toBeNull();
+        expect(inDialog('.admin-modal__body .admin-chip')).toBeNull();
+    });
+
+    it('shows no status chip in the head while the detail is loading, has failed or names no booking', () => {
+        show(<BookingDialog state={{ kind: 'loading' }} staffShown clock={CLOCK} onClose={() => {}} />);
+        expect(inDialog('.admin-booking-status')).toBeNull();
+
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'missing', uuid: 'x' } }} staffShown clock={CLOCK} onClose={() => {}} />);
+        expect(inDialog('.admin-booking-status')).toBeNull();
+    });
+
+    it('lists what was booked as the shared table that turns its rows into blocks, every cell labelled by its column', () => {
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: BOOKING, note: null, trail: TRAIL, actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+
+        const table = inDialog('table.admin-booking-items');
+        const heads = (['dialog.items.service', 'dialog.items.staff', 'dialog.items.start', 'dialog.items.end', 'dialog.items.price'] as const).map((key) => words.text(key));
+
+        expect([...(table?.classList ?? [])]).toEqual(expect.arrayContaining(['admin-table', 'max-wide:block', '@max-2xl:block']));
+        expect(table?.closest('.admin-table-scroll')).not.toBeNull();
+        expect([...document.body.querySelectorAll('.admin-booking-items__row td .admin-table__label')].map((label) => label.textContent)).toEqual(heads);
+        expect([...document.body.querySelectorAll('.admin-booking-items__row td .admin-table__value')].map((value) => value.textContent)).toEqual([
+            'Haircut',
+            'Elena Papadaki',
+            '03/11/2026 10:00',
+            '03/11/2026 10:45',
+            formatAmount(3500, 'EUR'),
+        ]);
+
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: BOOKING, note: null, trail: TRAIL, actions: [] } }} staffShown={false} clock={CLOCK} onClose={() => {}} />);
+        expect([...document.body.querySelectorAll('.admin-booking-items__row td .admin-table__label')].map((label) => label.textContent)).toEqual(heads.filter((_, at) => at !== 1));
+    });
+
+    it('opens with the when panel: the date under its weekday, the time from the first service\'s start to the last one\'s end with its length, and the total', () => {
+        const two: Booking = {
+            ...BOOKING,
+            status: 'confirmed',
+            total_minor: 6000,
+            items: [
+                { ...BOOKING.items[0]!, sort: 1, service_name: 'Colour', start: '2026-11-03T08:45:00+00:00', end: '2026-11-03T09:30:00+00:00', price_minor: 2500 },
+                { ...BOOKING.items[0]!, sort: 0 },
+            ],
+        };
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: two, note: null, trail: [], actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+
+        const panel = inDialog('.admin-booking-facts');
+
+        expect(panel?.tagName).toBe('SECTION');
+        expect([...(panel?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-inner', 'ring-border']));
+        expect(panel?.closest('.admin-modal__body')).not.toBeNull();
+        expect(panel?.querySelector('.admin-booking-facts__weekday')?.textContent).toBe('Tuesday');
+        expect(panel?.querySelector('.admin-booking-facts__date')?.textContent).toBe('03/11/2026');
+        expect(panel?.querySelector('.admin-booking-facts__time')?.textContent).toBe(words.text('move.confirm.window', { start: '10:00', end: '11:30' }));
+        expect(panel?.querySelector('.admin-booking-facts__length')?.textContent).toBe(unitFigure(90, 'minute', 'en'));
+        expect(panel?.querySelector('.admin-booking-facts__total')?.textContent).toBe(formatAmount(6000, 'EUR'));
+        expect(panel?.textContent).toContain(words.text('dialog.facts.total'));
+        // Three blocks and nothing more: the booking carries no deadline, so no decide-by line.
+        expect(panel?.children).toHaveLength(3);
+
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: { ...two, items: [{ ...BOOKING.items[0]!, end: '2026-11-03T10:00:00+00:00' }] }, note: null, trail: [], actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+        expect(inDialog('.admin-booking-facts__length')?.textContent).toBe(unitFigure(2, 'hour', 'en'));
+
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: BOOKING, note: null, trail: [], actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+        expect(inDialog('.admin-booking-facts__length')?.textContent).toBe(unitFigure(45, 'minute', 'en'));
+    });
+
+    it('renders a booking whose start or end is no instant: the when panel its total alone, with no day, time or length, and the items each time as it came', () => {
+        const item = BOOKING.items[0]!;
+        const panelOf = (items: Booking['items']) => {
+            show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: { ...BOOKING, items }, note: null, trail: [], actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+
+            return {
+                blocks: inDialog('.admin-booking-facts')?.children.length,
+                timed: ['weekday', 'date', 'time', 'length'].filter((part) => inDialog(`.admin-booking-facts__${part}`) !== null),
+                total: inDialog('.admin-booking-facts__total')?.textContent,
+                times: [...document.body.querySelectorAll('.admin-booking-items__row td .admin-table__value')].slice(2, 4).map((value) => value.textContent),
+            };
+        };
+        const alone = { blocks: 1, timed: [], total: formatAmount(3500, 'EUR') };
+
+        // The space-separated form is no instant: the day cannot be read off it.
+        expect(panelOf([{ ...item, start: '2026-11-03 08:00:00' }])).toEqual({ ...alone, times: ['2026-11-03 08:00:00', '03/11/2026 10:45'] });
+        expect(panelOf([{ ...item, end: 'later' }])).toEqual({ ...alone, times: ['03/11/2026 10:00', 'later'] });
+        // One service that cannot be read leaves the booking no range to show, wherever it sits.
+        expect(panelOf([item, { ...item, sort: 1, start: 'later', end: 'later still' }])).toMatchObject(alone);
+        expect(panelOf([item])).toMatchObject({ blocks: 3, timed: ['weekday', 'date', 'time', 'length'] });
+    });
+
+    it('strikes the time of a cancelled, rejected or no-show booking and of no other, and sets a request awaiting approval on the attention fill', () => {
+        const looks = (status: string) => {
+            show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: { ...BOOKING, status }, note: null, trail: [], actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+            const time = [...(inDialog('.admin-booking-facts__time')?.classList ?? [])];
+            const panel = [...(inDialog('.admin-booking-facts')?.classList ?? [])];
+
+            return { struck: time.includes('line-through'), attention: panel.includes('bg-attention-soft') && panel.includes('ring-attention-line') };
+        };
+
+        expect(['cancelled', 'rejected', 'no_show'].map(looks)).toEqual(Array(3).fill({ struck: true, attention: false }));
+        expect(['confirmed', 'completed', 'pending', 'expired'].map(looks)).toEqual(Array(4).fill({ struck: false, attention: false }));
+        expect(looks('awaiting_approval')).toEqual({ struck: false, attention: true });
+    });
+
+    it('lays the trail on a rail, a dot beside each entry, oldest first', () => {
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: BOOKING, note: null, trail: TRAIL, actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+
+        const entries = [...document.body.querySelectorAll('ol.admin-booking-trail > li.admin-booking-trail__entry')];
+
+        expect(entries).toHaveLength(2);
+        expect(entries.map((entry) => entry.querySelector(':scope > .admin-booking-trail__dot')?.getAttribute('aria-hidden'))).toEqual(['true', 'true']);
+        expect(entries.map((entry) => entry.querySelector('.admin-booking-trail__action')?.textContent)).toEqual([words.text('trail.actions.held'), words.text('trail.actions.rejected')]);
+        expect([...(inDialog('.admin-booking-trail')?.classList ?? [])]).toContain('before:w-0.5');
     });
 
     it('shows no email and no phone where the payload carries neither, and says so when nothing has happened', () => {
@@ -105,14 +221,26 @@ describe('the booking dialog', () => {
     it('shows where the booking came from and what the customer wrote, in words, where each is set', () => {
         show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: { ...BOOKING, source: 'hosted', channel: 'qr' }, note: 'Allergic to lavender.\nThe quiet room, please.', trail: [], actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
 
-        const facts = Object.fromEntries([...document.body.querySelectorAll('.admin-booking-facts dt')].map((term) => [term.textContent ?? '', term.nextElementSibling?.textContent ?? '']));
+        const facts = Object.fromEntries([...document.body.querySelectorAll('.admin-booking-contact dt')].map((term) => [term.textContent ?? '', term.nextElementSibling?.textContent ?? '']));
         expect(facts[words.text(SOURCE_LABEL)]).toBe(shell.text('shared.sources.hosted'));
         expect(facts[words.text(CHANNEL_LABEL)]).toBe(shell.text('shared.channels.qr'));
         expect(facts[words.text(NOTE_LABEL)]).toBe('Allergic to lavender.\nThe quiet room, please.');
         expect(inDialog('.admin-booking-facts__note')?.className).toContain('whitespace-pre-line');
-        expect(Object.keys(facts)).toEqual(
-            (['dialog.facts.status', 'dialog.facts.total', 'dialog.facts.email', 'dialog.facts.phone', 'dialog.facts.reason', SOURCE_LABEL, CHANNEL_LABEL, NOTE_LABEL] as const).map((key) => words.text(key)),
-        );
+        expect(Object.keys(facts)).toEqual((['dialog.facts.email', 'dialog.facts.phone', SOURCE_LABEL, CHANNEL_LABEL, 'dialog.facts.reason', NOTE_LABEL] as const).map((key) => words.text(key)));
+    });
+
+    it('sets the contact facts in three columns where the dialog is wide and one below, the reason and the note across them', () => {
+        show(<BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: { ...BOOKING, source: 'hosted' }, note: 'Window seat.', trail: [], actions: [] } }} staffShown clock={CLOCK} onClose={() => {}} />);
+
+        const list = inDialog('dl.admin-booking-contact');
+        const across = (block: string) => [...(inDialog(`.admin-booking-facts__${block}`)?.parentElement?.classList ?? [])];
+
+        expect([...(list?.classList ?? [])]).toEqual(expect.arrayContaining(['grid', 'grid-cols-1', '@xl:grid-cols-3']));
+        expect(list?.closest('.\\@container')).not.toBeNull();
+        expect(across('reason')).toContain('@xl:col-span-3');
+        expect(across('note')).toContain('@xl:col-span-3');
+        expect(across('email')).not.toContain('@xl:col-span-3');
+        expect(inDialog('.admin-booking-facts .admin-booking-facts__email')).toBeNull();
     });
 
     it('names each source and channel in its words and an unknown one verbatim, and leaves out a channel and a note that are not set', () => {

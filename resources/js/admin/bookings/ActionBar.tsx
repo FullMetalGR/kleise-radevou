@@ -32,6 +32,12 @@ import { type BookingsKey, useBookings } from './words';
 /** Hands an action to the screen: its route's last segment, the form body, and what to do once the visit has finished. */
 export type Act = (action: string, body: Record<string, string>, done: () => void) => void;
 
+/**
+ * A footer button's share below the breakpoint, where its group takes the footer's width: half the
+ * line less half the gap, growing, so two sit side by side and one left alone on a line fills it.
+ */
+export const HALF_ON_PHONE = 'max-desktop:grow max-desktop:basis-[calc(50%-0.25rem)]';
+
 const LABELS: Readonly<Record<string, BookingsKey>> = {
     approve: 'actions.approve',
     reject: 'actions.reject',
@@ -90,13 +96,14 @@ export function ActionBar({ actions, busy, onAct }: Props) {
     };
 
     return (
-        <div className="admin-booking-actions mr-auto flex flex-wrap gap-2">
+        <div className="admin-booking-actions mr-auto flex flex-wrap gap-2 max-desktop:w-full">
             {actions.map((action) => (
                 <Button
                     key={action}
+                    wrap
                     variant={action === 'approve' ? 'primary' : 'secondary'}
                     destructive={action === 'cancel'}
-                    className={`admin-booking-action admin-booking-action--${action}`}
+                    className={`admin-booking-action admin-booking-action--${action} ${HALF_ON_PHONE}`}
                     busy={busy === action && prompt === null}
                     busyLabel={wordOf(BUSY_LABELS, action, words.text)}
                     onClick={() => choose(action)}

@@ -7,6 +7,7 @@ import { Notice } from '@/components/ui/notice';
 import { Select } from '@/components/ui/select';
 import { formatInstant, formatInstantTime, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
+import { cn } from '@/lib/utils';
 import type { Crossing } from '@/lib/visits';
 import { sentenceFor } from './acting';
 import { distinct, type Movable, startOf } from './model';
@@ -323,23 +324,45 @@ export function MoveFields({ form, booking, staffShown, clock, weekStart }: Prop
 
 const WHY = 'move-save-why';
 
-/** The form's footer: why Save waits, Back and Save. */
+/**
+ * A button's share of the footer's group below the breakpoint: the two split the line evenly,
+ * each growing from nothing, so neither is ever narrower than its own label. A share counted off
+ * the line would not do: the footer is also set in a host whose group is only as wide as its two
+ * labels, where half of that is less than the longer label needs, and it would run past the
+ * footer.
+ */
+const EVEN_ON_PHONE = 'max-desktop:grow max-desktop:basis-0';
+
+/**
+ * The form's footer, laid as the detail's is: why Save waits on the left, and Back and Save
+ * grouped on the right. Below the breakpoint the line and the group each take the whole width of
+ * what holds them, the two buttons side by side.
+ */
 export function MoveFooter({ form }: { form: MoveForm }) {
     const words = useBookings();
 
     return (
         <>
             {!form.saveable && !form.busy && (
-                <p id={WHY} className="admin-move__why mr-auto self-center text-sm text-muted-foreground">
+                <p id={WHY} className="admin-move__why mr-auto self-center text-sm text-muted-foreground max-desktop:w-full">
                     {words.text('move.save_why')}
                 </p>
             )}
-            <Button className="admin-move__back" disabled={form.busy} onClick={form.back}>
-                {words.text('move.back')}
-            </Button>
-            <Button variant="primary" className="admin-move__save" disabled={!form.saveable} aria-describedby={!form.saveable && !form.busy ? WHY : undefined} onClick={form.save}>
-                {words.text('move.save')}
-            </Button>
+            <div className="admin-move__buttons flex gap-2 max-desktop:w-full">
+                <Button wrap className={cn('admin-move__back', EVEN_ON_PHONE)} disabled={form.busy} onClick={form.back}>
+                    {words.text('move.back')}
+                </Button>
+                <Button
+                    wrap
+                    variant="primary"
+                    className={cn('admin-move__save', EVEN_ON_PHONE)}
+                    disabled={!form.saveable}
+                    aria-describedby={!form.saveable && !form.busy ? WHY : undefined}
+                    onClick={form.save}
+                >
+                    {words.text('move.save')}
+                </Button>
+            </div>
         </>
     );
 }

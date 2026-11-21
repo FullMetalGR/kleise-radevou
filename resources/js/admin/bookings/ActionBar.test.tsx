@@ -98,6 +98,32 @@ describe('the action bar', () => {
         expect(one('.admin-booking-close')?.textContent).toBe(words.text('dialog.close'));
     });
 
+    it('splits the footer: the state\'s actions on the left, Move and Close on the right, each button half the row on a phone with its label let to wrap', () => {
+        const { onAct } = recorder();
+        const footer = () => [...(one('.admin-modal__footer')?.children ?? [])];
+        const hooks = (element: Element) => [...element.classList].filter((name) => name.startsWith('admin-booking-'));
+
+        view.render(
+            <WithBookings>
+                <BookingDialog state={{ kind: 'detail', detail: { state: 'found', booking: { ...BOOKING, movable: true }, note: null, trail: [], actions: ['approve', 'reject'] } }} staffShown clock={CLOCK} onClose={() => {}} onAct={onAct} />
+            </WithBookings>,
+        );
+
+        expect(footer().map(hooks)).toEqual([['admin-booking-actions'], ['admin-booking-neutral']]);
+        expect([...(one('.admin-booking-actions')?.classList ?? [])]).toEqual(expect.arrayContaining(['mr-auto', 'max-desktop:w-full']));
+        expect([...(one('.admin-booking-neutral')?.classList ?? [])]).toEqual(expect.arrayContaining(['max-desktop:w-full']));
+        expect([...document.body.querySelectorAll('.admin-booking-neutral > button')].map(hooks)).toEqual([['admin-booking-move'], ['admin-booking-close']]);
+
+        const buttons = [...document.body.querySelectorAll('.admin-modal__footer button')];
+        expect(buttons).toHaveLength(4);
+        expect(buttons.map((button) => [...button.classList].filter((name) => /^max-desktop:(grow$|basis-|min-h-11$|whitespace-normal$)/.test(name)).sort())).toEqual(
+            Array(4).fill(['max-desktop:basis-[calc(50%-0.25rem)]', 'max-desktop:grow', 'max-desktop:min-h-11', 'max-desktop:whitespace-normal']),
+        );
+
+        dialog([], onAct);
+        expect(footer().map(hooks)).toEqual([['admin-booking-neutral']]);
+    });
+
     it('fires Approve, Completed and No-show at once with no body', () => {
         const { calls, onAct } = recorder();
 

@@ -200,7 +200,7 @@ it('opens the dialog from a row of Bookings on a phone, the table without Servic
         ->assertSeeIn('.admin-modal__title', 'Tessa Trail')
         ->assertSeeIn('.admin-booking-items', 'Haircut')
         ->assertSeeIn('.admin-booking-items', 'Elena Papadaki')
-        ->assertScript(PhoneScripts::ITEMS_CELLS_APART, true)
+        ->assertScript(PhoneScripts::ITEMS_AS_ROWS, true)
         ->assertScript(PhoneScripts::DIALOG_FILLS_SCREEN, true)
         ->assertScript(PhoneScripts::DIALOG_BODY_SCROLLS, true);
     Look::shot($page, 'booking-dialog-390');
@@ -235,7 +235,7 @@ it('cancels a booking from the dialog on a phone through its confirm to the toas
         ->assertScript(PhoneScripts::SHEET_AT_BOTTOM, true)
         ->click('.admin-cancel-prompt__confirm')
         ->waitForText(adminLine(BookingActionController::CANCELLED))
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.cancelled'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.cancelled'))
         ->assertCount('.admin-booking-actions', 0)
         ->assertScript(PhoneScripts::TOASTS_INSIDE, true);
     Look::shot($page, 'toast-over-filling-dialog-390');

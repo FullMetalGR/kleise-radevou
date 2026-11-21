@@ -351,7 +351,7 @@ describe('a customer\'s page', () => {
         expect(url).toBe('/admin/bookings/b2/cancel');
         expect(body).toEqual({});
         act(() => visit.onStart?.());
-        expect(q('.admin-booking-facts .admin-chip')?.textContent).toBe(shell.text('kit.statuses.confirmed'));
+        expect(q('.admin-booking-status .admin-chip')?.textContent).toBe(shell.text('kit.statuses.confirmed'));
         expect(q('.admin-cancel-prompt__confirm')?.getAttribute('aria-busy')).toBe('true');
 
         // The redirect back lands this page with every prop re-read and no detail asked for.
@@ -370,7 +370,7 @@ describe('a customer\'s page', () => {
         inertia.props = propsWith(found({ ...LATEST, status: 'cancelled' }, []), { rows: [{ ...LATEST, status: 'cancelled' }, FIRST] });
         render();
 
-        expect(q('.admin-booking-facts .admin-chip')?.textContent).toBe(shell.text('kit.statuses.cancelled'));
+        expect(q('.admin-booking-status .admin-chip')?.textContent).toBe(shell.text('kit.statuses.cancelled'));
         expect(q('.admin-booking-actions')).toBeNull();
     });
 

@@ -85,7 +85,7 @@ it('books two services for a customer from the top bar, sees the toast, finds th
 
     $page->click('Wanda Walkin')
         ->waitForText(adminLine('admin/bookings.dialog.items.title'))
-        ->assertSeeIn('.admin-booking-facts .admin-chip', adminLine('admin/shell.kit.statuses.confirmed'))
+        ->assertSeeIn('.admin-booking-status .admin-chip', adminLine('admin/shell.kit.statuses.confirmed'))
         ->assertCount('.admin-booking-items__row', 2)
         ->assertCount('.admin-booking-trail__entry', 1)
         ->assertSeeIn('.admin-booking-trail__entry', 'Demo Owner');
