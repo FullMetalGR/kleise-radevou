@@ -34,6 +34,7 @@ final class ContrastScripts
         ['--muted-foreground', '--background', 4.5],
         ['--muted-foreground', '--card', 4.5],
         ['--muted-foreground', '--muted', 4.5],
+        ['--muted-foreground', '--tint-strong', 4.5],
         ['--ink-tertiary', '--background', 4.5],
         ['--ink-tertiary', '--card', 4.5],
         ['--primary-deep', '--background', 4.5],

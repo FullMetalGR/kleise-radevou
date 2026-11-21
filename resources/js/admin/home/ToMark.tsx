@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useBookings } from '@/bookings/words';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { CHECK_BOX } from '@/components/ui/check-field';
 import { Confirm } from '@/components/ui/confirm';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Strip } from '@/figures/kit';
 import { isoWeekday } from '@/lib/day';
 import { formatCount, formatDate, formatInstantTime, type TenantClock } from '@/lib/format';
@@ -70,7 +72,7 @@ function Count({ count, words }: { count: number; words: HomeWords }) {
     const figure = formatCount(count, words.locale);
 
     return (
-        <span className="admin-home-to-mark__count font-mono text-sm">
+        <span className="admin-home-to-mark__count text-body-sm font-semibold tabular-nums">
             <span aria-hidden="true">{figure}</span>
             <span className="sr-only">{words.choice('to_mark.count', count, { count: figure })}</span>
         </span>
@@ -134,9 +136,9 @@ function Row({ booking, manage, clock, words, staffShown, onOpen, selection, mar
                     onChange={(event) => selection.set([booking.uuid], event.target.checked)}
                 />
             )}
-            <button type="button" className="admin-home-to-mark__open flex min-w-0 flex-1 flex-col rounded-md text-left text-sm hover:bg-muted" onClick={() => onOpen(booking.uuid)}>
+            <button type="button" className="admin-home-to-mark__open focus-ring flex min-w-0 flex-1 flex-col rounded-md text-left text-sm hover:bg-muted" onClick={() => onOpen(booking.uuid)}>
                 <span className="flex items-baseline gap-2">
-                    <span className="admin-home-to-mark__time font-mono">{time}</span>
+                    <span className="admin-home-to-mark__time tabular-nums">{time}</span>
                     <span className="admin-home-to-mark__customer font-medium">{customerOf(booking.customer, words)}</span>
                 </span>
                 <span className="admin-home-to-mark__what text-muted-foreground">{whatOf(booking.services, booking.staff, staffShown, words)}</span>
@@ -272,10 +274,10 @@ export function ToMark({ list, manage, clock, words, staffShown, onOpen }: Card)
     const rows: Rows = { manage, clock, words, staffShown, onOpen: open, selection, marking };
 
     return (
-        <section ref={card} tabIndex={-1} className="admin-home-to-mark rounded-xl border outline-none focus-visible:ring-3 focus-visible:ring-ring/50" aria-labelledby="home-to-mark-title">
+        <Card flush ref={card} tabIndex={-1} className="admin-home-to-mark outline-none focus-visible:ring-3 focus-visible:ring-ring/50" aria-labelledby="home-to-mark-title">
             <Strip titleId="home-to-mark-title" title={words.text('to_mark.title')} aside={<Count count={list.count} words={words} />} />
             {listed.length === 0 ? (
-                <p className="admin-home-to-mark__empty px-4 py-3 text-sm text-muted-foreground">{words.text('to_mark.empty')}</p>
+                <EmptyState className="admin-home-to-mark__empty py-8">{words.text('to_mark.empty')}</EmptyState>
             ) : (
                 <>
                     <div className="admin-home-to-mark__list max-h-[420px] overflow-y-auto">
@@ -292,6 +294,6 @@ export function ToMark({ list, manage, clock, words, staffShown, onOpen }: Card)
                 </>
             )}
             {manage && <BulkConfirm asking={asking} thankYou={list.thank_you} words={words} busy={marking.busy !== null && marking.busy.uuid === null} onConfirm={confirm} onDismiss={() => setAsking(null)} />}
-        </section>
+        </Card>
     );
 }

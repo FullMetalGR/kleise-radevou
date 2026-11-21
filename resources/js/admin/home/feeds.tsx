@@ -1,23 +1,27 @@
 import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { AWAITING_APPROVAL, NO_FILTERS, queryOf } from '@/bookings/model';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { StatusChip } from '@/components/ui/status-chip';
-import { formatInstant, type TenantClock } from '@/lib/format';
+import { formatCount, formatInstant, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
-import type { KeysOf } from '@/lib/strings';
+import { type KeysOf, useShell } from '@/lib/strings';
 import { Strip } from '@/figures/kit';
 import type { HomeStrings } from '@/types';
 import type { HomeWords } from './words';
 
 /*
- * Home's three feeds: Next up, the next five live bookings; Awaiting approval, the requests on a
- * live hold, the rail's pending number in the attention chip and a link to the Bookings list's
- * Approval inbox in its header strip; and Recent activity, the trail's last five rows, each the
- * whole sentence the server named, with All bookings in its strip. Each row: who or what at the
- * left, the instant in mono in the tenant's formats at the right, the booking's services with
- * its members beneath, a request still awaiting approval chipped. A row naming a booking opens
- * the booking dialog on Home through onOpen. Every sentence is a key of the home section; the
- * names in them are data, a list of them joined as ICU joins one in the user's language.
+ * Home's three feeds: Next up, the next five live bookings, a card under a header strip;
+ * Awaiting approval, the requests on a live hold, on the attention fill, its title beside the
+ * rail's pending number drawn large, each request a ticket on the surface, and a link to the
+ * Bookings list's Approval inbox at its foot; and Recent activity, the trail's last five rows in
+ * two columns where the screen is wide, each the whole sentence the server named, with All
+ * bookings in its strip. Each row: who or what at the left, the instant in tabular figures in the
+ * tenant's formats at the right, the booking's services with its members beneath, a request still
+ * awaiting approval chipped. A row naming a booking opens the booking dialog on Home through
+ * onOpen. Every sentence is a key of the home section; the names in them are data, a list of them
+ * joined as ICU joins one in the user's language.
  */
 
 /** A booking as Next up, Awaiting approval and To mark list it, HomePayload::booking. */
@@ -61,32 +65,49 @@ export function customerOf(customer: string | null, words: HomeWords): string {
     return customer ?? words.text('customer_erased');
 }
 
-function Feed({ id, title, aside, className = '', children }: { id: string; title: string; aside?: ReactNode; className?: string; children: ReactNode }) {
+function Feed({ id, title, aside, children }: { id: string; title: string; aside?: ReactNode; children: ReactNode }) {
     return (
-        <section className={`admin-home-feed admin-home-${id} rounded-xl border ${className}`.trimEnd()} aria-labelledby={`home-${id}-title`}>
+        <Card flush className={`admin-home-feed admin-home-${id}`} aria-labelledby={`home-${id}-title`}>
             <Strip titleId={`home-${id}-title`} title={title} aside={aside} />
             {children}
-        </section>
+        </Card>
     );
 }
 
-function Empty({ id, children }: { id: string; children: ReactNode }) {
-    return <p className={`admin-home-${id}__empty px-4 py-3 text-sm text-muted-foreground`}>{children}</p>;
+function Empty({ id, className, children }: { id: string; className?: string; children: ReactNode }) {
+    return <EmptyState className={[`admin-home-${id}__empty py-8`, className].filter(Boolean).join(' ')}>{children}</EmptyState>;
 }
 
+/** A list that is its card's foot takes the card's lower corners, for its last row to take from it. */
+const FOOT = 'rounded-b-[inherit]';
+
 /**
- * A row: what at the left and when, in mono, at the right on one line, the lines beneath it
- * muted; a row naming a booking is a button opening it.
+ * A row's look: under a rule in a card's list, or a ticket of its own on the surface. A ruled row
+ * runs to the edges of a card that clips, where the house ring, standing clear of its control,
+ * would be cut: its keyboard outline is the same one drawn inside the row's own edge. Under the
+ * keyboard the last row takes the lower corners its list took from the card and the row's button
+ * takes the row's, so the outline at the foot follows the corner instead of being cut by it. The
+ * corners are the keyboard's alone: a card stretched past its list holds its last row above its
+ * foot, so a pointer's fill is square, and the card cuts it where the row is the foot.
  */
-function Row({ className, uuid, onOpen, children }: { className: string; uuid: string | null; onOpen: (uuid: string) => void; children: ReactNode }) {
-    const body = 'flex w-full flex-col px-4 py-2 text-left text-sm';
+const LOOKS = {
+    ruled: { item: 'border-t first:border-t-0 last:has-focus-visible:rounded-b-[inherit]', room: 'px-4 py-2.5', press: 'hover:bg-muted focus-visible:rounded-[inherit] focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-primary' },
+    ticket: { item: 'rounded-inner bg-card text-foreground', room: 'px-4.5 py-3.5', press: 'focus-ring rounded-inner hover:bg-muted' },
+} as const;
+
+/**
+ * A row: what at the left and when, in tabular figures, at the right on one line, the lines
+ * beneath it muted; a row naming a booking is a button opening it.
+ */
+function Row({ className, look = 'ruled', item = '', uuid, onOpen, children }: { className: string; look?: keyof typeof LOOKS; item?: string; uuid: string | null; onOpen: (uuid: string) => void; children: ReactNode }) {
+    const body = `flex w-full flex-col gap-0.5 text-left text-body-sm ${LOOKS[look].room}`;
 
     return (
-        <li className={`${className} border-t first:border-t-0`} data-booking={uuid ?? undefined}>
+        <li className={[className, LOOKS[look].item, item].filter(Boolean).join(' ')} data-booking={uuid ?? undefined}>
             {uuid === null ? (
                 <div className={body}>{children}</div>
             ) : (
-                <button type="button" className={`${className}-open ${body} hover:bg-muted`} onClick={() => onOpen(uuid)}>
+                <button type="button" className={`${className}-open ${body} ${LOOKS[look].press}`} onClick={() => onOpen(uuid)}>
                     {children}
                 </button>
             )}
@@ -94,7 +115,7 @@ function Row({ className, uuid, onOpen, children }: { className: string; uuid: s
     );
 }
 
-/** The row's first line: what at the left, the instant in mono at the right. */
+/** The row's first line: what at the left, the instant in tabular figures at the right. */
 function Head({ id, what, when, children }: { id: string; what: ReactNode; when: ReactNode; children?: ReactNode }) {
     return (
         <span className="flex items-start justify-between gap-3">
@@ -102,7 +123,7 @@ function Head({ id, what, when, children }: { id: string; what: ReactNode; when:
                 {what}
                 {children}
             </span>
-            <span className={`admin-home-${id}__when shrink-0 font-mono`}>{when}</span>
+            <span className={`admin-home-${id}__when shrink-0 tabular-nums`}>{when}</span>
         </span>
     );
 }
@@ -125,7 +146,7 @@ export function NextUp({ rows, clock, words, staffShown, onOpen }: BookingFeed) 
             {rows.length === 0 ? (
                 <Empty id="next">{words.text('next_up.empty')}</Empty>
             ) : (
-                <ol className="flex flex-col">
+                <ol className={`flex flex-col ${FOOT}`}>
                     {rows.map((booking) => (
                         <Row key={booking.uuid} className="admin-home-next__row" uuid={booking.uuid} onOpen={onOpen}>
                             <Head id="next" what={<span className="admin-home-next__customer font-medium">{customerOf(booking.customer, words)}</span>} when={formatInstant(booking.starts_at, clock)}>
@@ -141,36 +162,48 @@ export function NextUp({ rows, clock, words, staffShown, onOpen }: BookingFeed) 
 }
 
 export function Awaiting({ rows, clock, words, staffShown, onOpen, pending }: BookingFeed & { pending: number }) {
-    // Where the strip is short of room its parts give way in turn: the title wraps first, then
-    // the link, which takes what the chip leaves and never less than its longest word, and the
-    // chip last, its label cut with an ellipsis while its icon and its figure stay.
-    const aside = (
-        <span className="admin-home-awaiting__aside flex min-w-0 items-center gap-3">
-            {pending > 0 && <StatusChip status="awaiting_approval" count={pending} className="admin-home-awaiting__count min-w-0" />}
-            <Link href={APPROVAL_INBOX} className="admin-home-awaiting__all grow basis-0 text-sm underline">
-                {words.text('awaiting.see_all')}
-            </Link>
-        </span>
-    );
+    const shell = useShell();
 
+    // The head holds the title and, where something waits, the figure; where the card is short of
+    // room the figure wraps under the title rather than either giving way.
     return (
-        <Feed id="awaiting" title={words.text('awaiting.title')} aside={aside} className="[&>header>h2]:shrink-[9999]">
+        <Card className="admin-home-feed admin-home-awaiting flex flex-col gap-4 bg-attention-soft text-attention-ink inset-ring inset-ring-attention-line" aria-labelledby="home-awaiting-title">
+            <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                <h2 id="home-awaiting-title" className="text-tile-title">
+                    {words.text('awaiting.title')}
+                </h2>
+                {pending > 0 && (
+                    <p className="admin-home-awaiting__count">
+                        <span aria-hidden="true" className="font-display text-[4.25rem] leading-[0.9] font-semibold tracking-[-0.06em] tabular-nums max-desktop:text-[3.5rem]">
+                            {formatCount(pending, words.locale)}
+                        </span>
+                        <span className="sr-only">{shell.choice('kit.counted.awaiting_approval', pending)}</span>
+                    </p>
+                )}
+            </header>
             {rows.length === 0 ? (
-                <Empty id="awaiting">{words.text('awaiting.empty')}</Empty>
+                <Empty id="awaiting" className="text-attention-ink">
+                    {words.text('awaiting.empty')}
+                </Empty>
             ) : (
-                <ol className="flex flex-col">
+                <ol className="flex flex-col gap-2.5">
                     {rows.map((booking) => (
-                        <Row key={booking.uuid} className="admin-home-awaiting__row" uuid={booking.uuid} onOpen={onOpen}>
-                            <Head id="awaiting" what={<span className="admin-home-awaiting__customer font-medium">{customerOf(booking.customer, words)}</span>} when={formatInstant(booking.starts_at, clock)} />
+                        <Row key={booking.uuid} className="admin-home-awaiting__row" look="ticket" uuid={booking.uuid} onOpen={onOpen}>
+                            <Head id="awaiting" what={<span className="admin-home-awaiting__customer font-semibold">{customerOf(booking.customer, words)}</span>} when={formatInstant(booking.starts_at, clock)} />
                             <span className="admin-home-awaiting__what text-muted-foreground">{whatOf(booking.services, booking.staff, staffShown, words)}</span>
                             {booking.hold_expires_at !== null && (
-                                <span className="admin-home-awaiting__decide text-xs text-muted-foreground">{words.text('awaiting.decide_by', { end: formatInstant(booking.hold_expires_at, clock) })}</span>
+                                <span className="admin-home-awaiting__decide mt-2 border-t border-dashed border-attention-line pt-2 text-small font-semibold text-attention-ink">
+                                    {words.text('awaiting.decide_by', { end: formatInstant(booking.hold_expires_at, clock) })}
+                                </span>
                             )}
                         </Row>
                     ))}
                 </ol>
             )}
-        </Feed>
+            <Link href={APPROVAL_INBOX} className="admin-home-awaiting__all focus-ring mt-auto self-start rounded-inner text-body-sm font-semibold underline underline-offset-2">
+                {words.text('awaiting.see_all')}
+            </Link>
+        </Card>
     );
 }
 
@@ -195,9 +228,16 @@ function lineOf(row: HomeActivityRow, clock: TenantClock, words: HomeWords, staf
     return booking === '' ? start : words.text('activity.line', { booking, start });
 }
 
+/**
+ * The foot of the list in two columns: the last row shares one lower corner with the card, the
+ * left one in the left column and the right one in the right, where the row before it holds the
+ * left. As in one column, a row takes its corner under the keyboard alone.
+ */
+const TWO_COLUMN_FOOT = '@3xl:odd:last:has-focus-visible:rounded-br-none @3xl:even:last:has-focus-visible:rounded-bl-none @3xl:odd:nth-last-2:has-focus-visible:rounded-bl-[inherit]';
+
 export function Activity({ rows, clock, words, staffShown, onOpen }: { rows: HomeActivityRow[]; clock: TenantClock; words: HomeWords; staffShown: boolean; onOpen: (uuid: string) => void }) {
     const aside = (
-        <Link href={ALL_BOOKINGS} className="admin-home-activity__all text-sm underline">
+        <Link href={ALL_BOOKINGS} className="admin-home-activity__all focus-ring rounded-inner text-body-sm underline">
             {words.text('activity.all')}
         </Link>
     );
@@ -207,17 +247,17 @@ export function Activity({ rows, clock, words, staffShown, onOpen }: { rows: Hom
             {rows.length === 0 ? (
                 <Empty id="activity">{words.text('activity.empty')}</Empty>
             ) : (
-                <ol className="flex flex-col">
+                <ol className={`grid grid-cols-1 @3xl:grid-cols-2 @3xl:gap-x-10 ${FOOT}`}>
                     {rows.map((row, index) => {
                         const line = lineOf(row, clock, words, staffShown);
 
                         return (
-                            <Row key={`${row.at}-${index}`} className="admin-home-activity__row" uuid={row.booking} onOpen={onOpen}>
+                            <Row key={`${row.at}-${index}`} className="admin-home-activity__row" item={`@3xl:nth-2:border-t-0 ${TWO_COLUMN_FOOT}`} uuid={row.booking} onOpen={onOpen}>
                                 <Head
                                     id="activity"
                                     what={<span className="admin-home-activity__sentence font-medium">{sentenceOf(row, words)}</span>}
                                     when={
-                                        <time className="admin-home-activity__at font-mono" dateTime={row.at}>
+                                        <time className="admin-home-activity__at tabular-nums" dateTime={row.at}>
                                             {formatInstant(row.at, clock)}
                                         </time>
                                     }
