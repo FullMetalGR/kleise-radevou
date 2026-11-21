@@ -405,6 +405,12 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
         ->click('.admin-wizard-cancel')
         ->assertNotPresent('.admin-wizard');
 
+    // All staff, so the Day opened from Month below shows Elena's booking whatever weekday the
+    // suite runs on: on a weekend she holds no hours and Scheduled staff would leave her out.
+    $page->click('#calendar-who')
+        ->click('.admin-calendar-who__preset[data-who="all"]')
+        ->assertSeeIn('#calendar-who', adminLine('admin/calendar.who.all'));
+
     // A day holds its number and its count, the count's words read with the day's name alone.
     $page->click('.admin-calendar-view button:nth-child(3)')
         ->waitForText((new DateTimeImmutable('now', new DateTimeZone('Europe/Athens')))->format('F Y'))

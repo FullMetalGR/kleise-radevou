@@ -203,12 +203,20 @@ it('shows the week as a row per member with a working day\'s bookings, one await
 });
 
 it('lands a staff user on the Calendar pinned to Me with their own bookings alone, Who read-only and no slot selection, and their own request opens to Approve with neither email nor phone', function () {
-    calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '10:00');
-    calendarBooking('Bo South', 'confirmed', 'Nikos Georgiou', '11:00', 'Beard trim');
-    $request = calendarBooking('Rita Request', 'awaiting_approval', 'Elena Papadaki', '14:00', 'Bridal trial');
+    // An empty slot is clicked below, and a day Elena holds no hours on is hatched over every
+    // slot, so the bookings stand on a day she works: today on a weekday, else the Monday after.
+    $days = calendarElenaWorkday();
+    calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '10:00', days: $days);
+    calendarBooking('Bo South', 'confirmed', 'Nikos Georgiou', '11:00', 'Beard trim', days: $days);
+    $request = calendarBooking('Rita Request', 'awaiting_approval', 'Elena Papadaki', '14:00', 'Bridal trial', days: $days);
     addTenantUser('elena@luna.example', 'staff', staff: 'Elena Papadaki');
 
-    $page = Admin::signIn($this, 'luna', 'elena@luna.example', 'correct horse battery staple')->waitForText(calendarBlock('Cora Cut', 'Haircut'));
+    // The sign-in lands on the Calendar, pinned; that day's Day is then opened by its address.
+    $page = Admin::signedIn($this, 'luna', 'elena@luna.example', 'correct horse battery staple');
+    $page->assertPathIs('/admin/calendar')
+        ->assertSeeIn('#calendar-who', adminLine('admin/calendar.who.me'))
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day&date='.calendarDay($days)))
+        ->waitForText(calendarBlock('Cora Cut', 'Haircut'));
     $page->assertPathIs('/admin/calendar')
         ->assertDontSeeIn('.admin-calendar', 'Bo South')
         ->assertSeeIn('#calendar-who', adminLine('admin/calendar.who.me'))
