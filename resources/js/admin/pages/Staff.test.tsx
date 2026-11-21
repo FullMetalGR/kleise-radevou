@@ -404,10 +404,43 @@ describe('the list screen', () => {
         expect(texts('.admin-staff__id .admin-table__value')).toEqual(['1', '2', '3']);
     });
 
-    it('draws each name after a dot in the member\'s calendar colour as a link to their page, the Title column, and the hours figure linking to Shifts', () => {
+    it('draws the search as a pill with its label shown, the toggle as a check field, and Shifts quieter than New staff member among the first row\'s buttons', () => {
+        render(propsWith({ kind: 'list' }));
+
+        const search = document.querySelector('#staff-search');
+        expect(search?.closest('.admin-search-field')?.querySelector('label[for="staff-search"]')?.classList.contains('sr-only')).toBe(false);
+        expect(search?.classList.contains('admin-staff-search')).toBe(true);
+        expect(search?.classList.contains('rounded-full')).toBe(true);
+        expect(search?.closest('.admin-search-field')?.querySelector('svg.lucide-search')?.getAttribute('aria-hidden')).toBe('true');
+        expect(search?.closest('.admin-search-field')?.querySelectorAll('button')).toHaveLength(0);
+
+        const toggle = document.querySelector('.admin-staff-toggle');
+        expect(toggle?.classList.contains('admin-check-field')).toBe(true);
+        expect(toggle?.querySelector('input#staff-show-inactive')?.classList.contains('admin-check-field__tick')).toBe(true);
+        expect(toggle?.querySelector('input')?.classList.contains('admin-staff-toggle__tick')).toBe(true);
+
+        const actions = document.querySelector('.admin-staff-screen .admin-page-header__actions');
+        expect(Array.from(actions?.querySelectorAll('button') ?? []).map((button) => [button.matches('.admin-staff-shifts'), button.matches('.admin-staff-new'), button.classList.contains('admin-button--secondary'), button.classList.contains('admin-button--primary')])).toEqual([
+            [true, false, true, false],
+            [false, true, false, true],
+        ]);
+        // Both stand at the kit's full height, no longer the small size.
+        expect(actions?.querySelectorAll('[class*="admin-button--sm"]')).toHaveLength(0);
+
+        // The screen's root is a query container, so its table's head can read the card's width.
+        expect(document.querySelector('.admin-staff-screen')?.classList.contains('@container')).toBe(true);
+    });
+
+    it('draws each name after the member\'s initials ringed in their calendar colour as a link to their page, the Title column, and the hours figure linking to Shifts', () => {
         render(propsWith({ kind: 'list' }, [LUNA, { ...ELENA, title: 'Senior stylist', colour: 'purple' }, NIKOS]));
 
-        expect(Array.from(document.querySelectorAll<HTMLElement>('.admin-staff__dot')).map((dot) => dot.style.backgroundColor)).toEqual(['rgb(86, 180, 233)', 'rgb(204, 121, 167)']);
+        // Each avatar is the list size of the initials, ringed inside its edge in the member's hue,
+        // their own colour or the spread's, and hidden from a screen reader beside the name's link.
+        expect(Array.from(document.querySelectorAll<HTMLElement>('.admin-staff__dot')).map((dot) => [dot.textContent, dot.style.boxShadow, dot.getAttribute('aria-hidden')])).toEqual([
+            ['LS', 'inset 0 0 0 2px #56b4e9', 'true'],
+            ['EP', 'inset 0 0 0 2px #cc79a7', 'true'],
+        ]);
+        expect(Array.from(document.querySelectorAll('.admin-staff__dot')).every((dot) => dot.classList.contains('size-7.5') && dot.nextElementSibling?.matches('a.admin-staff__name'))).toBe(true);
         expect(Array.from(document.querySelectorAll('a.admin-staff__name')).map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
             ['Luna Hair Studio', '/admin/staff/1'],
             ['Elena Papadaki', '/admin/staff/2'],
@@ -529,6 +562,59 @@ describe('the list screen', () => {
         expect(document.querySelector('.admin-staff-colours')).toBeNull();
         render(withoutFeature({ kind: 'list' }));
         expect(document.querySelector('.admin-staff-colours')).toBeNull();
+    });
+
+    it('draws Colour bookings by as radio pills, the chosen one filled, and each member\'s colours as a row of swatches, Automatic first as a colour wheel and the chosen one ticked', () => {
+        render(propsWith({ kind: 'list' }, [LUNA, { ...ELENA, colour: 'purple' }, NIKOS]));
+
+        const card = document.querySelector('.admin-staff-colours');
+        expect(card?.classList.contains('bg-card')).toBe(true);
+        expect(card?.classList.contains('shadow-card')).toBe(true);
+
+        // Colour bookings by is the radio pills, a fieldset keeping its own hook and its line under the pills.
+        const by = document.querySelector('.admin-staff-colours__by');
+        expect(by?.tagName).toBe('FIELDSET');
+        expect(by?.classList.contains('admin-radio-pills')).toBe(true);
+        expect(by?.lastElementChild?.matches('p.admin-staff-colours__help')).toBe(true);
+        const pills = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="staff-colour-by"]'));
+        expect(pills.map((radio) => [radio.value, radio.classList.contains('sr-only'), radio.closest('label')?.classList.contains('bg-foreground')])).toEqual([
+            ['staff', true, true],
+            ['category', true, false],
+            ['status', true, false],
+        ]);
+
+        // Each member's row keeps its native radios, one group, Automatic first.
+        const row = '.admin-staff-colours__member[data-staff="2"]';
+        const radios = Array.from(document.querySelectorAll<HTMLInputElement>(`${row} input`));
+        expect(radios.map((radio) => [radio.type, radio.name, radio.value, radio.classList.contains('sr-only')])).toEqual(
+            ['', 'orange', 'sky_blue', 'green', 'yellow', 'blue', 'vermilion', 'purple'].map((value) => ['radio', 'staff-colour-2', value, true]),
+        );
+        // Every swatch is named by its label, the swatch itself hidden from a screen reader.
+        expect(Array.from(document.querySelectorAll(`${row} label`)).every((label) => label.querySelector('input') !== null && (label.textContent ?? '') !== '' && label.querySelector('.admin-staff-colours__swatch')?.getAttribute('aria-hidden') === 'true')).toBe(true);
+        expect(document.querySelector<HTMLElement>(`${row} .admin-staff-colours__swatch`)?.style.backgroundImage).toMatch(/^conic-gradient\(/);
+
+        // The chosen swatch alone carries the tick, beside its name.
+        expect(Array.from(document.querySelectorAll(`${row} label`)).map((label) => label.querySelector('svg.lucide-check') !== null)).toEqual([false, false, false, false, false, false, false, true]);
+        render(propsWith({ kind: 'list' }, [LUNA, ELENA, NIKOS]));
+        expect(Array.from(document.querySelectorAll(`${row} label`)).map((label) => label.querySelector('svg.lucide-check') !== null)).toEqual([true, false, false, false, false, false, false, false]);
+
+        // The saving line is a paragraph read out as a status while a write is out.
+        act(() => document.querySelector<HTMLInputElement>('input[name="staff-colour-by"][value="status"]')?.click());
+        act(() => lastVisit(inertia.put)[2].onStart?.());
+        expect(document.querySelector('p.admin-staff-colours__saving')?.getAttribute('role')).toBe('status');
+        expect(Array.from(document.querySelectorAll<HTMLInputElement>('.admin-staff-colours input')).every((radio) => radio.disabled)).toBe(true);
+    });
+
+    it('gives each swatch, drawn 40px high, a touch area 44px high, a layer of the label\'s own reaching 2px past the pill above and below and no further sideways, so a press on it picks the colour', () => {
+        render(propsWith({ kind: 'list' }, [LUNA, ELENA, NIKOS]));
+
+        const chips = Array.from(document.querySelectorAll<HTMLLabelElement>('.admin-staff-colours__member[data-staff="2"] label'));
+        expect(chips).toHaveLength(8);
+        expect(chips.map((chip) => ['h-10', 'relative', 'after:absolute', 'after:inset-x-0', 'after:-inset-y-0.5'].filter((look) => !chip.classList.contains(look)))).toEqual(chips.map(() => []));
+
+        // The layer belongs to the label, so a press on it is a press on the label, which picks its radio.
+        act(() => chips[3]?.click());
+        expect(lastVisit(inertia.put).slice(0, 2)).toEqual(['/admin/staff/2/colour', { colour: 'green' }]);
     });
 
     it('keeps a member\'s closures card out of their form, so its Add sends the closure and Save the member, each from its own form', () => {
@@ -1014,6 +1100,25 @@ describe('without the staff feature', () => {
         // configures nothing.
         expect(document.querySelectorAll('.admin-staff-detail input, .admin-staff-detail select, .admin-staff-detail textarea, .admin-staff-detail button:not(.admin-booking-link__copy)')).toHaveLength(0);
         expect(text('.admin-staff-title .admin-booking-link__copy')).toBe(shell.text(COPY_BOOKING_LINK));
+    });
+
+    it('lays a member\'s read-only page on two columns where the page is wide, Basics and Exceptions across, Services and Weekly availability side by side', () => {
+        render(withoutFeature({ kind: 'detail', id: 2 }));
+
+        const root = document.querySelector('.admin-staff-view');
+        expect(root?.classList.contains('@container')).toBe(true);
+
+        const sections = Array.from(document.querySelectorAll('.admin-staff-view .admin-section'));
+        const grid = sections[0]?.parentElement;
+        expect(sections.every((section) => section.parentElement === grid)).toBe(true);
+        expect(['grid', '@4xl:grid-cols-2'].every((look) => grid?.classList.contains(look))).toBe(true);
+        expect(Array.from(grid?.classList ?? []).filter((look) => /^(sm|md|lg|xl|2xl):/.test(look))).toEqual([]);
+        expect(sections.map((section) => [section.querySelector('h2')?.textContent, section.classList.contains('@4xl:col-span-2')])).toEqual([
+            [staff.text('form.basics'), true],
+            [staff.text('form.services'), false],
+            [staff.text('form.weekly'), false],
+            [staff.text('page.exceptions'), true],
+        ]);
     });
 
     it('shows a named member\'s presentation read-only in Basics, Offered online, Title, Bio and the photo, each as stored', () => {

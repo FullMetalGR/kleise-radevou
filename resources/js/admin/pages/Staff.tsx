@@ -4,7 +4,7 @@ import { Users } from 'lucide-react';
 import { ListDetail, SettledList } from '@/components/settled-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CHECK_BOX } from '@/components/ui/check-field';
+import { CheckField } from '@/components/ui/check-field';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
@@ -17,8 +17,7 @@ import { type Failure, owningFailure as owning } from '@/lib/visits';
 import { ImageSlot, type ImageSlotWords } from '@/settings/ImageSlot';
 import { useColourByWrite } from '@/calendar/colour-by';
 import { bookingsWordsOf } from '@/bookings/words';
-import { Field } from '@/components/ui/field';
-import { FIELD_HEIGHT, TextInput } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import type { StaffColour } from '@/lib/hue';
 import { closurePath, type ClosureWho } from '@/staff/BlackoutsCard';
 import { Closures } from '@/staff/Closures';
@@ -252,17 +251,17 @@ export default function Staff() {
         return (
             <StaffProvider words={words}>
                 <Head title={words.text('page.title')} />
-                <div className="admin-staff-screen flex flex-col gap-4">
+                <div className="admin-staff-screen @container flex flex-col gap-4">
                     <PageHeader
                         title={words.text('page.title')}
                         lead={<span className="admin-staff-lead">{words.text('page.lead')}</span>}
                         actions={
                             editable ? (
                                 <>
-                                    <Button variant="secondary" size="small" className="admin-staff-shifts" onClick={() => router.get(SHIFTS_PATH)}>
+                                    <Button variant="secondary" className="admin-staff-shifts" onClick={() => router.get(SHIFTS_PATH)}>
                                         {words.text('page.shifts')}
                                     </Button>
-                                    <Button variant="primary" size="small" className="admin-staff-new" onClick={() => go(`${LIST}/new`)}>
+                                    <Button variant="primary" className="admin-staff-new" onClick={() => go(`${LIST}/new`)}>
                                         {words.text('page.new')}
                                     </Button>
                                 </>
@@ -271,13 +270,15 @@ export default function Staff() {
                     />
                     {readOnly}
                     <div className="flex flex-wrap items-end gap-4">
-                        <Field id="staff-search" label={words.text('page.search')} className="w-full max-w-96">
-                            {(control) => <TextInput {...control} type="search" className="admin-staff-search" placeholder={words.text('page.search_placeholder')} value={query} onChange={(event) => setQuery(event.target.value)} />}
-                        </Field>
-                        <div className={`admin-staff-toggle flex items-center gap-2 text-sm ${FIELD_HEIGHT}`}>
-                            <input type="checkbox" id="staff-show-inactive" className={`admin-staff-toggle__tick ${CHECK_BOX}`} checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
-                            <label htmlFor="staff-show-inactive">{words.text('page.show_inactive', { count: formatCount(inactive, words.locale) })}</label>
-                        </div>
+                        <SearchField id="staff-search" label={words.text('page.search')} className="admin-staff-search" placeholder={words.text('page.search_placeholder')} value={query} onChange={(event) => setQuery(event.target.value)} />
+                        <CheckField
+                            id="staff-show-inactive"
+                            label={words.text('page.show_inactive', { count: formatCount(inactive, words.locale) })}
+                            checked={showInactive}
+                            onChange={setShowInactive}
+                            className="admin-staff-toggle h-11.5 justify-center"
+                            tickClassName="admin-staff-toggle__tick"
+                        />
                     </div>
                     <SettledList
                         count={rows.length}

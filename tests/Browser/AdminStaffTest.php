@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Admin\BlackoutController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\StaffPhotoController;
 use App\Http\Requests\StaffRequest;
 use App\Infrastructure\Storage\TenantImages;
+use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +14,9 @@ use Illuminate\Support\Facades\Storage;
 use Tests\Browser\Support\Admin;
 use Tests\Browser\Support\Flow;
 use Tests\Browser\Support\FlowScripts;
+use Tests\Browser\Support\Look;
 use Tests\Browser\Support\MultipartBodies;
+use Tests\Browser\Support\PhoneScripts;
 use Tests\Support\LunaFixture;
 
 /*
@@ -44,6 +48,67 @@ const STAFF_FACE_LOADED = <<<'JS'
         };
         poll();
     })
+    JS;
+
+/** The value of each Colour bookings by radio whose pill is filled dark, joined: the chosen one alone. */
+const COLOUR_BY_FILLED = <<<'JS'
+    Array.from(document.querySelectorAll('.admin-staff-colours__by label')).filter((pill) => pill.classList.contains('bg-foreground')).map((pill) => pill.querySelector('input').value).join(',')
+    JS;
+
+/**
+ * How a member's read-only page lays its four cards: "two" where Basics runs across the page,
+ * Services and Weekly availability stand side by side under it, each as wide as half of it, and
+ * Exceptions runs across under both; "one" where every card stands under the one before it, each
+ * as wide as Basics; "neither" for anything else.
+ */
+const STAFF_VIEW_COLUMNS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const box = (name) => document.querySelector('.admin-staff-view .admin-section--' + name)?.getBoundingClientRect();
+        const [basics, services, weekly, exceptions] = ['basics', 'services', 'weekly', 'exceptions'].map(box);
+        if ([basics, services, weekly, exceptions].some((part) => part === undefined)) {
+            return 'missing';
+        }
+        const near = (a, b) => Math.abs(a - b) <= 1;
+        const across = (part) => near(part.left, basics.left) && near(part.right, basics.right);
+        const two = services.top >= basics.bottom && near(services.top, weekly.top) && weekly.left > services.right && near(services.left, basics.left) && near(weekly.right, basics.right) && across(exceptions) && exceptions.top >= Math.max(services.bottom, weekly.bottom);
+        const one = [services, weekly, exceptions].every((part, index, parts) => across(part) && part.top >= (index === 0 ? basics : parts[index - 1]).bottom);
+        return two ? 'two' : one ? 'one' : 'neither';
+    })
+    JS;
+
+/**
+ * Whether the values a tenant types at any length keep to their place on the page in view: a
+ * member's email on their read-only page and each member's name over their colours. A value is
+ * kept where its words stay inside its own box, and the box inside the one around it and inside
+ * the page's width. "none" where the page prints neither.
+ */
+const STAFF_VALUES_KEPT = <<<'JS'
+    document.fonts.ready.then(() => {
+        const values = Array.from(document.querySelectorAll('.admin-staff-view__email, .admin-staff-colours__member > legend'));
+        const kept = (value) => {
+            const box = value.getBoundingClientRect();
+            return value.scrollWidth <= value.clientWidth + 1 && box.right <= value.parentElement.getBoundingClientRect().right + 1 && box.right <= document.documentElement.clientWidth;
+        };
+        return values.length === 0 ? 'none' : values.every(kept);
+    })
+    JS;
+
+/**
+ * Whether every colour swatch answers a press just outside its drawn pill: the element 1px above
+ * the pill and the one 1px below it are the swatch's own label, whose radio a press picks, and the
+ * layer that takes the press is 44px high. "none" where the page draws no swatch.
+ */
+const SWATCH_TOUCH_AREAS = <<<'JS'
+    (() => {
+        const chips = Array.from(document.querySelectorAll('.admin-staff-colours__chip'));
+        const reached = (chip) => {
+            chip.scrollIntoView({ block: 'center', behavior: 'instant' });
+            const box = chip.getBoundingClientRect();
+            const middle = box.left + box.width / 2;
+            return [box.top - 1, box.bottom + 1].every((y) => document.elementFromPoint(middle, y) === chip) && chip.control === chip.querySelector('input') && parseFloat(getComputedStyle(chip, '::after').height) >= 44;
+        };
+        return chips.length === 0 ? 'none' : chips.every(reached);
+    })()
     JS;
 
 beforeEach(function () {
@@ -234,3 +299,62 @@ it('adds a closure from a member\'s own page, the card\'s Add sending the closur
 
     expect(DB::table('tenant_luna.blackouts')->where('staff_id', $elena)->where('date', $day->format('Y-m-d'))->value('reason'))->toBe('Training');
 });
+
+it('moves Colour bookings by on the arrow keys in the Calendar colours card, each choice saved as it lands and its pill alone filled', function () {
+    $chosen = 'input[name="staff-colour-by"]:checked';
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1440, 900);
+    $page->navigate(Admin::url('luna', '/staff'))
+        ->waitForText(adminLine('admin/staff.colours.title'))
+        ->assertValue($chosen, 'staff')
+        ->assertScript(COLOUR_BY_FILLED, 'staff')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    Look::shot($page, 'staff-list-1440');
+
+    foreach (['category', 'status'] as $word) {
+        $page->keys($chosen, 'ArrowRight')
+            ->waitForText(adminLine(SettingsController::COLOUR_BY_SAVED))
+            ->click('.admin-toast-dismiss')
+            ->assertValue($chosen, $word)
+            ->assertScript(COLOUR_BY_FILLED, $word)
+            ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+        Look::shot($page, 'staff-colours-'.$word.'-1440');
+
+        expect(DB::table('tenant_luna.settings')->value('colour_by'))->toBe($word);
+    }
+
+    $page->assertNoJavaScriptErrors();
+});
+
+it('lays a member\'s read-only page on two columns at 1440px and on one on a phone, the list with its colours card and the page never scrolling sideways on a phone, a name and an email of one long word wrapping where they stand and each swatch answering a press just outside its pill', function (SiteLanguage $language) {
+    $elena = DB::table('tenant_luna.staff')->where('name', 'Elena Papadaki')->value('id');
+    assert(is_int($elena));
+    // A name and an email of one unbroken word each, wider than a phone.
+    DB::table('tenant_luna.staff')->where('id', $elena)->update(['name' => str_repeat('Papadakipoulou', 5), 'email' => str_repeat('papadakipoulou', 4).'@luna.example']);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(390, 844);
+    $page->navigate(Admin::url('luna', '/staff'))
+        ->waitForText(adminLine('admin/staff.colours.title', [], $language))
+        ->assertVisible('.admin-staff-search')
+        ->assertScript(STAFF_VALUES_KEPT, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    Look::shot($page, 'staff-list-390-'.$language->value);
+    $page->assertScript(SWATCH_TOUCH_AREAS, true);
+
+    // Without the staff feature a member's page is the read-only one.
+    DB::table('tenants')->where('slug', 'luna')->update(['entitlements' => '{}']);
+    $page->navigate(Admin::url('luna', '/staff/'.$elena))
+        ->waitForText(adminLine('admin/staff.page.exceptions', [], $language))
+        ->assertPresent('.admin-staff-view')
+        ->assertScript(STAFF_VIEW_COLUMNS, 'one')
+        ->assertScript(STAFF_VALUES_KEPT, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    Look::shot($page, 'staff-view-390-'.$language->value);
+
+    $page->resize(1440, 900)
+        ->assertScript(STAFF_VIEW_COLUMNS, 'two')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertNoJavaScriptErrors();
+    Look::shot($page, 'staff-view-1440-'.$language->value);
+})->with([SiteLanguage::English, SiteLanguage::Greek]);

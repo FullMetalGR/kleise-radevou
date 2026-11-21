@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { Initials } from '@/components/initials';
 import { Card } from '@/components/ui/card';
 import { StatusChip } from '@/components/ui/status-chip';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
@@ -10,11 +11,11 @@ import { hoursFigure, hoursLine, type StaffMember, statusWord } from './model';
 import { useStaff } from './words';
 
 /*
- * The staff table: ID, Name, Title, Email, Status and Hours this week. The name follows a dot in
- * the member's calendar colour, their own or the spread's (lib/hue.ts), and is the link to their
- * page. Hours this week is one whole line per case (every week or this week, with the week's
- * closures reaching the member or without), its :hours the figure set as the link to Shifts where
- * the hours are set, placed where the line puts it; all of it the server's reading
+ * The staff table: ID, Name, Title, Email, Status and Hours this week. The name follows the
+ * member's initials ringed in their calendar colour, their own or the spread's (lib/hue.ts), and is
+ * the link to their page. Hours this week is one whole line per case (every week or this week,
+ * with the week's closures reaching the member or without), its :hours the figure set as the link
+ * to Shifts where the hours are set, placed where the line puts it; all of it the server's reading
  * (ShiftRecords::hoursOf) and only spelled here. The implicit member is an ordinary row here. The
  * row keeps a click handler as a larger mouse target. Every word is a key of the staff section,
  * the count a choice key.
@@ -22,6 +23,13 @@ import { useStaff } from './words';
 
 /** The Shifts screen, where a member's hours are set. */
 const SHIFTS = '/admin/shifts';
+
+/*
+ * The room around the heading: the first cell's sides on a wide card, the rows' sides where the
+ * table reads as rows, below the wide breakpoint or on a card under 42rem (read off the screen's
+ * root, a query container as wide as the card), so heading and rows share a start line.
+ */
+const HEAD_ROOM = 'px-6 pt-5 pb-3.5 max-wide:px-4.5 @max-2xl:px-4.5';
 
 type Props = {
     rows: readonly StaffMember[];
@@ -34,11 +42,11 @@ export function StaffTable({ rows, clock, onSelect }: Props) {
 
     return (
         <Card flush className="admin-card admin-staff" aria-labelledby="staff-head">
-            <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
-                <h2 id="staff-head" className="font-semibold">
+            <header className={`flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 ${HEAD_ROOM}`}>
+                <h2 id="staff-head" className="text-section-title">
                     {words.text('table.title')}
                 </h2>
-                <p className="admin-staff__count text-sm text-muted-foreground">{words.choice('table.count', rows.length)}</p>
+                <p className="admin-staff__count text-body-sm text-muted-foreground">{words.choice('table.count', rows.length)}</p>
             </header>
             <Table>
                 <TableHead>
@@ -58,14 +66,16 @@ export function StaffTable({ rows, clock, onSelect }: Props) {
                                 {member.id}
                             </Td>
                             <Td label={words.text('table.name')} header>
-                                <span className="admin-staff__dot mr-2 inline-block size-4 rounded-full align-[-3px]" style={{ backgroundColor: memberHue(member) }} aria-hidden="true" />
-                                <a
-                                    href={`/admin/staff/${member.id}`}
-                                    className="admin-staff__name font-medium underline underline-offset-3"
-                                    onClick={(event) => inPage(event, () => onSelect(member.id))}
-                                >
-                                    {member.name}
-                                </a>
+                                <span className="flex items-center gap-2.5">
+                                    <Initials name={member.name} hue={memberHue(member)} size="list" className="admin-staff__dot" />
+                                    <a
+                                        href={`/admin/staff/${member.id}`}
+                                        className="admin-staff__name font-medium underline underline-offset-3"
+                                        onClick={(event) => inPage(event, () => onSelect(member.id))}
+                                    >
+                                        {member.name}
+                                    </a>
+                                </span>
                             </Td>
                             <Td label={words.text('table.job_title')} className="admin-staff__title">
                                 {member.title ?? ''}
