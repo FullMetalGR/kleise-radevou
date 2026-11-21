@@ -171,7 +171,6 @@ export function DateMenu({ title, name = title, onBook, onClosure, onDay, curren
             label={title}
             title={title}
             items={items}
-            className="w-56"
             open={open}
             onOpenChange={setOpen}
             trigger={

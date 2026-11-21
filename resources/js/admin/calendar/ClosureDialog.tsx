@@ -111,59 +111,65 @@ type FieldsProps = {
     granularity: number;
 };
 
-/** The dialog's fields: Who, Date and Until, Reason, Closed all day, and Start and End while it is unticked. */
+/**
+ * The dialog's fields: Who, Date and Until, Reason, Closed all day, and Start and End while it is
+ * unticked, laid out by the dialog's own width: Date and Until side by side, and Start and End,
+ * where it holds two columns, the rest across both.
+ */
 function ClosureFields({ typed, onChange, onDates, untilError, refusals, members, clock, weekStart, granularity }: FieldsProps) {
     const shell = useShell();
     const words = useCalendarWords();
     const fields = useFocusFirstFailing<HTMLDivElement>(refusals);
 
     return (
-        <div ref={fields} className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-                <Field id="closure-who" label={words.text('closure.who')}>
-                    {(control) => (
-                        <Select
-                            {...control}
-                            className="admin-closure__who w-full"
-                            options={[
-                                {
-                                    value: BUSINESS,
-                                    label: words.text(WHOLE_BUSINESS),
-                                },
-                                ...members.map((member) => ({
-                                    value: String(member.id),
-                                    label: member.name,
-                                })),
-                            ]}
-                            value={typed.who}
-                            onChange={(who) => onChange({ who })}
-                        />
-                    )}
+        <div className="@container">
+            <div ref={fields} className="admin-closure__fields grid gap-3 @md:grid-cols-2">
+                <div className="@md:col-span-2">
+                    <Field id="closure-who" label={words.text('closure.who')}>
+                        {(control) => (
+                            <Select
+                                {...control}
+                                className="admin-closure__who w-full"
+                                options={[
+                                    {
+                                        value: BUSINESS,
+                                        label: words.text(WHOLE_BUSINESS),
+                                    },
+                                    ...members.map((member) => ({
+                                        value: String(member.id),
+                                        label: member.name,
+                                    })),
+                                ]}
+                                value={typed.who}
+                                onChange={(who) => onChange({ who })}
+                            />
+                        )}
+                    </Field>
+                </div>
+                <Field id="closure-date" label={words.text('closure.date')}>
+                    {(control) => <DateField {...control} className="admin-closure__date" value={typed.date} onChange={(date) => onDates({ date })} clock={clock} weekStart={weekStart} />}
                 </Field>
+                <Field id="closure-until" label={words.text('closure.until')} help={words.text('closure.until_help')} error={untilError}>
+                    {(control) => <DateField {...control} className="admin-closure__until" value={typed.until} onChange={(until) => onDates({ until })} clock={clock} weekStart={weekStart} />}
+                </Field>
+                <Field id="closure-reason" label={words.text('closure.reason')} help={shell.text('shared.closure.reason_help')} className="@md:col-span-2">
+                    {(control) => <TextInput {...control} className="admin-closure__reason" value={typed.reason} onChange={(event) => onChange({ reason: event.target.value })} />}
+                </Field>
+                <div className="flex items-center gap-2 @md:col-span-2">
+                    <input type="checkbox" id="closure-all-day" className={`admin-closure__all-day ${CHECK_BOX}`} checked={typed.allDay} onChange={(event) => onChange({ allDay: event.target.checked })} />
+                    <label htmlFor="closure-all-day">{words.text('closure.all_day')}</label>
+                </div>
+                {!typed.allDay && (
+                    <>
+                        <Field id="closure-start" label={words.text('closure.start')}>
+                            {(control) => <TimeField {...control} className="admin-closure__start" value={typed.start} onChange={(start) => onChange({ start })} clock={clock} granularity={granularity} />}
+                        </Field>
+                        <Field id="closure-end" label={words.text('closure.end')}>
+                            {(control) => <TimeField {...control} className="admin-closure__end" value={typed.end} onChange={(end) => onChange({ end })} clock={clock} granularity={granularity} />}
+                        </Field>
+                    </>
+                )}
             </div>
-            <Field id="closure-date" label={words.text('closure.date')}>
-                {(control) => <DateField {...control} className="admin-closure__date" value={typed.date} onChange={(date) => onDates({ date })} clock={clock} weekStart={weekStart} />}
-            </Field>
-            <Field id="closure-until" label={words.text('closure.until')} help={words.text('closure.until_help')} error={untilError}>
-                {(control) => <DateField {...control} className="admin-closure__until" value={typed.until} onChange={(until) => onDates({ until })} clock={clock} weekStart={weekStart} />}
-            </Field>
-            <Field id="closure-reason" label={words.text('closure.reason')} help={shell.text('shared.closure.reason_help')} className="sm:col-span-2">
-                {(control) => <TextInput {...control} className="admin-closure__reason" value={typed.reason} onChange={(event) => onChange({ reason: event.target.value })} />}
-            </Field>
-            <div className="flex items-center gap-2 sm:col-span-2">
-                <input type="checkbox" id="closure-all-day" className={`admin-closure__all-day ${CHECK_BOX}`} checked={typed.allDay} onChange={(event) => onChange({ allDay: event.target.checked })} />
-                <label htmlFor="closure-all-day">{words.text('closure.all_day')}</label>
-            </div>
-            {!typed.allDay && (
-                <>
-                    <Field id="closure-start" label={words.text('closure.start')}>
-                        {(control) => <TimeField {...control} className="admin-closure__start" value={typed.start} onChange={(start) => onChange({ start })} clock={clock} granularity={granularity} />}
-                    </Field>
-                    <Field id="closure-end" label={words.text('closure.end')}>
-                        {(control) => <TimeField {...control} className="admin-closure__end" value={typed.end} onChange={(end) => onChange({ end })} clock={clock} granularity={granularity} />}
-                    </Field>
-                </>
-            )}
         </div>
     );
 }

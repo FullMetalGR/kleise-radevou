@@ -6,21 +6,22 @@ import { type CalendarWords, useCalendarWords } from './words';
 
 /*
  * The block badges, one register: small, bold, in capitals, before the title. Pending marks a
- * request awaiting approval, amber as its attention chip is; Awaiting payment, its chip's own
- * word, marks an approved booking awaiting the customer's payment, in its provisional chip's
- * dashed sky over the card, so it reads on any member's hue. The legend draws the same two beside
- * what each marks. The words not a chip's are keys of the calendar section. The marker of a
- * booking inside a closure is a pill in the same register, its own outline in rose, first on the
- * line and before a badge: worded where its block has the room for the title beside it, an
- * exclamation mark alone where it has not, and that mark in the legend beside the words.
+ * request awaiting approval, in the theme's attention colours as its chip is; Awaiting payment,
+ * its chip's own word, marks an approved booking awaiting the customer's payment, in its
+ * provisional chip's dashed primary over the card, so it reads on any member's hue. The legend
+ * draws the same two beside what each marks. The words not a chip's are keys of the calendar
+ * section. The marker of a booking inside a closure is a pill in the same register, its own
+ * outline in rose, first on the line and before a badge: worded where its block has the room for
+ * the title beside it, an exclamation mark alone where it has not, and that mark in the legend
+ * beside the words.
  */
 
 /** A badge's word and what it marks, each read in the shell's words where it is a chip's and in the calendar's otherwise. */
 type Words = (shell: ShellWords, calendar: CalendarWords) => string;
 
 const BADGES: Record<Badge, { word: Words; meaning: Words; className: string }> = {
-    awaiting_approval: { word: (_, calendar) => calendar.text('badges.pending'), meaning: (shell) => statusLabel('awaiting_approval', shell), className: 'admin-calendar-badge--approval border-amber-500 bg-amber-400 text-black' },
-    awaiting_payment: { word: (shell) => statusLabel('awaiting_payment', shell), meaning: (_, calendar) => calendar.text('badges.payment'), className: 'admin-calendar-badge--payment border-dashed border-sky-600 bg-card text-sky-700 dark:text-sky-300' },
+    awaiting_approval: { word: (_, calendar) => calendar.text('badges.pending'), meaning: (shell) => statusLabel('awaiting_approval', shell), className: 'admin-calendar-badge--approval border-attention-line bg-attention-soft-strong text-attention-ink' },
+    awaiting_payment: { word: (shell) => statusLabel('awaiting_payment', shell), meaning: (_, calendar) => calendar.text('badges.payment'), className: 'admin-calendar-badge--payment border-dashed border-primary bg-card text-primary-deep' },
 };
 
 /** The badges in the order the legend lists them. */

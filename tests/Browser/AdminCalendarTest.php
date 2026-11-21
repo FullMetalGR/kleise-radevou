@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\BlackoutController;
 use App\Http\Controllers\Admin\BookingActionController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -612,6 +613,189 @@ it('switches Colour by to Status from the filter card, the booking\'s hue changi
 
     expect(DB::table('tenant_luna.settings')->value('colour_by'))->toBe('status');
 });
+
+/**
+ * A script answering whether the open Add menu wraps its closing line rather than stretching to
+ * it: no wider than 288 pixels, nor than the window, and the line on more than one row.
+ */
+const CALENDAR_ADD_MENU_HOLDS = "(() => { const menu = document.querySelector('.admin-menu[role=\"menu\"]'); const note = menu?.querySelector('.admin-menu__note'); return menu !== null && note !== null && menu.getBoundingClientRect().width <= Math.min(288.5, document.documentElement.clientWidth) && note.getBoundingClientRect().height > parseFloat(getComputedStyle(note).lineHeight) * 1.5; })()";
+
+/** A script answering how many columns the filter card's grid draws at the window's width. */
+const CALENDAR_FILTER_COLUMNS = "document.fonts.ready.then(() => getComputedStyle(document.querySelector('.admin-calendar-filters')).gridTemplateColumns.split(' ').filter(Boolean).length)";
+
+/** A script answering whether the page stays inside the window's width, with no sideways scroll. */
+const CALENDAR_NO_SIDEWAYS = 'document.fonts.ready.then(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)';
+
+/**
+ * A script answering an empty string where the toolbar's six parts stand on one line in their
+ * order, the view switch, Today, Previous, Next, the date title and Add, with Add at the row's
+ * far side; otherwise what is out of place.
+ */
+const CALENDAR_TOOLBAR_ONE_LINE = "document.fonts.ready.then(() => { const bar = document.querySelector('.admin-calendar-toolbar'); const boxes = ['.admin-calendar-view', '.admin-calendar-today', '.admin-calendar-previous', '.admin-calendar-next', '.admin-calendar-title', '.admin-calendar-add'].map((hook) => bar?.querySelector(hook)?.getBoundingClientRect()); if (!bar || boxes.some((box) => !box)) { return 'not on the page'; } const row = bar.getBoundingClientRect(); const middle = (box) => box.top + box.height / 2; const found = []; if (boxes.some((box) => Math.abs(middle(box) - middle(boxes[0])) > 1)) { found.push('not on one line'); } if (boxes.some((box, at) => at > 0 && box.left < boxes[at - 1].right - 0.5)) { found.push('out of order'); } if (Math.abs(boxes[5].right - row.right) > 1) { found.push('Add ' + (row.right - boxes[5].right).toFixed(1) + 'px short of the far side'); } return found.join(', '); })";
+
+/**
+ * A script answering an empty string where Add closes the toolbar at its far side, on whichever
+ * line the row's width leaves it; otherwise how far short of that side it stands, with the width
+ * read.
+ */
+const CALENDAR_ADD_AT_FAR_SIDE = "document.fonts.ready.then(() => { const bar = document.querySelector('.admin-calendar-toolbar'); const add = bar?.querySelector('.admin-calendar-add'); if (!bar || !add) { return 'not on the page'; } const short = bar.getBoundingClientRect().right - add.getBoundingClientRect().right; return Math.abs(short) <= 1 ? '' : 'at ' + document.documentElement.clientWidth + 'px: Add ' + short.toFixed(1) + 'px short of the far side'; })";
+
+/**
+ * A script answering an empty string where the toolbar reads as a phone's: the view switch across
+ * the row; under it Today, Previous and Next in order with Add at the far end, round and named by
+ * the line given; the date title under them across the row; and the page not scrolling sideways.
+ * Otherwise what is out of place, with the width read.
+ */
+function calendarPhoneToolbar(string $add): string
+{
+    $name = json_encode($add, JSON_THROW_ON_ERROR);
+
+    return "document.fonts.ready.then(() => { const bar = document.querySelector('.admin-calendar-toolbar'); const [view, today, previous, next, title, add] = ['.admin-calendar-view', '.admin-calendar-today', '.admin-calendar-previous', '.admin-calendar-next', '.admin-calendar-title', '.admin-calendar-add'].map((hook) => bar?.querySelector(hook)); if (!bar || !view || !today || !previous || !next || !title || !add) { return 'not on the page'; } const row = bar.getBoundingClientRect(); const box = (el) => el.getBoundingClientRect(); const line = [today, previous, next, add].map(box); const middle = (each) => each.top + each.height / 2; const found = []; if (Math.abs(box(view).width - row.width) > 1 || Math.abs(box(view).left - row.left) > 1) { found.push('the view switch ' + box(view).width.toFixed(1) + 'px of ' + row.width.toFixed(1)); } if (line.some((each) => each.top < box(view).bottom - 0.5)) { found.push('the moves beside the view switch'); } if (line.some((each) => Math.abs(middle(each) - middle(line[0])) > 1)) { found.push('the moves off one line'); } if (line.some((each, at) => at > 0 && each.left < line[at - 1].right - 0.5)) { found.push('the moves out of order'); } if (Math.abs(line[3].right - row.right) > 1) { found.push('Add ' + (row.right - line[3].right).toFixed(1) + 'px short of the far end'); } if (!add.classList.contains('admin-button--icon-only') || Math.abs(line[3].width - line[3].height) > 0.5 || add.textContent.trim() !== {$name}) { found.push('Add not round with its name'); } if (box(title).top < Math.max(...line.map((each) => each.bottom)) - 0.5 || box(title).width > row.width + 0.5) { found.push('the title not under the moves'); } if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) { found.push('the page ' + document.documentElement.scrollWidth + 'px wide in ' + document.documentElement.clientWidth); } return found.length === 0 ? '' : 'at ' + document.documentElement.clientWidth + 'px: ' + found.join(', '); })";
+}
+
+/**
+ * A script answering an empty string where every filter holds its longest value in the screen's
+ * own words: Who each of its presets given, Status and Colour by each of their options, Service its
+ * All services, the tenant's service names being the tenant's own; otherwise each that cuts one,
+ * the value's width and the room for it. A select keeps its chevron's room at its end, Who its
+ * chevron and the gap before it.
+ *
+ * @param  list<string>  $who
+ */
+function calendarFiltersHold(array $who): string
+{
+    $words = json_encode($who, JSON_THROW_ON_ERROR);
+
+    return "document.fonts.ready.then(() => { const pen = document.createElement('canvas').getContext('2d'); const cut = (el, values, spare) => { const style = getComputedStyle(el); pen.font = style.fontStyle + ' ' + style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily; const room = el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - spare; return values.map((value) => [value, pen.measureText(value).width]).filter(([, width]) => width > room + 0.5).map(([value, width]) => value + ' ' + width.toFixed(1) + 'px in ' + room.toFixed(1)); }; const options = (hook, first) => [...document.querySelectorAll(hook + ' option')].slice(0, first ? 1 : undefined).map((option) => option.textContent); const who = document.querySelector('.admin-calendar-who'); const found = [...(who ? cut(who, {$words}, 24) : ['no Who']), ...cut(document.querySelector('.admin-calendar-status'), options('.admin-calendar-status', false), 0), ...cut(document.querySelector('.admin-calendar-service'), options('.admin-calendar-service', true), 0), ...cut(document.querySelector('.admin-calendar-colour-by'), options('.admin-calendar-colour-by', false), 0)]; return found.length === 0 ? '' : 'at ' + document.documentElement.clientWidth + 'px: ' + found.join('; '); })";
+}
+
+it('draws the toolbar card with the view switch, Today, Previous, Next, the date title and Add on one line over the filters four to a row, two on a small laptop and one on a phone, and opens and closes Who and Add by the pointer and by the keyboard in Day, Week and Month', function () {
+    calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '10:00');
+
+    $page = Admin::onCalendar($this, 'luna', Admin::owner('luna'))->waitForText('Cora Cut');
+    $size = calendarPlaywright($page)->viewportSize();
+    $page->resize(1440, 900)
+        ->assertPresent('.admin-calendar-controls .admin-calendar-toolbar')
+        ->assertNotPresent('.admin-calendar-heading .admin-calendar-add')
+        ->assertPresent('.admin-calendar-heading .admin-new-booking.admin-button--primary')
+        ->assertScript(CALENDAR_TOOLBAR_ONE_LINE, '')
+        ->assertScript(CALENDAR_FILTER_COLUMNS, 4)
+        ->assertScript(CALENDAR_NO_SIDEWAYS, true);
+    Look::shot($page, 'calendar-1440');
+
+    foreach (['day', 'week', 'month'] as $view) {
+        $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view='.$view))
+            ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.'.$view))
+            ->assertScript(CALENDAR_TOOLBAR_ONE_LINE, '')
+            ->click('#calendar-who')
+            ->assertVisible('.admin-calendar-who__popover');
+        Look::shot($page, 'calendar-'.$view.'-who');
+        $page->click('.admin-calendar-who__preset[data-who="all"]')
+            ->assertMissing('.admin-calendar-who__popover')
+            ->assertSeeIn('#calendar-who', adminLine('admin/calendar.who.all'))
+            ->assertScript(Admin::focusIsOn('#calendar-who'), true)
+            ->click('.admin-calendar-add')
+            ->assertSeeIn('.admin-menu', adminLine('admin/calendar.page.add_booking'))
+            ->assertScript(CALENDAR_ADD_MENU_HOLDS, true);
+        Look::shot($page, 'calendar-'.$view.'-add');
+        $page->keys('.admin-menu', 'Escape')
+            ->assertMissing('.admin-menu')
+            ->assertScript(Admin::focusIsOn('.admin-calendar-add'), true);
+    }
+
+    // By the keyboard alone: Enter opens Who and picks a preset, which closes it; Enter opens Add,
+    // whose first item takes the focus, and Escape closes it, focus back on Add each time.
+    $page->keys('#calendar-who', 'Enter')
+        ->assertVisible('.admin-calendar-who__popover')
+        ->keys('.admin-calendar-who__preset[data-who="scheduled"]', 'Enter')
+        ->assertMissing('.admin-calendar-who__popover')
+        ->assertSeeIn('#calendar-who', adminLine('admin/calendar.who.scheduled'))
+        ->assertScript(Admin::focusIsOn('#calendar-who'), true)
+        ->keys('.admin-calendar-add', 'Enter')
+        ->assertScript(Admin::focusIsOn('.admin-calendar-add__booking'), true)
+        ->keys('.admin-calendar-add__booking', 'Escape')
+        ->assertMissing('.admin-menu')
+        ->assertScript(Admin::focusIsOn('.admin-calendar-add'), true);
+
+    $page->resize(1000, 900)
+        ->assertScript(CALENDAR_FILTER_COLUMNS, 2)
+        ->assertScript(CALENDAR_NO_SIDEWAYS, true);
+    Look::shot($page, 'calendar-1000-month');
+    $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day'))
+        ->resize(390, 844)
+        ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'))
+        ->assertScript(CALENDAR_FILTER_COLUMNS, 1)
+        ->assertScript(calendarPhoneToolbar(adminLine('admin/calendar.page.add')), '');
+    Look::shot($page, 'calendar-390-day');
+    $page->click('.admin-calendar-add')
+        ->assertSeeIn('.admin-menu[role="menu"]', adminLine('admin/calendar.page.add_booking'))
+        ->assertScript(CALENDAR_ADD_MENU_HOLDS, true)
+        ->keys('.admin-menu[role="menu"]', 'Escape')
+        ->assertMissing('.admin-menu[role="menu"]')
+        ->assertScript(Admin::focusIsOn('.admin-calendar-add'), true)
+        ->resize($size['width'], $size['height']);
+});
+
+it('holds each filter\'s longest Greek value four to a row at 1440 pixels, at a laptop\'s 1366 and 1280, through the widths where two to a row turn into four and two to a row at 1000, and at 390 spans the view switch, then Today, Previous, Next and Add round at the far end named in Greek, then the date title, the page never scrolling sideways in Day, Week or Month', function () {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+    $greek = fn (string $key): string => adminLine('admin/calendar.'.$key, [], SiteLanguage::Greek);
+    $holds = calendarFiltersHold([$greek('who.scheduled'), $greek('who.all')]);
+
+    $page = Admin::onCalendar($this, 'luna', Admin::owner('luna'))
+        ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', $greek('toolbar.views.week'));
+    $size = calendarPlaywright($page)->viewportSize();
+    $page->resize(1440, 900)
+        ->assertScript(CALENDAR_FILTER_COLUMNS, 4)
+        ->assertScript($holds, '')
+        ->assertScript(CALENDAR_TOOLBAR_ONE_LINE, '')
+        ->assertScript(CALENDAR_NO_SIDEWAYS, true);
+    Look::shot($page, 'calendar-greek-1440');
+
+    // A laptop's widths beside the open sidebar: every field still holds its longest value,
+    // however many of them the row takes there.
+    foreach ([1366, 1280] as $width) {
+        $page->resize($width, 900)
+            ->assertScript($holds, '')
+            ->assertScript(CALENDAR_NO_SIDEWAYS, true);
+        Look::shot($page, 'calendar-greek-'.$width);
+    }
+
+    // Two to a row turn into four somewhere above the laptop's width, and no width on the way
+    // draws four fields too narrow for their values.
+    foreach (range(1368, 1400, 2) as $width) {
+        $page->resize($width, 900)->assertScript($holds, '');
+    }
+
+    $page->resize(1000, 900)
+        ->assertScript(CALENDAR_FILTER_COLUMNS, 2)
+        ->assertScript($holds, '')
+        ->assertScript(CALENDAR_NO_SIDEWAYS, true);
+    Look::shot($page, 'calendar-greek-1000');
+    $page->resize(390, 844);
+
+    foreach (['day', 'week', 'month'] as $view) {
+        $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view='.$view))
+            ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', $greek('toolbar.views.'.$view))
+            ->assertScript(CALENDAR_FILTER_COLUMNS, 1)
+            ->assertScript($holds, '')
+            ->assertScript(calendarPhoneToolbar($greek('page.add')), '');
+        Look::shot($page, 'calendar-greek-390-'.$view);
+    }
+
+    $page->resize($size['width'], $size['height']);
+});
+
+it('keeps Add at the toolbar\'s far side where a row too short for all six parts leaves it a line of its own', function (SiteLanguage $language, int $width) {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    $page = Admin::onCalendar($this, 'luna', Admin::owner('luna'))
+        ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.week', [], $language));
+    $size = calendarPlaywright($page)->viewportSize();
+    $page->resize($width, 900)
+        ->assertScript(CALENDAR_ADD_AT_FAR_SIDE, '');
+    Look::shot($page, 'calendar-add-'.$language->value.'-'.$width);
+    $page->resize($size['width'], $size['height']);
+})->with(['in English' => [SiteLanguage::English, 1200], 'in Greek' => [SiteLanguage::Greek, 1280]]);
 
 /**
  * The next Wednesday after the tenant's today, in days from it: a day luna's two members both

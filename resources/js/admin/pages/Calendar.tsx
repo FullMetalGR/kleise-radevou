@@ -8,7 +8,7 @@ import { ClosureDialog } from '@/calendar/ClosureDialog';
 import { useColourByWrite } from '@/calendar/colour-by';
 import { DropConfirm, type Dropping, useDropping } from '@/calendar/dropping';
 import { type ColumnActions, ColumnHead } from '@/calendar/ColumnHead';
-import { Caret } from '@/components/glyphs';
+import { Caret, Plus } from '@/components/glyphs';
 import { Grid } from '@/calendar/Grid';
 import { Month } from '@/calendar/Month';
 import { staffWeekShown, weekDaysOf, type WeekRow, weekRowsOf } from '@/calendar/staff-week';
@@ -50,6 +50,7 @@ import { NEUTRAL, type OwnColours } from '@/lib/hue';
 import { type Calendar as CalendarState, useCalendar } from '@/calendar/useCalendar';
 import { type CalendarKey, CalendarProvider, type CalendarWords, calendarWordsOf, shiftWordsOf, useClosureWords } from '@/calendar/words';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { DropdownMenu, type MenuItem } from '@/components/ui/dropdown-menu';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
@@ -67,8 +68,9 @@ import type { Prefill } from '@/wizard/model';
 import { useNewBooking } from '@/wizard/NewBooking';
 
 /*
- * The Calendar screen: the title with Add, a primary menu, at its right; one controls card, the
- * toolbar over the filters; an error notice on failure; the grid's card, the grid with the legend
+ * The Calendar screen: the title, the first row's New booking its primary button; one controls
+ * card, the toolbar over the filters, Add a quieter menu at the toolbar's far side, round and named
+ * below the admin's breakpoint; an error notice on failure; the grid's card, the grid with the legend
  * as its foot, a labelled region named by the toolbar's date title; and the footnote under it. Who
  * is the one server parameter: Scheduled staff by default, All staff, Me or a picked set, the
  * window answering the members it resolved to, whose blocks the grid draws and whom the legend
@@ -337,6 +339,7 @@ export default function Calendar() {
     const { props } = usePage<Props>();
     const clock = clockOf(props);
     const shell = useShell();
+    const desktop = useDesktop();
     const words = calendarWordsOf(props.strings, shell.language);
     const bookingsWords = bookingsWordsOf(props.strings, shell.language);
     // Held from render to render, the people's rows being worded in them and built once per answer.
@@ -395,36 +398,38 @@ export default function Calendar() {
     return (
         <Words calendar={words} shifts={shiftWords} bookings={bookingsWords}>
             <Head title={words.text('page.title')} />
-            <div className="admin-calendar-screen flex flex-col gap-4">
-                <PageHeader
-                    className="admin-calendar-heading"
-                    title={words.text('page.title')}
-                    actions={
-                        adds.length > 0 ? (
-                            <DropdownMenu
-                                label={words.text('page.add')}
-                                items={adds}
-                                align="end"
-                                className="w-56"
-                                note={settles ? words.text('page.add_hint') : undefined}
-                                trigger={
-                                    <Button variant="primary" className="admin-calendar-add">
-                                        {words.text('page.add')}
-                                        <Caret />
-                                    </Button>
-                                }
-                            />
-                        ) : undefined
-                    }
-                />
+            <div className="admin-calendar-screen @container flex flex-col gap-4">
+                <PageHeader className="admin-calendar-heading" title={words.text('page.title')} />
                 {pinned && own === null ? (
                     <Notice kind="info" className="admin-calendar-unlinked">
                         {words.text(UNLINKED)}
                     </Notice>
                 ) : (
                     <>
-                        <div className="admin-calendar-controls flex flex-col gap-3 rounded-xl border px-4 py-3">
-                            <Toolbar views={CALENDAR_VIEWS} calendar={calendar} title={title} titleId={TITLE_ID} />
+                        <Card className="admin-calendar-controls flex flex-col gap-4">
+                            <Toolbar
+                                views={CALENDAR_VIEWS}
+                                calendar={calendar}
+                                title={title}
+                                titleId={TITLE_ID}
+                                add={
+                                    adds.length > 0 ? (
+                                        <DropdownMenu
+                                            label={words.text('page.add')}
+                                            items={adds}
+                                            align="end"
+                                            className="max-w-72"
+                                            note={settles ? words.text('page.add_hint') : undefined}
+                                            trigger={
+                                                <Button icon={<Plus />} iconOnly={!desktop} className="admin-calendar-add ms-auto">
+                                                    {words.text('page.add')}
+                                                    {desktop && <Caret />}
+                                                </Button>
+                                            }
+                                        />
+                                    ) : undefined
+                                }
+                            />
                             <Filters
                                 filters={filters}
                                 options={props.options}
@@ -436,7 +441,7 @@ export default function Calendar() {
                                 onChange={change}
                                 colourBy={{ value: props.settings.colour_by, allowed: props.permissions.includes('manageSettings'), busy: colourWrite.busy, onChange: colourWrite.write }}
                             />
-                        </div>
+                        </Card>
                         {calendar.error && (
                             <Notice kind="error" className="admin-calendar-error">
                                 {words.text(CALENDAR_LOAD_ERROR)}

@@ -13,6 +13,8 @@ import { weekdayName } from '@/lib/names';
 import { KEYED_BOOKINGS, KEYED_CALENDAR, KEYED_SHIFTS, keyedBookings, keyedCalendar, keyedShell, keyedShifts } from '@/testing/keyed';
 import type { CalendarStrings } from '@/types';
 import { ADMIN_LINES_EN } from '../lines.generated';
+import { FirstRowProvider } from '@/shell/first-row';
+import { MENU_OPTION } from '@/components/ui/popover';
 import { ToastProvider } from '@/toast/toasts';
 import Calendar, { CALENDAR_LOAD_ERROR, UNLINKED } from './Calendar';
 
@@ -487,12 +489,18 @@ describe('the calendar screen', () => {
         expect(view.host.querySelector('.admin-calendar-today')?.textContent).toBe(cal.text('toolbar.today'));
         expect(view.host.querySelector('.admin-calendar-previous')?.getAttribute('aria-label')).toBe(cal.text('toolbar.previous'));
         expect(view.host.querySelector('.admin-calendar-next')?.getAttribute('aria-label')).toBe(cal.text('toolbar.next'));
-        // The toolbar and the filters are dense rows: their buttons take the small height, the two chevrons round with their names kept for a screen reader.
-        expect(['.admin-calendar-today', '.admin-calendar-previous', '.admin-calendar-next', '.admin-calendar-who'].map((hook) => view.host.querySelector(hook)?.classList.contains('admin-button--small'))).toEqual([true, true, true, true]);
-        expect(['previous', 'next'].map((name) => [...(view.host.querySelector(`.admin-calendar-${name}`)?.classList ?? [])].filter((each) => ['admin-button--icon-only', 'size-9', 'w-8', 'px-0'].includes(each)))).toEqual([
-            ['admin-button--icon-only', 'size-9'],
-            ['admin-button--icon-only', 'size-9'],
+        // The toolbar's buttons take the default height, none of them the small one, the two chevrons round with their names kept for a screen reader.
+        expect(['.admin-calendar-today', '.admin-calendar-previous', '.admin-calendar-next', '.admin-calendar-add'].map((hook) => [...(view.host.querySelector(hook)?.classList ?? [])].filter((each) => each.startsWith('admin-button--s')))).toEqual([['admin-button--secondary'], ['admin-button--secondary'], ['admin-button--secondary'], ['admin-button--secondary']]);
+        expect(view.host.querySelector('.admin-calendar-today')?.classList.contains('h-11')).toBe(true);
+        expect(['previous', 'next'].map((name) => [...(view.host.querySelector(`.admin-calendar-${name}`)?.classList ?? [])].filter((each) => each === 'admin-button--icon-only' || /^(size|w|h|px)-/.test(each)))).toEqual([
+            ['admin-button--icon-only', 'size-11'],
+            ['admin-button--icon-only', 'size-11'],
         ]);
+        // The four filters are one height, one face and one edge: Who's trigger is drawn as the three selects are, a field's.
+        const face = (hook: string) => [...(view.host.querySelector(hook)?.classList ?? [])].filter((each) => /^(h|rounded|px|text|inset-ring|bg)-/.test(each)).sort();
+
+        expect(['.admin-calendar-who', '.admin-calendar-status', '.admin-calendar-service', '.admin-calendar-colour-by'].map(face)).toEqual(Array.from({ length: 4 }, () => ['bg-card', 'h-11.5', 'inset-ring-[1.5px]', 'inset-ring-border', 'px-3.5', 'rounded-field', 'text-body', 'text-foreground']));
+        expect(view.host.querySelector('.admin-calendar-who')?.classList.contains('admin-button')).toBe(false);
         expect(['previous', 'next'].map((name) => view.host.querySelector(`.admin-calendar-${name} .sr-only`)?.textContent)).toEqual([cal.text('toolbar.previous'), cal.text('toolbar.next')]);
         expect([...view.host.querySelectorAll('.admin-calendar-filters label')].map((label) => label.textContent)).toEqual([cal.text('who.label'), cal.text('filters.status'), cal.text('filters.service'), cal.text('filters.colour_by')]);
         expect(view.host.querySelector('.admin-calendar-status option')?.textContent).toBe(cal.text('filters.any_status'));
@@ -1159,6 +1167,25 @@ describe('the calendar screen on a phone', () => {
         expect(view.host.querySelector('.stub-grid')).toBeNull();
         expect(view.host.querySelector('.admin-calendar-narrow')).not.toBeNull();
     });
+
+    it('spans the view switch across the toolbar, then Today, Previous and Next with Add round at the far end keeping its name, then the date title on a line of its own', async () => {
+        view.render(<Page />);
+
+        const add = view.host.querySelector<HTMLElement>('.admin-calendar-add');
+        const viewSwitch = view.host.querySelector('.admin-calendar-view');
+
+        expect([...(viewSwitch?.classList ?? [])].filter((each) => each.startsWith('max-desktop:'))).toEqual(['max-desktop:flex', 'max-desktop:w-full', 'max-desktop:*:flex-1']);
+        expect([...(add?.classList ?? [])].filter((each) => each === 'admin-button--icon-only' || /^(max-desktop:)?(size|ms)-/.test(each))).toEqual(['admin-button--icon-only', 'size-11', 'ms-auto']);
+        expect(add?.querySelector('.sr-only')?.textContent).toBe(cal.text('page.add'));
+        expect(add?.querySelectorAll('svg')).toHaveLength(1);
+        expect([...(view.host.querySelector('.admin-calendar-title')?.classList ?? [])].filter((each) => each.startsWith('max-desktop:'))).toEqual(['max-desktop:order-last', 'max-desktop:basis-full', 'max-desktop:text-xl']);
+
+        // Round or not, it opens the same menu.
+        add?.focus();
+        key(add, 'Enter');
+        await settle();
+        expect([...document.querySelectorAll('.admin-menu__item .admin-menu__label')].map((label) => label.textContent)).toEqual([cal.text('page.add_booking')]);
+    });
 });
 
 describe('the screen\'s composition', () => {
@@ -1172,6 +1199,10 @@ describe('the screen\'s composition', () => {
 
         expect([...(controls?.children ?? [])].map((child) => child.classList[0])).toEqual(['admin-calendar-toolbar', 'admin-calendar-filters']);
         expect(card?.querySelector('.admin-calendar-toolbar')).toBeNull();
+        // The controls card is the kit's tile at its own rounding, no line round it, on a screen that is a query container.
+        expect(controls?.tagName).toBe('SECTION');
+        expect([...(controls?.classList ?? [])].filter((each) => /(^|:)(rounded|border|shadow|bg)(-|$)/.test(each))).toEqual(['bg-card', 'rounded-tile', 'shadow-card', 'max-wide:rounded-tile-compact']);
+        expect(view.host.querySelector('.admin-calendar-screen')?.classList.contains('@container')).toBe(true);
         expect(card?.lastElementChild?.classList.contains('admin-calendar-legend')).toBe(true);
         expect(card?.nextElementSibling?.classList.contains('admin-calendar-footnote')).toBe(true);
         expect(card?.nextElementSibling?.textContent).toBe(cal.text('page.footnote'));
@@ -1181,6 +1212,14 @@ describe('the screen\'s composition', () => {
             [cal.text('badges.pending'), `${cal.text('badges.pending')}${shell.text('kit.statuses.awaiting_approval')}`],
             [shell.text('kit.statuses.awaiting_payment'), `${shell.text('kit.statuses.awaiting_payment')}${cal.text('badges.payment')}`],
         ]);
+        // The badges paint with the theme's tokens, as the status chips do: the request in the attention family's look, the unpaid booking in the provisional family's dashed theme colour.
+        const badge = (name: string) => [...(view.host.querySelector(`.admin-calendar-legend .admin-calendar-badge--${name}`)?.classList ?? [])];
+
+        expect([...badge('approval'), ...badge('payment')].filter((each) => /(^|[:-])(amber|sky|black)(-|$)/.test(each))).toEqual([]);
+        expect(badge('approval')).toEqual(expect.arrayContaining(['border-attention-line', 'bg-attention-soft-strong', 'text-attention-ink']));
+        expect(badge('payment')).toEqual(expect.arrayContaining(['border-dashed', 'border-primary', 'bg-card', 'text-primary-deep']));
+        // Each swatch is a 14px square at a 5px rounding.
+        expect([...(view.host.querySelector('.admin-calendar-legend__swatch')?.classList ?? [])].filter((each) => /^(size|rounded)-/.test(each))).toEqual(['size-3.5', 'rounded-[0.3125rem]']);
     });
 
     it('hands Week\'s time grid the span of the shown member\'s hours that week with an hour each side, the whole day where they have none, and Day and Month none', () => {
@@ -1199,6 +1238,36 @@ describe('the screen\'s composition', () => {
         inertia.props = propsWith({ window: { ...WINDOW, members: [ELENA_ROW] } });
         view.render(<Page />);
         expect(grid().dataset['span']).toBe('00:00:00-24:00:00');
+    });
+
+    it('lays the toolbar out as the view switch, Today, Previous and Next, the date title announced as it changes, then Add, and the filters as a grid of four, two and one columns by the room', () => {
+        view.render(
+            <FirstRowProvider value={{ start: null, controls: null, action: (quiet) => <span className="shell-action" data-quiet={String(quiet)} /> }}>
+                <Page />
+            </FirstRowProvider>,
+        );
+
+        const toolbar = view.host.querySelector<HTMLElement>('.admin-calendar-toolbar');
+        const hooks = ['admin-calendar-view', 'admin-calendar-today', 'admin-calendar-previous', 'admin-calendar-next', 'admin-calendar-title', 'admin-calendar-add'];
+        const titleEl = toolbar?.querySelector('.admin-calendar-title');
+
+        expect([...(toolbar?.querySelectorAll(hooks.map((hook) => `.${hook}`).join(', ')) ?? [])].map((el) => hooks.find((hook) => el.classList.contains(hook)))).toEqual(hooks);
+        expect(toolbar?.lastElementChild?.classList.contains('admin-calendar-add')).toBe(true);
+        // Add keeps to the far side at every width, so a row too short for all six parts leaves it there on a line of its own.
+        expect([...(toolbar?.lastElementChild?.classList ?? [])].filter((each) => /(^|:)ms-/.test(each))).toEqual(['ms-auto']);
+        expect(titleEl?.tagName).toBe('H2');
+        expect(titleEl?.getAttribute('aria-live')).toBe('polite');
+        expect([...(titleEl?.classList ?? [])].filter((each) => /(^|:)text-/.test(each))).toEqual(['text-section-title', 'max-desktop:text-xl']);
+        // The page's head carries no button of its own, so the shell's New booking stays the screen's main button.
+        expect(view.host.querySelector('.admin-calendar-heading .admin-page-header__actions')).toBeNull();
+        expect(view.host.querySelector('.admin-calendar-heading .shell-action')?.getAttribute('data-quiet')).toBe('false');
+        expect([...(view.host.querySelector('.admin-calendar-filters')?.classList ?? [])].filter((each) => /(^|:)(grid|flex)/.test(each))).toEqual(['grid', 'grid-cols-1', 'desktop:grid-cols-2', '@[67rem]:grid-cols-4']);
+        expect(view.host.querySelector('.admin-calendar-filters .admin-calendar-who')).not.toBeNull();
+        expect(view.host.querySelector('.admin-calendar-filters .admin-calendar-colour-by')).not.toBeNull();
+        // The title still names the grid's region and says each new range.
+        press(view.host.querySelector('.admin-calendar-next'));
+        expect(view.host.querySelector('.admin-calendar')?.getAttribute('aria-labelledby')).toBe(titleEl?.id);
+        expect(title()).toBe('09/11/2026 - 15/11/2026');
     });
 
     it('offers the views as Day, Week and Month, and titles Day by its weekday before its date', () => {
@@ -1230,6 +1299,14 @@ describe('the screen\'s composition', () => {
             ['checkbox', 'NG'],
         ]);
         expect(popover?.lastElementChild?.textContent).toBe(cal.text(WHO_NOTE));
+        // Its presets and its members wear the menu's row, the tick and the box before the words.
+        const row = MENU_OPTION.split(' ').filter((each) => each !== 'justify-between');
+
+        expect([...(popover?.querySelectorAll('.admin-calendar-who__preset, .admin-calendar-who__member') ?? [])].map((each) => row.every((name) => each.classList.contains(name)) && each.classList.contains('justify-start'))).toEqual([true, true, true, true]);
+        expect([...(popover?.querySelectorAll('.admin-calendar-who__preset, .admin-calendar-who__member') ?? [])].flatMap((each) => [...each.classList].filter((name) => /^(rounded-md|px-2|py-1)/.test(name)))).toEqual([]);
+        // The fill marks the row the keyboard is on and no other: a fill under the pointer too would show two rows filled at once.
+        expect([...(popover?.querySelectorAll('.admin-calendar-who__preset, .admin-calendar-who__member') ?? [])].flatMap((each) => [...each.classList].filter((name) => name.startsWith('hover:')))).toEqual([]);
+        expect([...(popover?.querySelectorAll('.admin-calendar-who__preset, .admin-calendar-who__member') ?? [])].map((each) => [...each.classList].some((name) => /focus-visible:bg-/.test(name)))).toEqual([true, true, true, true]);
     });
 });
 
@@ -1282,29 +1359,31 @@ describe('the Add menu', () => {
         inertia.props = propsWith({ permissions: ['viewBookings', 'manageBookings', 'manageSettings'] });
         view.render(<Page />);
 
-        expect(add()?.closest('.admin-calendar-heading')?.querySelector('h1')?.textContent).toBe(cal.text('page.title'));
+        expect(add()?.closest('.admin-calendar-toolbar')?.querySelector('h2.admin-calendar-title')?.textContent).toBe(title());
+        expect(add()?.closest('.admin-calendar-heading')).toBeNull();
         expect(add()?.textContent).toBe(cal.text('page.add'));
         await openAdd();
 
         expect(menuItems()).toEqual([cal.text('page.add_booking'), cal.text('page.add_closure')]);
     });
 
-    it('is a primary button with a caret at the title\'s far side, its menu closing on the line about what a closure is where Closure is offered alone', async () => {
+    it('is a secondary button with a plus and a caret at the toolbar\'s far side after the date title, its menu at least its own width, capped so its closing line about what a closure is wraps, where Closure is offered alone', async () => {
         inertia.props = propsWith({ permissions: ['viewBookings', 'manageBookings', 'manageSettings'] });
         view.render(<Page />);
 
-        expect(add()?.classList.contains('admin-button--primary')).toBe(true);
-        expect(add()?.querySelector('svg')).not.toBeNull();
-        const actions = add()?.closest('.admin-calendar-heading .admin-page-header__actions');
-        const end = actions?.parentElement;
-
-        expect(end?.classList.contains('admin-page-header__end')).toBe(true);
-        expect(end?.classList.contains('ms-auto')).toBe(true);
-        expect(end?.parentElement?.lastElementChild).toBe(end);
-        expect(end?.parentElement?.querySelector(':scope > h1')?.textContent).toBe(cal.text('page.title'));
-        expect(actions?.lastElementChild).toBe(add());
+        expect(add()?.classList.contains('admin-button--secondary')).toBe(true);
+        expect(add()?.classList.contains('admin-button--primary')).toBe(false);
+        expect(add()?.querySelectorAll('svg')).toHaveLength(2);
+        expect(add()?.querySelector('.admin-button__icon svg')).not.toBeNull();
+        expect(add()?.parentElement?.classList.contains('admin-calendar-toolbar')).toBe(true);
+        expect(add()?.parentElement?.lastElementChild).toBe(add());
+        expect(add()?.previousElementSibling?.classList.contains('admin-calendar-title')).toBe(true);
+        expect(view.host.querySelector('.admin-calendar-heading .admin-page-header__actions')).toBeNull();
         await openAdd();
 
+        // A menu is at least 230px by its own rule, so the Add menu carries no width of its own, only
+        // a cap, so the long closing line wraps instead of stretching the menu across the screen.
+        expect([...(document.querySelector('.admin-menu')?.classList ?? [])].filter((each) => /^(max-)?w-/.test(each))).toEqual(['max-w-72']);
         expect(document.querySelector('.admin-menu')?.lastElementChild?.textContent).toBe(cal.text('page.add_hint'));
         key(document.activeElement, 'Escape');
         await settle();

@@ -196,6 +196,22 @@ function dismiss(): void {
     drag(one('.admin-modal__backdrop'), one('.admin-modal__backdrop'));
 }
 
+describe('the closure dialog\'s fields', () => {
+    it('lays its fields out by the dialog\'s own width and never the window\'s, Date and Until side by side where it has the room, Who, Reason and Closed all day across both columns', () => {
+        dialog();
+        press(one('#closure-all-day'));
+
+        const grid = one('.admin-closure__fields');
+        const widths = /^(sm|md|lg|xl|2xl):/;
+
+        expect(all('.admin-closure *').flatMap((el) => [...el.classList].filter((name) => widths.test(name)))).toEqual([]);
+        expect(grid?.parentElement?.classList.contains('@container')).toBe(true);
+        expect([...(grid?.classList ?? [])].filter((name) => name.includes('grid-cols'))).toEqual(['@md:grid-cols-2']);
+        expect([...(grid?.children ?? [])].map((child) => child.classList.contains('@md:col-span-2'))).toEqual([true, false, false, true, true, false, false]);
+        expect([...(grid?.children ?? [])].map((child) => child.querySelector('input, select, button')?.id)).toEqual(['closure-who', 'closure-date', 'closure-until', 'closure-reason', 'closure-all-day', 'closure-start', 'closure-end']);
+    });
+});
+
 describe('the closure dialog over bookings', () => {
     it('posts the add with no answer and, refused over bookings, shows the sentence and every row in place of the fields, with Back and the answers offered', () => {
         dialog();
