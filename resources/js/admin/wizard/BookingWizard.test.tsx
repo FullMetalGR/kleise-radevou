@@ -184,7 +184,79 @@ describe('the strip, 4.1', () => {
         expect(steps().map((step) => step.getAttribute('aria-current'))).toEqual(['step', null, null]);
         expect(dialog().querySelector('.admin-wizard-service')).not.toBeNull();
     });
+
+    it('draws an ordered list of three step cards, each with a number circle a screen reader skips that turns to a tick once the step is done, the current one ringed and never dimmed, the unreached dimmed, and on a phone the words of the current step alone', async () => {
+        render();
+
+        const strip = dialog().querySelector('.admin-wizard-strip');
+        expect(strip?.tagName).toBe('OL');
+        expect([...(strip?.children ?? [])].map((item) => `${item.tagName} ${item.querySelectorAll(':scope > button.admin-wizard-step').length}`)).toEqual(['LI 1', 'LI 1', 'LI 1']);
+        expect(circles().map((circle) => circle.getAttribute('aria-hidden'))).toEqual(['true', 'true', 'true']);
+        expect(circles().map(faceOf)).toEqual(['1', '2', '3']);
+        expect(steps().map(spokenNameOf)).toEqual(STEP_NAMES.map((name, at) => wiz.text('step', { n: String(at + 1), step: wiz.text(name) })));
+        expect(steps().map(shownNameOf)).toEqual(STEP_NAMES.map((name) => wiz.text(name)));
+        expect(steps().map((step) => ['aria-[current=step]:inset-ring-2', 'aria-[current=step]:inset-ring-primary'].filter((name) => !step.classList.contains(name)))).toEqual([[], [], []]);
+        expect(steps().map(dimmed)).toEqual([false, true, true]);
+        expect(phoneHidden('.admin-wizard-step__value')).toEqual([false, true, true]);
+        expect(phoneHidden('.admin-wizard-step__title')).toEqual([false, true, true]);
+
+        await toCustomer();
+
+        expect(circles().map(faceOf)).toEqual(['tick', 'tick', '3']);
+        expect(steps().map(dimmed)).toEqual([false, false, false]);
+        expect(phoneHidden('.admin-wizard-step__value')).toEqual([true, true, false]);
+        expect(phoneHidden('.admin-wizard-step__title')).toEqual([true, true, false]);
+    });
 });
+
+/** The strip's step names, in the order the strip shows them. */
+const STEP_NAMES = ['steps.services', 'steps.when', 'steps.customer'] as const;
+
+function circles(): HTMLElement[] {
+    return steps().map((step) => {
+        const circle = step.querySelector<HTMLElement>('.admin-wizard-step__number');
+
+        if (circle === null) {
+            throw new Error('A step has no number circle.');
+        }
+
+        return circle;
+    });
+}
+
+/** What a step's circle shows: its tick once the step is done, its number otherwise. */
+function faceOf(circle: HTMLElement): string {
+    return circle.querySelector('svg') === null ? (circle.textContent ?? '') : 'tick';
+}
+
+/** The name a screen reader takes for a step, its number with it, kept from the eye. */
+function spokenNameOf(step: HTMLElement): string {
+    const name = step.querySelector('.admin-wizard-step__name');
+
+    return name?.classList.contains('sr-only') === true ? (name.textContent ?? '') : '';
+}
+
+/** The name a step shows beside its circle, which a screen reader skips for the spoken one. */
+function shownNameOf(step: HTMLElement): string {
+    const title = step.querySelector('.admin-wizard-step__title');
+
+    return title?.getAttribute('aria-hidden') === 'true' ? (title.textContent ?? '') : '';
+}
+
+/** Whether a step is drawn faded, as a step the admin cannot reach yet is. */
+function dimmed(step: HTMLElement): boolean {
+    return step.classList.contains('opacity-55');
+}
+
+/** For each step, whether the part named is kept for a screen reader alone on a phone. */
+function phoneHidden(part: string): boolean[] {
+    return steps().map((step) => step.querySelector(part)?.classList.contains('max-desktop:sr-only') ?? false);
+}
+
+/** True when a class list names the mono face, the name spelled in two parts so no stylesheet gains it. */
+function mono(element: Element | null): boolean {
+    return [...(element?.classList ?? [])].includes(['font', 'mono'].join('-'));
+}
 
 describe('a customer\'s Book now, 4', () => {
     it('opens with the customer in the strip and the fields, the step answered and still editable, Create live once a slot is chosen', async () => {
@@ -251,7 +323,23 @@ describe('step 0, 4.2', () => {
         expect(dialog().querySelectorAll('.admin-wizard-segment').length).toBe(1);
         expect(dialog().querySelector('.admin-wizard-remove')).toBeNull();
     });
+
+    it('sets each segment as a fieldset inside an inner card, in a dialog body no wider than 1000 pixels that holds a query container', () => {
+        render();
+        press(dialog().querySelector('.admin-wizard-add'));
+
+        const segments = [...dialog().querySelectorAll('.admin-wizard-segment')];
+        expect(segments.map((segment) => segment.tagName)).toEqual(['FIELDSET', 'FIELDSET']);
+        expect(segments.map((segment) => innerCard(segment.parentElement))).toEqual([true, true]);
+        expect([...dialog().classList].filter((name) => name.startsWith('max-w-'))).toEqual(['max-w-[62.5rem]']);
+        expect(dialog().querySelector('.admin-wizard-strip')?.closest('.\\@container')).not.toBeNull();
+    });
 });
+
+/** True when the element is an inner card: the smaller radius inside a line ring. */
+function innerCard(element: Element | null): boolean {
+    return element?.tagName === 'SECTION' && ['rounded-inner', 'ring-border'].every((name) => element.classList.contains(name));
+}
 
 describe('step 1, 4.3', () => {
     it('asks the one endpoint only while every segment names a service, the default day prefetched at open, with the chain in the create shape', async () => {
@@ -329,6 +417,22 @@ describe('step 1, 4.3', () => {
         expect(fetched.mock.calls.length).toBeGreaterThan(1);
     });
 
+    it('sets each slot as a 44 pixel pill of lining figures, pressed once chosen, three to a line under the day calendar and beside it from a roomy dialog', async () => {
+        render();
+        await toWhen();
+        press(dialog().querySelector(`.admin-wizard-slot[value="${STARTS[1]}"]`));
+
+        const slots = [...dialog().querySelectorAll('.admin-wizard-slot')];
+        expect(slots.map((slot) => slot.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
+        expect(slots.map((slot) => ['h-11', 'rounded-field', 'tabular-nums'].filter((name) => !slot.classList.contains(name)))).toEqual([[], [], [], []]);
+        expect(slots.filter(mono)).toEqual([]);
+        expect(slots.map((slot) => slot.parentElement?.classList.contains('grid-cols-3'))).toEqual([true, true, true, true]);
+
+        const when = dialog().querySelector('.admin-wizard-when');
+        expect(when?.classList.contains('@xl:grid-cols-2')).toBe(true);
+        expect([...(when?.classList ?? [])].filter((name) => name.startsWith('desktop:'))).toEqual([]);
+    });
+
     it('shows the error notice with the server\'s sentence when the read fails', async () => {
         fetched.mockImplementation(async () => new Response(JSON.stringify({ code: 'invalid_request', data: { status: 400, detail: RANGE_DETAIL } }), { status: 400 }));
         render();
@@ -383,6 +487,26 @@ describe('step 2 and the submission, 4.4', () => {
         await toCustomer();
 
         expect([...dialog().querySelectorAll('.admin-wizard-summary__service')].map((line) => line.textContent)).toEqual(['Haircut']);
+    });
+
+    it('sets the summary as a description list inside an inner card, placed beside the fields from a roomy dialog without moving it in the reading order, its span in lining figures', async () => {
+        render();
+        await toCustomer();
+
+        const summary = dialog().querySelector('.admin-wizard-summary');
+        const card = summary?.parentElement ?? null;
+        expect(summary?.tagName).toBe('DL');
+        expect(innerCard(card)).toBe(true);
+        expect(['@xl:col-start-2', '@xl:row-start-1'].filter((name) => !card?.classList.contains(name))).toEqual([]);
+        expect(card?.nextElementSibling?.querySelector('#wizard-customer-name')).not.toBeNull();
+
+        const customer = dialog().querySelector('.admin-wizard-customer');
+        expect(customer?.classList.contains('@xl:grid-cols-[minmax(0,1fr)_18.125rem]')).toBe(true);
+        expect([...(customer?.classList ?? [])].filter((name) => name.startsWith('desktop:'))).toEqual([]);
+
+        const span = dialog().querySelector('.admin-wizard-summary__time');
+        expect(span?.classList.contains('tabular-nums')).toBe(true);
+        expect(mono(span)).toBe(false);
     });
 
     it('sends the customer, the ordered segments and the exact start the answer carried, shows busy with Cancel and the close control disabled, and closes on success', async () => {
