@@ -49,7 +49,7 @@ export function GalleryPhotos({ control, gallery, capacity, adding, removing, wa
 
     return (
         <div className="admin-settings-gallery flex flex-col gap-2 @xl:col-span-2">
-            <p className="admin-settings-gallery__count text-sm text-muted-foreground">
+            <p className="admin-settings-gallery__count text-label font-medium text-muted-foreground">
                 {words.text('gallery.count', { count: String(count), capacity: String(capacity.count) })}
             </p>
             {count > 0 && (
@@ -59,7 +59,7 @@ export function GalleryPhotos({ control, gallery, capacity, adding, removing, wa
 
                         return (
                             <li key={photo.name} className="admin-settings-gallery__photo flex flex-col items-start gap-1" data-name={photo.name}>
-                                <img className="admin-settings-gallery__image aspect-square w-full rounded-md object-cover" src={photo.url} alt={words.text('gallery.photo_alt', { n: String(index + 1), count: String(count) })} />
+                                <img className="admin-settings-gallery__image aspect-square w-full rounded-inner object-cover ring-[1.5px] ring-border" src={photo.url} alt={words.text('gallery.photo_alt', { n: String(index + 1), count: String(count) })} />
                                 <Button
                                     destructive
                                     variant="tertiary"
@@ -104,12 +104,12 @@ export function GalleryPhotos({ control, gallery, capacity, adding, removing, wa
                 </Button>
             </div>
             {full && (
-                <p id={fullId} className="admin-settings-gallery__full text-sm text-muted-foreground">
+                <p id={fullId} className="admin-settings-gallery__full text-label font-medium text-muted-foreground">
                     {words.text(FULL, { capacity: capacity.spelled })}
                 </p>
             )}
             {held && (
-                <p className="admin-settings-gallery__wait text-sm text-muted-foreground" role="status">
+                <p className="admin-settings-gallery__wait text-label font-medium text-muted-foreground" role="status">
                     {wait}
                 </p>
             )}

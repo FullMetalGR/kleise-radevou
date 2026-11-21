@@ -81,7 +81,7 @@ it('connects the fake provider in own mode, keeps Enter off the settings save, r
         ->waitForText(adminLine(PaymentsController::SAVED))
         ->waitForText(paymentsWalkLine('states.active'))
         ->assertDontSee(adminLine(SettingsController::SAVED))
-        ->assertAttribute('.admin-settings-theme[data-value="blue"]', 'aria-pressed', 'true')
+        ->assertAttribute('.admin-settings-theme[data-value="blue"]', 'aria-checked', 'true')
         ->click('.admin-toast-dismiss')
         ->assertCount('.admin-toast', 0);
 
@@ -164,7 +164,7 @@ it('connects the fake provider in own mode, keeps Enter off the settings save, r
         ->waitForText(paymentsWalkLine('degrade'))
         ->assertCount('.admin-payments-connection', 0)
         ->assertCount(PAYMENTS_WALK_PAYDESK.' .admin-payments-own', 1)
-        ->assertAttribute('.admin-settings-theme[data-value="blue"]', 'aria-pressed', 'true')
+        ->assertAttribute('.admin-settings-theme[data-value="blue"]', 'aria-checked', 'true')
         ->assertNoJavaScriptErrors();
 
     expect(DB::table('tenant_luna.payment_connections')->count())->toBe(0)

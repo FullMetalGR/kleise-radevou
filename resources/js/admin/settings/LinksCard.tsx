@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Card } from '@/components/ui/card';
 import { HelpLine } from '@/components/ui/field';
 import { COPY_LINK, CopyLink } from '@/lib/copy';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,8 @@ import { type SettingsKey, useSettings } from './words';
  * snippet, and one row per service and per member the public catalogue offers, each with its
  * link, a copy button and its QR code to download. Every link and every code's path is the
  * server's, so nothing here builds a URL. A copy records the press for setup's Booking link
- * step, since each copies the booking link.
+ * step, since each copies the booking link. It is an inner card inside the section, the rows of
+ * each list divided by a hairline, each link in the deep primary on a line of its own.
  */
 
 /*
@@ -40,14 +42,14 @@ function Row({ name, link, qr, file, linkClass }: { name: string; link: string; 
     const words = useSettings();
 
     return (
-        <li className="admin-settings-link flex flex-col gap-1">
-            <span className="admin-settings-link__name text-sm font-medium">{name}</span>
-            <a className={cn('admin-settings-link__url text-sm break-all underline', linkClass)} href={link} target="_blank" rel="noreferrer">
+        <li className="admin-settings-link flex flex-col items-start gap-1.5 py-3 first:pt-0 last:pb-0">
+            <span className="admin-settings-link__name text-body font-semibold">{name}</span>
+            <a className={cn('admin-settings-link__url focus-ring rounded-sm text-body-sm font-semibold break-all text-primary-deep hover:underline', linkClass)} href={link} target="_blank" rel="noreferrer">
                 {link}
             </a>
             <span className="flex flex-wrap items-center gap-3">
                 <CopyLink link={link} label={COPY_LINK} block="admin-settings-link" records />
-                <a className="admin-settings-link__qr text-sm underline" href={qr} download={file}>
+                <a className="admin-settings-link__qr focus-ring rounded-sm text-body-sm font-semibold text-primary-deep underline underline-offset-2" href={qr} download={file}>
                     {words.text(DOWNLOAD_QR)}
                 </a>
             </span>
@@ -62,8 +64,8 @@ function List({ heading, kind, rows }: { heading: string; kind: string; rows: Li
 
     return (
         <div className={`admin-settings-links__${kind} flex flex-col gap-2`}>
-            <h4 className="text-sm font-semibold">{heading}</h4>
-            <ul className="flex flex-col gap-3">
+            <h4 className="text-label text-muted-foreground">{heading}</h4>
+            <ul className="flex flex-col divide-y divide-border">
                 {rows.map((row) => (
                     <Row key={row.id} name={row.name} link={row.link} qr={row.qr} file={`${kind}-${row.id}-qr.svg`} />
                 ))}
@@ -76,8 +78,8 @@ export function LinksCard({ links, snippet }: Props) {
     const words = useSettings();
 
     return (
-        <section className="admin-settings-links flex flex-col gap-3 rounded-lg border p-3 @xl:col-span-2" aria-labelledby="settings-links-head">
-            <h3 id="settings-links-head" className="font-semibold">
+        <Card variant="inner" className="admin-settings-links flex flex-col gap-3 @xl:col-span-2" aria-labelledby="settings-links-head">
+            <h3 id="settings-links-head" className="text-body font-semibold">
                 {words.text(LINKS_TITLE)}
             </h3>
             <HelpLine className="admin-settings-links__help">{words.text(LINKS_HELP)}</HelpLine>
@@ -87,6 +89,6 @@ export function LinksCard({ links, snippet }: Props) {
             {snippet}
             <List heading={words.text(SERVICE_LINKS)} kind="service" rows={links.services} />
             <List heading={words.text(STAFF_LINKS)} kind="staff" rows={links.staff} />
-        </section>
+        </Card>
     );
 }

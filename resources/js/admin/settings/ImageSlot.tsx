@@ -14,6 +14,10 @@ import { IMAGE_TYPES, type StoredImage } from './model';
  * is busy; while any write is in flight, on this block or elsewhere on the page, every other
  * control here is disabled with the reason stated beside it.
  *
+ * The stored file's name stands beside its image where the two fit on one line and under it where
+ * they do not: a cover as wide as a phone's card would otherwise leave the name a column one
+ * letter wide.
+ *
  * The file input is the Field shell's control: it takes the shell's attributes, so the label
  * points at it by id and the help line hangs off aria-describedby like every other field on the
  * page. The chooser accepts the three raster types the server reads from the bytes; the list here
@@ -66,9 +70,9 @@ export function ImageSlot({ block, words, preview, control, image, uploading, re
             {image === null ? (
                 <HelpLine className={`${block}__none`}>{words.none}</HelpLine>
             ) : (
-                <div className={`${block}__current flex items-center gap-3`}>
+                <div className={`${block}__current flex flex-wrap items-center gap-3`}>
                     <img className={`${block}__image ${preview}`} src={image.url} alt="" />
-                    <span className={`${block}__name text-xs text-muted-foreground`}>{image.name}</span>
+                    <span className={`${block}__name text-small font-medium break-all text-muted-foreground`}>{image.name}</span>
                 </div>
             )}
             <div className="flex flex-wrap items-center gap-3">

@@ -1108,6 +1108,7 @@ export type SettingsStrings = {
         title: string;
     };
     sections: {
+        label: string;
         general: string;
         booking_page: string;
         booking_rules: string;

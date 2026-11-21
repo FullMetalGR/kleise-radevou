@@ -28,13 +28,13 @@ export function MapLine({ map }: { map: BusinessMap }) {
         case 'none':
             return null;
         case 'pending':
-            return <p className="admin-settings-map text-sm text-muted-foreground @xl:col-span-2">{words.text(PENDING)}</p>;
+            return <p className="admin-settings-map text-label font-medium text-muted-foreground @xl:col-span-2">{words.text(PENDING)}</p>;
         case 'failed':
-            return <p className="admin-settings-map text-sm text-destructive @xl:col-span-2">{words.text(FAILED)}</p>;
+            return <p className="admin-settings-map text-label font-medium text-destructive @xl:col-span-2">{words.text(FAILED)}</p>;
         case 'ready':
             return (
                 <div className="admin-settings-map @xl:col-span-2">
-                    <img className="aspect-[2/1] w-full max-w-md rounded-md object-cover" src={map.image.url} alt={words.text(ALT)} width={640} height={320} />
+                    <img className="aspect-[2/1] w-full max-w-md rounded-inner object-cover ring-[1.5px] ring-border" src={map.image.url} alt={words.text(ALT)} width={640} height={320} />
                 </div>
             );
     }

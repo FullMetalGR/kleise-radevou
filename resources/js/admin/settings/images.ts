@@ -16,8 +16,8 @@ export const COVER_URL = '/admin/settings/cover';
 /** A header mark's preview, kept small. */
 export const LOGO_PREVIEW = 'max-h-12 max-w-48';
 
-/** A wide photo's preview, in the cover's own proportion. */
-export const COVER_PREVIEW = 'aspect-[8/3] max-h-40 w-full max-w-md rounded-md object-cover';
+/** A wide photo's preview, in the cover's own proportion, on the corner and line of the photos beside it. */
+export const COVER_PREVIEW = 'aspect-[8/3] max-h-40 w-full max-w-md rounded-inner object-cover ring-[1.5px] ring-border';
 
 export const LOGO_HELP = 'booking_page.logo_help' satisfies SettingsKey;
 

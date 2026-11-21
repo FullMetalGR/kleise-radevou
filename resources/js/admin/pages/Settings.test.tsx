@@ -422,7 +422,7 @@ afterEach(() => {
 });
 
 describe('the sections', () => {
-    it('render in the one fixed order, Opening hours at its place under the empty entitlement set and one member, Payments and Danger zone on every plan, and never as tabs', () => {
+    it('render in the one fixed order, Opening hours at its place under the empty entitlement set and one member, Payments and Danger zone on every plan, all on the one page, with links that jump to them and no tabs that hide one', () => {
         render(propsWith({ entitlements: [], roster: [IMPLICIT] }));
         expect(headings()).toEqual([settings.text('sections.general'), settings.text('sections.booking_page'), settings.text('sections.booking_rules'), settings.text('sections.opening_hours'), settings.text('sections.payments'), settings.text('sections.emails'), billing.text('danger.title')]);
         expect(document.querySelectorAll('[role="tab"], [role="tablist"]')).toHaveLength(0);
@@ -442,6 +442,76 @@ describe('the sections', () => {
         expect(form?.nextElementSibling).toBe(zone);
         expect(document.querySelectorAll('.admin-settings-page > .admin-page-header h1')).toHaveLength(1);
         expect(document.querySelectorAll('h1')).toHaveLength(1);
+    });
+});
+
+/** The section links' names, in their order. */
+function tabs(): string[] {
+    return Array.from(document.querySelectorAll('nav.admin-settings-tabs a')).map((link) => link.textContent ?? '');
+}
+
+/** Where each section link points, in their order. */
+function tabTargets(): string[] {
+    return Array.from(document.querySelectorAll('nav.admin-settings-tabs a')).map((link) => link.getAttribute('href') ?? '');
+}
+
+describe('the section links', () => {
+    it('name every section the page draws, by its heading and in its order, Opening hours among them, each pointing at that heading', () => {
+        render(propsWith({ entitlements: [], roster: [IMPLICIT] }));
+        const nav = document.querySelector('nav.admin-settings-tabs');
+
+        expect(nav?.getAttribute('aria-label')).toBe(settings.text('sections.label'));
+        expect(tabs()).toEqual(headings());
+        expect(tabTargets()).toEqual(['#section-general', '#section-booking-page', '#section-booking-rules', '#section-opening-hours', '#section-payments', '#section-emails', '#section-danger']);
+        expect(tabTargets().map((target) => document.getElementById(target.slice(1))?.textContent)).toEqual(headings());
+        expect(tabTargets().map((target) => document.getElementById(target.slice(1))?.tagName)).toEqual(Array<string>(7).fill('H2'));
+    });
+
+    it('name no section the viewer is not shown: no Opening hours under the staff feature, no Danger zone without manageSettings', () => {
+        render(propsWith({ permissions: ['viewBookings', 'manageBookings'] }));
+
+        expect(tabs()).toEqual(headings());
+        expect(tabTargets()).toEqual(['#section-general', '#section-booking-page', '#section-booking-rules', '#section-payments', '#section-emails']);
+    });
+
+    it('sit between the page header and the one form, which keeps its one save bar, and a press on each sends nothing and moves no field', () => {
+        render(propsWith({ entitlements: [], roster: [IMPLICIT] }));
+        type('#settings-currency', 'usd');
+        const header = document.querySelector('.admin-settings-page > .admin-page-header');
+        const nav = document.querySelector('nav.admin-settings-tabs');
+        const before = reason();
+
+        expect(header?.nextElementSibling).toBe(nav);
+        expect(nav?.nextElementSibling).toBe(document.querySelector('form.admin-settings'));
+        expect(document.querySelectorAll('form')).toHaveLength(1);
+        expect(document.querySelectorAll('.admin-save-bar')).toHaveLength(1);
+        expect(document.querySelector('form.admin-settings')?.contains(nav)).toBe(false);
+
+        document.querySelectorAll('nav.admin-settings-tabs a').forEach((link) => press(link));
+
+        expect(inertia.put).not.toHaveBeenCalled();
+        expect(inertia.post).not.toHaveBeenCalled();
+        expect(inertia.delete).not.toHaveBeenCalled();
+        expect(value('#settings-currency')).toBe('USD');
+        expect(reason()).toBe(before);
+        expect(saveDisabled()).toBe(false);
+    });
+
+    it('land each section\'s heading clear of the row, every heading the page draws held off the top by the same margin', () => {
+        render(propsWith());
+
+        expect(document.querySelector('.admin-settings-page')?.classList.contains('[&_.admin-section_h2]:scroll-mt-25')).toBe(true);
+    });
+
+    it('hold every control of a section the keyboard reaches off the top by the headings\' margin, so the row covers none, and ring a heading the keyboard is sent to as a control is ringed', () => {
+        render(propsWith());
+        const page = document.querySelector('.admin-settings-page');
+
+        expect(page?.classList.contains('[&_.admin-section_:is(a,button,input,select,textarea)]:scroll-mt-25')).toBe(true);
+        expect(['[&_.admin-section_h2]:focus-ring', '[&_.admin-section_h2]:rounded-sm'].every((name) => page?.classList.contains(name))).toBe(true);
+        // The row's own links stand outside every section, so the margin never scrolls the page
+        // under a link that is always in view.
+        expect(document.querySelector('nav.admin-settings-tabs')?.closest('.admin-section')).toBeNull();
     });
 });
 
@@ -507,9 +577,9 @@ describe('Booking page', () => {
         expect(text('.admin-settings-copied')).toBe(shell.text(COPIED));
     });
 
-    it('draws the Theme picker in Accent colour\'s place: seven pills in their order, each a swatch of its light primary and its name, the saved one pressed and ringed, the help under them', () => {
+    it('draws the Theme picker in Accent colour\'s place: one radio group named by its label, seven pills in their order, each a swatch of its light primary and its name, the saved one checked, ringed and ticked, the help under them', () => {
         render(propsWith());
-        const group = document.querySelector('[role="group"].admin-settings-themes');
+        const group = document.querySelector('[role="radiogroup"].admin-settings-themes');
         const pills = [...document.querySelectorAll<HTMLButtonElement>('.admin-settings-theme')];
 
         expect(group?.getAttribute('aria-labelledby')).toBe('settings-theme-label');
@@ -522,8 +592,21 @@ describe('Booking page', () => {
         // Each swatch edged one pixel in the kit's border token, so Neutral's near-black reads on
         // the dark admin too.
         expect(pills.map((pill) => ['border', 'border-border'].every((name) => pill.querySelector('.admin-settings-theme__swatch')?.classList.contains(name)))).toEqual(Array<boolean>(7).fill(true));
-        expect(pills.filter((pill) => pill.getAttribute('aria-pressed') === 'true').map((pill) => pill.dataset.value)).toEqual(['violet']);
+        expect(pills.every((pill) => pill.getAttribute('role') === 'radio' && pill.type === 'button' && !pill.hasAttribute('aria-pressed'))).toBe(true);
+        expect(pills.map((pill) => pill.getAttribute('aria-checked'))).toEqual(['false', 'false', 'false', 'false', 'false', 'false', 'true']);
         expect(pills.filter((pill) => pill.classList.contains('admin-settings-theme--chosen')).map((pill) => pill.dataset.value)).toEqual(['violet']);
+        // The group is one stop of the Tab key, on the chosen pill; the arrows reach the others.
+        expect(pills.map((pill) => pill.tabIndex)).toEqual([-1, -1, -1, -1, -1, -1, 0]);
+        // The chosen pill shows a tick in its swatch and a thicker ring in the theme colour, so the
+        // choice never rests on a colour alone; the others keep the line of a secondary button.
+        expect(pills.map((pill) => pill.querySelectorAll('.admin-settings-theme__swatch svg').length)).toEqual([0, 0, 0, 0, 0, 0, 1]);
+        expect(['bg-muted', 'inset-ring-[2.5px]', 'inset-ring-primary'].every((name) => pills[6]?.classList.contains(name))).toBe(true);
+        expect(pills.slice(0, 6).every((pill) => ['bg-card', 'inset-ring-[1.5px]', 'inset-ring-border'].every((name) => pill.classList.contains(name)))).toBe(true);
+        expect(pills.every((pill) => ['h-10', 'rounded-full', 'focus-ring'].every((name) => pill.classList.contains(name)) && pill.style.boxShadow === '')).toBe(true);
+        // Drawn at 40px, each answers a touch 44px tall on a layer of its own reaching 2px past it,
+        // inside the 8px between pills.
+        expect(pills.every((pill) => ['relative', 'after:absolute', 'after:-inset-0.5'].every((name) => pill.classList.contains(name)))).toBe(true);
+        expect(group?.classList.contains('gap-2')).toBe(true);
         // Its place: the picker opens the Booking page section, before the logo.
         expect(document.querySelector('.admin-settings-themes')?.compareDocumentPosition(document.querySelector('.admin-settings-logo') as Node) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
@@ -534,13 +617,82 @@ describe('Booking page', () => {
 
         const chosen = [...document.querySelectorAll<HTMLButtonElement>('.admin-settings-theme--chosen')].map((pill) => pill.dataset.value);
         expect(chosen).toEqual(['blue']);
-        expect(document.querySelector('.admin-settings-theme[data-value="blue"]')?.getAttribute('aria-pressed')).toBe('true');
-        expect(document.querySelector('.admin-settings-theme[data-value="violet"]')?.getAttribute('aria-pressed')).toBe('false');
+        expect(document.querySelector('.admin-settings-theme[data-value="blue"]')?.getAttribute('aria-checked')).toBe('true');
+        expect(document.querySelector('.admin-settings-theme[data-value="violet"]')?.getAttribute('aria-checked')).toBe('false');
 
         press(document.querySelector('.admin-settings-save'));
         const [, body] = lastVisit(inertia.put);
         expect(body).toEqual({ ...wholeBody(), theme: 'blue', ...BLANK_PROFILE });
         expect(body).not.toHaveProperty('brand_accent');
+    });
+
+    it('moves the choice with the arrow keys, wrapping at both ends, jumps to the ends with Home and End, takes the focus along, and sends the theme reached', () => {
+        render(propsWith());
+        const pill = (word: string) => document.querySelector<HTMLButtonElement>(`.admin-settings-theme[data-value="${word}"]`);
+        const checked = () => document.querySelector('.admin-settings-theme[aria-checked="true"]')?.getAttribute('data-value');
+        const walk: [string, string][] = [
+            ['ArrowRight', 'neutral'],
+            ['ArrowLeft', 'violet'],
+            ['ArrowUp', 'rose'],
+            ['ArrowDown', 'violet'],
+            ['Home', 'neutral'],
+            ['ArrowDown', 'blue'],
+            ['End', 'violet'],
+            ['Home', 'neutral'],
+            ['ArrowRight', 'blue'],
+        ];
+
+        act(() => pill('violet')?.focus());
+
+        for (const [name, reached] of walk) {
+            const from = document.activeElement;
+            const event = new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true });
+            act(() => from?.dispatchEvent(event));
+
+            expect([name, checked(), event.defaultPrevented]).toEqual([name, reached, true]);
+            expect(document.activeElement).toBe(pill(reached));
+            expect(pill(reached)?.tabIndex).toBe(0);
+            expect(document.querySelectorAll('.admin-settings-theme[tabindex="0"]')).toHaveLength(1);
+        }
+
+        // Another key leaves the choice where it is and the key to the browser.
+        const other = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+        act(() => pill('blue')?.dispatchEvent(other));
+        expect([checked(), other.defaultPrevented]).toEqual(['blue', false]);
+        expect(inertia.put).not.toHaveBeenCalled();
+
+        press(document.querySelector('.admin-settings-save'));
+        const [, body] = lastVisit(inertia.put);
+        expect(body).toEqual({ ...wholeBody(), theme: 'blue', ...BLANK_PROFILE });
+    });
+
+    it('leaves an arrow, Home or End pressed with Alt, Ctrl or Cmd held to the browser, the theme and the focus where they were', () => {
+        render(propsWith());
+        const violet = document.querySelector<HTMLButtonElement>('.admin-settings-theme[data-value="violet"]');
+        const checked = () => document.querySelector('.admin-settings-theme[aria-checked="true"]')?.getAttribute('data-value');
+        const held: [string, KeyboardEventInit][] = [
+            ['ArrowLeft', { altKey: true }],
+            ['ArrowRight', { altKey: true }],
+            ['ArrowUp', { metaKey: true }],
+            ['ArrowDown', { ctrlKey: true }],
+            ['Home', { ctrlKey: true }],
+            ['End', { metaKey: true }],
+        ];
+
+        act(() => violet?.focus());
+
+        for (const [name, init] of held) {
+            const event = new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true, ...init });
+            act(() => violet?.dispatchEvent(event));
+
+            expect([name, checked(), event.defaultPrevented]).toEqual([name, 'violet', false]);
+            expect(document.activeElement).toBe(violet);
+        }
+
+        // Shift is no shortcut of the browser's here: the arrow moves the choice as it does bare.
+        const shifted = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true, shiftKey: true });
+        act(() => violet?.dispatchEvent(shifted));
+        expect([checked(), shifted.defaultPrevented]).toEqual(['rose', true]);
     });
 
     it('records the copy after the clipboard write as an async visit that keeps the page, with no toast, and records nothing when copying fails', async () => {
@@ -587,10 +739,10 @@ describe('Booking page', () => {
         expect(rows.map((row) => row.querySelector('.admin-settings-link__name')?.textContent)).toEqual([settings.text(PAGE_LINK), 'Haircut', 'Colour', 'Elena Papadaki']);
         expect(rows.map((row) => row.querySelector('.admin-settings-link__url')?.getAttribute('href'))).toEqual([LINKS.page.link, ...LINKS.services.map((row) => row.link), ...LINKS.staff.map((row) => row.link)]);
         expect(rows.map((row) => row.querySelector('.admin-settings-link__url')?.getAttribute('class'))).toEqual([
-            'admin-settings-link__url text-sm break-all underline admin-settings-hosted__link',
-            'admin-settings-link__url text-sm break-all underline',
-            'admin-settings-link__url text-sm break-all underline',
-            'admin-settings-link__url text-sm break-all underline',
+            'admin-settings-link__url focus-ring rounded-sm text-body-sm font-semibold break-all text-primary-deep hover:underline admin-settings-hosted__link',
+            'admin-settings-link__url focus-ring rounded-sm text-body-sm font-semibold break-all text-primary-deep hover:underline',
+            'admin-settings-link__url focus-ring rounded-sm text-body-sm font-semibold break-all text-primary-deep hover:underline',
+            'admin-settings-link__url focus-ring rounded-sm text-body-sm font-semibold break-all text-primary-deep hover:underline',
         ]);
         expect(rows.map((row) => row.querySelector('.admin-settings-link__copy')?.textContent)).toEqual(Array(4).fill(shell.text(COPY_LINK)));
         expect(rows.map((row) => [row.querySelector('.admin-settings-link__qr')?.textContent, row.querySelector('.admin-settings-link__qr')?.getAttribute('href'), row.querySelector('.admin-settings-link__qr')?.getAttribute('download')])).toEqual([
@@ -823,6 +975,16 @@ describe('Booking page cover and gallery', () => {
         expect(disabled('.admin-settings-cover-upload')).toBe(true);
         expect(document.querySelector('.admin-settings-logo__image')).toBeNull();
         expect(saveDisabled()).toBe(false);
+    });
+
+    it('draws the stored cover on the inner corner inside the secondary line, as the gallery\'s photos and the map beside it are drawn', () => {
+        render(propsWith({ cover: COVER, gallery: photos(1) }));
+        const drawn = (selector: string) => ['rounded-inner', 'ring-[1.5px]', 'ring-border', 'object-cover'].every((name) => document.querySelector(selector)?.classList.contains(name));
+
+        expect([drawn('.admin-settings-cover__image'), drawn('.admin-settings-gallery__image')]).toEqual([true, true]);
+        // The file's name goes under a cover as wide as its row instead of being squeezed beside it.
+        expect(['flex', 'flex-wrap', 'items-center', 'gap-3'].every((name) => document.querySelector('.admin-settings-cover__current')?.classList.contains(name))).toBe(true);
+        expect([...(document.querySelector('.admin-settings-cover__image')?.classList ?? [])].filter((name) => /^rounded-(?!inner$)/.test(name))).toEqual([]);
     });
 
     it('removes the cover as its own DELETE, busy alone, and toasts a refusal in its sentence with the cover kept', () => {

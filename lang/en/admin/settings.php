@@ -10,7 +10,7 @@
  * the Emails list's admin/emails.php's; the Emails heading alone is here.
  *
  * page is the screen's title and heading. sections are the headings the page renders, in its
- * order.
+ * order, and label the name of the row of links to them over the page.
  *
  * general is the currency's label and help, and the default language's. booking_page is the theme's
  * label and help and its seven names (themes, keyed by the word settings.theme holds, Theme's
@@ -64,6 +64,7 @@ return [
         'title' => 'Settings',
     ],
     'sections' => [
+        'label' => 'Settings sections',
         'general' => 'General',
         'booking_page' => 'Booking page',
         'booking_rules' => 'Booking rules',

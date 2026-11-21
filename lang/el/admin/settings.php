@@ -30,6 +30,7 @@ return [
         'title' => 'Ρυθμίσεις',
     ],
     'sections' => [
+        'label' => 'Ενότητες ρυθμίσεων',
         'general' => 'Γενικά',
         'booking_page' => 'Σελίδα κρατήσεων',
         'booking_rules' => 'Κανόνες κράτησης',
