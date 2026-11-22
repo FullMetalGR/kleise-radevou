@@ -1,21 +1,26 @@
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CHECK_BOX } from '@/components/ui/check-field';
+import { Card } from '@/components/ui/card';
+import { CheckField } from '@/components/ui/check-field';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { TimeField } from '@/components/ui/time-field';
 import { formatDate, formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
+import { cn } from '@/lib/utils';
 import { DEFAULT_WINDOW } from '@/shifts/model';
 import type { Blackout } from './model';
 import { type StaffKey, type StaffWords, useStaff } from './words';
 
 /*
- * The closures card: the dates on record, each line its dates in mono, a run of consecutive dates
- * the server folded printing its first and last, an all-day closure the dates alone and a partial
- * one the dates and its window, then a muted line beneath, and a Delete at the line's end. Every
+ * The closures card: the dates on record as a table, each row its dates, a run of consecutive
+ * dates the server folded printing its first and last, an all-day closure the dates alone and a
+ * partial one the dates and its window, then a muted cell beside, and a Delete at the row's end.
+ * Where the card has no room for the grid the table reads as rows, each cell under its label.
+ * Delete is its words alone, and below the wide breakpoint a touch lands on a box 44px high. Every
  * date and time is spelled in the tenant's formats with no conversion at all, because they carry
  * no instant and converting would shift a closure onto the wrong day.
  *
@@ -25,7 +30,8 @@ import { type StaffKey, type StaffWords, useStaff } from './words';
  * the reason alone. The form is then Date and Until, Until optional with its help, Reason with
  * its help (the shell's, shared with the Calendar's closure dialog), Start and End only while
  * Closed all day is unticked, and Closed all day beside Add; Add is disabled while the date is
- * blank. What it adds and removes is the page's to send, matched by dates and window.
+ * blank. Its fields stand two abreast where the card is wide enough, Who and Reason across both.
+ * What it adds and removes is the page's to send, matched by dates and window.
  *
  * One action is in flight at a time, and the control that started it is the one that shows busy:
  * the pressed Delete reads Deleting, or Add reads Adding. Every other control is merely disabled
@@ -74,6 +80,16 @@ const BUSINESS = 'closures.business' satisfies StaffKey;
 
 /** Who's value for the whole business; a member's is their id. */
 const WHOLE = '';
+
+/*
+ * The room at the card's sides: the first cell's on a wide card, the rows' where the table reads
+ * as rows, below the wide breakpoint or on a card under 42rem (the card is its own query
+ * container), so the heading, the rows and the form share a start line.
+ */
+const SIDES = 'px-6 max-wide:px-4.5 @max-2xl:px-4.5';
+
+/** The column beside the dates: a scope's card shows each closure's reason, the list's whom it closes. */
+const REASON_COLUMN = 'closures.reason_column' satisfies StaffKey;
 
 /**
  * The closure form's pieces, shared with the Calendar's closure dialog: the route a scope's
@@ -128,51 +144,67 @@ export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity,
     const held = inFlight !== null;
     const words = useStaff();
     const shell = useShell();
+    const aside: StaffKey = who === null ? REASON_COLUMN : 'closures.who';
 
     return (
-        <section className="admin-blackouts flex flex-col gap-3 rounded-xl border p-4" aria-labelledby={heading}>
-            <h2 id={heading} className="font-semibold">
+        <Card flush className="admin-blackouts @container flex flex-col gap-4 pt-6 pb-6.5 max-wide:pt-5 max-wide:pb-5" aria-labelledby={heading}>
+            <h2 id={heading} className={cn('text-card-title', SIDES)}>
                 {title}
             </h2>
             {blackouts.length === 0 ? (
-                <p className="admin-blackouts__none text-sm text-muted-foreground">{words.text('closures.none')}</p>
+                <p className={cn('admin-blackouts__none text-sm text-muted-foreground', SIDES)}>{words.text('closures.none')}</p>
             ) : (
-                <ul className="admin-blackouts__list flex flex-col">
-                    {blackouts.map((blackout) => (
-                        <li key={keyOf(blackout)} className="admin-blackouts__row flex items-center justify-between gap-3 border-t py-2 text-sm first:border-t-0">
-                            <span className="flex min-w-0 flex-col gap-0.5">
-                                <span className="admin-blackouts__when font-mono">{blackoutLabel(blackout, clock, words)}</span>
-                                {who !== null ? (
-                                    <span className="admin-blackouts__who text-muted-foreground">{whoLine(blackout, who, words)}</span>
-                                ) : (
-                                    blackout.reason !== null && <span className="admin-blackouts__reason text-muted-foreground">{blackout.reason}</span>
-                                )}
-                            </span>
-                            <Button
-                                variant="link"
-                                destructive
-                                className="admin-blackouts__delete"
-                                disabled={held}
-                                busy={inFlight?.action === 'remove' && keyOf(inFlight.blackout) === keyOf(blackout)}
-                                busyLabel={words.text('closures.deleting')}
-                                onClick={() => onRemove(blackout)}
-                            >
-                                {words.text('closures.delete')}
-                            </Button>
-                        </li>
-                    ))}
-                </ul>
+                <Table className="admin-blackouts__list">
+                    <TableHead>
+                        <TableRow>
+                            <Th>{words.text('closures.date')}</Th>
+                            <Th>{words.text(aside)}</Th>
+                            <Th>
+                                <span className="sr-only">{words.text('closures.delete')}</span>
+                            </Th>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {blackouts.map((blackout) => (
+                            <TableRow key={keyOf(blackout)} className="admin-blackouts__row">
+                                <Td label={words.text('closures.date')} header>
+                                    <span className="admin-blackouts__when">{blackoutLabel(blackout, clock, words)}</span>
+                                </Td>
+                                <Td label={words.text(aside)} className="font-normal text-muted-foreground">
+                                    {who !== null ? (
+                                        <span className="admin-blackouts__who">{whoLine(blackout, who, words)}</span>
+                                    ) : (
+                                        blackout.reason !== null && <span className="admin-blackouts__reason">{blackout.reason}</span>
+                                    )}
+                                </Td>
+                                <Td className="text-right">
+                                    <Button
+                                        variant="link"
+                                        destructive
+                                        className="admin-blackouts__delete max-wide:min-h-11"
+                                        disabled={held}
+                                        busy={inFlight?.action === 'remove' && keyOf(inFlight.blackout) === keyOf(blackout)}
+                                        busyLabel={words.text('closures.deleting')}
+                                        onClick={() => onRemove(blackout)}
+                                    >
+                                        {words.text('closures.delete')}
+                                    </Button>
+                                </Td>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             )}
             {inFlight !== null && (
-                <p className="admin-blackouts__wait text-sm text-muted-foreground" role="status">
+                <p className={cn('admin-blackouts__wait text-sm text-muted-foreground', SIDES)} role="status">
                     {words.text(inFlight.action === 'add' ? WAIT_ADDING : WAIT_REMOVING)}
                 </p>
             )}
             {inside !== null ? (
-                <div className="admin-blackouts__inside flex flex-col gap-3 border-t pt-3">{inside}</div>
+                <div className={cn('admin-blackouts__inside flex flex-col gap-3 border-t pt-4', SIDES)}>{inside}</div>
             ) : (
                 <form
-                    className="admin-blackouts__form grid gap-3 border-t pt-3 desktop:grid-cols-2"
+                    className={cn('admin-blackouts__form grid gap-x-6 gap-y-4 border-t pt-4 @xl:grid-cols-2', SIDES)}
                     onSubmit={(event) => {
                         event.preventDefault();
 
@@ -189,20 +221,17 @@ export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity,
                     }}
                 >
                     {who !== null && (
-                        <>
-                            <Field id={`${idPrefix}-who`} label={words.text('closures.who')}>
-                                {(control) => (
-                                    <Select
-                                        {...control}
-                                        className="admin-blackouts__who-select"
-                                        options={[{ value: WHOLE, label: words.text(BUSINESS) }, ...who.offered.map((offered) => ({ value: String(offered.id), label: offered.name }))]}
-                                        value={member}
-                                        onChange={setMember}
-                                    />
-                                )}
-                            </Field>
-                            <div className="max-desktop:hidden" />
-                        </>
+                        <Field id={`${idPrefix}-who`} label={words.text('closures.who')} className="@xl:col-span-2">
+                            {(control) => (
+                                <Select
+                                    {...control}
+                                    className="admin-blackouts__who-select"
+                                    options={[{ value: WHOLE, label: words.text(BUSINESS) }, ...who.offered.map((offered) => ({ value: String(offered.id), label: offered.name }))]}
+                                    value={member}
+                                    onChange={setMember}
+                                />
+                            )}
+                        </Field>
                     )}
                     <Field id={`${idPrefix}-date`} label={words.text('closures.date')}>
                         {(control) => <DateField {...control} className="admin-blackouts__date" value={date} onChange={setDate} clock={clock} weekStart={weekStart} />}
@@ -210,7 +239,7 @@ export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity,
                     <Field id={`${idPrefix}-until`} label={words.text('closures.until')} help={words.text('closures.until_help')}>
                         {(control) => <DateField {...control} className="admin-blackouts__until" value={until} onChange={setUntil} clock={clock} weekStart={weekStart} />}
                     </Field>
-                    <Field id={`${idPrefix}-reason`} label={words.text('closures.reason')} help={shell.text('shared.closure.reason_help')} className="desktop:col-span-2">
+                    <Field id={`${idPrefix}-reason`} label={words.text('closures.reason')} help={shell.text('shared.closure.reason_help')} className="@xl:col-span-2">
                         {(control) => <TextInput {...control} className="admin-blackouts__reason-input" value={reason} onChange={(event) => setReason(event.target.value)} />}
                     </Field>
                     {!allDay && (
@@ -223,17 +252,14 @@ export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity,
                             </Field>
                         </>
                     )}
-                    <div className="admin-blackouts__all-day flex items-center gap-2 text-sm">
-                        <input type="checkbox" id={`${idPrefix}-all-day`} className={`admin-blackouts__all-day-tick ${CHECK_BOX}`} checked={allDay} onChange={(event) => setAllDay(event.target.checked)} />
-                        <label htmlFor={`${idPrefix}-all-day`}>{words.text('closures.all_day')}</label>
-                    </div>
-                    <div className="flex justify-end">
+                    <CheckField id={`${idPrefix}-all-day`} label={words.text('closures.all_day')} checked={allDay} onChange={setAllDay} className="admin-blackouts__all-day justify-center" tickClassName="admin-blackouts__all-day-tick" />
+                    <div className="flex items-end justify-end">
                         <Button type="submit" variant="primary" className="admin-blackouts__add" disabled={date === '' || held} busy={inFlight?.action === 'add'} busyLabel={words.text('closures.adding')}>
                             {words.text('closures.add')}
                         </Button>
                     </div>
                 </form>
             )}
-        </section>
+        </Card>
     );
 }

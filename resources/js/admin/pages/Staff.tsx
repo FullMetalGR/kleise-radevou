@@ -399,7 +399,7 @@ function photoSlot(row: StaffMember, write: OneWrite<Action>, uploads: number, o
             key={uploads}
             block="admin-staff-photo"
             words={photoWordsOf(words)}
-            preview="size-16 rounded-full object-cover"
+            preview="size-18 rounded-full object-cover"
             control={control}
             image={row.photo}
             uploading={write.inFlight === 'photo-upload'}

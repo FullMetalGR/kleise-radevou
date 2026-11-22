@@ -111,6 +111,114 @@ const SWATCH_TOUCH_AREAS = <<<'JS'
     })()
     JS;
 
+/**
+ * How the closures card on a member's page lays its closures out: "rows" where each closure is a
+ * block whose labelled cells are lines, each label shown before its value and the head row out of
+ * sight, every row inside the card; "grid" where the rows are a table's rows under a head row in
+ * view; "none" where the card lists none.
+ */
+const CLOSURE_ROWS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const card = document.querySelector('.admin-blackouts');
+        const rows = Array.from(document.querySelectorAll('.admin-blackouts__row'));
+        if (card === null || rows.length === 0) {
+            return 'none';
+        }
+        const edge = card.getBoundingClientRect();
+        const head = card.querySelector('thead').getBoundingClientRect();
+        const lined = (row) => {
+            const labels = Array.from(row.querySelectorAll('.admin-table__label'));
+            return labels.length > 0 && labels.every((label) => label.getBoundingClientRect().width > 0 && label.getBoundingClientRect().right <= label.nextElementSibling.getBoundingClientRect().left + 1);
+        };
+        const inside = (row) => row.getBoundingClientRect().right <= edge.right + 1 && row.scrollWidth <= row.clientWidth + 1;
+        if (rows.every((row) => getComputedStyle(row).display === 'block' && lined(row) && inside(row)) && head.height <= 1) {
+            return 'rows';
+        }
+        return rows.every((row) => getComputedStyle(row).display === 'table-row') && head.height > 1 ? 'grid' : 'neither';
+    })
+    JS;
+
+/**
+ * Whether the save bar leaves a member's form readable to its end: scrolled to the foot of the
+ * page, the last control the page draws outside the bar ends above the bar's top edge.
+ */
+const SAVE_CLEAR_OF_LAST_CONTROL = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            const controls = Array.from(document.querySelectorAll('.admin-staff-page :is(button, input, select, textarea, a[href])')).filter((control) => control.closest('.admin-save-bar') === null && control.getClientRects().length > 0);
+            const bar = document.querySelector('.admin-save-bar');
+            if (controls.length === 0 || bar === null) {
+                resolve('missing');
+                return;
+            }
+            const last = Math.max(...controls.map((control) => control.getBoundingClientRect().bottom));
+            resolve(last <= bar.getBoundingClientRect().top + 0.5);
+        }));
+    }))
+    JS;
+
+/**
+ * The height in CSS pixels of the lowest box a closure's Delete answers a press on, whatever the
+ * words inside it measure. 0 where the card lists no closure.
+ */
+const CLOSURE_DELETE_HEIGHT = <<<'JS'
+    document.fonts.ready.then(() => {
+        const heights = Array.from(document.querySelectorAll('.admin-blackouts__row .admin-blackouts__delete')).map((control) => control.getBoundingClientRect().height);
+        return heights.length === 0 ? 0 : Math.min(...heights);
+    })
+    JS;
+
+/**
+ * How a member's form stands its cards and how Basics stands its fields, both read the same way:
+ * "one" where every part starts at the first part's left edge and sits wholly below the part
+ * before it, "several" where any part does not, "missing" where there are not two parts to read.
+ * The cards are the page's sections that sit inside no other section.
+ */
+const STAFF_FORM_COLUMNS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const standing = (parts) => {
+            const boxes = parts.map((part) => part.getBoundingClientRect());
+            if (boxes.length < 2) {
+                return 'missing';
+            }
+            return boxes.every((box, index) => Math.abs(box.left - boxes[0].left) <= 1 && (index === 0 || box.top >= boxes[index - 1].bottom - 0.5)) ? 'one' : 'several';
+        };
+        const cards = Array.from(document.querySelectorAll('.admin-staff-page section')).filter((card) => card.parentElement.closest('section') === null);
+        const fields = Array.from(document.querySelectorAll('.admin-staff-page .admin-section--basics > div > *'));
+        return 'cards ' + standing(cards) + ', fields ' + standing(fields);
+    })
+    JS;
+
+/**
+ * Whether the danger zone's Delete keeps to the room its card gives it: the part of the card that
+ * holds the button, inside that part's own padding. The room is narrower than the card and is as
+ * wide as the card makes it, whatever it holds, so a label that did not wrap runs past it into
+ * the padding while still ending short of the card's edge, where neither the card's box nor the
+ * page's width would show it. The button's box lies within the room on every side and its words
+ * within the button's. "missing" where the page draws no Delete.
+ */
+const DANGER_DELETE_INSIDE_CARD = <<<'JS'
+    document.fonts.ready.then(() => {
+        const button = document.querySelector('.admin-staff-delete');
+        const card = button === null ? null : button.closest('section');
+        const part = card === null ? undefined : Array.from(card.children).find((child) => child.contains(button));
+        if (button === null || part === undefined) {
+            return 'missing';
+        }
+        const box = button.getBoundingClientRect();
+        const edge = part.getBoundingClientRect();
+        const padding = getComputedStyle(part);
+        const room = {
+            left: edge.left + parseFloat(padding.paddingLeft),
+            right: edge.right - parseFloat(padding.paddingRight),
+            top: edge.top + parseFloat(padding.paddingTop),
+            bottom: edge.bottom - parseFloat(padding.paddingBottom),
+        };
+        return box.width > 0 && box.left >= room.left - 0.5 && box.right <= room.right + 0.5 && box.top >= room.top - 0.5 && box.bottom <= room.bottom + 0.5 && button.scrollWidth <= button.clientWidth + 1;
+    })
+    JS;
+
 beforeEach(function () {
     dropDemoSchemas();
     $this->seed(DemoTenantsSeeder::class);
@@ -357,4 +465,48 @@ it('lays a member\'s read-only page on two columns at 1440px and on one on a pho
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
     Look::shot($page, 'staff-view-1440-'.$language->value);
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('stands a member\'s form on one column on a phone with its closures as labelled rows and Save clear of the last control, a new member\'s form too, and the closures as a table at 1440px, the page never scrolling sideways', function (SiteLanguage $language) {
+    $elena = DB::table('tenant_luna.staff')->where('name', 'Elena Papadaki')->value('id');
+    assert(is_int($elena));
+    // A partial closure whose reason is one unbroken word wider than a phone's row.
+    DB::table('tenant_luna.blackouts')->insert(['staff_id' => $elena, 'date' => athensToday()->modify('+20 days')->format('Y-m-d'), 'start_time' => '14:00', 'end_time' => '16:00', 'reason' => str_repeat('Dentist', 8)]);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    // On a phone every card stands under the one before and Basics' fields do too. The danger
+    // zone's Delete keeps to the room inside its card's padding, which a long label does only by
+    // wrapping: on one line it would run into the padding and still end short of the card's edge.
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(390, 844);
+    $page->navigate(Admin::url('luna', '/staff/'.$elena))
+        ->waitForText(adminLine('admin/staff.page.exceptions', [], $language))
+        ->assertScript(CLOSURE_ROWS, 'rows')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(STAFF_FORM_COLUMNS, 'cards one, fields one')
+        ->assertScript(DANGER_DELETE_INSIDE_CARD, true);
+    // A row's Delete is drawn as one line of words and answers a touch on a box 44px high.
+    expect($page->script(CLOSURE_DELETE_HEIGHT))->toBeGreaterThanOrEqual(44);
+    Look::shot($page, 'staff-form-390-'.$language->value);
+    $page->assertScript(SAVE_CLEAR_OF_LAST_CONTROL, true);
+
+    $page->navigate(Admin::url('luna', '/staff/new'))
+        ->waitForText(adminLine('admin/staff.form.services', [], $language))
+        ->assertMissing('.admin-blackouts')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(STAFF_FORM_COLUMNS, 'cards one, fields one');
+    Look::shot($page, 'staff-new-390-'.$language->value);
+    $page->assertScript(SAVE_CLEAR_OF_LAST_CONTROL, true);
+
+    // On a wide page the cards still stand in one column and Basics alone puts its fields side by
+    // side, so the same reading answers one way for the cards and the other way for the fields.
+    $page->resize(1440, 900)
+        ->navigate(Admin::url('luna', '/staff/'.$elena))
+        ->waitForText(adminLine('admin/staff.page.exceptions', [], $language))
+        ->assertScript(CLOSURE_ROWS, 'grid')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertScript(STAFF_FORM_COLUMNS, 'cards one, fields several')
+        ->assertNoJavaScriptErrors();
+    // In the table's grid Delete is its words alone, so the row is no taller for it.
+    expect($page->script(CLOSURE_DELETE_HEIGHT))->toBeGreaterThan(0)->toBeLessThan(44);
+    Look::shot($page, 'staff-form-1440-'.$language->value);
 })->with([SiteLanguage::English, SiteLanguage::Greek]);

@@ -2,7 +2,8 @@ import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { CHECK_BOX, CheckField } from '@/components/ui/check-field';
+import { CHECK_CARDS, CheckCard } from '@/components/ui/check-card';
+import { CheckField } from '@/components/ui/check-field';
 import { Combobox } from '@/components/ui/combobox';
 import { Field, type FieldControl } from '@/components/ui/field';
 import { Textarea, TextInput } from '@/components/ui/input';
@@ -22,12 +23,14 @@ export const SHIFTS_PATH = '/admin/shifts';
 /*
  * The staff detail page: a breadcrumb, a title row with the name and the status chip, then Basics
  * (Name, Email, Linked user as the combobox over the tenant's users, Status, Offered online, Title,
- * Bio with its count, and the Photo where the caller hands one), Services performed with inactive
- * services marked rather than hidden, Weekly availability as one read-only line of the member's
- * repeating pattern with the link to Shifts, where it is edited, then, on a persisted row alone,
- * Exceptions for this staff member and the Danger zone, outside the member's form (FORM_ID), and a
- * sticky save bar. The only client gate is the name; while another write of the page is in flight
- * Save is held with that write's sentence beside it.
+ * Bio with its count, and the Photo where the caller hands one), Services performed as check cards
+ * with inactive services marked rather than hidden, Weekly availability as one read-only line of
+ * the member's repeating pattern with the link to Shifts, where it is edited, then, on a persisted
+ * row alone, Exceptions for this staff member and the Danger zone, outside the member's form
+ * (FORM_ID), and a sticky save bar. The cards stand one under the other at the page's full width;
+ * Basics alone puts its fields two abreast, where its card is wide enough. The only client gate is
+ * the name; while another write of the page is in flight Save is held with that write's sentence
+ * beside it.
  *
  * The photo is the caller's control, its own write on its own two routes, offered on a persisted
  * member who can have a face: a new member has no id for the route and the implicit member stands
@@ -129,7 +132,7 @@ export function StaffForm({ form, onChange, creating, implicit, title, status, u
     const tick = (id: number, ticked: boolean) => set('service_ids')(ticked ? [...form.service_ids, id] : form.service_ids.filter((linked) => linked !== id));
 
     return (
-        <div className="admin-staff-page flex flex-col gap-4">
+        <div className="admin-staff-page @container flex flex-col gap-4">
             <PageHeader
                 className="admin-staff-title"
                 breadcrumb={<Breadcrumb label={words.text('form.breadcrumb')} items={[{ label: words.text('form.list'), href: listHref, onClick: onBack }, { label: title }]} />}
@@ -152,13 +155,18 @@ export function StaffForm({ form, onChange, creating, implicit, title, status, u
                     {services.length === 0 ? (
                         <p className="admin-staff-services__none text-sm text-muted-foreground">{words.text('form.no_services')}</p>
                     ) : (
-                        <ul className="admin-staff-services flex flex-col gap-2">
+                        <ul className={`admin-staff-services ${CHECK_CARDS}`}>
                             {services.map((service) => (
-                                <li key={service.id} className="admin-staff-services__row flex items-center gap-3">
-                                    <input type="checkbox" id={`staff-service-${service.id}`} className={`admin-staff-services__tick ${CHECK_BOX}`} checked={form.service_ids.includes(service.id)} onChange={(event) => tick(service.id, event.target.checked)} />
-                                    <label htmlFor={`staff-service-${service.id}`} className="admin-staff-services__name">
-                                        {service.status === 'inactive' ? words.text('form.inactive_service', { service: service.name }) : service.name}
-                                    </label>
+                                <li key={service.id} className="flex min-w-0">
+                                    <CheckCard
+                                        id={`staff-service-${service.id}`}
+                                        name={service.status === 'inactive' ? words.text('form.inactive_service', { service: service.name }) : service.name}
+                                        checked={form.service_ids.includes(service.id)}
+                                        onChange={(checked) => tick(service.id, checked)}
+                                        className="admin-staff-services__row"
+                                        tickClassName="admin-staff-services__tick"
+                                        nameClassName="admin-staff-services__name"
+                                    />
                                 </li>
                             ))}
                         </ul>
@@ -272,7 +280,7 @@ export function StaffDangerZone({ implicit, conflict, deleting, deactivating, on
     return (
         <Section id="danger" title={words.text('danger.title')} wide danger>
             <div className="flex flex-col gap-3">
-                <Button destructive className="admin-staff-delete self-start" busy={deleting} busyLabel={words.text('danger.deleting')} onClick={onDelete}>
+                <Button destructive wrap className="admin-staff-delete self-start" busy={deleting} busyLabel={words.text('danger.deleting')} onClick={onDelete}>
                     {words.text('danger.delete')}
                 </Button>
                 {conflict !== null && (

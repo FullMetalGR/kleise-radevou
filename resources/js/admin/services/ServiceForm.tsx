@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { Tick } from '@/components/glyphs';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { CHECK_BOX, CheckField } from '@/components/ui/check-field';
+import { CHECK_CARDS, CheckCard } from '@/components/ui/check-card';
+import { CheckField } from '@/components/ui/check-field';
 import { Field } from '@/components/ui/field';
 import { TextInput, Textarea } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
@@ -83,14 +83,6 @@ const GAP_HELP = 'form.gap_help' satisfies ServicesKey;
 
 /** A card that runs across both of the form's columns where the form stands on two. */
 const ACROSS = '@4xl:col-span-2';
-
-/**
- * A member's check card: a notice's radius inside a line ring, which turns into a thicker ring in
- * the theme colour on the soft tint while its box is ticked. It takes the hover tint only while
- * its box can change, and a locked box makes the whole card read as locked to the pointer.
- */
-const CHECK_CARD =
-    'admin-staff-checklist__row flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-notice px-3.5 py-3 ring-[1.5px] ring-border motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft has-enabled:hover:bg-muted has-checked:bg-muted/60 has-checked:ring-2 has-checked:ring-primary has-disabled:cursor-not-allowed';
 
 export function ServiceForm({ form, onChange, creating, categories, title, status, currency, granularity, clock, staff, staged, onStage, busy, onSave, onBack, listHref, danger, copyLink }: Props) {
     const words = useServices();
@@ -224,41 +216,28 @@ function StaffChecklist({ staff, staged, onStage, clock }: ChecklistProps) {
 
     return (
         <Section id="staff" title={words.text('staff.title')} meta={staff.loading ? undefined : words.choice('staff.ticked', staff.members.length, { ticked: String(staged.length) })}>
-            <ul className="admin-staff-checklist grid grid-cols-[repeat(auto-fill,minmax(min(17.5rem,100%),1fr))] gap-x-5 gap-y-3 @xl:col-span-2">
-                {staff.members.map((member) => {
-                    const chosen = staged.includes(member.id);
-                    const boxId = `service-staff-${member.id}`;
-
-                    return (
-                        <li key={member.id} className="flex min-w-0">
-                            <label className={CHECK_CARD}>
-                                <input
-                                    type="checkbox"
-                                    id={boxId}
-                                    className={`admin-staff-checklist__tick ${CHECK_BOX}`}
-                                    checked={chosen}
-                                    disabled={!staff.editable}
-                                    aria-labelledby={`${boxId}-name`}
-                                    aria-describedby={`${boxId}-windows`}
-                                    onChange={(event) => {
-                                        if (staff.editable) {
-                                            onStage(event.target.checked ? [...staged, member.id] : staged.filter((id) => id !== member.id));
-                                        }
-                                    }}
-                                />
-                                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                    <span id={`${boxId}-name`} className="admin-staff-checklist__name text-body font-semibold wrap-break-word">
-                                        {member.active ? member.name : words.text('staff.inactive', { staff: member.name })}
-                                    </span>
-                                    <span id={`${boxId}-windows`} className="admin-staff-checklist__windows text-small wrap-break-word text-muted-foreground">
-                                        {windows(member)}
-                                    </span>
-                                </span>
-                                <span className="admin-staff-checklist__mark inline-flex size-4 shrink-0 text-primary-deep">{chosen && <Tick />}</span>
-                            </label>
-                        </li>
-                    );
-                })}
+            <ul className={`admin-staff-checklist ${CHECK_CARDS} @xl:col-span-2`}>
+                {staff.members.map((member) => (
+                    <li key={member.id} className="flex min-w-0">
+                        <CheckCard
+                            id={`service-staff-${member.id}`}
+                            name={member.active ? member.name : words.text('staff.inactive', { staff: member.name })}
+                            description={windows(member)}
+                            checked={staged.includes(member.id)}
+                            disabled={!staff.editable}
+                            onChange={(checked) => {
+                                if (staff.editable) {
+                                    onStage(checked ? [...staged, member.id] : staged.filter((id) => id !== member.id));
+                                }
+                            }}
+                            className="admin-staff-checklist__row"
+                            tickClassName="admin-staff-checklist__tick"
+                            nameClassName="admin-staff-checklist__name"
+                            descriptionClassName="admin-staff-checklist__windows"
+                            markClassName="admin-staff-checklist__mark"
+                        />
+                    </li>
+                ))}
             </ul>
             {!staff.editable && <p className="admin-staff-checklist__readonly text-sm text-muted-foreground @xl:col-span-2">{words.text(READ_ONLY)}</p>}
             {staff.shifts && (

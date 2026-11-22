@@ -248,7 +248,7 @@ function RowFacts({ row, staffShown, clock }: { row: InsideRow; staffShown: bool
     return (
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
             <span className="flex flex-wrap items-center gap-2">
-                {booking !== null && <span className="admin-inside__when font-mono">{formatInstant(booking.items[0]?.start ?? '', clock)}</span>}
+                {booking !== null && <span className="admin-inside__when font-medium">{formatInstant(booking.items[0]?.start ?? '', clock)}</span>}
                 <StatusChip status={row.status} className="admin-inside__status" />
             </span>
             {booking !== null && (
@@ -281,9 +281,9 @@ export function InsideList({ asked, staffShown, clock, reasonTyped }: ListProps)
             <p className="admin-inside__detail font-medium" role="alert">
                 {asked.detail}
             </p>
-            <ul className="admin-inside__list flex max-h-72 flex-col overflow-y-auto rounded-lg border">
+            <ul className="admin-inside__list flex max-h-72 flex-col overflow-y-auto rounded-inner ring-[1.5px] ring-border">
                 {asked.rows.map((row) => (
-                    <li key={row.uuid} className="admin-inside__row flex items-start gap-3 border-t px-3 py-2 text-sm first:border-t-0">
+                    <li key={row.uuid} className="admin-inside__row flex items-start gap-3 border-t px-4 py-2.5 text-body-sm tabular-nums first:border-t-0">
                         <RowFacts row={row} staffShown={staffShown} clock={clock} />
                     </li>
                 ))}
@@ -387,12 +387,12 @@ export function BookingsToMove({ rows, staffShown, clock, weekStart, onDone }: T
             {booking !== null ? (
                 <MoveFields form={form} booking={booking} staffShown={staffShown} clock={clock} weekStart={weekStart} />
             ) : (
-                <ul className="admin-to-move__list flex flex-col rounded-lg border">
+                <ul className="admin-to-move__list flex flex-col rounded-inner ring-[1.5px] ring-border">
                     {rows.map((row) => (
-                        <li key={row.uuid} className="admin-to-move__row flex items-center gap-3 border-t px-3 py-2 text-sm first:border-t-0" data-uuid={row.uuid}>
+                        <li key={row.uuid} className="admin-to-move__row flex items-center gap-3 border-t px-4 py-2.5 text-body-sm tabular-nums first:border-t-0" data-uuid={row.uuid}>
                             <RowFacts row={row} staffShown={staffShown} clock={clock} />
                             {moved.has(row.uuid) ? (
-                                <span className="admin-to-move__moved inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-300">
+                                <span className="admin-to-move__moved inline-flex items-center gap-1 font-medium text-positive-ink">
                                     <Tick />
                                     {shell.text('shared.closure.moved')}
                                 </span>

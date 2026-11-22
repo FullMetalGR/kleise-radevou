@@ -54,7 +54,8 @@
  * dialog (admin/calendar.php closure.*) for this screen; the reason's help is the shell's shared
  * closure.reason_help, read by both. Who with Whole business, Until
  * (optional) with its help, a folded run's dates (:date to :until) and the line under the dates,
- * :who the member's name or Whole business and :reason the tenant's own note.
+ * :who the member's name or Whole business and :reason the tenant's own note. reason_column heads
+ * the list's column of reasons, beside the dates.
  *
  * colours is the Calendar colours card: its title, Colour bookings by with its three choices (the
  * Calendar's filters.colour_by_choices repeated for this screen) and its help, the line over the
@@ -195,6 +196,7 @@ return [
         'wait_adding' => 'Delete waits until the closure has been added.',
         'date' => 'Date',
         'reason' => 'Reason (optional)',
+        'reason_column' => 'Reason',
         'all_day' => 'Closed all day',
         'start' => 'Start',
         'end' => 'End',

@@ -67,7 +67,7 @@ export function StaffView({ member, services, users, clock, notice, listHref, on
                     </dl>
                     <dl className="grid gap-1 text-sm">
                         <dt className="text-muted-foreground">{words.text('view.user')}</dt>
-                        <dd className="admin-staff-view__user">{user === undefined ? none : userLabel(user, words)}</dd>
+                        <dd className="admin-staff-view__user wrap-anywhere">{user === undefined ? none : userLabel(user, words)}</dd>
                     </dl>
                     <dl className="grid gap-1 text-sm">
                         <dt className="text-muted-foreground">{words.text('view.online')}</dt>
@@ -105,7 +105,7 @@ export function StaffView({ member, services, users, clock, notice, listHref, on
                                     {blackout.reason !== null && (
                                         <>
                                             {' '}
-                                            <span className="text-muted-foreground">{blackout.reason}</span>
+                                            <span className="text-muted-foreground wrap-anywhere">{blackout.reason}</span>
                                         </>
                                     )}
                                 </li>
@@ -127,7 +127,7 @@ function Presentation({ member }: { member: StaffMember }) {
         <>
             <dl className="grid gap-1 text-sm">
                 <dt className="text-muted-foreground">{words.text('view.title')}</dt>
-                <dd className="admin-staff-view__title">{member.title ?? none}</dd>
+                <dd className="admin-staff-view__title wrap-anywhere">{member.title ?? none}</dd>
             </dl>
             <dl className="grid gap-1 text-sm @xl:col-span-2">
                 <dt className="text-muted-foreground">{words.text('view.bio')}</dt>

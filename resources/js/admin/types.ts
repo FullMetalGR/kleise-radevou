@@ -1012,6 +1012,7 @@ export type StaffStrings = {
         wait_adding: string;
         date: string;
         reason: string;
+        reason_column: string;
         all_day: string;
         start: string;
         end: string;

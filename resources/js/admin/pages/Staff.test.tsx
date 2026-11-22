@@ -642,7 +642,7 @@ describe('the detail page', () => {
 
         expect(text('.admin-breadcrumb__current')).toBe('Elena Papadaki');
         expect(value('#staff-name')).toBe('Elena Papadaki');
-        expect(text('label[for="staff-service-9"]')).toBe(staff.text('form.inactive_service', { service: 'Perm' }));
+        expect(text(`#${document.querySelector('#staff-service-9')?.getAttribute('aria-labelledby') ?? 'none'}`)).toBe(staff.text('form.inactive_service', { service: 'Perm' }));
         expect(text('.admin-breadcrumb__list')).toBe(staff.text('form.list'));
         expect(document.querySelector('.admin-breadcrumb')?.getAttribute('aria-label')).toBe(staff.text('form.breadcrumb'));
         expect(Array.from(document.querySelectorAll('.admin-section h2')).map((heading) => heading.textContent)).toEqual([
@@ -684,6 +684,46 @@ describe('the detail page', () => {
         expect(document.querySelector('.admin-section--danger')).toBeNull();
         expect(document.querySelector('.admin-staff-save')).toHaveProperty('disabled', true);
         expect(text('.admin-save-bar__reason')).toBe(staff.text('form.needs_name'));
+    });
+
+    it('stands the member\'s cards one under the other at the page\'s full width, the services as check cards on their grid and Save in the save bar', () => {
+        render(propsWith({ kind: 'detail', id: 2 }));
+
+        const classes = (element: Element | null | undefined) => [...(element?.classList ?? [])];
+        const root = document.querySelector('.admin-staff-page');
+        expect(classes(root)).toEqual(expect.arrayContaining(['@container', 'flex', 'flex-col']));
+        // No page grid: every card is as wide as the page, Basics' own fields alone standing two abreast.
+        const cards = Array.from(document.querySelectorAll('.admin-staff-page .admin-section, .admin-staff-page .admin-blackouts'));
+        expect(cards.map((card) => card.querySelector('h2')?.textContent)).toEqual([staff.text('form.basics'), staff.text('form.services'), staff.text('form.weekly'), staff.text('page.exceptions'), staff.text('danger.title')]);
+        expect(cards.flatMap((card) => [card.parentElement, card.parentElement?.parentElement]).filter((parent) => parent?.classList.contains('grid'))).toEqual([]);
+        expect(cards.flatMap((card) => classes(card).filter((look) => /col-span/.test(look)))).toEqual([]);
+        expect(document.querySelector('.admin-section--basics > div')?.classList.contains('@xl:grid-cols-2')).toBe(true);
+        expect(document.querySelector('.admin-blackouts')?.closest('form')).toBeNull();
+
+        const list = document.querySelector('.admin-section--services ul.admin-staff-services');
+        expect(classes(list)).toEqual(expect.arrayContaining(['grid', 'grid-cols-[repeat(auto-fill,minmax(min(17.5rem,100%),1fr))]']));
+        const rows = Array.from(document.querySelectorAll<HTMLLabelElement>('.admin-staff-services__row'));
+        const box = (row: HTMLLabelElement | undefined) => row?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+        expect(rows.map((row) => [row.tagName, row.parentElement?.tagName, box(row)?.id, row.control === box(row)])).toEqual([
+            ['LABEL', 'LI', 'staff-service-7', true],
+            ['LABEL', 'LI', 'staff-service-9', true],
+        ]);
+        expect(classes(rows[0])).toEqual(expect.arrayContaining(['ring-[1.5px]', 'ring-border', 'has-checked:ring-2', 'has-checked:ring-primary', 'has-checked:bg-muted/60']));
+        expect(classes(box(rows[0]))).toEqual(expect.arrayContaining(['admin-staff-services__tick', 'size-5', 'accent-primary', 'focus-ring-field']));
+        expect(rows.map((row) => row.querySelector('.admin-staff-services__name')?.textContent)).toEqual(['Haircut', staff.text('form.inactive_service', { service: 'Perm' })]);
+        expect(rows.map((row) => document.getElementById(box(row)?.getAttribute('aria-labelledby') ?? '') === row.querySelector('.admin-staff-services__name'))).toEqual([true, true]);
+        expect(rows.map((row) => row.querySelector('svg') !== null)).toEqual([true, false]);
+
+        // A press on the card's name is a press on its box.
+        press(rows[1]?.querySelector('.admin-staff-services__name') ?? null);
+        expect(box(rows[1])?.checked).toBe(true);
+        expect(rows[1]?.querySelector('svg')).not.toBeNull();
+
+        expect(document.querySelector('.admin-save-bar .admin-staff-save')).not.toBeNull();
+        expect(document.querySelector('.admin-staff-save')?.closest('form')).toBeNull();
+        expect(document.querySelector('.admin-staff-save')?.getAttribute('form')).toBe(document.querySelector('.admin-staff-form')?.id);
+        // Delete names the member at length in Greek, so on a phone its label wraps inside the card.
+        expect(classes(document.querySelector('.admin-section--danger .admin-staff-delete'))).toEqual(expect.arrayContaining(['max-desktop:whitespace-normal', 'max-desktop:max-w-full']));
     });
 
     it('renders Offered online in Basics ticked by default with help naming the person, seeds a member kept off the page unticked, and sends the flag', () => {
@@ -1119,6 +1159,12 @@ describe('without the staff feature', () => {
             [staff.text('form.weekly'), false],
             [staff.text('page.exceptions'), true],
         ]);
+    });
+
+    it('breaks a long unbroken word of the linked user, the title or a closure\'s reason inside its own line on the read-only page, as the email does', () => {
+        render(withoutFeature({ kind: 'detail', id: 2 }));
+
+        expect(['.admin-staff-view__email', '.admin-staff-view__user', '.admin-staff-view__title', '.admin-staff-view__closures li span.text-muted-foreground'].map((selector) => document.querySelector(selector)?.classList.contains('wrap-anywhere'))).toEqual([true, true, true, true]);
     });
 
     it('shows a named member\'s presentation read-only in Basics, Offered online, Title, Bio and the photo, each as stored', () => {

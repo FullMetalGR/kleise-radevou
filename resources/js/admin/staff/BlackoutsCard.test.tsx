@@ -193,3 +193,72 @@ describe('the closures card', () => {
         expect(added).toEqual({ staff_id: 2, date: '2026-12-24', until: null, start: null, end: null, reason: null });
     });
 });
+
+describe('the closures card\'s look', () => {
+    const classes = (element: Element | null | undefined) => [...(element?.classList ?? [])];
+    const texts = (selector: string) => Array.from(document.querySelectorAll(selector)).map((element) => element.textContent);
+
+    it('is a card named by its heading, holding the closures as a table that reads as labelled rows where it has no room', () => {
+        render(ROWS);
+
+        const card = document.querySelector('.admin-blackouts');
+        expect(card?.tagName).toBe('SECTION');
+        expect(classes(card)).toEqual(expect.arrayContaining(['bg-card', 'rounded-tile', 'shadow-card', '@container']));
+        // No panel spelled by hand is left: no border of its own and no radius but the card's.
+        expect(classes(card).filter((look) => /^(border|p-\d|rounded-(?!tile))/.test(look))).toEqual([]);
+        expect(document.getElementById(card?.getAttribute('aria-labelledby') ?? '')?.textContent).toBe('card-title-token');
+
+        const table = document.querySelector('.admin-blackouts__list');
+        expect(table?.tagName).toBe('TABLE');
+        expect(table?.getAttribute('role')).toBe('table');
+        expect(classes(table)).toEqual(expect.arrayContaining(['admin-table', 'max-wide:block', '@max-2xl:block']));
+        expect(texts('.admin-blackouts__list th[scope="col"]')).toEqual([staff.text('closures.date'), staff.text('closures.reason_column'), staff.text('closures.delete')]);
+        expect(document.querySelector('.admin-blackouts__list th[scope="col"]:last-child > .sr-only')).not.toBeNull();
+
+        const rows = Array.from(document.querySelectorAll('.admin-blackouts__row'));
+        expect(rows.map((row) => row.tagName)).toEqual(['TR', 'TR']);
+        expect(rows.map((row) => Array.from(row.querySelectorAll('.admin-table__label')).map((label) => label.textContent))).toEqual([
+            [staff.text('closures.date'), staff.text('closures.reason_column')],
+            [staff.text('closures.date'), staff.text('closures.reason_column')],
+        ]);
+        // The dates name their row; Delete stays in it as the row's last cell.
+        expect(rows.map((row) => row.querySelector('th[scope="row"] .admin-blackouts__when')?.textContent)).toEqual(['25/12/2026', staff.text('closures.window', { date: '04/12/2026', time: '14:00', end: '16:00' })]);
+        expect(rows.map((row) => row.querySelector('td:last-child .admin-blackouts__delete')?.textContent)).toEqual([staff.text('closures.delete'), staff.text('closures.delete')]);
+        expect(rows.map((row) => row.querySelector('.admin-blackouts__reason')?.textContent ?? null)).toEqual(['Christmas Day', null]);
+    });
+
+    it('gives each Delete a touch area 44 pixels tall below the wide breakpoint and leaves it bare text above it', () => {
+        render(ROWS);
+
+        const deletes = Array.from(document.querySelectorAll('.admin-blackouts__delete'));
+        expect(deletes).toHaveLength(2);
+
+        for (const action of deletes) {
+            expect(classes(action)).toEqual(expect.arrayContaining(['admin-button--link', 'h-auto', 'p-0', 'items-center', 'max-wide:min-h-11']));
+            expect(classes(action).filter((look) => look.includes('min-h-'))).toEqual(['max-wide:min-h-11']);
+        }
+    });
+
+    it('heads the reason column Who on the list, each line naming its member or the business', () => {
+        const lines = [{ ...DENTIST, staff_id: 2, reason: 'Dentist' }];
+        render(lines, null, { offered: [{ id: 2, name: 'Elena Papadaki' }], names: new Map([[2, 'Elena Papadaki']]) });
+
+        expect(texts('.admin-blackouts__list th[scope="col"]')).toEqual([staff.text('closures.date'), staff.text('closures.who'), staff.text('closures.delete')]);
+        expect(texts('.admin-blackouts__row .admin-table__label')).toEqual([staff.text('closures.date'), staff.text('closures.who')]);
+        expect(texts('.admin-blackouts__row .admin-blackouts__who')).toEqual([staff.text('closures.who_reason', { who: 'Elena Papadaki', reason: 'Dentist' })]);
+    });
+
+    it('lays the add form out by the card\'s width, Who and Reason across it, and draws Closed all day as a check field', () => {
+        render([], null, { offered: [{ id: 2, name: 'Elena Papadaki' }], names: new Map([[2, 'Elena Papadaki']]) });
+
+        const form = document.querySelector('.admin-blackouts__form');
+        expect(classes(form)).toEqual(expect.arrayContaining(['grid', '@xl:grid-cols-2']));
+        // Nothing under the card lays itself out by the window's own breakpoints.
+        expect(Array.from(document.querySelectorAll('.admin-blackouts, .admin-blackouts *')).flatMap((element) => classes(element).filter((look) => /^(max-)?desktop:/.test(look)))).toEqual([]);
+        expect(document.querySelector('#blackout-who')?.closest('.admin-field')?.classList.contains('@xl:col-span-2')).toBe(true);
+        expect(document.querySelector('#blackout-reason')?.closest('.admin-field')?.classList.contains('@xl:col-span-2')).toBe(true);
+        expect(classes(document.querySelector('.admin-blackouts__all-day'))).toContain('admin-check-field');
+        expect(document.querySelector('.admin-blackouts__all-day .admin-check-field__tick')).toBe(document.querySelector('#blackout-all-day.admin-blackouts__all-day-tick'));
+        expect(document.querySelector('label[for="blackout-all-day"]')?.textContent).toBe(staff.text('closures.all_day'));
+    });
+});

@@ -292,6 +292,25 @@ describe('the closures card over bookings', () => {
         expect(one<HTMLInputElement>('.admin-blackouts__reason-input')?.value).toBe('');
     });
 
+    it('keeps the list a scrolling list of rows inside a ringed inner card, in the card and in the bookings to move alike', async () => {
+        const framed = (selector: string) => ['rounded-inner', 'ring-[1.5px]', 'ring-border'].every((look) => one(selector)?.classList.contains(look));
+
+        addOver();
+        expect(one('.admin-blackouts__inside > .admin-inside > ul.admin-inside__list')).not.toBeNull();
+        expect(framed('.admin-inside__list')).toBe(true);
+        expect(one('.admin-inside__list')?.classList.contains('overflow-y-auto')).toBe(true);
+        expect(all('.admin-inside__list > li.admin-inside__row')).toHaveLength(2);
+        // The start reads in the text face with tabular figures, as every figure of the admin does.
+        expect(all('.admin-inside__when').every((when) => !when.classList.contains('font-mono'))).toBe(true);
+
+        press(one('.admin-inside__move'));
+        land();
+        await settle();
+        expect(one('.admin-to-move ul.admin-to-move__list')).not.toBeNull();
+        expect(framed('.admin-to-move__list')).toBe(true);
+        expect(all('.admin-to-move__list > li.admin-to-move__row')).toHaveLength(2);
+    });
+
     it('opens the bookings to move once Add and move them lands, and closes it on Done', async () => {
         addOver();
         press(one('.admin-inside__move'));
