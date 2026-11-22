@@ -14,12 +14,13 @@ import type { ReportsWords } from './words';
  * The Reports screen below the six tiles: Over time; then the status row of four cards, Bookings
  * by status (five statuses always, the other four beneath where a booking holds one), Revenue's
  * two lines, the No-show rate with its two counts and Cancelled by, each a card with its title
- * inside; then Occupancy by staff; then the breakdowns by service, staff, source and channel,
- * each a card with a header strip over its table; and the closing footnote. Every figure is the
- * server's under the screen's filters, each amount in the currency its line carries at that
- * currency's scale, every count, amount and rate spelled by Intl in the user's language. An
- * empty range draws the same cards and tables reading zero, never an empty panel. Every word is
- * a key of the reports section.
+ * inside, one to a line on a phone and two from the desktop breakpoint; then Occupancy by staff;
+ * then the breakdowns by service, staff, source and channel, each a card with a header strip over
+ * its table; and the closing footnote. Every figure is the server's under the screen's filters,
+ * each amount in the currency its line carries at that currency's scale, every count, amount and
+ * rate spelled by Intl in the user's language, in the text face with numerals of one width so a
+ * column of figures lines up. An empty range draws the same cards and tables reading zero, never
+ * an empty panel. Every word is a key of the reports section.
  */
 
 type Line = ReportRow & { key: string; label: string };
@@ -29,7 +30,7 @@ function Amounts({ lines, locale }: { lines: MoneyLine[]; locale: string }) {
     return (
         <>
             {lines.map((line) => (
-                <span key={line.currency} className="admin-reports__amount block font-mono">
+                <span key={line.currency} className="admin-reports__amount block tabular-nums">
                     {formatAmount(line.minor, line.currency, locale)}
                 </span>
             ))}
@@ -42,7 +43,7 @@ function Row({ label, value, className }: { label: ReactNode; value: ReactNode; 
     return (
         <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground">{label}</dt>
-            <dd className={`text-right font-mono ${className ?? ''}`}>{value}</dd>
+            <dd className={`text-right tabular-nums ${className ?? ''}`}>{value}</dd>
         </div>
     );
 }
@@ -116,12 +117,12 @@ export function Figures({ report, busy, clock, words }: { report: Report; busy: 
     return (
         <div className="admin-reports flex flex-col gap-4" aria-busy={busy}>
             <OverTime overTime={report.over_time} clock={clock} words={words} />
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-4">
+            <div className="grid grid-cols-1 gap-4 desktop:grid-cols-2">
                 <StatusCard name="statuses" title={words.text('tables.statuses')}>
                     {statusRows(report.statuses).map((row) => (
                         <div key={row.status} className="admin-reports-statuses__row flex items-center justify-between gap-3">
                             <StatusChip status={row.status} />
-                            <span className="admin-reports-statuses__count font-mono">{formatCount(row.bookings, words.locale)}</span>
+                            <span className="admin-reports-statuses__count tabular-nums">{formatCount(row.bookings, words.locale)}</span>
                         </div>
                     ))}
                 </StatusCard>

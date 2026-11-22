@@ -5,7 +5,7 @@ import { stringsOf } from '@/lib/strings';
 import { keyedReports, keyedShell } from '@/testing/keyed';
 import type { ReportsStrings } from '@/types';
 import { unitFigure } from '@/lib/names';
-import { changeSentence, channelLabel, chartAxis, chartBars, csvUrl, currencyName, customProblem, formatOccupancy, formatRate, hoursOf, noShowRate, rangeLine, reportQuery, sourceLabel, spanDays, statusRows } from './model';
+import { barPath, CHART, changeSentence, channelLabel, chartAxis, chartBars, chipKind, csvUrl, currencyName, customProblem, formatOccupancy, formatRate, hoursOf, noShowRate, rangeLine, reportQuery, sourceLabel, spanDays, statusRows } from './model';
 
 /*
  * The Reports screen's pure rules: the query a range and the filters are read by, this week and
@@ -87,6 +87,14 @@ describe('the reports model', () => {
         expect(oneDay).toBe(changeSentence(up, { word: 'today', from: '2026-10-21', to: '2026-10-21' }, english));
     });
 
+    it('points a tile\'s chip the way its change went, nothing to compare drawn as no change', () => {
+        expect(chipKind({ kind: 'up', percent: 15 })).toBe('up');
+        expect(chipKind({ kind: 'down', percent: -33 })).toBe('down');
+        expect(chipKind({ kind: 'same', percent: 0 })).toBe('same');
+        expect(chipKind({ kind: 'from_zero', percent: null })).toBe('from_zero');
+        expect(chipKind({ kind: 'none', percent: null })).toBe('same');
+    });
+
     it('takes the no-show rate over completed plus no-shows, none where both are zero', () => {
         expect(noShowRate(1, 3)).toBe(0.25);
         expect(noShowRate(0, 4)).toBe(0);
@@ -132,19 +140,21 @@ describe('the reports model', () => {
         expect(chartAxis(0)).toEqual({ top: 1, ticks: [0, 1] });
     });
 
-    it('lays the bars out: 32 units a bucket up to eleven, narrower past it, 120 units of height to the top, none for zero', () => {
+    it('lays the bars out in a drawing 190 units tall: 32 units a bucket up to eleven, narrower past it, 150 units of height to the top, none for zero', () => {
+        expect(CHART.tall).toBe(190);
+
         const week = chartBars([0, 4, 5]);
 
         expect(week.width).toBe(36 + 3 * 32);
         expect(week.bars).toEqual([
-            { index: 1, x: 72, y: 136 - 80, width: 24, height: 80 },
-            { index: 2, x: 104, y: 136 - 100, width: 24, height: 100 },
+            { index: 1, x: 72, y: 166 - 100, width: 24, height: 100 },
+            { index: 2, x: 104, y: 166 - 125, width: 24, height: 125 },
         ]);
         expect(week.centers).toEqual([52, 84, 116]);
         expect(week.ticks).toEqual([
-            { value: 0, y: 136 },
-            { value: 2, y: 96 },
-            { value: 4, y: 56 },
+            { value: 0, y: 166 },
+            { value: 2, y: 116 },
+            { value: 4, y: 66 },
             { value: 6, y: 16 },
         ]);
 
@@ -152,6 +162,11 @@ describe('the reports model', () => {
 
         expect(month.width).toBeCloseTo(36 + 352);
         expect(month.bars[0]?.width).toBeCloseTo((352 / 31) * 0.75);
+    });
+
+    it('rounds a bar\'s top as far as its width and its height allow, its foot square on the base', () => {
+        expect(barPath({ index: 1, x: 72, y: 66, width: 24, height: 100 })).toBe('M 72 166 V 78 A 12 12 0 0 1 84 66 H 84 A 12 12 0 0 1 96 78 V 166 Z');
+        expect(barPath({ index: 0, x: 40, y: 160, width: 24, height: 6 })).toBe('M 40 166 V 166 A 6 6 0 0 1 46 160 H 58 A 6 6 0 0 1 64 166 V 166 Z');
     });
 
     it('names the CSV of the page\'s own query, the bare file for this week over everything', () => {

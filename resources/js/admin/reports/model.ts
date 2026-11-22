@@ -1,4 +1,5 @@
 import { CHANNEL_WORDS, inWords, SOURCE_WORDS } from '@/bookings/model';
+import type { ChangeKind } from '@/figures/kit';
 import { formatCount, formatDate, formatPercent, type TenantClock } from '@/lib/format';
 import { unitFigure } from '@/lib/names';
 import type { ShellWords } from '@/lib/strings';
@@ -208,6 +209,11 @@ export function changeSentence(change: FigureChange, range: NamedRange, words: R
     return words.text(key, values);
 }
 
+/** The way a tile's chip points for a change: nothing to compare is drawn as no change, as it reads. */
+export function chipKind(change: FigureChange): ChangeKind {
+    return change.kind === 'none' ? 'same' : change.kind;
+}
+
 /** The no-show rate, no-shows over completed plus no-shows, or null where both are zero. */
 export function noShowRate(noShows: number, completed: number): number | null {
     const decided = noShows + completed;
@@ -270,15 +276,15 @@ export function chartAxis(max: number): { top: number; ticks: number[] } {
     return { top, ticks };
 }
 
-/** The chart's geometry in its own units. */
-export const CHART = { left: 36, base: 136, height: 120, pitch: 32, room: 352 } as const;
+/** The chart's geometry in its own units: the whole drawing is tall, the buckets' names under the base. */
+export const CHART = { left: 36, base: 166, height: 150, tall: 190, pitch: 32, room: 352 } as const;
 
 type ChartBar = { index: number; x: number; y: number; width: number; height: number };
 
 /**
  * A bar chart laid out: the axis's labels in the first 36 units, a slot of 32 units a bucket with
  * a bar three quarters of it, narrower slots past eleven buckets so the chart stays near 388
- * units wide, the base at 136 and the top 120 above it; a zero draws no bar.
+ * units wide, the base at 166 and the top 150 above it; a zero draws no bar.
  */
 export function chartBars(values: number[]): { width: number; pitch: number; bars: ChartBar[]; centers: number[]; ticks: { value: number; y: number }[] } {
     const pitch = Math.min(CHART.pitch, CHART.room / Math.max(1, values.length));
@@ -296,4 +302,15 @@ export function chartBars(values: number[]): { width: number; pitch: number; bar
         centers: values.map((_, index) => CHART.left + pitch * index + pitch / 2),
         ticks: axis.ticks.map((value) => ({ value, y: CHART.base - heightOf(value) })),
     };
+}
+
+/**
+ * A bar's outline: its top rounded to half its width, or to its height where the bar is shorter
+ * than that, and its foot square on the base.
+ */
+export function barPath({ x, y, width, height }: ChartBar): string {
+    const radius = Math.min(width / 2, height);
+    const foot = y + height;
+
+    return `M ${String(x)} ${String(foot)} V ${String(y + radius)} A ${String(radius)} ${String(radius)} 0 0 1 ${String(x + radius)} ${String(y)} H ${String(x + width - radius)} A ${String(radius)} ${String(radius)} 0 0 1 ${String(x + width)} ${String(y + radius)} V ${String(foot)} Z`;
 }

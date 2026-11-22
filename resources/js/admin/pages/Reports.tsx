@@ -21,6 +21,9 @@ import type { AdminStrings, ReportsStrings, SharedProps } from '@/types';
  * what is on screen is the server's last answer, and a failed read says so in the screen's own
  * words and leaves it standing.
  *
+ * The screen is the container its tiles are laid out by, so the tiles count its own width, not the
+ * window's, which the sidebar shares.
+ *
  * Every word is a key of the reports section, which ReportController names.
  */
 
@@ -49,7 +52,7 @@ export default function Reports() {
     return (
         <>
             <Head title={words.text('page_title')} />
-            <div className="admin-reports-screen flex flex-col gap-4">
+            <div className="admin-reports-screen @container flex flex-col gap-4">
                 <PageHeader title={words.text('page_title')} />
                 <FilterCard
                     key={`${range.word} ${range.from} ${range.to} ${String(filters.staff)} ${String(filters.service)}`}

@@ -2,17 +2,20 @@ import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/t
 import { formatAmount, formatCount, formatDate, formatDayMonth, type TenantClock } from '@/lib/format';
 import { monthName } from '@/lib/names';
 import { Strip } from '@/figures/kit';
-import { CHART, chartBars, currencyName, type OverTimeRow, type OverTimeUnit, type Report } from './model';
+import { barPath, CHART, chartBars, currencyName, type OverTimeRow, type OverTimeUnit, type Report } from './model';
 import { ReportCard } from './ReportCard';
 import type { ReportsWords } from './words';
 
 /*
- * Over time: a card with its header strip, two bar charts side by side, the bookings and the
- * revenue per bucket, drawn by hand as SVG (no chart library) with the bars in the theme's
- * primary, the value axis's lines on the border colour and its labels muted; then the table of
- * From, To, Bookings and Revenue, one row a bucket. The buckets are the server's (a day, a week
- * or a month, which the headings follow) and sum to the Bookings and Revenue tiles, the revenue
- * in the tenant's currency.
+ * Over time: a card with its header strip, two bar charts side by side, each 190px tall, the
+ * bookings and the revenue per bucket, drawn by hand as SVG (no chart library), the bookings'
+ * bars in the theme's primary and the revenue's in the attention amber, each bar's top rounded,
+ * the value axis's lines on the border colour and its labels muted, a long label such as 10.000
+ * drawn past the chart's left edge into the card's padding, not cut. The colour tells nothing on
+ * its own: each chart keeps its caption and its spoken name, which lists every value. Then the
+ * table of From, To, Bookings and Revenue, one row a bucket. The buckets are the server's (a day,
+ * a week or a month, which the headings follow) and sum to the Bookings and Revenue tiles, the
+ * revenue in the tenant's currency.
  *
  * Under a bucket its first day names it: the day of the month for a day, the day and month in
  * the tenant's order for a week, the month's short name for a month; where the buckets are too
@@ -22,6 +25,9 @@ import type { ReportsWords } from './words';
 
 /** The room a bucket's name takes on the axis, in the chart's units. */
 const LABEL_ROOM: Record<OverTimeUnit, number> = { day: 16, week: 30, month: 24 };
+
+/** Each chart's bars: the bookings in the theme's colour, the revenue in amber. */
+const BARS = { bookings: 'fill-primary', revenue: 'fill-attention' } as const;
 
 function tickOf(row: OverTimeRow, unit: OverTimeUnit, clock: TenantClock, words: ReportsWords): string {
     if (unit === 'day') {
@@ -63,7 +69,7 @@ function Chart({ name, caption, values, spoken, currency, ticks, unit, range, wo
     return (
         <figure className={`admin-reports-over-time__${name} m-0 flex flex-col gap-2`}>
             <figcaption className="font-medium">{caption}</figcaption>
-            <svg width={chart.width} height={160} viewBox={`0 0 ${String(chart.width)} 160`} role="img" aria-label={label} className="block h-40 max-w-full">
+            <svg width={chart.width} height={CHART.tall} viewBox={`0 0 ${String(chart.width)} ${String(CHART.tall)}`} role="img" aria-label={label} className="block h-47.5 max-w-full overflow-visible">
                 {chart.ticks.map((tick) => (
                     <g key={tick.value}>
                         <line x1={CHART.left} y1={tick.y} x2={chart.width} y2={tick.y} className="stroke-border" />
@@ -73,11 +79,11 @@ function Chart({ name, caption, values, spoken, currency, ticks, unit, range, wo
                     </g>
                 ))}
                 {chart.bars.map((bar) => (
-                    <rect key={bar.index} x={bar.x} y={bar.y} width={bar.width} height={bar.height} rx={Math.min(4, bar.width / 4)} className="fill-primary" />
+                    <path key={bar.index} d={barPath(bar)} className={`admin-reports-bar ${BARS[name]}`} />
                 ))}
                 {chart.centers.map((center, index) =>
                     index % every === 0 ? (
-                        <text key={center} x={center} y={152} fontSize={10} textAnchor="middle" className="admin-reports-tick fill-muted-foreground">
+                        <text key={center} x={center} y={CHART.base + 16} fontSize={10} textAnchor="middle" className="admin-reports-tick fill-muted-foreground">
                             {ticks[index]}
                         </text>
                     ) : null,

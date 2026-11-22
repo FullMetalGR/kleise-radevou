@@ -20,6 +20,9 @@ import type { ReportsWords } from './words';
  * and the filters the screen answered (GET /admin/reports/csv with the page's own query) through
  * the export buttons' one road: busy while on its way, a failure a toast.
  *
+ * Each select is as wide as its longest choice, up to 260px, so a long Greek word of Range or the
+ * name of every member is not cut under the field's padding and chevron.
+ *
  * The screen keys this card on the answer it was given, so each answer seeds it afresh.
  */
 
@@ -75,11 +78,11 @@ export function FilterCard({ range, filters, options, clock, weekStart, loading,
     return (
         <Card className="admin-reports-filters flex flex-col gap-3">
             <div className="flex flex-wrap items-end gap-3">
-                <Field id="reports-range" label={words.text('filters.range')} className="w-44">
+                <Field id="reports-range" label={words.text('filters.range')} className="max-w-65">
                     {(control) => <Select {...control} className="admin-reports-range-word w-full" options={RANGE_WORDS.map((value) => ({ value, label: words.text(`filters.words.${value}`) }))} value={word} onChange={chooseWord} />}
                 </Field>
                 {options.staff.length > 0 && (
-                    <Field id="reports-staff" label={words.text('filters.staff')} className="w-50">
+                    <Field id="reports-staff" label={words.text('filters.staff')} className="max-w-65">
                         {(control) => (
                             <Select
                                 {...control}
@@ -91,7 +94,7 @@ export function FilterCard({ range, filters, options, clock, weekStart, loading,
                         )}
                     </Field>
                 )}
-                <Field id="reports-service" label={words.text('filters.service')} className="w-50">
+                <Field id="reports-service" label={words.text('filters.service')} className="max-w-65">
                     {(control) => (
                         <Select
                             {...control}

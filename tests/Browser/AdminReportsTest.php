@@ -1,11 +1,13 @@
 <?php
 
+use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Api\Webpage;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\PhoneScripts;
 use Tests\Support\LunaFixture;
 
 /*
@@ -269,4 +271,161 @@ it('keeps a By table a grid with its head row on screen at a desktop width, in a
         ->waitForText(adminLine('admin/reports.tables.statuses'))
         ->assertScript(REPORTS_WALK_BY_TABLE_IS_GRID, true)
         ->assertNoJavaScriptErrors();
+});
+
+/**
+ * How many tiles stand on each line of the six, top line first.
+ */
+const REPORTS_WALK_TILES_PER_LINE = <<<'JS'
+    document.fonts.ready.then(() => {
+        const tops = [...document.querySelectorAll('.admin-reports-tiles > .admin-figure-tile')].map((tile) => Math.round(tile.getBoundingClientRect().top));
+
+        return [...new Set(tops)].map((top) => tops.filter((at) => at === top).length);
+    })
+    JS;
+
+/**
+ * How the Revenue figure stands in its tile: the number of lines its characters are set on, by
+ * the line boxes they fall in, and whether every one of those boxes lies inside the room the
+ * tile's padding leaves. A figure too wide for its tile breaks inside the number, so it is the
+ * count of lines that tells a figure that fits from one that does not.
+ */
+const REPORTS_WALK_REVENUE_FIGURE = <<<'JS'
+    document.fonts.ready.then(() => {
+        const tile = document.querySelector('.admin-figure-tile--revenue');
+        const characters = document.createRange();
+        characters.selectNodeContents(tile.querySelector('.admin-figure-tile__value'));
+        const boxes = [...characters.getClientRects()];
+        const edge = tile.getBoundingClientRect();
+        const style = getComputedStyle(tile);
+        const left = edge.left + parseFloat(style.paddingLeft) - 0.5;
+        const right = edge.right - parseFloat(style.paddingRight) + 0.5;
+
+        return [new Set(boxes.map((box) => Math.round(box.top))).size, boxes.every((box) => box.left >= left && box.right <= right)];
+    })
+    JS;
+
+/** The screen's own width, which its tiles are laid out by. */
+const REPORTS_WALK_SCREEN = "document.querySelector('.admin-reports-screen').clientWidth";
+
+// The amount the tiles' layouts are drawn for, in minor units: six figures and its cents.
+const REPORTS_WALK_DESIGN_REVENUE = 12345678;
+
+// The screen's widths, 37, 56 and 113rem, from which the tiles stand in two plain columns, in
+// three and in six.
+const REPORTS_WALK_TWO_FROM = 592;
+const REPORTS_WALK_THREE_FROM = 896;
+const REPORTS_WALK_SIX_FROM = 1808;
+
+/**
+ * Whether the Revenue tile reads the amount given, in euros, as the page's own Intl spells it in
+ * the page's language: its grouping, its cents and the currency's sign.
+ */
+function reportsWalkRevenueReads(int $minor): string
+{
+    return sprintf(
+        <<<'JS'
+            (() => {
+                const format = new Intl.NumberFormat(document.documentElement.lang, { style: 'currency', currency: 'EUR' });
+
+                return document.querySelector('.admin-figure-tile--revenue .admin-figure-tile__value')?.textContent === format.format(%d / 100);
+            })()
+            JS,
+        $minor,
+    );
+}
+
+/**
+ * A week whose revenue is the amount the layouts are drawn for, read by luna's owner in the
+ * language given. The language is set before the sign-in: the server keeps the signed-in user.
+ */
+function reportsWalkDesignWeek(SiteLanguage $language): void
+{
+    reportsWalkBooking(athensDaysOn(0), 'EUR', REPORTS_WALK_DESIGN_REVENUE);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+}
+
+/**
+ * Sets the window so that the screen is as wide as asked, trying the window given first. What
+ * stands around the screen, the sidebar and the page's own room, is not the same at every
+ * window, so the screen is read and the window set again by what it was short of.
+ */
+function reportsWalkScreenOf(AwaitableWebpage|Webpage $page, int $width, int $window): void
+{
+    for ($pass = 0; $pass < 2; $pass++) {
+        $screen = $page->resize($window, 900)->script(REPORTS_WALK_SCREEN);
+        assert(is_int($screen));
+        $window += $width - $screen;
+    }
+
+    $page->resize($window, 900)->assertScript(REPORTS_WALK_SCREEN, $width);
+}
+
+it('gives Bookings and Revenue each a line of its own on a phone and stands the other four tiles two to a line, a six-figure revenue on one line and nothing scrolling sideways, in English and in Greek', function (SiteLanguage $language) {
+    reportsWalkDesignWeek($language);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'));
+    $page->navigate(Admin::url('luna', '/reports'))
+        ->assertVisible('.admin-reports-screen')
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
+        ->assertScript(reportsWalkRevenueReads(REPORTS_WALK_DESIGN_REVENUE), true)
+        ->assertScript(REPORTS_WALK_REVENUE_FIGURE, [1, true])
+        ->assertScript(REPORTS_WALK_TILES_PER_LINE, [1, 1, 2, 2])
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('steps the tiles to two plain columns, to three and to six at the narrowest screen, in whole rems, that keeps a six-figure revenue in Greek on one line in its tile with room to spare, and holds the layout before each one pixel under it', function () {
+    reportsWalkDesignWeek(SiteLanguage::Greek);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+    $page->navigate(Admin::url('luna', '/reports'))
+        ->assertVisible('.admin-reports-screen')
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value)
+        ->assertScript(reportsWalkRevenueReads(REPORTS_WALK_DESIGN_REVENUE), true);
+
+    // Each step: the screen's width it starts at, the window tried first, and the tiles per line
+    // from it and under it. Two windows give the first step's screen: a narrow one with nothing
+    // beside the screen, and one with the sidebar beside it, where a tile also keeps more room
+    // around its figure and so less for it. The window tried first for a screen beside the
+    // sidebar allows more than the sidebar takes.
+    $steps = [
+        [REPORTS_WALK_TWO_FROM, REPORTS_WALK_TWO_FROM, [2, 2, 2], [1, 1, 2, 2]],
+        [REPORTS_WALK_TWO_FROM, REPORTS_WALK_TWO_FROM + 400, [2, 2, 2], [1, 1, 2, 2]],
+        [REPORTS_WALK_THREE_FROM, REPORTS_WALK_THREE_FROM + 400, [3, 3], [2, 2, 2]],
+        [REPORTS_WALK_SIX_FROM, REPORTS_WALK_SIX_FROM + 400, [6], [3, 3]],
+    ];
+
+    foreach ($steps as [$from, $window, $at, $under]) {
+        foreach ([[$from, $at], [$from - 1, $under]] as [$width, $perLine]) {
+            reportsWalkScreenOf($page, $width, $window);
+            $page->assertScript(REPORTS_WALK_REVENUE_FIGURE, [1, true])
+                ->assertScript(REPORTS_WALK_TILES_PER_LINE, $perLine)
+                ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+        }
+    }
+
+    $page->assertNoJavaScriptErrors();
+});
+
+it('stands the tiles by the screen\'s width at a phone\'s window, a tablet\'s and four desktop ones, a six-figure revenue in Greek on one line at each', function () {
+    reportsWalkDesignWeek(SiteLanguage::Greek);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+    $page->navigate(Admin::url('luna', '/reports'))
+        ->assertVisible('.admin-reports-screen')
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value)
+        ->assertScript(reportsWalkRevenueReads(REPORTS_WALK_DESIGN_REVENUE), true);
+
+    // A phone's screen is too narrow for two tiles side by side to hold the amount. The tablet's
+    // window, which has no sidebar yet, and the first desktop one, which has, leave a screen for
+    // two; the wider three leave one for three, and none of them one for six.
+    foreach ([390 => [1, 1, 2, 2], 768 => [2, 2, 2], 1024 => [2, 2, 2], 1280 => [3, 3], 1440 => [3, 3], 1920 => [3, 3]] as $window => $perLine) {
+        $page->resize($window, 900)
+            ->assertScript(REPORTS_WALK_REVENUE_FIGURE, [1, true])
+            ->assertScript(REPORTS_WALK_TILES_PER_LINE, $perLine)
+            ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    }
+
+    $page->assertNoJavaScriptErrors();
 });

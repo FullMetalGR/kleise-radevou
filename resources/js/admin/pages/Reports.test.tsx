@@ -5,7 +5,7 @@ import { mount, press, type Mounted } from '@/components/ui/harness';
 import { formatAmount, formatCount, formatPercent } from '@/lib/format';
 import { ShellProvider } from '@/lib/strings';
 import { monthName, unitFigure } from '@/lib/names';
-import { currencyName, formatOccupancy, formatRate, hoursOf, type RangeFigures, type Report, type ReportFilters, type ReportOptions, type NamedRange } from '@/reports/model';
+import { barPath, chartBars, currencyName, formatOccupancy, formatRate, hoursOf, type RangeFigures, type Report, type ReportFilters, type ReportOptions, type NamedRange } from '@/reports/model';
 import { KEYED_REPORTS, keyedReports, keyedShell } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
 import type { ReportsStrings } from '@/types';
@@ -239,6 +239,23 @@ function tile(name: string): (string | null)[] {
     return texts(`.admin-figure-tile--${name} > *`);
 }
 
+const TILES = ['bookings', 'revenue', 'occupancy', 'new_customers', 'cancelled', 'no_shows'];
+
+/** Each tile's chip by the tile's name: the way its arrow points, none where it draws no arrow, and its tone. */
+function chips(): Record<string, [string | null, string | null]> {
+    return Object.fromEntries(TILES.map((name) => [name, [attribute(`.admin-figure-tile--${name} [data-direction]`, 'data-direction'), attribute(`.admin-figure-tile--${name} .admin-figure-tile__change`, 'data-tone')]]));
+}
+
+/**
+ * The screen's widths at which the tiles step to two plain columns, to three and to six. Each is
+ * the narrowest, in whole rems, at which an amount of six figures with its cents and its
+ * currency, in Greek, about 233px at the figure's size, keeps to one line in a tile of that many
+ * columns with at least 2px to spare.
+ */
+const TWO = '@[37rem]:col-span-1';
+const THREE = '@[56rem]:grid-cols-3';
+const SIX = '@[113rem]:grid-cols-6';
+
 /** The page as the layout holds it, inside the toasts a download's failure is said through. */
 function Page() {
     return (
@@ -289,6 +306,22 @@ describe('the filter card', () => {
         expect(q('.admin-reports-filters .admin-reports-download')?.textContent).toBe(words.text('filters.download'));
         expect(q('.admin-reports-filters .admin-reports-download')?.className).toContain('ml-auto');
         expect(q('.admin-reports-loading')).toBeNull();
+    });
+
+    it('lets each select grow to its longest choice up to 260px, every control kept in its order with Download CSV last', () => {
+        inertia.props = propsWith();
+        view.render(<Page />);
+
+        const row = q('.admin-reports-download')?.parentElement;
+
+        expect([...(row?.children ?? [])].map((child) => (child.matches('.admin-reports-download') ? 'download' : child.querySelector('select')?.id))).toEqual(['reports-range', 'reports-staff', 'reports-service', 'download']);
+
+        for (const id of ['reports-range', 'reports-staff', 'reports-service']) {
+            const field = [...(q(`#${id}`)?.closest('.admin-field')?.classList ?? [])];
+
+            expect(field).toContain('max-w-65');
+            expect(field.filter((utility) => /^w-/.test(utility))).toEqual([]);
+        }
     });
 
     it('leaves Staff out where no member but the business is offered, and seeds every control from the server\'s answer', () => {
@@ -448,6 +481,74 @@ describe('the six tiles', () => {
         expect(q('.admin-reports-tiles-note')?.textContent).toBe(words.text('tiles.note'));
     });
 
+    it('stand in two columns with Bookings and Revenue each on a line of its own on a narrow screen, then two, three and six to a line as the screen widens, by the width of the screen, which is their container', () => {
+        inertia.props = propsWith();
+        view.render(<Page />);
+
+        expect(q('.admin-reports-screen')?.classList.contains('@container')).toBe(true);
+
+        const grid = [...(q('.admin-reports-tiles')?.classList ?? [])];
+
+        expect(grid).toContain('grid');
+        expect(grid.filter((utility) => utility.includes('grid-cols'))).toEqual(['grid-cols-2', THREE, SIX]);
+        expect(grid.filter((utility) => utility.includes('auto-'))).toEqual([]);
+        expect(q('.admin-reports-tiles')?.getAttribute('aria-busy')).toBe('false');
+
+        // The tiles in the order they are read. The first two alone take both columns, until the
+        // screen holds two side by side; no tile is a container, so each one counts the screen.
+        const tiles = [...(q('.admin-reports-tiles')?.children ?? [])];
+        const placed = (tile: Element) => [...tile.classList].filter((utility) => /(^|:)(col-|row-|order-)/.test(utility));
+
+        expect(tiles.map((tile) => [...tile.classList].find((utility) => utility.startsWith('admin-figure-tile--')))).toEqual(TILES.map((name) => `admin-figure-tile--${name}`));
+        expect(tiles.map(placed)).toEqual([['col-span-2', TWO], ['col-span-2', TWO], [], [], [], []]);
+        expect(tiles.filter((tile) => tile.classList.contains('@container'))).toEqual([]);
+    });
+
+    it('point each chip the way its figure went, green only for a rise where more is better, with Revenue on the strong fill and Cancelled on the attention fill', () => {
+        inertia.props = propsWith();
+        view.render(<Page />);
+
+        expect(chips()).toEqual({
+            bookings: ['up', 'positive'],
+            revenue: ['up', 'positive'],
+            occupancy: ['up', 'positive'],
+            new_customers: [null, 'neutral'],
+            cancelled: ['down', 'neutral'],
+            no_shows: ['up', 'neutral'],
+        });
+
+        // Every figure up, but Bookings at nought against nought: more is better on the first four
+        // alone, and nothing to compare draws no arrow.
+        const base = tilesOf();
+        const up = { kind: 'up', percent: 10 } as const;
+        inertia.props = propsWith({
+            figures: {
+                ...base,
+                tiles: {
+                    ...base.tiles,
+                    bookings: { value: 0, previous: 0, change: { kind: 'none', percent: null } },
+                    new_customers: { ...base.tiles.new_customers, change: up },
+                    cancelled: { ...base.tiles.cancelled, change: up },
+                    no_shows: { ...base.tiles.no_shows, change: up },
+                },
+            },
+        });
+        view.render(<Page />);
+
+        expect(chips()).toEqual({
+            bookings: [null, 'neutral'],
+            revenue: ['up', 'positive'],
+            occupancy: ['up', 'positive'],
+            new_customers: ['up', 'positive'],
+            cancelled: ['up', 'neutral'],
+            no_shows: ['up', 'neutral'],
+        });
+
+        const fill = (name: string) => [...(q(`.admin-figure-tile--${name}`)?.classList ?? [])].filter((utility) => utility === 'bg-tint-strong' || utility === 'bg-attention-soft');
+
+        expect(TILES.map(fill)).toEqual([[], ['bg-tint-strong'], [], [], ['bg-attention-soft'], []]);
+    });
+
     it('words every comparison by the range the server answered: a custom range by its days', () => {
         const custom: NamedRange = { word: 'custom', from: '2026-10-05', to: '2026-10-14' };
         inertia.props = propsWith({ range: custom });
@@ -473,6 +574,9 @@ describe('the six tiles', () => {
 
         expect(tile('bookings')).toEqual([words.text('tiles.bookings'), '0', words.text('compare.week.same')]);
         expect(tile('occupancy')).toEqual([words.text('tiles.occupancy'), words.text('tiles.no_hours')]);
+        // A phrase is no figure: it takes the tile's quiet line, which wraps by words in a narrow tile.
+        expect(q('.admin-figure-tile--occupancy .admin-figure-tile__value')).toBeNull();
+        expect(q('.admin-figure-tile--occupancy .admin-figure-tile__line')?.textContent).toBe(words.text('tiles.no_hours'));
         expect(tile('revenue')).toEqual([words.text('tiles.revenue'), formatAmount(114500, 'EUR', words.locale), words.text('compare.week.by', { change: signed(9) }), words.text('tiles.elsewhere', { amount: formatAmount(6000, 'USD', words.locale) })]);
 
         inertia.props = propsWith({ figures: { ...base, tiles: { ...base.tiles, occupancy: { value: 112.5, previous: null, change: { kind: 'none', percent: null }, filled_minutes: 540, offered_minutes: 480 } } } });
@@ -697,9 +801,25 @@ describe('the cards and tables', () => {
         expect(q('.admin-reports-no-show__empty')?.className).not.toMatch(/text-2xl|font-semibold/);
         expect(texts('.admin-reports-cancelled-by dd')).toEqual(['0', '0']);
         expect(texts('.admin-reports-channels .admin-reports__revenue .admin-table__value')).toEqual(Array(6).fill(formatAmount(0, 'EUR', words.locale)));
-        expect(q('.admin-reports-over-time rect')).toBeNull();
+        expect(q('.admin-reports-over-time rect, .admin-reports-over-time path')).toBeNull();
         expect(texts('.admin-reports-over-time tbody tr')).toHaveLength(7);
         expect(q('.admin-list-empty, .admin-reports-empty')).toBeNull();
+    });
+
+    it('sets the four status cards one to a line on a phone and two from the desktop breakpoint, every figure in the text face with even numerals', () => {
+        inertia.props = propsWith();
+        view.render(<Page />);
+
+        const row = q('.admin-reports-statuses')?.parentElement;
+
+        expect([...(row?.children ?? [])].map((card) => card.className.split(' ').find((utility) => utility.startsWith('admin-reports-')))).toEqual(['admin-reports-statuses', 'admin-reports-revenue', 'admin-reports-no-show', 'admin-reports-cancelled-by']);
+        expect([...(row?.classList ?? [])].filter((utility) => utility.includes('grid-cols'))).toEqual(['grid-cols-1', 'desktop:grid-cols-2']);
+
+        const figures = [...document.querySelectorAll('.admin-reports__amount, .admin-reports-statuses__count, .admin-reports dd')];
+
+        expect(figures.length).toBeGreaterThan(20);
+        expect(figures.filter((figure) => !figure.classList.contains('tabular-nums'))).toEqual([]);
+        expect(document.querySelectorAll('.admin-reports-screen [class*="font-mon"]')).toHaveLength(0);
     });
 
     it('adds Not recorded under Cancelled by only where a cancelled booking has no trail', () => {
@@ -721,14 +841,34 @@ describe('the cards and tables', () => {
 });
 
 describe('Over time', () => {
-    it('draws bookings and revenue per day as bars in the theme\'s colour, a bar for each day above nought, and the table of From, To, Bookings and Revenue', () => {
+    it('draws bookings per day in the theme\'s colour and revenue per day in amber, a bar with a rounded top for each day above nought, each chart a named image 190 tall, and the table of From, To, Bookings and Revenue', () => {
         inertia.props = propsWith();
         view.render(<Page />);
 
         expect(texts('.admin-reports-over-time figcaption')).toEqual([words.text('over_time.bookings.day'), words.text('over_time.revenue.day')]);
-        expect(document.querySelectorAll('.admin-reports-over-time__bookings rect')).toHaveLength(6);
-        expect(document.querySelectorAll('.admin-reports-over-time__revenue rect')).toHaveLength(6);
-        expect([...document.querySelectorAll('.admin-reports-over-time rect')].every((bar) => bar.getAttribute('class')?.includes('fill-primary'))).toBe(true);
+        expect(document.querySelectorAll('.admin-reports-over-time__bookings .admin-reports-bar')).toHaveLength(6);
+        expect(document.querySelectorAll('.admin-reports-over-time__revenue .admin-reports-bar')).toHaveLength(6);
+
+        // The fill is the theme's token by its class, never a colour of its own.
+        const fills = (name: string) => [...document.querySelectorAll(`.admin-reports-over-time__${name} .admin-reports-bar`)].map((bar) => [bar.getAttribute('fill'), [...bar.classList].filter((utility) => utility.startsWith('fill-')).join(' ')]);
+
+        expect(fills('bookings')).toEqual(Array(6).fill([null, 'fill-primary']));
+        expect(fills('revenue')).toEqual(Array(6).fill([null, 'fill-attention']));
+        expect(q('.admin-reports-over-time__bookings .admin-reports-bar')?.getAttribute('d')).toBe(barPath(chartBars([0, 4, 5, 5, 4, 3, 2]).bars[0] ?? { index: 0, x: 0, y: 0, width: 0, height: 0 }));
+
+        for (const name of ['bookings', 'revenue']) {
+            const chart = q(`.admin-reports-over-time__${name} svg`);
+
+            expect(chart?.getAttribute('role')).toBe('img');
+            // A name of some length, where a chart with no name at all would read as null.
+            expect(chart?.getAttribute('aria-label') ?? '').not.toBe('');
+            expect(chart?.getAttribute('height')).toBe('190');
+            expect(chart?.getAttribute('viewBox')?.split(' ')[3]).toBe('190');
+            expect(chart?.classList.contains('h-47.5')).toBe(true);
+            // A long axis figure such as 10.000 reaches past the drawing's left edge into the card's padding.
+            expect(chart?.classList.contains('overflow-visible')).toBe(true);
+        }
+
         // Five a day at most: the axis steps by two to six; revenue by a hundred to three hundred.
         expect(texts('.admin-reports-over-time__bookings .admin-reports-axis')).toEqual(['0', '2', '4', '6']);
         expect(texts('.admin-reports-over-time__revenue .admin-reports-axis')).toEqual(['0', '100', '200', '300']);
