@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Confirm } from '@/components/ui/confirm';
@@ -19,7 +20,8 @@ import { type CustomersKey, useCustomers } from './words';
  * and format, the reason beneath or the line saying none was recorded, and Unblock, which deletes
  * the block, DELETE {page}/block. The hold then refuses the address, and Book now still books it.
  * Nothing is optimistic: both states read the page's block prop, which the redirect re-reads.
- * Every word is a key of the customers section.
+ * Every word is a key of the customers section. The sentence that the address can book online
+ * sits on the green of a state that holds, beside a check mark, so it never rests on colour alone.
  */
 
 const BLOCKING = 'block.blocking' satisfies CustomersKey;
@@ -47,12 +49,15 @@ export function CustomerBlockCard({ url, block, clock }: Props) {
 
     return (
         <Card className="admin-card admin-customer-block flex flex-col gap-3 text-sm" aria-labelledby="customer-block-head">
-            <h2 id="customer-block-head">
+            <h2 id="customer-block-head" className="text-card-title">
                 {words.text('block.title')}
             </h2>
             {block.blocked_at === null ? (
                 <>
-                    <p className="admin-customer-block__state">{words.text('block.open')}</p>
+                    <p className="admin-customer-block__state flex items-center gap-2.5 rounded-notice bg-positive-soft px-3.5 py-2.5 font-semibold text-positive-ink">
+                        <Check aria-hidden="true" className="size-4 shrink-0" />
+                        {words.text('block.open')}
+                    </p>
                     <Field id="customer-block-reason" label={words.text('block.reason')} help={words.text('block.reason_help')}>
                         {(control) => <Textarea {...control} className="min-h-18" value={reason} onChange={(event) => setReason(event.target.value)} />}
                     </Field>

@@ -10,9 +10,11 @@ import { useToasts } from '@/toast/toasts';
 import { type CustomersKey, useCustomers } from './words';
 
 /*
- * A customer's Danger zone, on the pattern of the staff editor's (3.4): one sentence saying what
+ * A customer's Danger zone, on the pattern of the staff editor's: one sentence saying what
  * an erasure takes and what it keeps, and Erase this customer as a danger button, rendered by
- * the page only for a viewer holding manageBookings.
+ * the page only for a viewer holding manageBookings, the last card of the page. The sentence and
+ * the button share a row where the card has room for both, the button dropping under the
+ * sentence where it has not.
  *
  * The press opens a dialog, and which one is the server's answer, read off the page's erasure
  * prop before any press: while a booking of the address is live, the refusal sentence the POST
@@ -86,9 +88,9 @@ export function CustomerDangerZone({ url, bookings, erasure }: Props) {
     return (
         <>
             <Section id="danger" title={words.text('erasure.title')} wide danger className="admin-customer-danger">
-                <div className="flex flex-col gap-3">
-                    <p className="admin-customer-danger__what text-sm text-muted-foreground">{words.text(ERASE_WHAT)}</p>
-                    <Button destructive className="admin-customer-erase self-start" onClick={() => setOpen(true)}>
+                <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
+                    <p className="admin-customer-danger__what max-w-[80ch] flex-[1_1_20rem] text-sm text-muted-foreground">{words.text(ERASE_WHAT)}</p>
+                    <Button destructive className="admin-customer-erase shrink-0" onClick={() => setOpen(true)}>
                         {words.text('erasure.erase')}
                     </Button>
                 </div>

@@ -22,6 +22,9 @@ import { type CustomersKey, useCustomers } from './words';
  * save that never reached it is the card's own sentence. Nothing is optimistic: the head's chips
  * and these fields read the server's answer, which the page mounts this card afresh on. Every
  * word is a key of the customers section.
+ *
+ * Birthday and Preferred language share a line where the card is wide enough for two fields,
+ * asked of the card rather than the window, since the page may set it in a narrow side column.
  */
 
 const SAVE = 'profile.save' satisfies CustomersKey;
@@ -48,14 +51,14 @@ export function CustomerProfileCard({ url, profile, earliest, clock, weekStart }
         );
 
     return (
-        <Card className="admin-card admin-customer-profile flex flex-col gap-3" aria-labelledby="customer-profile-head">
-            <h2 id="customer-profile-head" className="font-semibold">
+        <Card className="admin-card admin-customer-profile @container flex flex-col gap-3" aria-labelledby="customer-profile-head">
+            <h2 id="customer-profile-head" className="text-card-title">
                 {words.text('profile.title')}
             </h2>
             <Field id="customer-tags" label={words.text('profile.tags')} help={words.text('profile.tags_help')}>
                 {(control) => <TextInput {...control} value={tags} onChange={(event) => setTags(event.target.value)} />}
             </Field>
-            <div className="grid grid-cols-1 gap-3 desktop:grid-cols-2">
+            <div className="admin-customer-profile__pair grid grid-cols-1 gap-3 @xl:grid-cols-2">
                 <Field id="customer-birthday" label={words.text('profile.birthday')}>
                     {(control) => <DateField {...control} className="admin-customer-profile__birthday" value={birthday} onChange={setBirthday} clock={clock} weekStart={weekStart} earliest={earliest} />}
                 </Field>

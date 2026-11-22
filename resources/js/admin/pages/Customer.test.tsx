@@ -24,10 +24,12 @@ import CustomerPage, { BOOK_NOW_LABEL, BOOKINGS_EMPTY, BOOKINGS_ERROR, LEAVE_ERR
  * bookings, the Danger zone: the card, the confirm naming the count, the refusal read off the
  * erasure prop, the busy state, and a refused POST's sentence. Beside the heading, the Export: the
  * button for manageBookings alone, busy while its fetch is on its way, the file handed to the
- * browser under the server's name, and a failure's toast. Under the head, the five tiles, and
- * beside Export its Book now, opening the wizard, stood in for by a recorder of each open, with
- * the customer. The framework is stood in for by a router that records each visit and the failure
- * listeners registered around it, and the network by a fetch the test answers by hand.
+ * browser under the server's name, and a failure's toast. Under the header the hero card, which
+ * never repeats the name; then the cards on their two columns, At a glance with its four counts
+ * and its last visit, and beside Export its Book now, opening the wizard, stood in for by a
+ * recorder of each open, with the customer. The framework is stood in for by a router that records
+ * each visit and the failure listeners registered around it, and the network by a fetch the test
+ * answers by hand.
  */
 
 const shell = keyedShell();
@@ -199,6 +201,30 @@ describe('a customer\'s page', () => {
         expect([...view.host.querySelectorAll('.admin-customer-head__chips > *')].map((chip) => chip.textContent)).toEqual(['VIP', 'colour', own.text('table.also_booked_as', { names: 'Casey C.' })]);
         expect(q('.admin-customer-head__email + .admin-customer-head__chips')).not.toBeNull();
         expect(q('.admin-customer-head__also')?.classList.contains('admin-chip--past')).toBe(true);
+        // The name is the page's one heading, in the header row with the breadcrumb, Export and
+        // Book now.
+        expect(document.body.querySelectorAll('h1')).toHaveLength(1);
+        expect(q('.admin-customer-head > .admin-page-header h1')?.textContent).toBe('Casey Customer');
+        expect(q('.admin-page-header .admin-breadcrumb')).not.toBeNull();
+        expect(q('.admin-page-header .admin-customer-export')).not.toBeNull();
+        expect(q('.admin-page-header .admin-customer-book')).not.toBeNull();
+        // Under the header the hero card on the accent fill: the large initials, hidden from a
+        // screen reader, then the address and the chips, and never the name a second time.
+        const hero = q('.admin-customer-head > .admin-page-header + .admin-customer-hero');
+        expect(hero?.tagName).toBe('SECTION');
+        expect(hero?.classList.contains('bg-accent')).toBe(true);
+        expect(hero?.firstElementChild?.textContent).toBe('CC');
+        expect(hero?.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
+        expect(hero?.firstElementChild?.classList.contains('size-19')).toBe(true);
+        expect(hero?.querySelector('.admin-customer-head__email')).not.toBeNull();
+        expect(hero?.querySelector('.admin-customer-head__chips')).not.toBeNull();
+        expect(hero?.textContent).not.toContain('Casey Customer');
+        expect(hero?.querySelector('h1, h2, h3')).toBeNull();
+        // On the hero's fill each chip stands on the card's surface, and every chip, a tag with no
+        // space in it or the list of other names, wraps inside the card rather than running past it.
+        expect(q('.admin-customer-head__chips')?.classList.contains('*:bg-card')).toBe(true);
+        expect(q('.admin-customer-head__chips')?.classList.contains('*:wrap-anywhere')).toBe(true);
+        expect(q('.admin-customer-head__also')?.classList.contains('whitespace-normal')).toBe(true);
         expect(q('.admin-breadcrumb__list')?.textContent).toBe(own.text(CUSTOMERS_TITLE));
         expect(q('.admin-breadcrumb__current')?.textContent).toBe('Casey Customer');
         expect([...view.host.querySelectorAll('.admin-bookings .admin-row-select')].map((button) => button.textContent)).toEqual(['Casey Customer', 'Casey C.']);
@@ -209,15 +235,31 @@ describe('a customer\'s page', () => {
         expect(inertia.get).not.toHaveBeenCalled();
     });
 
-    it('shows At a glance as one card beside the head, its five figures in a row, the last visit as its day in the tenant\'s zone and format or No visit yet, and the Spent line with what Book now fills in', () => {
+    it('shows At a glance as the main column\'s first card: the four counts as a strip, two to a line below the wide breakpoint and four from it where the card holds four in the longer language, a zero in the muted ink, then the last visit as its own panel with its day in the tenant\'s zone and format or No visit yet, and the Spent line with what Book now fills in', () => {
         inertia.props = propsWith(null, { customer: { ...CASEY, last_visit: '2026-11-19T22:30:00+00:00' }, spent: [{ amount_minor: 123500, currency: 'EUR' }, { amount_minor: 1200, currency: 'USD' }] });
         render();
 
         const figures = () => [...view.host.querySelectorAll('.admin-customer-glance__figure')].map((figure) => [figure.querySelector('span')?.textContent, figure.querySelector('strong')?.textContent]);
+        const hook = (figure: Element) => [...figure.classList].find((name) => name.startsWith('admin-customer-glance__figure--'));
 
         expect(view.host.querySelectorAll('.admin-customer-glance')).toHaveLength(1);
         expect(q('.admin-customer-glance h2')?.textContent).toBe(own.text('tiles.title'));
-        expect(q('.admin-customer-head + .admin-customer-cards > .admin-customer-glance:first-child')).not.toBeNull();
+        expect(q('.admin-customer-head + .admin-customer-cards > .admin-customer-main > .admin-customer-glance:first-child')).not.toBeNull();
+        expect(q('.admin-customer-glance')?.classList.contains('@container')).toBe(true);
+
+        const strip = q('.admin-customer-glance__counts');
+        expect([...(strip?.children ?? [])].map(hook)).toEqual(['admin-customer-glance__figure--upcoming', 'admin-customer-glance__figure--completed', 'admin-customer-glance__figure--no-shows', 'admin-customer-glance__figure--cancelled']);
+        expect(strip?.classList.contains('grid-cols-2')).toBe(true);
+        // Four to a line only where the card holds them, which the card's own width says.
+        expect(strip?.classList.contains('wide:@min-[39.125rem]:grid-cols-4')).toBe(true);
+        expect([...(strip?.querySelectorAll('strong') ?? [])].every((count) => count.classList.contains('text-[2.875rem]') && count.classList.contains('tabular-nums'))).toBe(true);
+        // No-shows is the one zero here.
+        expect([...(strip?.querySelectorAll('strong') ?? [])].map((count) => count.classList.contains('text-muted-foreground'))).toEqual([false, false, true, false]);
+        // The last visit beside the strip where the card has room for both, under it otherwise.
+        expect(hook(strip?.nextElementSibling ?? document.body)).toBe('admin-customer-glance__figure--last-visit');
+        expect(strip?.parentElement?.classList.contains('@min-[61.5rem]:grid-cols-[minmax(0,1fr)_21.25rem]')).toBe(true);
+        // Each count asks its own width whether its mark and its label share a line.
+        expect([...(strip?.children ?? [])].every((count) => count.classList.contains('@container') && count.firstElementChild?.classList.contains('@max-[9.4375rem]:flex-col'))).toBe(true);
         expect(figures()).toEqual([
             [own.text('tiles.upcoming'), '1'],
             [own.text('tiles.completed'), '3'],
@@ -264,6 +306,8 @@ describe('a customer\'s page', () => {
         render();
 
         expect(q('.admin-customer-head__chips')).toBeNull();
+        expect(q('.admin-customer-hero')?.firstElementChild?.textContent).toBe('CC');
+        expect(q('.admin-customer-hero .admin-customer-head__email')?.textContent).toBe('casey@example.com');
     });
 
     it('opens the wizard from Book now after Export with the most recent name, the email and the most recent phone, and with no phone as blank', () => {
@@ -298,6 +342,14 @@ describe('a customer\'s page', () => {
 
         expect(q('.admin-customer-head h1')?.textContent).toBe('Casey Customer');
         expect(q('.admin-customer-head__email')).toBeNull();
+
+        // With neither the address nor a chip, the hero holds the initials alone.
+        view.unmount();
+        view = mount();
+        inertia.props = propsWith(null, { customer: { ...withheld, names: ['Casey Customer'] } });
+        render();
+
+        expect([...(q('.admin-customer-hero')?.children ?? [])].map((part) => part.textContent)).toEqual(['CC']);
     });
 
     it('opens the dialog by a partial reload of the detail alone with the URL preserved, loading until the detail answers, and closes it with no visit', () => {
@@ -424,6 +476,54 @@ function refuse(visit: Visit, response: unknown): void {
     act(() => inertia.listeners.get('invalid')?.(event));
     act(() => visit.onFinish?.());
 }
+
+/** The hooks a column's cards are told apart by. */
+const CARD_HOOKS = ['admin-customer-main', 'admin-customer-side', 'admin-customer-glance', 'admin-bookings', 'admin-customer-notes', 'admin-customer-profile', 'admin-customer-block'];
+
+/** The cards a part of the page holds, each named by its hook, in their order. */
+function cardsOf(selector: string): (string | undefined)[] {
+    return [...(q(selector)?.children ?? [])].map((card) => [...card.classList].find((name) => CARD_HOOKS.includes(name)));
+}
+
+describe('a customer\'s cards', () => {
+    it('stand on two columns from a wide page, At a glance, the bookings and Notes in the main one and Profile and Online booking in the side one, with the Danger zone after both', () => {
+        inertia.props = propsWith(null);
+        render();
+
+        // The page asks its own width, not the window's.
+        expect(q('.admin-customer-screen')?.classList.contains('@container')).toBe(true);
+        expect(q('.admin-customer-cards')?.classList.contains('grid')).toBe(true);
+        expect(q('.admin-customer-cards')?.classList.contains('@4xl:grid-cols-[minmax(0,1fr)_25rem]')).toBe(true);
+        expect(cardsOf('.admin-customer-cards')).toEqual(['admin-customer-main', 'admin-customer-side']);
+        expect(cardsOf('.admin-customer-main')).toEqual(['admin-customer-glance', 'admin-bookings', 'admin-customer-notes']);
+        expect(cardsOf('.admin-customer-side')).toEqual(['admin-customer-profile', 'admin-customer-block']);
+        expect(q('.admin-customer-cards + .admin-customer-danger')).not.toBeNull();
+    });
+
+    it('keeps the empty panel in the bookings\' place between At a glance and Notes', () => {
+        inertia.props = propsWith(null, { rows: [], total: 0 });
+        render();
+
+        const main = q('.admin-customer-main');
+
+        expect(main?.children).toHaveLength(3);
+        expect(main?.children[0]?.classList.contains('admin-customer-glance')).toBe(true);
+        expect(main?.children[1]?.querySelector('.admin-customer-empty')?.textContent).toBe(own.text(BOOKINGS_EMPTY));
+        expect(main?.children[2]?.classList.contains('admin-customer-notes')).toBe(true);
+    });
+
+    it('gives a viewer without manageBookings the main column alone at the whole width, At a glance and the bookings, with no side column, no buttons and no Danger zone', () => {
+        inertia.props = propsWith(null, { permissions: ['viewBookings'] });
+        render();
+
+        expect(cardsOf('.admin-customer-cards')).toEqual(['admin-customer-main']);
+        expect([...(q('.admin-customer-cards')?.classList ?? [])].some((name) => name.startsWith('@4xl:'))).toBe(false);
+        expect(cardsOf('.admin-customer-main')).toEqual(['admin-customer-glance', 'admin-bookings']);
+        expect(q('.admin-page-header__actions')).toBeNull();
+        expect(q('.admin-customer-danger')).toBeNull();
+        expect(q('.admin-customer-hero .admin-customer-head__email')?.textContent).toBe('casey@example.com');
+    });
+});
 
 describe('a customer\'s Danger zone', () => {
     it('sits under the bookings with the sentence saying what goes and what stays and Erase this customer, for a viewer holding manageBookings alone', () => {
@@ -764,14 +864,20 @@ describe('a customer\'s Profile', () => {
         expect(lastPut()[1]).toEqual({ tags: '', birthday: '1942-06-15', language: null });
     });
 
-    it('sits beside At a glance with Tags and its help, Birthday on the admin\'s date field and Preferred language of three choices, each filled from the profile, and Save', () => {
+    it('opens the side column with Tags and its help, Birthday on the admin\'s date field and Preferred language of three choices, each filled from the profile, and Save', () => {
         inertia.props = propsWith(null);
         render();
 
-        const card = q('.admin-customer-cards > .admin-customer-profile');
+        const card = q('.admin-customer-side > .admin-customer-profile:first-child');
+        const pair = q('.admin-customer-profile__pair');
 
         expect(card).not.toBeNull();
-        expect(card?.previousElementSibling?.classList.contains('admin-customer-glance')).toBe(true);
+        // Birthday and Preferred language share a line where the card, not the window, has room.
+        expect(card?.classList.contains('@container')).toBe(true);
+        expect(pair?.contains(q('#customer-birthday'))).toBe(true);
+        expect(pair?.contains(q('#customer-language'))).toBe(true);
+        expect(pair?.classList.contains('@xl:grid-cols-2')).toBe(true);
+        expect([...(pair?.classList ?? [])].some((name) => name.startsWith('desktop:'))).toBe(false);
         expect(card?.querySelector('h2')?.textContent).toBe(own.text('profile.title'));
         expect(q('label[for="customer-tags"]')?.textContent).toBe(own.text('profile.tags'));
         expect((q('#customer-tags') as HTMLInputElement).value).toBe('VIP, colour');
@@ -890,14 +996,14 @@ function typeArea(selector: string, text: string): void {
 }
 
 describe('a customer\'s Notes', () => {
-    it('sits after Profile with New note, its help, Add note, and the notes beneath newest first as the server sent them, each its text, its author and day and time in the tenant\'s zone, and Remove', () => {
+    it('closes the main column, after the bookings, with New note, its help, Add note, and the notes beneath newest first as the server sent them, each its text, its author and day and time in the tenant\'s zone, and Remove', () => {
         inertia.props = propsWith(null);
         render();
 
-        const card = q('.admin-customer-cards > .admin-customer-notes');
+        const card = q('.admin-customer-main > .admin-customer-notes:last-child');
 
         expect(card).not.toBeNull();
-        expect(card?.previousElementSibling?.classList.contains('admin-customer-profile')).toBe(true);
+        expect(card?.previousElementSibling?.classList.contains('admin-bookings')).toBe(true);
         expect(card?.querySelector('h2')?.textContent).toBe(own.text('notes.title'));
         expect(q('label[for="customer-note"]')?.textContent).toBe(own.text('notes.new'));
         expect(q('#customer-note')?.tagName).toBe('TEXTAREA');
@@ -994,13 +1100,13 @@ describe('a customer\'s Notes', () => {
 });
 
 describe('a customer\'s Online booking', () => {
-    it('sits after Notes saying the address can book online, with Reason, its help, and Block online booking', () => {
+    it('sits under Profile in the side column saying the address can book online, with Reason, its help, and Block online booking', () => {
         inertia.props = propsWith(null);
         render();
 
-        const card = q('.admin-customer-cards > .admin-customer-block');
+        const card = q('.admin-customer-side > .admin-customer-block:last-child');
 
-        expect(card?.previousElementSibling?.classList.contains('admin-customer-notes')).toBe(true);
+        expect(card?.previousElementSibling?.classList.contains('admin-customer-profile')).toBe(true);
         expect(card?.querySelector('h2')?.textContent).toBe(own.text('block.title'));
         expect(q('.admin-customer-block__state')?.textContent).toBe(own.text('block.open'));
         expect(q('label[for="customer-block-reason"]')?.textContent).toBe(own.text('block.reason'));

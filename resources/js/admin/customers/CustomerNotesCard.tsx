@@ -54,7 +54,7 @@ export function CustomerNotesCard({ url, notes, clock }: Props) {
 
     return (
         <Card className="admin-card admin-customer-notes flex flex-col gap-3 text-sm" aria-labelledby="customer-notes-head">
-            <h2 id="customer-notes-head">
+            <h2 id="customer-notes-head" className="text-card-title">
                 {words.text('notes.title')}
             </h2>
             <Field id="customer-note" label={words.text('notes.new')} help={words.text('notes.help')}>
