@@ -4,7 +4,7 @@ import { key, mount, type Mounted, press, settle } from '@/components/ui/harness
 import { statusLabel } from '@/components/ui/status-chip';
 import { hueOf } from '@/lib/hue';
 import { keyedCalendar, keyedShell, WithCalendar } from '@/testing/keyed';
-import { CappedChips, MORE } from './CappedChips';
+import { CappedChips, MORE, MORE_SHORT } from './CappedChips';
 import { BookingChip, CHIP_NAME, CHIP_OUTLINES, ERASED_CUSTOMER, INSIDE, NOTED } from './Chip';
 import { DateMenu, NEW_BOOKING, NEW_CLOSURE, OPEN_DAY } from './DateMenu';
 import { type Chip, type Colouring, fillOf, statusHueOf } from './model';
@@ -185,6 +185,23 @@ describe('a booking chip', () => {
         expect(chipEl()?.dataset['row']).toBe('2');
         expect(pointed).toHaveBeenCalled();
     });
+
+    it('cut short is its start time alone, struck where the customer would be, its marks read out and not drawn, its whole name kept', () => {
+        show(<BookingChip chip={chip({ status: 'cancelled', noted: true, inside: true })} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} short />);
+
+        expect(chipEl()?.querySelector('.admin-calendar-chip__customer')).toBeNull();
+        expect(chipEl()?.querySelector('.admin-calendar-chip__time')?.textContent).toBe('10:00');
+        expect(chipEl()?.querySelector('.admin-calendar-chip__time')?.classList.contains('line-through')).toBe(true);
+        expect(chipEl()?.querySelector('.admin-calendar-chip__noted')?.classList.contains('sr-only')).toBe(true);
+        expect(chipEl()?.querySelector('.admin-calendar-chip__inside')?.classList.contains('sr-only')).toBe(true);
+        expect(chipEl()?.querySelector('.admin-calendar-chip__noted')?.getAttribute('aria-label')).toBe(cal.text(NOTED));
+        expect(heard(chipEl())).toContain(nameOf('10:00', 'Ada North', 'cancelled'));
+        expect(chipEl()?.classList.contains('overflow-hidden')).toBe(true);
+
+        show(<BookingChip chip={chip({ status: 'cancelled' })} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} />);
+
+        expect(chipEl()?.querySelector('.admin-calendar-chip__time')?.classList.contains('line-through')).toBe(false);
+    });
 });
 
 describe('a capped cell', () => {
@@ -211,6 +228,27 @@ describe('a capped cell', () => {
 
         expect(view.host.querySelectorAll('.admin-calendar-chip')).toHaveLength(2);
         expect(more()).toBeNull();
+    });
+
+    it('cut short, shows the chips as their start times and the line as a plus and the figure, its sentence read out', () => {
+        show(<CappedChips chips={CHIPS} cap={2} title={TITLE} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} short />);
+
+        expect(view.host.querySelectorAll('.admin-calendar-chip__customer')).toHaveLength(0);
+        expect([...view.host.querySelectorAll('.admin-calendar-chip__time')].map((el) => el.textContent)).toEqual(['10:00', '11:00']);
+        expect(more()?.querySelector('[aria-hidden="true"]')?.textContent).toBe(cal.choice(MORE_SHORT, 2));
+        expect(heard(more())).toBe(cal.choice(MORE, 2));
+    });
+
+    it('hands the line\'s press to the caller where it takes it, opening no popover and laying no layer', async () => {
+        const onMore = vi.fn();
+        show(<CappedChips chips={CHIPS} cap={2} title={TITLE} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} short onMore={onMore} />);
+
+        press(more());
+        await settle();
+
+        expect(onMore).toHaveBeenCalledTimes(1);
+        expect(popover()).toBeNull();
+        expect(layer()).toBeNull();
     });
 
     it('opens a popover from the line, titled as the caller says, listing every chip of the cell in order', async () => {

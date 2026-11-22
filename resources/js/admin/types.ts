@@ -366,6 +366,7 @@ export type CalendarStrings = {
     };
     filters: {
         label: string;
+        active: string;
         status: string;
         any_status: string;
         service: string;
@@ -403,14 +404,13 @@ export type CalendarStrings = {
         block: string;
         block_erased: string;
         gap: string;
-        week_needs_width: string;
         to_day: string;
     };
     cells: {
         chip: string;
         erased: string;
         more: string;
-        count: string;
+        more_short: string;
         open_day: string;
     };
     day: {

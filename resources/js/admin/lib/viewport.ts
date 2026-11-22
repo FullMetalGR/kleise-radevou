@@ -7,10 +7,11 @@ import { useSyncExternalStore } from 'react';
  *
  * The desktop breakpoint splits the phone from everything wider. At or above it the admin is the
  * desktop layout; below it, the phone layout, where a branch is React's to take rather than a
- * class's: Week's notice in place of the grid, the help panel's sheet. The wide breakpoint splits
- * the full shell from the compact one: at or above it the sidebar stands beside the page; below
- * it, the menu waits behind its button at the start of the page's first row. Each query is the
- * one the build writes for its variant, min-width, so the two cannot disagree.
+ * class's: the Calendar's chips cut short and its filters folded away, the help panel's sheet. The
+ * wide breakpoint splits the full shell from the compact one: at or above it the sidebar stands
+ * beside the page; below it, the menu waits behind its button at the start of the page's first
+ * row. Each query is the one the build writes for its variant, min-width, so the two cannot
+ * disagree.
  *
  * Where the environment answers no media query, or a token is not on the root, the answer is yes:
  * what cannot measure the viewport is never handed the smaller layout by accident.

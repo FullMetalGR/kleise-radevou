@@ -53,13 +53,16 @@ use Tests\Support\LunaFixture;
  * Athens on the real clock, which the browser and the application both read.
  */
 
-/** Week's notice below the admin's breakpoint, a key of the calendar section read through the translator. */
-const PHONE_WEEK_NOTICE = 'admin/calendar.grid.week_needs_width';
-
 /** The Calendar's footnote under its grid card, there once the screen has drawn in any view. */
 const PHONE_FOOTNOTE = 'admin/calendar.page.footnote';
 
 const PHONE_DRAWER = '.admin-modal__frame--drawer';
+
+/**
+ * A script resolving true once the Calendar draws a chip cut to its start time, which it does on
+ * a phone once a view's bookings are in; false after five seconds.
+ */
+const PHONE_SHORT_CHIP_DRAWN = "new Promise((resolve) => { const started = Date.now(); const look = () => (document.querySelector('.admin-calendar-chip--short') !== null ? resolve(true) : Date.now() - started > 5000 ? resolve(false) : setTimeout(look, 50)); look(); })";
 
 /**
  * The first row's own Menu button. Its twin at the drawer's head and a dropdown's list carry the
@@ -105,11 +108,11 @@ function phoneBooking(string $customer, DateTimeImmutable $start, bool $request 
     return ['uuid' => $uuid, 'id' => $id];
 }
 
-it('opens a booking from a block of the Day calendar on a phone, Week saying it needs a wider screen, and reaches Bookings through the rail\'s drawer', function () {
+it('opens a booking from a block of the Day calendar on a phone, Week drawn as its grid of people with the chips cut to their start times and the filters folded behind their button, and reaches Bookings through the rail\'s drawer', function () {
     $booking = phoneBooking('Cora Cut', athensDaysOn(0, 10));
     $block = '.fc-event[data-block-id="'.$booking['uuid'].':0"]';
 
-    // The Calendar opens on Day, so the first paint is the grid and never Week's notice.
+    // The Calendar opens on Day, its first paint the time grid with the filters folded away.
     $page = Admin::onPhoneCalendar($this, 'luna', Admin::owner('luna'))->waitForText(adminLine(PHONE_FOOTNOTE));
     $page->assertPathIs('/admin/calendar')
         ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)
@@ -118,25 +121,35 @@ it('opens a booking from a block of the Day calendar on a phone, Week saying it 
         ->assertAttribute('.admin-bottom-bar [aria-current="page"]', 'href', '/admin/calendar')
         ->assertNotPresent('.admin-aside')
         ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'))
-        ->assertNotPresent('.admin-calendar-narrow')
+        ->assertAttribute('.admin-filters-toggle', 'aria-expanded', 'false')
+        ->assertScript("document.getElementById('calendar-filters').hidden", true)
+        ->assertNotPresent('.admin-filters-toggle__count')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
 
-    // Week, the second view, says it needs a wider screen in place of the grid.
-    $page->click('.admin-calendar-view button:nth-child(2)')
-        ->waitForText(adminLine(PHONE_WEEK_NOTICE))
-        ->assertNotPresent('.fc')
-        ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.week'))
-        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
-
-    // All staff, so today's Day shows Elena's booking whatever weekday the suite runs on: on a
-    // weekend she holds no hours and Scheduled staff would leave her out.
-    $page->click('#calendar-who')
+    // All staff, so today shows Elena's booking whatever weekday the suite runs on: on a weekend
+    // she holds no hours and Scheduled staff would leave her out. The choice is one filter set,
+    // which the button wears.
+    $page->click('.admin-filters-toggle')
+        ->assertAttribute('.admin-filters-toggle', 'aria-expanded', 'true')
+        ->click('#calendar-who')
         ->click('.admin-calendar-who__preset[data-who="all"]')
         ->assertSeeIn('#calendar-who', adminLine('admin/calendar.who.all'))
-        ->click('.admin-calendar-narrow__day')
+        ->assertSeeIn('.admin-filters-toggle__count', '1');
+
+    // Week, the second view, is the grid of people inside the phone, today's booking on Elena's
+    // row cut to its start time.
+    $page->click('.admin-calendar-view button:nth-child(2)')
+        ->assertScript(PHONE_SHORT_CHIP_DRAWN, true)
+        ->assertNotPresent('.fc')
+        ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.week'))
+        ->assertSeeIn('.admin-calendar-week .admin-calendar-chip__time', '10:00')
+        ->assertNotPresent('.admin-calendar-chip__customer')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+
+    $page->click('.admin-calendar-view button:nth-child(1)')
         ->waitForText(adminLine('admin/calendar.grid.block', ['customer' => 'Cora Cut', 'service' => 'Haircut']))
         ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'))
-        ->assertNotPresent('.admin-calendar-narrow')
+        ->assertNotPresent('.admin-calendar-week')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
 
     // Day is a column per member: Elena's and Nikos's, wider together than the phone, so their row
@@ -388,7 +401,7 @@ it('slides the bar along the foot below the window as a long screen scrolls down
         ->assertNoJavaScriptErrors();
 });
 
-it('fits the wizard, Month, Services, Staff and Settings to a phone, none of them scrolling the page sideways, and opens a day from Month\'s date menu', function () {
+it('fits the wizard, Month, Services, Staff and Settings to a phone, none of them scrolling the page sideways, and opens a day from a press on Month\'s day number', function () {
     phoneBooking('Cora Cut', athensDaysOn(0, 10));
     phoneBooking('Bo Brush', athensDaysOn(0, 12));
     $today = '.admin-calendar-month__day[data-date="'.athensToday()->format('Y-m-d').'"]';
@@ -407,22 +420,22 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
 
     // All staff, so the Day opened from Month below shows Elena's booking whatever weekday the
     // suite runs on: on a weekend she holds no hours and Scheduled staff would leave her out.
-    $page->click('#calendar-who')
+    $page->click('.admin-filters-toggle')
+        ->click('#calendar-who')
         ->click('.admin-calendar-who__preset[data-who="all"]')
         ->assertSeeIn('#calendar-who', adminLine('admin/calendar.who.all'));
 
-    // A day holds its number and its count, the count's words read with the day's name alone.
+    // A day holds its number and its two bookings cut to their start times, with no line of more;
+    // the number is a button of its own beside the day's menu and opens Day on the date.
     $page->click('.admin-calendar-view button:nth-child(3)')
         ->waitForText((new DateTimeImmutable('now', new DateTimeZone('Europe/Athens')))->format('F Y'))
-        ->assertSeeIn($today.' .admin-calendar-month__count', '2')
-        ->assertScript(sprintf("document.querySelector('%s .admin-calendar-date').textContent.includes(%s)", $today, json_encode(adminChoice('admin/calendar.cells.count', 2))), true)
-        ->assertCount($today.' button', 1)
-        ->assertNotPresent('.admin-calendar-chip')
-        ->assertNotPresent('.admin-calendar-more')
+        ->assertScript(PHONE_SHORT_CHIP_DRAWN, true)
+        ->assertScript(sprintf("[...document.querySelectorAll('%s .admin-calendar-chip--short .admin-calendar-chip__time')].map((time) => time.textContent).join(' ')", $today), '10:00 12:00')
+        ->assertNotPresent($today.' .admin-calendar-more')
+        ->assertCount($today.' button', 4)
+        ->assertNotPresent('.admin-calendar-chip__customer')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
-        ->click($today.' .admin-calendar-date')
-        ->assertSeeIn('.admin-calendar-date__day', adminLine('admin/calendar.cells.open_day'))
-        ->click('.admin-calendar-date__day')
+        ->click($today.' .admin-calendar-month__open')
         ->waitForText('Cora Cut')
         ->assertNotPresent('.admin-calendar-month')
         ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'));

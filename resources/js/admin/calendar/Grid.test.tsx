@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Language, localeOf } from '../../booking/language';
-import { key, mount, type Mounted, press, settle } from '@/components/ui/harness';
+import { key, mount, type Mounted, onPhone, press, settle } from '@/components/ui/harness';
 import { keyedCalendar, keyedShell, keyedShifts, WithCalendar } from '@/testing/keyed';
 import { Legend } from './Chrome';
 import { CLOSURE_HERE, type ColumnActions, ColumnHead, EDIT_THIS_DAYS_HOURS, NEW_BOOKING_HERE, OPEN_STAFF_PAGE } from './ColumnHead';
@@ -385,11 +385,24 @@ describe('the grid', () => {
         }
     });
 
-    it('bounds the one time grid\'s box from the desktop breakpoint by the window and by the grid\'s own height, the library scrolling its slots under its day header inside it', () => {
+    it('bounds the one time grid\'s box at every width by the window and by the grid\'s own height, the library scrolling its slots under its day header inside it', () => {
         render();
 
-        expect(view.host.querySelector('.admin-calendar-grid')?.classList.contains('desktop:h-[min(var(--admin-calendar-box),var(--admin-calendar-fit,var(--admin-calendar-box)))]')).toBe(true);
+        expect(view.host.querySelector('.admin-calendar-grid')?.classList.contains('h-[min(var(--admin-calendar-box),var(--admin-calendar-fit,var(--admin-calendar-box)))]')).toBe(true);
         expect(view.host.querySelector<HTMLElement>('.admin-calendar-grid > .fc')?.style.height).toBe('100%');
+    });
+
+    it('keeps the one time grid in its box on a phone too, its slots scrolling inside it and not down the page', () => {
+        const undo = onPhone();
+
+        try {
+            render();
+
+            expect(view.host.querySelector('.admin-calendar-grid')?.classList.contains('h-[min(var(--admin-calendar-box),var(--admin-calendar-fit,var(--admin-calendar-box)))]')).toBe(true);
+            expect(view.host.querySelector<HTMLElement>('.admin-calendar-grid > .fc')?.style.height).toBe('100%');
+        } finally {
+            undo();
+        }
     });
 });
 
@@ -611,15 +624,21 @@ describe('Day as member columns', () => {
         expect([...view.host.querySelectorAll('.stub-head')].map((head) => head.textContent)).toEqual(['Elena Papadaki', 'Nikos Georgiou', 'Maria Lambrou', cal.text(OTHER_BOOKINGS)]);
     });
 
-    it('makes the columns\' row the one box that scrolls both ways from the desktop breakpoint, each column\'s head pinned at its top over the blocks on an opaque ground', () => {
+    it('makes the columns\' row the one box that scrolls both ways at every width, each column\'s head pinned at its top over the blocks on an opaque ground', () => {
         day();
 
         const row = view.host.querySelector('.admin-calendar-columns__row');
+        const classes = row?.className.split(' ') ?? [];
 
-        expect(row?.className.split(' ')).toEqual(expect.arrayContaining(['overflow-x-auto', 'desktop:overflow-y-auto', 'desktop:max-h-(--admin-calendar-box)']));
+        expect(classes).toEqual(expect.arrayContaining(['overflow-x-auto', 'overflow-y-auto', 'max-h-(--admin-calendar-box)']));
+        // No breakpoint holds the box back: a phone's row scrolls inside it as a laptop's does.
+        expect(classes.filter((name) => /^desktop:(max-h|overflow-y)/.test(name))).toEqual([]);
 
         for (const head of view.host.querySelectorAll('.admin-calendar-column__head')) {
-            expect(head.className.split(' ')).toEqual(expect.arrayContaining(['desktop:sticky', 'desktop:top-0', 'desktop:z-20', 'bg-card']));
+            const own = head.className.split(' ');
+
+            expect(own).toEqual(expect.arrayContaining(['sticky', 'top-0', 'z-20', 'bg-card']));
+            expect(own.filter((name) => /^desktop:(sticky|top|z)/.test(name))).toEqual([]);
         }
     });
 

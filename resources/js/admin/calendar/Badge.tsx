@@ -39,13 +39,17 @@ export const BADGE_ORDER: readonly Badge[] = ['awaiting_approval', 'awaiting_pay
  */
 const FITTED = '@max-[195px]:sr-only';
 
-/** A badge as the legend draws it, at any width; fitted: as a block draws it, by the width of the block's body it is measured against. */
+/**
+ * A badge as the legend draws it, at any width; fitted: as a block draws it, by the width of the
+ * block's body it is measured against. Its word stays on one line wherever it is drawn: on a
+ * narrow screen the legend's line beside it wraps instead.
+ */
 export function BlockBadge({ badge, fitted = false }: { badge: Badge; fitted?: boolean }) {
     const shell = useShell();
     const calendar = useCalendarWords();
     const { word, className } = BADGES[badge];
 
-    return <span className={cn('admin-calendar-badge mr-1 inline-block rounded-full border px-1.5 align-[1px] text-xs leading-[14px] font-bold tracking-wide uppercase', className, fitted && FITTED)}>{word(shell, calendar)}</span>;
+    return <span className={cn('admin-calendar-badge mr-1 inline-block shrink-0 rounded-full border px-1.5 align-[1px] text-xs leading-[14px] font-bold tracking-wide whitespace-nowrap uppercase', className, fitted && FITTED)}>{word(shell, calendar)}</span>;
 }
 
 /** What a badge marks, as the legend says it. */

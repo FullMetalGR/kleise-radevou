@@ -970,6 +970,9 @@ function languageSharedValues(): array
         ':time - :end',
         ':service, :staff',
         ':weekday :time-:end',
+        // admin/calendar.php's cells.more_short: a day's line of more cut short, a plus and the
+        // figure, no word in it, the same in both languages.
+        '+:count',
         // admin/home.php's tiles.duration, admin/staff.php's figure, admin/shifts.php's
         // page.hours_minutes and admin/reports.php's tiles.hours_minutes: a tile's hours and
         // minutes, a member's weekly hours and a figure of the Shifts grid, a layout of

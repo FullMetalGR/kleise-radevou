@@ -49,7 +49,10 @@ use Tests\Support\LunaFixture;
  * chip, a request and one awaiting payment are outlined in their own colours, and every booking's
  * words hold their contrast on its fill in three themes, light and dark; the now line is drawn in
  * its own red with its pill; and from the desktop width the time grid's box is bounded by the
- * window, the heads staying at its top as the slots scroll under them.
+ * window, the heads staying at its top as the slots scroll under them. On a phone the filters
+ * fold behind their button; Week is its grid of people inside the screen, the chips cut to their
+ * start times and the plus and how many more opening Day on the row's member; Week of one member
+ * is the time grid of seven columns; Month draws two chips a day and its day's number opens Day.
  *
  * The bookings are written straight to luna's rows on the tenant's today in Athens, or a
  * number of days after it, so the week the calendar opens on holds them whatever day the suite
@@ -631,6 +634,19 @@ const CALENDAR_FILTER_COLUMNS = "document.fonts.ready.then(() => getComputedStyl
 const CALENDAR_NO_SIDEWAYS = 'document.fonts.ready.then(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)';
 
 /**
+ * A script answering whether the filters' button stands on the date title's line, after the
+ * title and inside the toolbar.
+ */
+const CALENDAR_TOGGLE_ON_TITLE_LINE = "document.fonts.ready.then(() => { const bar = document.querySelector('.admin-calendar-toolbar')?.getBoundingClientRect(); const title = document.querySelector('.admin-calendar-title')?.getBoundingClientRect(); const toggle = document.querySelector('.admin-filters-toggle')?.getBoundingClientRect(); return bar !== undefined && title !== undefined && toggle !== undefined && toggle.left >= title.right - 0.5 && toggle.right <= bar.right + 0.5 && toggle.top < title.bottom && toggle.bottom > title.top && toggle.height >= 44; })";
+
+/**
+ * A script answering, of the legend's badge for a booking awaiting payment, the lines its word
+ * takes, whether it ends inside the legend and whether the page stays inside the window, a space
+ * between each; "not on the page" where no such badge is.
+ */
+const CALENDAR_PAYMENT_BADGE_ONE_LINE = "document.fonts.ready.then(() => { const badge = document.querySelector('.admin-calendar-legend__badge[data-badge=\"awaiting_payment\"] .admin-calendar-badge'); if (badge === null) { return 'not on the page'; } const words = document.createRange(); words.selectNodeContents(badge); const lines = new Set([...words.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size; const inside = badge.getBoundingClientRect().right <= badge.closest('.admin-calendar-legend').getBoundingClientRect().right + 0.5; return [lines, inside, document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1].join(' '); })";
+
+/**
  * A script answering an empty string where the toolbar's six parts stand on one line in their
  * order, the view switch, Today, Previous, Next, the date title and Add, with Add at the row's
  * far side; otherwise what is out of place.
@@ -723,11 +739,24 @@ it('draws the toolbar card with the view switch, Today, Previous, Next, the date
 
     $page->resize(1000, 900)
         ->assertScript(CALENDAR_FILTER_COLUMNS, 2)
+        ->assertNotPresent('.admin-filters-toggle')
         ->assertScript(CALENDAR_NO_SIDEWAYS, true);
     Look::shot($page, 'calendar-1000-month');
+
+    // On a phone the filters wait folded behind their button on the title's line, the card
+    // closed until the button opens it, one field to a row.
     $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day'))
         ->resize(390, 844)
         ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'))
+        ->assertAttribute('.admin-filters-toggle', 'aria-expanded', 'false')
+        ->assertAttribute('.admin-filters-toggle', 'aria-controls', 'calendar-filters')
+        ->assertScript("document.getElementById('calendar-filters').hidden", true)
+        ->assertScript(calendarPhoneToolbar(adminLine('admin/calendar.page.add')), '')
+        ->assertScript(CALENDAR_TOGGLE_ON_TITLE_LINE, true);
+    Look::shot($page, 'calendar-390-day-folded');
+    $page->click('.admin-filters-toggle')
+        ->assertAttribute('.admin-filters-toggle', 'aria-expanded', 'true')
+        ->assertVisible('#calendar-who')
         ->assertScript(CALENDAR_FILTER_COLUMNS, 1)
         ->assertScript(calendarPhoneToolbar(adminLine('admin/calendar.page.add')), '');
     Look::shot($page, 'calendar-390-day');
@@ -780,11 +809,29 @@ it('holds each filter\'s longest Greek value four to a row at 1440 pixels, at a 
     foreach (['day', 'week', 'month'] as $view) {
         $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view='.$view))
             ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', $greek('toolbar.views.'.$view))
+            ->assertSeeIn('.admin-filters-toggle', $greek('filters.label'))
+            ->assertScript(CALENDAR_TOGGLE_ON_TITLE_LINE, true)
+            ->click('.admin-filters-toggle')
             ->assertScript(CALENDAR_FILTER_COLUMNS, 1)
             ->assertScript($holds, '')
             ->assertScript(calendarPhoneToolbar($greek('page.add')), '');
+
+        // Week is its grid of people, every chip and line of more inside its day, no word under
+        // 12 pixels.
+        if ($view === 'week') {
+            $page->assertPresent('.admin-calendar-week')
+                ->assertScript(calendarPhoneFits('.admin-calendar-week'), '')
+                ->assertScript(CALENDAR_SMALL_TYPE, '');
+        }
+
         Look::shot($page, 'calendar-greek-390-'.$view);
     }
+
+    // The legend under Day's grid keeps the badge of a booking awaiting payment on one line, its
+    // row of entries wrapping instead, inside the card.
+    $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day'))
+        ->assertSeeIn('.admin-calendar-legend__badge[data-badge="awaiting_payment"] .admin-calendar-badge', adminLine('admin/shell.kit.statuses.awaiting_payment', [], SiteLanguage::Greek))
+        ->assertScript(CALENDAR_PAYMENT_BADGE_ONE_LINE, '1 true true');
 
     $page->resize($size['width'], $size['height']);
 });
@@ -800,6 +847,299 @@ it('keeps Add at the toolbar\'s far side where a row too short for all six parts
     Look::shot($page, 'calendar-add-'.$language->value.'-'.$width);
     $page->resize($size['width'], $size['height']);
 })->with(['in English' => [SiteLanguage::English, 1200], 'in Greek' => [SiteLanguage::Greek, 1280]]);
+
+/**
+ * A script resolving true once an element matching the selector given is on the page; false
+ * after five seconds.
+ */
+function calendarDrawn(string $selector): string
+{
+    $selector = json_encode($selector, JSON_THROW_ON_ERROR);
+
+    return "new Promise((resolve) => { const started = Date.now(); const look = () => (document.querySelector({$selector}) !== null ? resolve(true) : Date.now() - started > 5000 ? resolve(false) : setTimeout(look, 50)); look(); })";
+}
+
+/**
+ * A script answering the start times drawn on the chips inside the element given, in order, a
+ * space between.
+ */
+function calendarTimes(string $selector): string
+{
+    return sprintf("[...document.querySelectorAll(%s)].map((time) => time.textContent).join(' ')", json_encode($selector.' .admin-calendar-chip__time', JSON_THROW_ON_ERROR));
+}
+
+/**
+ * A script answering an empty string where every chip, closure line and line of more inside the
+ * element given sits inside its day, with the words it draws inside its own box, and the page
+ * stays inside the window; otherwise each that does not, by its hook and its widths.
+ */
+function calendarPhoneFits(string $selector): string
+{
+    $root = json_encode($selector, JSON_THROW_ON_ERROR);
+
+    return <<<JS
+        document.fonts.ready.then(() => {
+            const found = [];
+            const root = document.querySelector({$root});
+            if (root === null) {
+                return 'not on the page';
+            }
+            for (const piece of root.querySelectorAll('.admin-calendar-chip, .admin-calendar-week__closure, .admin-calendar-more')) {
+                const hook = piece.className.split(' ')[0];
+                const box = piece.getBoundingClientRect();
+                const day = piece.closest('.admin-calendar-week__cell, .admin-calendar-month__day').getBoundingClientRect();
+                if (box.left < day.left - 0.5 || box.right > day.right + 0.5) {
+                    found.push(hook + ' ' + box.width.toFixed(1) + 'px in a day of ' + day.width.toFixed(1));
+                }
+                const style = getComputedStyle(piece);
+                const end = box.right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth);
+                for (const words of piece.querySelectorAll(':scope > [aria-hidden="true"]')) {
+                    const drawn = words.getBoundingClientRect();
+                    if (drawn.width > 0 && drawn.right > end + 0.5) {
+                        found.push(hook + ' cuts ' + JSON.stringify(words.textContent) + ' by ' + (drawn.right - end).toFixed(1) + 'px');
+                    }
+                }
+            }
+            if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) {
+                found.push('the page ' + document.documentElement.scrollWidth + 'px wide in ' + document.documentElement.clientWidth);
+            }
+            return [...new Set(found)].join(', ');
+        })
+        JS;
+}
+
+/**
+ * A script answering, of the one time grid, the width of its axis's labels in whole pixels, the
+ * axis's rule after them aside, how many day columns stand beside it, whether they are of one
+ * width, whether the grid ends inside the window and whether every day's head keeps its words
+ * inside its column, a space between each.
+ */
+const CALENDAR_ONE_GRID_COLUMNS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const grid = document.querySelector('.fc-timeGridWeek-view')?.closest('.admin-calendar-grid');
+        const axis = grid?.querySelector('.fc-timegrid-slot-label-cushion');
+        if (!grid || !axis) {
+            return 'not on the page';
+        }
+        const days = [...grid.querySelectorAll('.fc-col-header-cell')].map((head) => head.getBoundingClientRect().width);
+        const even = Math.max(...days) - Math.min(...days) <= 1;
+        const inside = grid.getBoundingClientRect().right <= document.documentElement.clientWidth + 0.5;
+        const heads = [...grid.querySelectorAll('.fc-col-header-cell-cushion')].every((words) => words.scrollWidth <= words.clientWidth + 0.5 && words.getBoundingClientRect().right <= words.closest('.fc-col-header-cell').getBoundingClientRect().right + 0.5);
+        return [Math.round(axis.getBoundingClientRect().width), days.length, even, inside, heads].join(' ');
+    })
+    JS;
+
+/**
+ * A script answering an empty string where every day column of the one time grid is within a
+ * pixel of the width given; otherwise each width that is not, to a tenth of a pixel.
+ */
+function calendarOneGridDays(float $width): string
+{
+    return sprintf(<<<'JS'
+        document.fonts.ready.then(() => {
+            const heads = document.querySelector('.fc-timeGridWeek-view')?.closest('.admin-calendar-grid')?.querySelectorAll('.fc-col-header-cell');
+            if (!heads || heads.length === 0) {
+                return 'not on the page';
+            }
+            return [...heads].map((head) => head.getBoundingClientRect().width).filter((width) => Math.abs(width - %F) > 1).map((width) => width.toFixed(1) + 'px').join(', ');
+        })
+        JS, $width);
+}
+
+it('draws Week on a phone as its grid of people inside the screen, a member\'s head the avatar alone with the name read, a day\'s first six bookings cut to their start times, its closure line to its start, and the plus and how many more opening Day on that member; Week of one member as a time grid of seven columns beside a 48 pixel axis; Month two chips a day and the day\'s number a button opening Day; a chip opening its booking, no chip dragged and no text under 12 pixels', function () {
+    $days = calendarNextWednesday();
+    $wednesday = calendarDay($days);
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $nikos = LunaFixture::id('staff', 'Nikos Georgiou');
+    $chip = fn (string $uuid): string => '.admin-calendar-chip[data-uuid="'.$uuid.'"]';
+    $mine = calendarCell($elena, $wednesday);
+    $uuids = [];
+
+    foreach (['09:00' => 'Ada Early', '10:00' => 'Cora Cut', '11:00' => 'Dan Mid', '12:00' => 'Eve Noon', '14:00' => 'Fay After', '15:00' => 'Gil Late', '16:00' => 'Hal Last'] as $time => $customer) {
+        $uuids[$customer] = calendarBooking($customer, 'confirmed', 'Elena Papadaki', $time, days: $days);
+    }
+
+    calendarBooking('Bo South', 'confirmed', 'Nikos Georgiou', '11:00', 'Beard trim', days: $days);
+    DB::table('tenant_luna.blackouts')->insert(['staff_id' => $elena, 'date' => $wednesday, 'start_time' => '17:00', 'end_time' => '18:00', 'reason' => 'Training']);
+    $dayTitle = adminLine('admin/calendar.toolbar.day_title', ['weekday' => 'Wednesday', 'date' => (new DateTimeImmutable($wednesday, new DateTimeZone('Europe/Athens')))->format('d/m/Y')]);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))
+        ->assertVisible(Admin::HOME)
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=week&date='.$wednesday))
+        ->assertScript(calendarDrawn($mine.' .admin-calendar-chip'), true);
+
+    // The grid of people: a member's head is the avatar, the name kept for a screen reader; a day
+    // lists its first six bookings at their start times, then its closure at its start and the
+    // plus and how many more, all inside the day and the page.
+    $page->assertCount('.admin-calendar-week__person', 2)
+        ->assertScript("document.querySelector('.admin-calendar-week__person[data-row=\"member-{$elena}\"] .sr-only').textContent", 'Elena Papadaki')
+        ->assertCount($mine.' .admin-calendar-chip--short', 6)
+        ->assertNotPresent('.admin-calendar-chip__customer')
+        ->assertScript(calendarTimes($mine), '09:00 10:00 11:00 12:00 14:00 15:00')
+        ->assertSeeIn($mine.' .admin-calendar-week__closure span:nth-child(2)', '17:00')
+        ->assertSeeIn($mine.' .admin-calendar-more [aria-hidden="true"]', adminChoice('admin/calendar.cells.more_short', 1))
+        ->assertScript(calendarTimes(calendarCell($nikos, $wednesday)), '11:00')
+        ->assertScript(calendarPhoneFits('.admin-calendar-week'), '')
+        ->assertScript(CALENDAR_SMALL_TYPE, '')
+        ->assertScript(CALENDAR_NO_SIDEWAYS, true);
+    Look::shot($page, 'calendar-390-week');
+
+    // A chip opens its booking; a pull on one carries it nowhere.
+    $page->click($mine.' '.$chip($uuids['Cora Cut']))
+        ->waitForText(adminLine('admin/bookings.dialog.items.title'))
+        ->assertSeeIn('.admin-modal__title', 'Cora Cut')
+        ->click('.admin-booking-close')
+        ->assertMissing('.admin-booking-dialog')
+        ->assertScript(Admin::focusIsOn($mine.' '.$chip($uuids['Cora Cut'])), true);
+    calendarPlaywright($page)->locator($mine.' '.$chip($uuids['Ada Early']))->dragTo(calendarPlaywright($page)->locator(calendarCell($nikos, calendarDay($days + 1))), ['sourcePosition' => ['x' => 8, 'y' => 6], 'targetPosition' => ['x' => 12, 'y' => 8], 'steps' => 12, 'force' => true]);
+    $page->assertNotPresent('.admin-move-confirm')
+        ->assertMissing('.admin-booking-dialog')
+        ->assertCount($mine.' .admin-calendar-chip', 6);
+
+    // The plus and how many more opens Day on that date narrowed to the row's member, which the
+    // filters' button counts as one filter set.
+    $page->click($mine.' .admin-calendar-more')
+        ->waitForText(calendarBlock('Hal Last', 'Haircut'))
+        ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'))
+        ->assertSeeIn('.admin-calendar-title', $dayTitle)
+        ->assertDontSee(calendarBlock('Bo South', 'Beard trim'))
+        ->assertScript("document.getElementById('calendar-who').textContent.includes('Elena Papadaki')", true)
+        ->assertSeeIn('.admin-filters-toggle__count', '1');
+
+    // Week of one member is the time grid: the axis's labels 48 pixels wide and seven columns of
+    // one width inside the phone, each day's head inside its column.
+    $page->click('.admin-calendar-view button:nth-child(2)')
+        ->assertScript(calendarDrawn('.fc-timeGridWeek-view .fc-col-header-cell'), true)
+        ->assertNotPresent('.admin-calendar-week')
+        ->assertScript(CALENDAR_ONE_GRID_COLUMNS, '48 7 true true true')
+        // A day column is a seventh of what the axis leaves of the grid: the grid 356 pixels
+        // wide, the window less two 16 pixel gutters and the card's two 1 pixel edges, and the
+        // axis 49, its 48 pixel labels and their 1 pixel rule.
+        ->assertScript(calendarOneGridDays((356 - 49) / 7), '')
+        ->assertScript(CALENDAR_SMALL_TYPE, '')
+        ->assertScript(CALENDAR_NO_SIDEWAYS, true);
+    Look::shot($page, 'calendar-390-week-one');
+
+    // Month lists a day's first two bookings at their start times, then the plus and how many
+    // more; the day's number is a button the height of a touch opening Day on the date.
+    $month = '.admin-calendar-month__day[data-date="'.$wednesday.'"]';
+    $page->click('.admin-calendar-view button:nth-child(3)')
+        ->assertScript(calendarDrawn($month.' .admin-calendar-chip--short'), true)
+        ->assertScript(calendarTimes($month), '09:00 10:00')
+        ->assertSeeIn($month.' .admin-calendar-more [aria-hidden="true"]', adminChoice('admin/calendar.cells.more_short', 5))
+        ->assertNotPresent('.admin-calendar-month__count')
+        ->assertScript(calendarNumberReach($month), '44 44 true')
+        ->assertScript(calendarPhoneFits('.admin-calendar-month'), '')
+        ->assertScript(CALENDAR_SMALL_TYPE, '')
+        ->assertScript(CALENDAR_NO_SIDEWAYS, true);
+    Look::shot($page, 'calendar-390-month');
+    $page->click($month.' .admin-calendar-month__open')
+        ->waitForText(calendarBlock('Ada Early', 'Haircut'))
+        ->assertSeeIn('.admin-calendar-view [aria-pressed="true"]', adminLine('admin/calendar.toolbar.views.day'))
+        ->assertSeeIn('.admin-calendar-title', $dayTitle)
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * A script answering, of the day's number in the Month day given, the width and the height of
+ * the area a press on it reaches, its drawn box and the layer past each side, in whole pixels,
+ * and whether its drawn box is narrower than the day, a space between each.
+ */
+function calendarNumberReach(string $cell): string
+{
+    $cell = json_encode($cell, JSON_THROW_ON_ERROR);
+
+    return <<<JS
+        (() => {
+            const day = document.querySelector({$cell});
+            const number = day?.querySelector('.admin-calendar-month__open');
+            if (!day || !number) {
+                return 'not on the page';
+            }
+            const box = number.getBoundingClientRect();
+            const layer = getComputedStyle(number, '::after');
+            const past = (side) => (layer.position === 'absolute' ? Math.max(0, -parseFloat(layer[side])) : 0);
+            return [Math.round(box.width + past('left') + past('right')), Math.round(box.height + past('top') + past('bottom')), box.width < day.getBoundingClientRect().width].join(' ');
+        })()
+        JS;
+}
+
+/**
+ * A script answering, of the Month day given, whether the strip from the lowest reach of its
+ * controls, the day's menu aside, down to the cell's own foot is at least 24 pixels tall, and
+ * whether the point at the strip's middle and the points four pixels in from either side reach
+ * the day's menu, a space between each. The day is first scrolled to the window's middle, clear
+ * of the bottom bar.
+ */
+function calendarMonthFoot(string $cell): string
+{
+    $cell = json_encode($cell, JSON_THROW_ON_ERROR);
+
+    return <<<JS
+        document.fonts.ready.then(() => {
+            const day = document.querySelector({$cell});
+            if (day === null) {
+                return 'not on the page';
+            }
+            day.scrollIntoView({ block: 'center' });
+            const menu = day.querySelector('.admin-calendar-date');
+            const box = day.getBoundingClientRect();
+            const foot = box.bottom - parseFloat(getComputedStyle(day).borderBottomWidth);
+            const reach = (control) => {
+                const layer = getComputedStyle(control, '::after');
+                return control.getBoundingClientRect().bottom + (layer.position === 'absolute' ? Math.max(0, -parseFloat(layer.bottom)) : 0);
+            };
+            const last = Math.max(...[...day.querySelectorAll('button')].filter((control) => control !== menu).map(reach));
+            const middle = (last + foot) / 2;
+            const hits = [box.left + 4, box.left + box.width / 2, box.right - 4].map((x) => document.elementFromPoint(x, middle)?.closest('.admin-calendar-date') === menu);
+            return [foot - last >= 23.5, ...hits].join(' ');
+        })
+        JS;
+}
+
+it('draws the legend on a phone under Day and Week of one member alone, never under Month or the grid of people, and leaves each Month day in Greek, busy or empty, a strip at its foot that opens the day\'s menu, the day\'s number a button the size of its pill', function () {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+    $days = calendarNextWednesday();
+    $wednesday = calendarDay($days);
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $mine = calendarCell($elena, $wednesday);
+
+    foreach (['09:00' => 'Ada Early', '10:00' => 'Cora Cut', '11:00' => 'Dan Mid', '12:00' => 'Eve Noon', '14:00' => 'Fay After', '15:00' => 'Gil Late', '16:00' => 'Hal Last'] as $time => $customer) {
+        calendarBooking($customer, 'confirmed', 'Elena Papadaki', $time, days: $days);
+    }
+
+    calendarBooking('Bo South', 'confirmed', 'Nikos Georgiou', '11:00', 'Beard trim', days: $days);
+
+    // The grid of people draws its chips cut to their times, so no legend names their marks.
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))
+        ->assertVisible(Admin::HOME)
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=week&date='.$wednesday))
+        ->assertScript(calendarDrawn($mine.' .admin-calendar-chip'), true)
+        ->assertPresent('.admin-calendar-week')
+        ->assertNotPresent('.admin-calendar-legend');
+
+    // Day narrowed to Elena from the plus and how many more, then Week of her alone, draw their
+    // blocks whole, the legend under each.
+    $page->click($mine.' .admin-calendar-more')
+        ->waitForText(adminLine('admin/calendar.grid.block', ['customer' => 'Hal Last', 'service' => 'Haircut'], SiteLanguage::Greek))
+        ->assertPresent('.admin-calendar-legend');
+    $page->click('.admin-calendar-view button:nth-child(2)')
+        ->assertScript(calendarDrawn('.fc-timeGridWeek-view .fc-col-header-cell'), true)
+        ->assertNotPresent('.admin-calendar-week')
+        ->assertPresent('.admin-calendar-legend');
+
+    // Month: a busy day and an empty one each keep the foot of the cell for the day's menu.
+    $busy = '.admin-calendar-month__day[data-date="'.$wednesday.'"]';
+    $page->click('.admin-calendar-view button:nth-child(3)')
+        ->assertScript(calendarDrawn($busy.' .admin-calendar-more'), true)
+        ->assertNotPresent('.admin-calendar-legend')
+        ->assertScript(calendarMonthFoot($busy), 'true true true true')
+        ->assertScript(calendarMonthFoot('.admin-calendar-month__day:not(:has(.admin-calendar-chip))'), 'true true true true')
+        ->assertScript(calendarNumberReach($busy), '44 44 true')
+        ->assertScript(CALENDAR_NO_SIDEWAYS, true)
+        ->assertNoJavaScriptErrors();
+    Look::shot($page, 'calendar-greek-390-month-feet');
+});
 
 /**
  * The next Wednesday after the tenant's today, in days from it: a day luna's two members both
@@ -1511,9 +1851,10 @@ it('bounds the time grid\'s box by the window from the desktop width, opening at
     Look::shot($page, 'calendar-day-columns-1280x620');
 
     // Twelve hours on the axis, the heads and a rule fit a taller window, so the row holds its own
-    // height.
-    foreach ([[1440, 900], [800, 900]] as [$width, $height]) {
-        $page->resize($width, $height)->assertScript(CALENDAR_BOX, '821 true');
+    // height; 800 pixels wide the bottom bar takes its place at the window's foot, and the box
+    // ends above it.
+    foreach ([[1440, 900, '821 true'], [800, 900, '787 true']] as [$width, $height, $box]) {
+        $page->resize($width, $height)->assertScript(CALENDAR_BOX, $box);
     }
 
     $page->resize(1280, 620)
@@ -1821,21 +2162,108 @@ it('rings a focused block that wears a state\'s outline in the theme colour, out
         ->assertNoJavaScriptErrors();
 });
 
-it('opens Day\'s row of columns at its scroll time as a window a phone wide grows to the desktop width', function () {
-    $days = calendarElenaWorkday();
-    calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '10:00', days: $days);
+/**
+ * A script answering an empty string where the time grid's box, Day's row of columns or the one
+ * grid, scrolled to the window's top, ends at least two pixels above the bottom bar's top, holds
+ * its hours scrolling inside it while the page stays where it is, and has nothing standing over
+ * its top or its foot. The bar's top is read where it rests, the slide that puts it away on a
+ * scroll down left out. Otherwise what was found.
+ */
+const CALENDAR_ABOVE_BAR = <<<'JS'
+    (() => {
+        const bar = document.querySelector('.admin-bottom-bar');
+        const row = document.querySelector('.admin-calendar-columns__row');
+        const box = row ?? document.querySelector('.admin-calendar-grid');
+        const scroller = row ?? [...(box?.querySelectorAll('.fc-scroller') ?? [])].find((candidate) => candidate.querySelector('.fc-timegrid-body') !== null);
+        if (bar === null || box === null || scroller === undefined) {
+            return 'not on the page';
+        }
+        const top = window.innerHeight - parseFloat(getComputedStyle(bar).bottom) - bar.getBoundingClientRect().height;
+        box.scrollIntoView({ block: 'start' });
+        const at = box.getBoundingClientRect();
+        const found = [];
+        if (top - at.bottom < 2) {
+            found.push('the foot ' + (top - at.bottom).toFixed(2) + 'px above the bar');
+        }
+        if (scroller.scrollHeight <= scroller.clientHeight + 1) {
+            found.push('the hours not inside the box, ' + scroller.scrollHeight + ' in ' + scroller.clientHeight);
+        }
+        const page = window.scrollY;
+        const before = scroller.scrollTop;
+        scroller.scrollTop = 0;
+        scroller.scrollTop = 40;
+        if (scroller.scrollTop !== 40) {
+            found.push('the box scrolled ' + scroller.scrollTop + ' for 40');
+        }
+        if (window.scrollY !== page || Math.abs(box.getBoundingClientRect().top - at.top) > 0.5) {
+            found.push('the page moved with the hours');
+        }
+        scroller.scrollTop = before;
+        for (const y of [at.top + 1, at.bottom - 1]) {
+            const under = document.elementFromPoint(at.left + at.width / 2, y);
+            if (under === null || !box.contains(under)) {
+                found.push('covered ' + Math.round(y) + 'px down by ' + (under?.className ?? 'nothing'));
+            }
+        }
+        return found.join(', ');
+    })()
+    JS;
 
-    // Narrow, the row is as tall as its hours and the page scrolls: nothing of its own to scroll.
+it('scrolls the time grids inside their own box below the desktop width, opening at the scroll time with the heads at its top and the box\'s foot clear above the bottom bar, on Day\'s row of columns and on Week narrowed to one member, 820 and 390 pixels wide', function () {
+    $days = calendarElenaWorkday();
+    $workday = calendarDay($days);
+    $block = '.fc-event[data-block-id="'.calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '10:00', days: $days).':0"]';
+    calendarBooking('Bo South', 'confirmed', 'Nikos Georgiou', '13:00', 'Beard trim', days: $days);
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $nikos = LunaFixture::id('staff', 'Nikos Georgiou');
+    $day = Admin::url('luna', Admin::CALENDAR.'?view=day&date='.$workday);
+    // How far the block's top lies under the foot of its column's head.
+    $clear = "(() => { const block = document.querySelector('".$block."'); const head = block.closest('.admin-calendar-column').querySelector('.admin-calendar-column__head'); return (document.activeElement === block ? 'focused ' : 'not focused ') + Math.round(block.getBoundingClientRect().top - head.getBoundingClientRect().bottom); })()";
+
+    // Day's row of columns past the desktop width with the bottom bar still up, then on a phone.
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
     $size = calendarPlaywright($page)->viewportSize();
-    $page->resize(700, 620)
-        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day&date='.calendarDay($days)))
-        ->waitForText(calendarBlock('Cora Cut', 'Haircut'))
-        ->assertScript("(() => { const row = document.querySelector('.admin-calendar-columns__row'); return String(row.scrollHeight - row.clientHeight); })()", '0');
+    foreach ([[820, 700], [390, 844]] as [$width, $height]) {
+        $page->resize($width, $height)
+            ->navigate($day)
+            ->waitForText(calendarBlock('Cora Cut', 'Haircut'))
+            ->assertPresent('.admin-bottom-bar')
+            ->assertScript(CALENDAR_AT_SCROLL_TIME, '')
+            ->assertScript(CALENDAR_HEAD_STAYS, '')
+            ->assertScript(CALENDAR_ABOVE_BAR, '');
+    }
 
-    $page->resize(1280, 620)
+    // On a shorter phone the row scrolled on by two hours hides the block behind the heads; the
+    // Tab key from the head's menu brings it out eight pixels under them, room for a focus ring.
+    $page->resize(390, 664)->wait(0.25);
+    $page->script("document.querySelector('.admin-calendar-columns__row').scrollTop = 180");
+    $page->assertScript($clear, 'not focused -60')
+        ->keys(calendarColumn($elena).' .admin-calendar-head__menu', 'Tab')
+        ->assertScript($clear, 'focused 8');
+    Look::shot($page, 'calendar-day-columns-390x664');
+
+    // Week narrowed to one member is the one grid: its eleven hours in the box, its day header at
+    // the top of it, past the desktop width with the bar up and once the window narrows to a
+    // shorter phone.
+    $page->resize(820, 700)
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=week&date='.$workday))
+        ->waitForText('Cora Cut')
+        ->click('#calendar-who')
+        ->click('.admin-calendar-who__member[data-staff-id="'.$nikos.'"] input')
+        ->click('#calendar-who')
+        ->waitForText(calendarBlock('Cora Cut', 'Haircut'))
+        ->assertNotPresent('.admin-calendar-week')
         ->assertScript(CALENDAR_AT_SCROLL_TIME, '')
-        ->resize($size['width'], $size['height'])
+        ->assertScript(CALENDAR_HEAD_STAYS, '')
+        ->assertScript(CALENDAR_ABOVE_BAR, '');
+
+    $page->resize(390, 664)->wait(0.25);
+    $page->assertNotPresent('.admin-calendar-week')
+        ->assertScript(CALENDAR_HEAD_STAYS, '')
+        ->assertScript(CALENDAR_ABOVE_BAR, '');
+    Look::shot($page, 'calendar-week-one-390x664');
+
+    $page->resize($size['width'], $size['height'])
         ->assertNoJavaScriptErrors();
 });
 

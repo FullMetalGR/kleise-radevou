@@ -5,7 +5,7 @@ import type { Detail } from '@/bookings/model';
 import type { Block, CalendarBooking, Chip, ChipDrop, Colouring, DayColumn, DayHours, Drop, View, Window } from '@/calendar/model';
 import type { WeekRow } from '@/calendar/staff-week';
 import { formatInstant } from '@/lib/format';
-import { COLOUR_BY_LOCKED, COLOUR_BY_NOTE, COLOUR_BY_SAVING, LEGEND_CLOSURE, LEGEND_OUTSIDE, TO_DAY, WEEK_NEEDS_WIDTH, WHO_NOTE, WHO_PICK } from '@/calendar/Chrome';
+import { COLOUR_BY_LOCKED, COLOUR_BY_NOTE, COLOUR_BY_SAVING, LEGEND_CLOSURE, LEGEND_OUTSIDE, WHO_NOTE, WHO_PICK } from '@/calendar/Chrome';
 import { CLOSURE_TITLE, WHOLE_BUSINESS } from '@/calendar/ClosureDialog';
 import { CLOSURE_HERE, EDIT_THIS_DAYS_HOURS, NEW_BOOKING_HERE, OPEN_STAFF_PAGE } from '@/calendar/ColumnHead';
 import { NOT_WORKING_THIS_DAY, OTHER_BOOKINGS } from '@/calendar/model';
@@ -178,16 +178,18 @@ type PeopleStubProps = {
     onBook?: (date: string, staffId: number) => void;
     onClosure?: (date: string, staffId: number) => void;
     onDay: (date: string) => void;
+    onMember?: (date: string, staffId: number) => void;
     onDrop?: (drop: ChipDrop) => void;
 };
 
 /**
  * Week's grid of people as a stub: what it was handed, each row's chips by day and its hatched
- * days, and per member row the first day's three actions and a drop of the row's first chip on
- * the day the test names, onto that row's member.
+ * days, and per member row the first day's three actions, the narrowing a phone's count of the
+ * rest asks for on that day where it is handed in, and a drop of the row's first chip on the day
+ * the test names, onto that row's member.
  */
 vi.mock('@/calendar/StaffWeek', () => ({
-    StaffWeek: ({ days, rows, colouring, onOpen, onBook, onClosure, onDay, onDrop }: PeopleStubProps) => (
+    StaffWeek: ({ days, rows, colouring, onOpen, onBook, onClosure, onDay, onMember, onDrop }: PeopleStubProps) => (
         <div
             ref={() => {
                 handed.rows = rows;
@@ -219,6 +221,7 @@ vi.mock('@/calendar/StaffWeek', () => ({
                         {row.member !== null && onBook !== undefined && <button type="button" className="stub-book" onClick={() => row.member !== null && onBook(day, row.member.id)} />}
                         {row.member !== null && onClosure !== undefined && <button type="button" className="stub-closure" onClick={() => row.member !== null && onClosure(day, row.member.id)} />}
                         {row.member !== null && <button type="button" className="stub-day" onClick={() => onDay(day)} />}
+                        {row.member !== null && onMember !== undefined && <button type="button" className="stub-member" onClick={() => row.member !== null && onMember(day, row.member.id)} />}
                         {onDrop !== undefined && first !== undefined && <button type="button" className="stub-drop-chip" onClick={() => onDrop({ chip: first, date: dropping.date, staffId: dropping.staffId })} />}
                     </div>
                 );
@@ -1069,27 +1072,23 @@ describe('the calendar pinned to the viewer\'s own row', () => {
 
         afterEach(() => undo());
 
-        it('renders Week as the notice over a Day control in place of the grid, Week still offered, and the control opens Day view reading Me', () => {
+        it('renders Week as the time grid of the own row, the view switch offering all three views, the toggle counting no Who', () => {
             inertia.props = pinnedProps();
+            window.sessionStorage.setItem('kr.admin.calendar.filters', JSON.stringify({ status: '', who: 'all', staff: [], service: null }));
             view.render(<Page />);
 
-            expect(view.host.querySelector('.stub-grid')).toBeNull();
-            expect(view.host.querySelector('.admin-calendar-narrow [role="status"]')?.textContent).toBe(cal.text(WEEK_NEEDS_WIDTH));
+            expect(grid().dataset['view']).toBe('week');
             expect([...view.host.querySelectorAll('.admin-calendar-view button')].map((el) => el.textContent)).toEqual([cal.text('toolbar.views.day'), cal.text('toolbar.views.week'), cal.text('toolbar.views.month')]);
-
-            press(view.host.querySelector('.admin-calendar-narrow__day'));
-
-            expect(grid().dataset['view']).toBe('day');
-            expect(grid().dataset['date']).toBe('2026-11-05');
-            expect(lastRead()?.data).toEqual({ from: '2026-11-05', to: '2026-11-06', who: 'me' });
+            expect(view.host.querySelector('.admin-filters-toggle')).not.toBeNull();
+            expect(view.host.querySelector('.admin-filters-toggle__count')).toBeNull();
         });
     });
 });
 
 /*
- * Below the admin's breakpoint: Week stays a desktop view and says so, the notice in place of
- * the grid and the legend over a control opening Day view on the date the screen holds, while
- * the segmented control still offers Week; Day and Month are the grid as on the desktop.
+ * Below the admin's breakpoint: Week is the grid of people for a team and the time grid for one
+ * member, a count of the rest opening Day narrowed to its row's member; Day and Month are the
+ * grid as on the desktop; the filters fold behind a toggle on the title's line, closed on load.
  */
 describe('the calendar screen on a phone', () => {
     let undo: () => void;
@@ -1099,6 +1098,12 @@ describe('the calendar screen on a phone', () => {
     });
 
     afterEach(() => undo());
+
+    const toggle = () => view.host.querySelector<HTMLElement>('.admin-filters-toggle');
+
+    const count = () => toggle()?.querySelector('.admin-filters-toggle__count')?.textContent ?? null;
+
+    const card = () => view.host.querySelector<HTMLElement>('.admin-calendar-filters');
 
     it('reads nothing on open where the props carry the day it opens on, as the server serves its first window, with no link and with a link naming Day at a date', () => {
         inertia.props = propsWith({ opening: { view: null, date: null }, window: { ...WINDOW, from: '2026-11-05', to: '2026-11-06' } });
@@ -1114,43 +1119,46 @@ describe('the calendar screen on a phone', () => {
         expect(inertia.get).not.toHaveBeenCalled();
     });
 
-    it('opens on Day with no link, so the first paint is the grid and never the notice', () => {
+    it('opens on Day with no link, the grid its first paint', () => {
         inertia.props = propsWith({ opening: { view: null, date: null } });
         view.render(<Page />);
 
         expect(pressed()).toBe('day');
-        expect(view.host.querySelector('.admin-calendar-narrow')).toBeNull();
-        expect(view.host.querySelector('.stub-grid')).not.toBeNull();
+        expect(grid().dataset['view']).toBe('day');
     });
 
-    it('renders Week as the notice over a Day control in place of the grid and the legend, the segmented control still offering Week', () => {
+    it('renders Week as the grid of people for a team and as the time grid for one member, the view switch offering all three views', () => {
         view.render(<Page />);
 
-        expect(view.host.querySelector('.stub-grid')).toBeNull();
-        expect(view.host.querySelector('.admin-calendar-legend')).toBeNull();
-        expect(view.host.querySelector('.admin-calendar-narrow [role="status"]')?.textContent).toBe(cal.text(WEEK_NEEDS_WIDTH));
-        expect(view.host.querySelector('.admin-calendar-narrow__day')?.textContent).toBe(cal.text(TO_DAY));
+        expect(grid().dataset['view']).toBe('people');
         expect([...view.host.querySelectorAll('.admin-calendar-view button')].map((el) => el.textContent)).toEqual([cal.text('toolbar.views.day'), cal.text('toolbar.views.week'), cal.text('toolbar.views.month')]);
         expect(pressed()).toBe('week');
         expect(title()).toBe('02/11/2026 - 08/11/2026');
-        expect(view.host.querySelector('.admin-calendar-filters')).not.toBeNull();
+
+        answer({ window: { ...WINDOW, members: [ELENA_ROW] } });
+
+        expect(grid().dataset['view']).toBe('week');
     });
 
-    it('opens Day view on the date the screen holds from the notice\'s control, the grid and the legend back in place', () => {
+    it('opens Day narrowed to a row\'s member from the count of the rest, one read of that day and that member, Who then naming them', () => {
         view.render(<Page />);
 
-        press(view.host.querySelector('.admin-calendar-narrow__day'));
+        press(view.host.querySelector(`.stub-row[data-row="member-${ELENA}"] .stub-member`));
 
-        expect(view.host.querySelector('.admin-calendar-narrow')).toBeNull();
         expect(grid().dataset['view']).toBe('day');
-        expect(grid().dataset['date']).toBe('2026-11-05');
+        expect(grid().dataset['date']).toBe('2026-11-02');
         expect(pressed()).toBe('day');
-        expect(title()).toBe(dayTitle('2026-11-05'));
-        expect(lastRead()?.data).toEqual({ from: '2026-11-05', to: '2026-11-06', who: 'scheduled' });
-        expect(view.host.querySelector('.admin-calendar-legend')).not.toBeNull();
+        expect(lastRead()?.data).toEqual({ from: '2026-11-02', to: '2026-11-03', staff: String(ELENA) });
+        expect(inertia.get).toHaveBeenCalledTimes(1);
+        expect(count()).toBe('1');
+
+        press(toggle());
+
+        expect(whoShown()).toBe('Elena Papadaki');
     });
 
-    it('draws Day as the grid and Month as itself, and Week chosen again as the notice', () => {
+    it('draws Day as the grid, Month as itself with no legend, and Week chosen again as the grid of people', () => {
+        inertia.props = propsWith({ settings: { ...(propsWith()['settings'] as object), colour_by: 'status' } });
         view.render(<Page />);
 
         choose('day');
@@ -1160,15 +1168,105 @@ describe('the calendar screen on a phone', () => {
         answer({ window: NOVEMBER });
         expect(grid().dataset['view']).toBe('month');
         expect(chips()).toEqual({ '2026-11-03': ['chain'], '2026-11-04': ['request'] });
-        // Its days hold a count and no chip, so no legend names a chip's marks under it.
+        // Its chips are cut to their times, drawing none of the marks a legend would name.
         expect(view.host.querySelector('.admin-calendar-legend')).toBeNull();
 
         choose('week');
-        expect(view.host.querySelector('.stub-grid')).toBeNull();
-        expect(view.host.querySelector('.admin-calendar-narrow')).not.toBeNull();
+        expect(grid().dataset['view']).toBe('people');
     });
 
-    it('spans the view switch across the toolbar, then Today, Previous and Next with Add round at the far end keeping its name, then the date title on a line of its own', async () => {
+    it('draws the legend under Day and Week\'s time grid alone, never under Month or the grid of people, and under all four at desktop width', () => {
+        // Each surface in turn, by the view the stub is handed and whether a legend sits under it.
+        const walk = (): [string | undefined, boolean][] => {
+            const seen: [string | undefined, boolean][] = [];
+            const look = () => seen.push([grid().dataset['view'], view.host.querySelector('.admin-calendar-legend') !== null]);
+            inertia.props = propsWith({ settings: { ...(propsWith()['settings'] as object), colour_by: 'status' } });
+            view.render(<Page />);
+            look();
+            answer({ window: { ...WINDOW, members: [ELENA_ROW] } });
+            look();
+            choose('day');
+            look();
+            choose('month');
+            answer({ window: NOVEMBER });
+            look();
+
+            return seen;
+        };
+
+        expect(walk()).toEqual([
+            ['people', false],
+            ['week', true],
+            ['day', true],
+            ['month', false],
+        ]);
+
+        view.unmount();
+        undo();
+        undo = () => undefined;
+        view = mount();
+
+        expect(walk()).toEqual([
+            ['people', true],
+            ['week', true],
+            ['day', true],
+            ['month', true],
+        ]);
+    });
+
+    it('folds the filters behind a toggle on the title\'s line, the card closed on load, the toggle opening and closing it', () => {
+        view.render(<Page />);
+
+        expect(toggle()?.textContent).toContain(cal.text('filters.label'));
+        expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+        expect(toggle()?.getAttribute('aria-controls')).toBe('calendar-filters');
+        expect(toggle()?.parentElement?.classList.contains('admin-calendar-toolbar__line')).toBe(true);
+        expect(toggle()?.previousElementSibling?.classList.contains('admin-calendar-title')).toBe(true);
+        expect(card()?.id).toBe('calendar-filters');
+        expect(card()?.hidden).toBe(true);
+
+        press(toggle());
+
+        expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
+        expect(card()?.hidden).toBe(false);
+
+        press(toggle());
+
+        expect(card()?.hidden).toBe(true);
+    });
+
+    it('counts on the toggle the filters set apart from no filter, Who, status and service, read out by name', () => {
+        view.render(<Page />);
+        press(toggle());
+
+        expect(count()).toBeNull();
+
+        select('#calendar-status', 'confirmed');
+        expect(count()).toBe('1');
+
+        select('#calendar-service', '3');
+        expect(count()).toBe('2');
+
+        preset('all');
+        expect(count()).toBe('3');
+        expect(toggle()?.querySelector('.sr-only')?.textContent).toBe(`, ${cal.choice('filters.active', 3)}`);
+
+        select('#calendar-status', '');
+        select('#calendar-service', '');
+        expect(count()).toBe('1');
+    });
+
+    it('draws no toggle at desktop width, the card always open', () => {
+        undo();
+        undo = () => undefined;
+        view.render(<Page />);
+
+        expect(toggle()).toBeNull();
+        expect(card()?.hidden).toBe(false);
+        expect(card()?.hasAttribute('id')).toBe(false);
+    });
+
+    it('spans the view switch across the toolbar, then Today, Previous and Next with Add round at the far end keeping its name, then the date title and the filters\' toggle on a line of their own', async () => {
         view.render(<Page />);
 
         const add = view.host.querySelector<HTMLElement>('.admin-calendar-add');
@@ -1178,7 +1276,9 @@ describe('the calendar screen on a phone', () => {
         expect([...(add?.classList ?? [])].filter((each) => each === 'admin-button--icon-only' || /^(max-desktop:)?(size|ms)-/.test(each))).toEqual(['admin-button--icon-only', 'size-11', 'ms-auto']);
         expect(add?.querySelector('.sr-only')?.textContent).toBe(cal.text('page.add'));
         expect(add?.querySelectorAll('svg')).toHaveLength(1);
-        expect([...(view.host.querySelector('.admin-calendar-title')?.classList ?? [])].filter((each) => each.startsWith('max-desktop:'))).toEqual(['max-desktop:order-last', 'max-desktop:basis-full', 'max-desktop:text-xl']);
+        expect([...(view.host.querySelector('.admin-calendar-title')?.classList ?? [])].filter((each) => each.startsWith('max-desktop:'))).toEqual(['max-desktop:text-xl']);
+        expect([...(view.host.querySelector('.admin-calendar-toolbar__line')?.classList ?? [])].filter((each) => /^(max-desktop:)?(order|basis)-/.test(each))).toEqual(['basis-full', 'max-desktop:order-last']);
+        expect([...(view.host.querySelector('.admin-calendar-toolbar__line')?.children ?? [])].map((child) => child.classList[0])).toEqual(['admin-calendar-title', 'admin-button']);
 
         // Round or not, it opens the same menu.
         add?.focus();
@@ -1218,6 +1318,11 @@ describe('the screen\'s composition', () => {
         expect([...badge('approval'), ...badge('payment')].filter((each) => /(^|[:-])(amber|sky|black)(-|$)/.test(each))).toEqual([]);
         expect(badge('approval')).toEqual(expect.arrayContaining(['border-attention-line', 'bg-attention-soft-strong', 'text-attention-ink']));
         expect(badge('payment')).toEqual(expect.arrayContaining(['border-dashed', 'border-primary', 'bg-card', 'text-primary-deep']));
+        // Each badge's word keeps to one line, the legend's line beside it wrapping instead on a narrow screen.
+        expect([badge('approval'), badge('payment')].map((classes) => classes.filter((each) => each === 'whitespace-nowrap' || each === 'shrink-0'))).toEqual([
+            ['shrink-0', 'whitespace-nowrap'],
+            ['shrink-0', 'whitespace-nowrap'],
+        ]);
         // Each swatch is a 14px square at a 5px rounding.
         expect([...(view.host.querySelector('.admin-calendar-legend__swatch')?.classList ?? [])].filter((each) => /^(size|rounded)-/.test(each))).toEqual(['size-3.5', 'rounded-[0.3125rem]']);
     });

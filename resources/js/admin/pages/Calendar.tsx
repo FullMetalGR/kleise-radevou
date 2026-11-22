@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { BookingDialog } from '@/bookings/BookingDialog';
 import { type Detail, staffShown } from '@/bookings/model';
 import { BookingsProvider, type BookingsWords, bookingsWordsOf } from '@/bookings/words';
-import { DesktopWeek, Filters, Legend, Toolbar } from '@/calendar/Chrome';
+import { Filters, Legend, Toolbar } from '@/calendar/Chrome';
 import { ClosureDialog } from '@/calendar/ClosureDialog';
 import { useColourByWrite } from '@/calendar/colour-by';
 import { DropConfirm, type Dropping, useDropping } from '@/calendar/dropping';
@@ -31,6 +31,7 @@ import {
     cut,
     type DayColumn,
     dayColumnsOf,
+    filtersSet,
     hoursOn,
     legendShown,
     type Member,
@@ -51,6 +52,7 @@ import { type Calendar as CalendarState, useCalendar } from '@/calendar/useCalen
 import { type CalendarKey, CalendarProvider, type CalendarWords, calendarWordsOf, shiftWordsOf, useClosureWords } from '@/calendar/words';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { FiltersToggle } from '@/components/filters-toggle';
 import { DropdownMenu, type MenuItem } from '@/components/ui/dropdown-menu';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
@@ -88,9 +90,8 @@ import { useNewBooking } from '@/wizard/NewBooking';
  *
  * Month, the third view, is its own grid (calendar/Month): each day's bookings the same cuts leave,
  * as chips, and a day's date menu offering New booking where the wizard is, New closure where the
- * Add menu offers one, and Open day; the legend under it names the chips' marks, and is not drawn
- * below the admin's breakpoint, where a day holds a count and no chip. The chips are computed once
- * per window answer and filter change, in Month alone.
+ * Add menu offers one, and Open day; from the breakpoint the legend under it names the chips'
+ * marks. The chips are computed once per window answer and filter change, in Month alone.
  *
  * Week for a team is a grid of people by days (calendar/StaffWeek) where the staff choice is real,
  * the viewer is not pinned to their own row and the window answers two members or more: a row per
@@ -105,8 +106,11 @@ import { useNewBooking } from '@/wizard/NewBooking';
  * service's category or its status, the legend following; the filter card's select writes it, for a
  * viewer holding manageSettings alone.
  *
- * Below the admin's breakpoint, 1.6, Week stays a desktop view and says so: its notice in place of
- * the grid and the legend, over a control opening Day view on the date the screen holds.
+ * Below the admin's breakpoint every view fits the screen. A cell's line saying how many more
+ * opens Day on its date, and from Week's grid of people first narrows Who to the row's member,
+ * where the viewer may change Who; the filter card folds away behind a toggle on the title's line,
+ * closed on load and wearing how many filters are set; the legend sits under Day and Week's time
+ * grid alone, Month and the grid of people drawing none of the marks it names.
  *
  * Day as member columns: where the staff choice is real, or the viewer is pinned, Day is a column
  * per member the window answers, then the other bookings' column on a day that has one; where it is
@@ -119,9 +123,10 @@ import { useNewBooking } from '@/wizard/NewBooking';
  * the read lands. The day editor's save redirects back, which lands every prop again, and the
  * screen re-reads the window it wants, as after a closure.
  *
- * A booking's block drags in Week and Day where the server says it is movable, and its chip in
- * the grid of people and in Month: the drop asks the move's read for its verdict and a placeable
- * one opens the Move form's confirmation (calendar/dropping), the same for each.
+ * A booking's block drags in Week and Day where the server says it is movable, and at desktop
+ * width its chip in the grid of people and in Month, a chip below that width staying where it is:
+ * the drop asks the move's read for its verdict and a placeable one opens the Move form's
+ * confirmation (calendar/dropping), the same for each.
  */
 
 type Props = SharedProps & { options: CalendarOptions; own: Member | null; pinned: boolean; window: Window; detail: Detail | null; opening?: Opening; colours: OwnColours; strings: AdminStrings & { calendar?: CalendarStrings; bookings?: BookingsStrings; shifts?: ShiftsStrings } };
@@ -133,6 +138,9 @@ type Closing = { staffId?: number | null; date?: string };
 export const CALENDAR_PATH = '/admin/calendar';
 
 const TITLE_ID = 'calendar-title';
+
+/** The filter card's id, which its toggle names below the breakpoint. */
+const FILTERS_ID = 'calendar-filters';
 
 /** Month's chips outside Month: none. */
 const NO_CHIPS: ReadonlyMap<string, readonly Chip[]> = new Map();
@@ -193,9 +201,13 @@ function memberClosureOf(props: Props, onClosure: SurfaceProps['onClosure']): Su
     return closesMembers(props) ? onClosure : undefined;
 }
 
-/** Whether the legend is drawn: where the colouring names one, and never under Month below the breakpoint, whose cells hold a count and no chip to name. */
-function legendDrawn(colours: Colouring, month: boolean, desktop: boolean): boolean {
-    return legendShown(colours) && (desktop || !month);
+/**
+ * Whether the legend is drawn: where the colouring names one, and below the breakpoint only under
+ * the views that draw a booking whole, Day and Week's time grid. Month's and the grid of people's
+ * chips are cut to their start times there, drawing none of the marks the legend names.
+ */
+function legendDrawn(colours: Colouring, celled: boolean, desktop: boolean): boolean {
+    return legendShown(colours) && (desktop || !celled);
 }
 
 /**
@@ -249,14 +261,16 @@ type SurfaceProps = {
     head: (column: DayColumn) => ReactNode;
     dropping: Pick<Dropping, 'drop' | 'dropChip'>;
     words: CalendarWords;
+    /** Day on the date narrowed to the member, where the viewer may change Who. */
+    onMember?: (date: string, staffId: number) => void;
 };
 
 /**
  * The card's content: Month, Week's grid of people, or the time grid of Week and Day, with the
- * legend at its foot where the colouring names one; Month's chips and the people's rows computed
+ * legend at its foot where it is drawn (legendDrawn); Month's chips and the people's rows computed
  * here, once per window answer and filter change.
  */
-function Surface({ props, calendar, kept, ids, blocks, colours, columns, slot, onClosure, head, dropping, words }: SurfaceProps) {
+function Surface({ props, calendar, kept, ids, blocks, colours, columns, slot, onClosure, head, dropping, words, onMember }: SurfaceProps) {
     const shell = useShell();
     const desktop = useDesktop();
     const closed = useClosureWords();
@@ -303,6 +317,7 @@ function Surface({ props, calendar, kept, ids, blocks, colours, columns, slot, o
                     onBook={slot}
                     onClosure={memberClosureOf(props, onClosure)}
                     onDay={calendar.showDay}
+                    onMember={onMember}
                     onDrop={dropping.dropChip}
                 />
             ) : (
@@ -322,7 +337,7 @@ function Surface({ props, calendar, kept, ids, blocks, colours, columns, slot, o
                     head={head}
                 />
             )}
-            {legendDrawn(colours, month, desktop) && (
+            {legendDrawn(colours, celled, desktop) && (
                 <Legend
                     by={colours.by}
                     swatches={swatchesOf(colours, props.window.members, celled ? [...[...chips.values()].flat(), ...rows.flatMap((row) => row.cells.flatMap((cell) => cell.chips))] : blocks, (status) => statusLabel(status, shell), words)}
@@ -335,11 +350,91 @@ function Surface({ props, calendar, kept, ids, blocks, colours, columns, slot, o
     );
 }
 
+type ControlsProps = {
+    props: Props;
+    calendar: CalendarState;
+    title: string;
+    adds: MenuItem[];
+    settles: boolean;
+    filters: CalendarFilters;
+    /** Whether Who's control is drawn. */
+    shown: boolean;
+    /** Whether Who is the viewer's to change: its control drawn and the viewer not pinned. */
+    whoFree: boolean;
+    onChange: (next: CalendarFilters) => void;
+    words: CalendarWords;
+};
+
+/**
+ * The controls card: the toolbar over the filters. Below the breakpoint Add is a round plus and the
+ * filters fold away behind their button on the title's line, the card closed until the button
+ * opens it and the button wearing how many filters are set; from the breakpoint the card is always
+ * open and there is no button.
+ */
+function Controls({ props, calendar, title, adds, settles, filters, shown, whoFree, onChange, words }: ControlsProps) {
+    const desktop = useDesktop();
+    const [unfolded, setUnfolded] = useState(false);
+    const colourWrite = useColourByWrite(words.text(COLOUR_BY_NOT_SAVED));
+    const set = filtersSet(filters, whoFree);
+    const folding = desktop ? {} : { id: FILTERS_ID, hidden: !unfolded };
+
+    return (
+        <Card className="admin-calendar-controls flex flex-col gap-4">
+            <Toolbar
+                views={CALENDAR_VIEWS}
+                calendar={calendar}
+                title={title}
+                titleId={TITLE_ID}
+                add={
+                    adds.length > 0 ? (
+                        <DropdownMenu
+                            label={words.text('page.add')}
+                            items={adds}
+                            align="end"
+                            className="max-w-72"
+                            note={settles ? words.text('page.add_hint') : undefined}
+                            trigger={
+                                <Button icon={<Plus />} iconOnly={!desktop} className="admin-calendar-add ms-auto">
+                                    {words.text('page.add')}
+                                    {desktop && <Caret />}
+                                </Button>
+                            }
+                        />
+                    ) : undefined
+                }
+                filters={
+                    desktop ? undefined : (
+                        <FiltersToggle
+                            open={unfolded}
+                            onToggle={() => setUnfolded((open) => !open)}
+                            controls={FILTERS_ID}
+                            label={words.text('filters.label')}
+                            count={set}
+                            countName={words.choice('filters.active', set)}
+                        />
+                    )
+                }
+            />
+            <Filters
+                {...folding}
+                filters={filters}
+                options={props.options}
+                staffShown={shown}
+                own={props.own}
+                pinned={props.pinned}
+                shown={props.window.members.map((member) => member.id)}
+                colours={props.colours}
+                onChange={onChange}
+                colourBy={{ value: props.settings.colour_by, allowed: settles, busy: colourWrite.busy, onChange: colourWrite.write }}
+            />
+        </Card>
+    );
+}
+
 export default function Calendar() {
     const { props } = usePage<Props>();
     const clock = clockOf(props);
     const shell = useShell();
-    const desktop = useDesktop();
     const words = calendarWordsOf(props.strings, shell.language);
     const bookingsWords = bookingsWordsOf(props.strings, shell.language);
     // Held from render to render, the people's rows being worded in them and built once per answer.
@@ -356,7 +451,6 @@ export default function Calendar() {
     const { open: openWizard } = useNewBooking();
     const [closing, setClosing] = useState<Closing | null>(null);
     const [editing, setEditing] = useState<Member | null>(null);
-    const colourWrite = useColourByWrite(words.text(COLOUR_BY_NOT_SAVED));
     const dropping = useDropping({ bookings: props.window.bookings, timezone: props.tenant.timezone, words: bookingsWords });
 
     useEffect(() => {
@@ -371,6 +465,14 @@ export default function Calendar() {
     const change = (next: CalendarFilters) => {
         setFilters(next);
         writeMemory(CALENDAR_MEMORY_KEY, next, sessionStorageOf);
+    };
+
+    // Who is the viewer's to change where its control is drawn and they are not pinned to their
+    // own row.
+    const whoFree = shown && !pinned;
+    const showMember = (date: string, staffId: number) => {
+        change({ ...filters, who: 'picked', staff: [staffId] });
+        calendar.showDay(date);
     };
 
     const palette = staffShown(props.entitlements, props.options.members, null);
@@ -406,64 +508,28 @@ export default function Calendar() {
                     </Notice>
                 ) : (
                     <>
-                        <Card className="admin-calendar-controls flex flex-col gap-4">
-                            <Toolbar
-                                views={CALENDAR_VIEWS}
-                                calendar={calendar}
-                                title={title}
-                                titleId={TITLE_ID}
-                                add={
-                                    adds.length > 0 ? (
-                                        <DropdownMenu
-                                            label={words.text('page.add')}
-                                            items={adds}
-                                            align="end"
-                                            className="max-w-72"
-                                            note={settles ? words.text('page.add_hint') : undefined}
-                                            trigger={
-                                                <Button icon={<Plus />} iconOnly={!desktop} className="admin-calendar-add ms-auto">
-                                                    {words.text('page.add')}
-                                                    {desktop && <Caret />}
-                                                </Button>
-                                            }
-                                        />
-                                    ) : undefined
-                                }
-                            />
-                            <Filters
-                                filters={filters}
-                                options={props.options}
-                                staffShown={shown}
-                                own={own}
-                                pinned={pinned}
-                                shown={members.map((member) => member.id)}
-                                colours={props.colours}
-                                onChange={change}
-                                colourBy={{ value: props.settings.colour_by, allowed: props.permissions.includes('manageSettings'), busy: colourWrite.busy, onChange: colourWrite.write }}
-                            />
-                        </Card>
+                        <Controls props={props} calendar={calendar} title={title} adds={adds} settles={settles} filters={filters} shown={shown} whoFree={whoFree} onChange={change} words={words} />
                         {calendar.error && (
                             <Notice kind="error" className="admin-calendar-error">
                                 {words.text(CALENDAR_LOAD_ERROR)}
                             </Notice>
                         )}
                         <section className="admin-calendar flex flex-col overflow-hidden rounded-xl border" aria-labelledby={TITLE_ID} aria-busy={calendar.loading}>
-                            <DesktopWeek view={calendar.view} onDay={() => calendar.setView('day')}>
-                                <Surface
-                                    props={props}
-                                    calendar={calendar}
-                                    kept={kept}
-                                    ids={ids}
-                                    blocks={blocks}
-                                    colours={colours}
-                                    columns={columns}
-                                    slot={slot}
-                                    onClosure={settles ? (date, staffId) => setClosing({ date, staffId }) : undefined}
-                                    dropping={dropping}
-                                    head={(column) => <ColumnHead column={column} date={day} clock={clock} hue={column.member === null ? NEUTRAL : colourOf(column.member.id, palette, props.colours)} actions={actions} />}
-                                    words={words}
-                                />
-                            </DesktopWeek>
+                            <Surface
+                                props={props}
+                                calendar={calendar}
+                                kept={kept}
+                                ids={ids}
+                                blocks={blocks}
+                                colours={colours}
+                                columns={columns}
+                                slot={slot}
+                                onClosure={settles ? (date, staffId) => setClosing({ date, staffId }) : undefined}
+                                dropping={dropping}
+                                head={(column) => <ColumnHead column={column} date={day} clock={clock} hue={column.member === null ? NEUTRAL : colourOf(column.member.id, palette, props.colours)} actions={actions} />}
+                                words={words}
+                                onMember={whoFree ? showMember : undefined}
+                            />
                         </section>
                         <p className="admin-calendar-footnote text-xs text-muted-foreground">{words.text('page.footnote')}</p>
                     </>

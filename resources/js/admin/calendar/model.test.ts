@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { localeOf } from '../../booking/language';
 import { staffShown } from '@/bookings/model';
 import { keyedCalendar, keyedShifts } from '@/testing/keyed';
-import { applicableFilters, type Block, blockFillOf, struckOf, type Chip, moveOfChipDrop, moveOfDrop, blockHueOf, blocksOf, businessHoursOf, categoryHueOf, CALENDAR_FILTER_SHAPE, CALENDAR_VIEWS, type CalendarBooking, type CalendarItem, closureBlocksOf, colourOf, cut, dayAxisOf, dayColumnsOf, weekAxisOf, type DayHours, fillOf, headHoursOf, hoursOn, NO_HOURS_AHEAD, NEXT_WORKING_THIS_DAY, NOT_WORKING_THIS_DAY, nextLineOf, GAP_TITLE, idsOf, legendShown, MORNING, monthChipsOf, monthDaysOf, move, NO_CALENDAR_FILTERS, rangeOf, scrollTimeOf, slotDurationOf, slotHeightOf, shownRows, slotStaffOf, statusHueOf, swatchesOf, titleOf, wallOf, whoSummary } from './model';
+import { applicableFilters, filtersSet, type Block, blockFillOf, struckOf, type Chip, moveOfChipDrop, moveOfDrop, blockHueOf, blocksOf, businessHoursOf, categoryHueOf, CALENDAR_FILTER_SHAPE, CALENDAR_VIEWS, type CalendarBooking, type CalendarItem, closureBlocksOf, colourOf, cut, dayAxisOf, dayColumnsOf, weekAxisOf, type DayHours, fillOf, headHoursOf, hoursOn, NO_HOURS_AHEAD, NEXT_WORKING_THIS_DAY, NOT_WORKING_THIS_DAY, nextLineOf, GAP_TITLE, idsOf, legendShown, MORNING, monthChipsOf, monthDaysOf, move, NO_CALENDAR_FILTERS, rangeOf, scrollTimeOf, slotDurationOf, slotHeightOf, shownRows, slotStaffOf, statusHueOf, swatchesOf, titleOf, wallOf, whoSummary } from './model';
 import { hueOf, NEUTRAL, PALETTE, paletteHue } from '@/lib/hue';
 
 /*
@@ -732,5 +732,20 @@ describe('a chip\'s drop as a move', () => {
         const chip = monthChipsOf([saturday], null, ATHENS).get('2026-10-24')?.[0] as Chip;
 
         expect(moveOfChipDrop(saturday, { chip, date: '2026-10-26', staffId: null }, ATHENS)).toEqual({ uuid: 'sat', start: '2026-10-26T08:00:00+00:00', staff: {} });
+    });
+});
+
+describe('the filters set', () => {
+    it('counts each field that differs from no filter: Who where it is counted, the status and the service, never Colour by', () => {
+        expect(filtersSet(NO_CALENDAR_FILTERS, true)).toBe(0);
+        expect(filtersSet({ ...NO_CALENDAR_FILTERS, status: 'confirmed' }, true)).toBe(1);
+        expect(filtersSet({ ...NO_CALENDAR_FILTERS, service: 3 }, true)).toBe(1);
+        expect(filtersSet({ ...NO_CALENDAR_FILTERS, who: 'all' }, true)).toBe(1);
+        expect(filtersSet({ status: 'pending', who: 'picked', staff: [2, 4], service: 1 }, true)).toBe(3);
+    });
+
+    it('leaves Who out where its control is not drawn or the viewer is pinned to their own row', () => {
+        expect(filtersSet({ ...NO_CALENDAR_FILTERS, who: 'me' }, false)).toBe(0);
+        expect(filtersSet({ status: 'pending', who: 'picked', staff: [2], service: 1 }, false)).toBe(2);
     });
 });

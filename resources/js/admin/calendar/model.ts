@@ -99,6 +99,15 @@ export type CalendarFilters = { status: string; who: Who; staff: number[]; servi
 /** A new browser starts on Scheduled staff. */
 export const NO_CALENDAR_FILTERS: CalendarFilters = { status: '', who: 'scheduled', staff: [], service: null };
 
+/**
+ * How many filters are set apart from no filter, the figure the phone's filters toggle wears: Who
+ * where its control is drawn and the viewer is free to change it, the status and the service.
+ * Colour by is a setting of the business, not a filter, and never counts.
+ */
+export function filtersSet(filters: CalendarFilters, whoCounted: boolean): number {
+    return [whoCounted && filters.who !== NO_CALENDAR_FILTERS.who, filters.status !== NO_CALENDAR_FILTERS.status, filters.service !== NO_CALENDAR_FILTERS.service].filter(Boolean).length;
+}
+
 export const CALENDAR_MEMORY_KEY = 'kr.admin.calendar.filters';
 
 /** The nine statuses in the order the server lists them for the status filter, which the legend's status swatches follow. */

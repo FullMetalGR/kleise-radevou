@@ -22,6 +22,10 @@ import { type CalendarKey, useCalendarWords } from './words';
  * hover. The chip's own name says the time, the customer and the status in words, then the marks'
  * names.
  *
+ * Cut short, for a cell too narrow for a name, it is the start time alone, set a little tighter
+ * and centred on a thinner edge so a 24-hour time fits a day of a phone's week, struck through
+ * where the customer would be, its marks read out and not drawn, its outline as ever.
+ *
  * It knows nothing of where it sits: a press hands its booking to the caller, and whatever else a
  * caller hands a button (a drag's handlers, a class) passes through to it.
  */
@@ -50,6 +54,8 @@ type Props = Omit<ComponentProps<'button'>, 'children' | 'onClick' | 'type'> & {
     colouring: Colouring;
     clock: TenantClock;
     onOpen: (uuid: string) => void;
+    /** The start time alone, for a cell too narrow for the customer. */
+    short?: boolean;
 };
 
 /** A mark after the name: no word on the chip, its name read out and shown on hover. */
@@ -61,7 +67,7 @@ function Mark({ name, className, children }: { name: string; className: string; 
     );
 }
 
-export function BookingChip({ chip, colouring, clock, onOpen, className, style, ...rest }: Props) {
+export function BookingChip({ chip, colouring, clock, onOpen, short = false, className, style, ...rest }: Props) {
     const shell = useShell();
     const words = useCalendarWords();
     const hue = blockHueOf(chip, colouring);
@@ -77,6 +83,7 @@ export function BookingChip({ chip, colouring, clock, onOpen, className, style, 
                 'admin-calendar-chip flex w-full min-w-0 cursor-pointer items-center gap-1 rounded-md border-l-4 px-1 py-px text-left text-xs leading-4 text-foreground outline-none hover:brightness-95 focus-visible:ring-3 focus-visible:ring-ring/50',
                 chip.badge === null ? null : ['admin-calendar-chip--outlined', CHIP_OUTLINES[chip.badge]],
                 struck && 'admin-calendar-chip--struck',
+                short && 'admin-calendar-chip--short justify-center overflow-hidden border-l-2 px-0',
                 className,
             )}
             style={{ backgroundColor: blockFillOf(hue, chip.status), borderLeftColor: hue, ...style }}
@@ -86,19 +93,21 @@ export function BookingChip({ chip, colouring, clock, onOpen, className, style, 
             onClick={() => onOpen(chip.uuid)}
         >
             <span className="sr-only">{words.text(CHIP_NAME, { time, customer, status: statusLabel(chip.status, shell) })}</span>
-            <span className="admin-calendar-chip__time shrink-0 font-medium tabular-nums" aria-hidden="true">
+            <span className={cn('admin-calendar-chip__time shrink-0 font-medium tabular-nums', short && 'tracking-tight', short && struck && 'line-through')} aria-hidden="true">
                 {time}
             </span>
-            <span className={cn('admin-calendar-chip__customer min-w-0 flex-1 truncate', chip.customer === null && 'italic', struck && 'line-through')} aria-hidden="true">
-                {customer}
-            </span>
+            {!short && (
+                <span className={cn('admin-calendar-chip__customer min-w-0 flex-1 truncate', chip.customer === null && 'italic', struck && 'line-through')} aria-hidden="true">
+                    {customer}
+                </span>
+            )}
             {chip.noted && (
-                <Mark name={words.text(NOTED)} className="admin-calendar-chip__noted text-muted-foreground">
+                <Mark name={words.text(NOTED)} className={cn('admin-calendar-chip__noted text-muted-foreground', short && 'sr-only')}>
                     <NoteSheet />
                 </Mark>
             )}
             {chip.inside && (
-                <Mark name={words.text(INSIDE)} className="admin-calendar-chip__inside">
+                <Mark name={words.text(INSIDE)} className={cn('admin-calendar-chip__inside', short && 'sr-only')}>
                     <InsideMark />
                 </Mark>
             )}

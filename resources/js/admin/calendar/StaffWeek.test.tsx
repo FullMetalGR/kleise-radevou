@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { carry, dragEvent, key, mount, type Mounted, press, settle } from '@/components/ui/harness';
+import { carry, dragEvent, key, mount, type Mounted, onPhone, press, settle } from '@/components/ui/harness';
 import { keyedCalendar, WithCalendar } from '@/testing/keyed';
 import { MORE } from './CappedChips';
 import { TARGETED } from './chip-drag';
-import { Legend, TO_DAY } from './Chrome';
+import { Legend } from './Chrome';
 import { NEW_BOOKING, NEW_CLOSURE, OPEN_DAY } from './DateMenu';
 import { type Chip, CLOSED_DAY, type Colouring, dayTitleOf, NOT_WORKING_THIS_DAY, OTHER_BOOKINGS } from './model';
 import type { ClosureLine, WeekCell, WeekRow } from './staff-week';
-import { StaffWeek } from './StaffWeek';
+import { StaffWeek, TO_DAY } from './StaffWeek';
 
 /*
  * Week's grid of people as rendered: the head of the week's days, each opening Day view; a row per
@@ -282,6 +282,102 @@ describe('a chip dragged in the grid of people', () => {
         render({ onDrop: undefined });
 
         expect(view.host.querySelector('[draggable="true"]')).toBeNull();
+    });
+});
+
+describe('the grid of people below the breakpoint', () => {
+    let undo: () => void;
+
+    beforeEach(() => {
+        undo = onPhone();
+    });
+
+    afterEach(() => undo());
+
+    const more = (rowKey: string, date: string) => cell(rowKey, date)?.querySelector<HTMLElement>('.admin-calendar-more') ?? null;
+
+    it('narrows the member column to the initials, each name kept for a screen reader, the other bookings\' row a mark of its own', () => {
+        render();
+
+        expect(view.host.querySelector('.admin-calendar-week')?.classList.contains('grid-cols-[2.75rem_repeat(7,minmax(0,1fr))]')).toBe(true);
+        expect(heard(person('member-2'))).toBe('Elena Papadaki');
+        expect(person('member-2')?.querySelector('.sr-only')?.textContent).toBe('Elena Papadaki');
+        expect(person('member-2')?.querySelector('[aria-hidden="true"]')?.textContent).toBe('EP');
+        expect(heard(person('other'))).toBe(cal.text(OTHER_BOOKINGS));
+        expect(person('other')?.querySelector('.sr-only')?.textContent).toBe(cal.text(OTHER_BOOKINGS));
+        expect(person('other')?.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    });
+
+    it('cuts a chip to its start time, its whole sentence still read, six of them and then a count of the rest', () => {
+        render();
+
+        const tuesday = cell('member-2', '2026-11-03');
+        expect(tuesday?.querySelectorAll('.admin-calendar-chip')).toHaveLength(6);
+        expect(tuesday?.querySelector('.admin-calendar-chip__customer')).toBeNull();
+        expect(chipIn('member-2', '2026-11-03', 'a')?.querySelector('.admin-calendar-chip__time')?.textContent).toBe('08:00');
+        expect(heard(chipIn('member-2', '2026-11-03', 'a'))).toContain('Ada North');
+        expect(more('member-2', '2026-11-03')?.querySelector('[aria-hidden="true"]')?.textContent).toBe(cal.choice('cells.more_short', 2));
+        expect(heard(more('member-2', '2026-11-03'))).toBe(cal.choice(MORE, 2));
+    });
+
+    it('cuts a closure line to its start alone, the swatch dropped, the whole sentence still read', () => {
+        render();
+
+        const lines = [...(cell('member-2', '2026-11-03')?.querySelectorAll<HTMLElement>('.admin-calendar-week__closure') ?? [])];
+        expect(lines.map((each) => heard(each))).toEqual(['Closed 09:00-10:00', 'Closed 13:00-15:00']);
+        expect(lines.map((each) => [...each.querySelectorAll('[aria-hidden="true"]')].map((part) => part.textContent).join('|'))).toEqual(['09:00', '13:00']);
+    });
+
+    it('opens the booking of a chip pressed', () => {
+        const onOpen = vi.fn();
+        render({ onOpen });
+
+        press(chipIn('member-2', '2026-11-03', 'a'));
+
+        expect(onOpen.mock.calls).toEqual([['a']]);
+    });
+
+    it('opens Day on the row\'s member from a count pressed where it may narrow to them, and Day alone on the other bookings\' row or where it may not, with no popover', () => {
+        const onMember = vi.fn();
+        const onDay = vi.fn();
+        const busy = ['p', 'q', 'r', 's', 't', 'u', 'v'].map((uuid) => chip(uuid, '2026-11-05T12:00:00', { staffId: 9 }));
+        render({ onMember, onDay, rows: [ROWS[0] as WeekRow, ROWS[1] as WeekRow, row('other', null, { '2026-11-05': { chips: busy } })] });
+
+        press(more('member-2', '2026-11-03'));
+
+        expect(onMember.mock.calls).toEqual([['2026-11-03', 2]]);
+        expect(onDay).not.toHaveBeenCalled();
+        expect(document.querySelector('.admin-calendar-popover')).toBeNull();
+
+        press(more('other', '2026-11-05'));
+
+        expect(onDay.mock.calls).toEqual([['2026-11-05']]);
+        expect(onMember).toHaveBeenCalledTimes(1);
+
+        onDay.mockClear();
+        render({ onDay });
+        press(more('member-2', '2026-11-03'));
+
+        expect(onDay.mock.calls).toEqual([['2026-11-03']]);
+    });
+
+    it('drags nothing', () => {
+        render({ onDrop: vi.fn() });
+
+        expect(view.host.querySelector('[draggable="true"]')).toBeNull();
+    });
+
+    it('keeps the popover of the count at desktop width, narrowing nothing', async () => {
+        undo();
+        undo = () => undefined;
+        const onMember = vi.fn();
+        render({ onMember });
+
+        press(more('member-2', '2026-11-03'));
+        await settle();
+
+        expect(onMember).not.toHaveBeenCalled();
+        expect(document.querySelectorAll('.admin-calendar-popover .admin-calendar-chip')).toHaveLength(8);
     });
 });
 

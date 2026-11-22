@@ -2,7 +2,6 @@ import { type KeyboardEvent, type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CHECK_BOX } from '@/components/ui/check-field';
 import { Field } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
 import { FIELD, FIELD_HEIGHT, PRESSED_HOVER } from '@/components/ui/input';
 import { MENU_OPTION, Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Segmented } from '@/components/ui/segmented';
@@ -11,7 +10,6 @@ import { statusLabel } from '@/components/ui/status-chip';
 import type { Choice } from '@/bookings/model';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
-import { useDesktop } from '@/lib/viewport';
 import { BADGE_ORDER, BlockBadge, badgeMeaning, InsideMark } from './Badge';
 import { CHIP_OUTLINES, NOTED } from './Chip';
 import { Chevron, NoteSheet, SelectChevron, Tick } from '@/components/glyphs';
@@ -23,8 +21,8 @@ import { type CalendarKey, useCalendarWords } from './words';
 
 /*
  * The Calendar's chrome around the grid: the toolbar and the filters, the two rows of the
- * controls card, the legend at the grid card's foot, and Week's notice below the admin's
- * breakpoint. Each is a plain component over the screen's state; the rules live in the model.
+ * controls card, and the legend at the grid card's foot. Each is a plain component over the
+ * screen's state; the rules live in the model.
  * Every word is a key of the calendar section, a constant that held one holding its key.
  */
 
@@ -37,6 +35,8 @@ type ToolbarProps = {
     titleId: string;
     /** The screen's Add menu, closing the row where the viewer may add anything. */
     add?: ReactNode;
+    /** The control that folds the filters away, on the title's line, where the screen folds them. */
+    filters?: ReactNode;
 };
 
 /** Each view's word on the segmented control. */
@@ -51,10 +51,16 @@ const VIEW_LABELS: Record<View, CalendarKey> = { week: 'toolbar.views.week', day
  * own, and on a shorter one the title wraps with it; the screen hands Add in with the margin that
  * keeps it at the far side on either. Below the admin's breakpoint the view switch spans the row,
  * the moves and Add share the next, Add at its far end, and the title comes last on a line of its
- * own.
+ * own, sharing it with the filters' toggle where the screen hands one in, the title taking the
+ * room the toggle leaves.
  */
-export function Toolbar({ views, calendar, title, titleId, add }: ToolbarProps) {
+export function Toolbar({ views, calendar, title, titleId, add, filters }: ToolbarProps) {
     const words = useCalendarWords();
+    const heading = (className: string) => (
+        <h2 id={titleId} aria-live="polite" className={cn('admin-calendar-title min-w-0 grow text-section-title wrap-break-word', className)}>
+            {title}
+        </h2>
+    );
 
     return (
         <div className="admin-calendar-toolbar flex flex-wrap items-center gap-3">
@@ -76,9 +82,14 @@ export function Toolbar({ views, calendar, title, titleId, add }: ToolbarProps) 
                     {words.text('toolbar.next')}
                 </Button>
             </div>
-            <h2 id={titleId} aria-live="polite" className="admin-calendar-title min-w-0 grow basis-80 text-section-title wrap-break-word max-desktop:order-last max-desktop:basis-full max-desktop:text-xl">
-                {title}
-            </h2>
+            {filters === undefined ? (
+                heading('basis-80 max-desktop:order-last max-desktop:basis-full max-desktop:text-xl')
+            ) : (
+                <div className="admin-calendar-toolbar__line flex min-w-0 basis-full items-center gap-3 max-desktop:order-last">
+                    {heading('basis-0 max-desktop:text-xl')}
+                    {filters}
+                </div>
+            )}
             {add}
         </div>
     );
@@ -100,6 +111,10 @@ type FiltersProps = {
     shown: readonly number[];
     /** The members who picked their own colour on the Staff screen. */
     colours: OwnColours;
+    /** The card's id, which the toggle folding it away names. */
+    id?: string;
+    /** Folded away behind that toggle. */
+    hidden?: boolean;
 };
 
 /** Colour by as the filter row shows it. */
@@ -259,9 +274,10 @@ function WhoField({ filters, options, own, pinned, shown, colours, onChange }: O
  * pinned viewer alone; Status, Any status then the nine; Service, All services then the full
  * catalog, inactive rows suffixed; Colour by, the settings row's word, disabled without
  * manageSettings, with the line saying so, and while its write is in flight, with the line saying
- * that, its note on whom the colours reach its hover title.
+ * that, its note on whom the colours reach its hover title. Below the breakpoint the screen may
+ * fold the row away behind a toggle naming it by its id.
  */
-export function Filters({ filters, options, staffShown, own, pinned, shown, colours, onChange, colourBy }: FiltersProps) {
+export function Filters({ filters, options, staffShown, own, pinned, shown, colours, onChange, colourBy, id, hidden }: FiltersProps) {
     const shell = useShell();
     const words = useCalendarWords();
     const set = (patch: Partial<CalendarFilters>) => onChange({ ...filters, ...patch });
@@ -270,7 +286,7 @@ export function Filters({ filters, options, staffShown, own, pinned, shown, colo
     const colourLine = colourBy.busy ? words.text(COLOUR_BY_SAVING) : colourBy.allowed ? undefined : words.text(COLOUR_BY_LOCKED);
 
     return (
-        <div role="group" className="admin-calendar-filters grid grid-cols-1 gap-3 desktop:grid-cols-2 @[67rem]:grid-cols-4" aria-label={words.text('filters.label')}>
+        <div role="group" id={id} hidden={hidden} className="admin-calendar-filters grid grid-cols-1 gap-3 desktop:grid-cols-2 @[67rem]:grid-cols-4" aria-label={words.text('filters.label')}>
             {staffShown && <WhoField filters={filters} options={options} own={own} pinned={pinned} shown={shown} colours={colours} onChange={onChange} />}
             <Field id="calendar-status" label={words.text('filters.status')} compact={true}>
                 {(control) => (
@@ -430,36 +446,3 @@ export function Legend({ by, swatches, chips = false, day = false, hint = false 
         </div>
     );
 }
-
-/** The notice for Week below the admin's breakpoint. */
-export const WEEK_NEEDS_WIDTH: CalendarKey = 'grid.week_needs_width';
-
-/** The control under it, opening Day view on the date the screen holds. */
-export const TO_DAY: CalendarKey = 'grid.to_day';
-
-/**
- * Week is a desktop view: what this wraps, the grid and the legend under it, renders in every view
- * at or above the admin's breakpoint and in Day and Month below it, while Week below it renders
- * the notice in their place, over a control opening Day view; the segmented control still offers
- * Week. The Calendar wraps its grid in it, so the page carries no branch itself.
- */
-export function DesktopWeek({ view, onDay, children }: { view: View; onDay: () => void; children: ReactNode }) {
-    const desktop = useDesktop();
-    const words = useCalendarWords();
-
-    if (view !== 'week' || desktop) {
-        return children;
-    }
-
-    return (
-        <div className="admin-calendar-narrow flex flex-col items-start gap-3 p-4">
-            <Notice kind="info" className="self-stretch">
-                {words.text(WEEK_NEEDS_WIDTH)}
-            </Notice>
-            <Button className="admin-calendar-narrow__day" onClick={onDay}>
-                {words.text(TO_DAY)}
-            </Button>
-        </div>
-    );
-}
-

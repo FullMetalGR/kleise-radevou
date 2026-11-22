@@ -82,6 +82,7 @@ return [
     ],
     'filters' => [
         'label' => 'Filters',
+        'active' => '{1} :count active|[2,*] :count active',
         'status' => 'Status',
         'any_status' => 'Any status',
         'service' => 'Service',
@@ -128,14 +129,13 @@ return [
         'block' => ':customer, :service',
         'block_erased' => 'Customer erased, :service',
         'gap' => 'Processing gap',
-        'week_needs_width' => 'The week view needs a wider screen.',
         'to_day' => 'Open Day view',
     ],
     'cells' => [
         'chip' => ':time, :customer, :status',
         'erased' => 'Customer erased',
         'more' => '{1} :count more|[2,*] :count more',
-        'count' => '{1} :count booking|[2,*] :count bookings',
+        'more_short' => '+:count',
         'open_day' => 'Open day',
     ],
     'day' => [

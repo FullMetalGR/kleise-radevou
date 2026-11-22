@@ -8,13 +8,14 @@ import { Legend } from './Chrome';
 import { CHIP_OUTLINES, NOTED } from './Chip';
 import { NEW_BOOKING, NEW_CLOSURE, OPEN_DAY } from './DateMenu';
 import { type Chip, CLOSED_DAY, type Colouring, dayTitleOf } from './model';
-import { BOOKING_COUNT, Month } from './Month';
+import { Month } from './Month';
 
 /*
  * Month as rendered: six weeks from the tenant's week start under the weekdays' short names, each
  * day's chips up to two and the line saying how many more, the day's date menu behind them, a
  * closed day hatched and still full, another month's days greyed and full, today's number marked;
- * below the breakpoint a day's number and count, the whole cell the menu. Then the legend under
+ * below the breakpoint the same two chips cut to their start times, a count of the rest and the
+ * day's number each opening Day. Then the legend under
  * chips, naming their marks. Every word reads through the keyed sections.
  */
 
@@ -222,22 +223,69 @@ describe('Month below the breakpoint', () => {
 
     afterEach(() => undo());
 
-    it('holds a day\'s number and how many bookings it has, no chip, the whole cell its menu, named with the count where the day has any', async () => {
+    const more = (date: string) => cell(date)?.querySelector<HTMLElement>('.admin-calendar-more') ?? null;
+
+    const opener = (date: string) => cell(date)?.querySelector<HTMLElement>('button.admin-calendar-month__open') ?? null;
+
+    it('lists a day\'s first two chips cut to their start times, then a count of the rest opening Day on the date, no popover', () => {
+        const onDay = vi.fn();
+        render({ onDay });
+
+        expect(cell('2026-11-03')?.querySelectorAll('.admin-calendar-chip')).toHaveLength(2);
+        expect(view.host.querySelector('.admin-calendar-chip__customer')).toBeNull();
+        expect(cell('2026-11-03')?.querySelector('.admin-calendar-chip[data-uuid="a"] .admin-calendar-chip__time')?.textContent).toBe('10:00');
+        expect(heard(cell('2026-11-03')?.querySelector('.admin-calendar-chip[data-uuid="a"]'))).toContain('Ada North');
+        expect(more('2026-11-03')?.querySelector('[aria-hidden="true"]')?.textContent).toBe(cal.choice('cells.more_short', 2));
+        expect(heard(more('2026-11-03'))).toBe(cal.choice(MORE, 2));
+        expect(more('2026-11-04')).toBeNull();
+        expect(view.host.querySelector('.admin-calendar-month__count')).toBeNull();
+
+        press(more('2026-11-03'));
+
+        expect(onDay.mock.calls).toEqual([['2026-11-03']]);
+        expect(document.querySelector('.admin-calendar-popover')).toBeNull();
+    });
+
+    it('opens the booking of a chip pressed', () => {
+        const onOpen = vi.fn();
+        render({ onOpen });
+
+        press(cell('2026-11-04')?.querySelector('.admin-calendar-chip[data-uuid="e"]') ?? null);
+
+        expect(onOpen.mock.calls).toEqual([['e']]);
+    });
+
+    it('writes the count of the rest as the page\'s language groups its digits', () => {
+        render({ chips: new Map([['2026-11-03', Array.from({ length: 1234 }, (_, at) => chip(`n${at}`, '2026-11-03T10:00:00'))]]) });
+
+        expect(more('2026-11-03')?.querySelector('[aria-hidden="true"]')?.textContent).toBe('[cells.more_short 1,232]');
+    });
+
+    it('makes the day\'s number a button the size of its pill with a 44px touch area, ringed for the keyboard in the house outline, opening Day on the date, beside the day\'s menu named by the day alone', async () => {
+        const onDay = vi.fn();
         const onBook = vi.fn();
-        render({ onBook });
+        render({ onDay, onBook });
 
-        expect(view.host.querySelectorAll('.admin-calendar-chip, .admin-calendar-more')).toHaveLength(0);
-        expect(cell('2026-11-03')?.querySelectorAll('button')).toHaveLength(1);
-        expect(cell('2026-11-03')?.querySelector('.admin-calendar-month__count')?.textContent).toBe('4');
-        expect(heard(control('2026-11-03'))).toBe(`${title('2026-11-03')}, ${cal.choice(BOOKING_COUNT, 4)}`);
-        expect(control('2026-11-03')?.querySelector('.admin-calendar-month__number')?.textContent).toBe('3');
-        // A day with no booking shows no count and is named by its weekday and date alone, closed or not.
-        expect(cell('2026-11-05')?.querySelector('.admin-calendar-month__count')).toBeNull();
-        expect(heard(control('2026-11-05'))).toBe(title('2026-11-05'));
+        expect(heard(opener('2026-11-05'))).toBe(`${cal.text(OPEN_DAY)}, ${title('2026-11-05')}`);
+        // Drawn round the 24px pill, no size of its own, and pressed 10px past each side of it.
+        expect([...(opener('2026-11-05')?.classList ?? [])].filter((name) => /^(w|h|size|after:-?inset|after:absolute)/.test(name))).toEqual(['after:absolute', 'after:-inset-2.5']);
+        expect(opener('2026-11-05')?.querySelector('.admin-calendar-month__number')?.classList.contains('size-6')).toBe(true);
+        expect(opener('2026-11-05')?.classList.contains('focus-ring')).toBe(true);
+        expect([...(opener('2026-11-05')?.classList ?? [])].filter((name) => name.startsWith('focus-visible:ring'))).toEqual([]);
+        // Its band, the height of the touch area, is the day's menu, as is the rest of the cell.
+        expect(opener('2026-11-05')?.parentElement?.tagName).toBe('SPAN');
+        expect(opener('2026-11-05')?.parentElement?.classList.contains('h-11')).toBe(true);
+        expect(opener('2026-11-05')?.querySelector('.admin-calendar-month__number')?.textContent).toBe('5');
+        expect(opener('2026-11-04')?.querySelector('.admin-calendar-month__number--today')).not.toBeNull();
 
-        render({ onBook, closedDays: ['2026-11-05'] });
+        press(opener('2026-11-05'));
+
+        expect(onDay.mock.calls).toEqual([['2026-11-05']]);
+        expect(heard(control('2026-11-03'))).toBe(title('2026-11-03'));
+
+        render({ onDay, onBook, closedDays: ['2026-11-05'] });
         expect(heard(control('2026-11-05'))).toBe(`${title('2026-11-05')}, ${cal.text(CLOSED_DAY)}`);
-        render({ onBook });
+        render({ onDay, onBook });
 
         await openMenu('2026-11-03');
         press(document.querySelector('.admin-calendar-date__book'));
@@ -245,13 +293,29 @@ describe('Month below the breakpoint', () => {
         expect(onBook.mock.calls).toEqual([['2026-11-03']]);
     });
 
-    it('writes the count as the page\'s language groups its digits', () => {
-        render({ chips: new Map([['2026-11-03', Array.from({ length: 1234 }, (_, at) => chip(`n${at}`, '2026-11-03T10:00:00'))]]) });
+    it('keeps the foot of every cell, busy or empty, a strip 24px tall that is the day\'s menu alone', () => {
+        render();
 
-        expect(cell('2026-11-03')?.querySelector('.admin-calendar-month__count')?.textContent).toBe('1,234');
+        const feet = new Set([...view.host.querySelectorAll('.admin-calendar-month__body')].map((body) => [...body.classList].filter((name) => /^p[xytb]?-/.test(name)).join(' ')));
+
+        expect(view.host.querySelectorAll('.admin-calendar-month__day > .admin-calendar-month__body')).toHaveLength(42);
+        expect([...feet]).toEqual(['px-0.5 pt-0.5 pb-6']);
+        expect(cell('2026-11-03')?.querySelector('.admin-calendar-month__body')?.classList.contains('pointer-events-none')).toBe(true);
     });
 
-    it('drags nothing, a cell too narrow for a chip, and asks for nothing where a chip picked up above the breakpoint is let go below it', () => {
+    it('leaves the number to the day where the day is itself the one control, opening Day', () => {
+        const onDay = vi.fn();
+        render({ onDay, onBook: undefined, onClosure: undefined });
+
+        expect(opener('2026-11-05')).toBeNull();
+        expect(cell('2026-11-05')?.querySelectorAll('button')).toHaveLength(1);
+
+        press(control('2026-11-05'));
+
+        expect(onDay.mock.calls).toEqual([['2026-11-05']]);
+    });
+
+    it('drags nothing, and asks for nothing where a chip picked up above the breakpoint is let go below it', () => {
         const onDrop = vi.fn();
         const chips = new Map([['2026-11-04', [chip('m', '2026-11-04T09:00:00', { movable: true })]]]);
         render({ onDrop, chips });

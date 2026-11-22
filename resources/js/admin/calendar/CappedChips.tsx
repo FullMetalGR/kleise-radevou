@@ -27,9 +27,18 @@ import { type CalendarKey, useCalendarWords } from './words';
  * A cell may draw asides among its chips, each at a time of its own: one goes before the chips
  * shown from its time on, counts for no cap and is not listed in the popover. A chip shown in the
  * cell carries what the caller hands it, a drag; one in the popover carries nothing.
+ *
+ * Cut short, for a cell too narrow for a name, the chips shown are their start times alone and
+ * the line is a plus and the figure, its whole sentence still read out. Where the caller takes
+ * the line's press, the line opens no popover and lays no layer: the press is the caller's.
  */
 
 export const MORE: CalendarKey = 'cells.more';
+
+/** The line cut short: a plus and how many more. */
+export const MORE_SHORT: CalendarKey = 'cells.more_short';
+
+const MORE_FACE = 'admin-calendar-more w-full cursor-pointer rounded-sm px-1 text-left text-xs leading-4 font-medium text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50';
 
 type Props = {
     chips: readonly Chip[];
@@ -43,6 +52,10 @@ type Props = {
     /** What a chip shown in the cell carries beside its own. */
     carried?: (chip: Chip) => Carried | undefined;
     asides?: readonly Aside[];
+    /** The chips shown as their start times and the line as a plus and the figure. */
+    short?: boolean;
+    /** The line's press, taken by the caller in place of the popover. */
+    onMore?: () => void;
     className?: string;
 };
 
@@ -84,8 +97,21 @@ function useScrim(up: boolean, onPress: () => void) {
     }, [up, onPress]);
 }
 
-export function CappedChips({ chips, cap, title, colouring, clock, onOpen, carried, asides = [], className }: Props) {
+/** The line's words: how many more, or cut short the plus and the figure with the sentence read out. */
+function MoreWords({ hidden, short }: { hidden: number; short: boolean }) {
     const words = useCalendarWords();
+
+    return short ? (
+        <>
+            <span aria-hidden="true">{words.choice(MORE_SHORT, hidden)}</span>
+            <span className="sr-only">{words.choice(MORE, hidden)}</span>
+        </>
+    ) : (
+        words.choice(MORE, hidden)
+    );
+}
+
+export function CappedChips({ chips, cap, title, colouring, clock, onOpen, carried, asides = [], short = false, onMore, className }: Props) {
     const [open, setOpen] = useState(false);
     const more = useRef<HTMLButtonElement>(null);
     const shown = chips.slice(0, cap);
@@ -96,7 +122,7 @@ export function CappedChips({ chips, cap, title, colouring, clock, onOpen, carri
         more.current?.focus();
     }, []);
 
-    useScrim(open && hidden > 0, shut);
+    useScrim(open && hidden > 0 && onMore === undefined, shut);
 
     const openListed = (uuid: string) => {
         shut();
@@ -108,7 +134,7 @@ export function CappedChips({ chips, cap, title, colouring, clock, onOpen, carri
             {placed(shown, asides).map((entry) =>
                 'chip' in entry ? (
                     <li key={entry.chip.uuid} className="min-w-0">
-                        <BookingChip {...carried?.(entry.chip)} chip={entry.chip} colouring={colouring} clock={clock} onOpen={onOpen} />
+                        <BookingChip {...carried?.(entry.chip)} chip={entry.chip} colouring={colouring} clock={clock} onOpen={onOpen} short={short} />
                     </li>
                 ) : (
                     <li key={entry.key} className="min-w-0">
@@ -116,12 +142,19 @@ export function CappedChips({ chips, cap, title, colouring, clock, onOpen, carri
                     </li>
                 ),
             )}
-            {hidden > 0 && (
+            {hidden > 0 && onMore !== undefined && (
+                <li className="min-w-0">
+                    <button type="button" className={MORE_FACE} onClick={onMore}>
+                        <MoreWords hidden={hidden} short={short} />
+                    </button>
+                </li>
+            )}
+            {hidden > 0 && onMore === undefined && (
                 <li className="min-w-0">
                     <Popover open={open} onOpenChange={setOpen}>
                         <PopoverTrigger asChild>
-                            <button ref={more} type="button" className="admin-calendar-more w-full cursor-pointer rounded-sm px-1 text-left text-xs leading-4 font-medium text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-                                {words.choice(MORE, hidden)}
+                            <button ref={more} type="button" className={MORE_FACE}>
+                                <MoreWords hidden={hidden} short={short} />
                             </button>
                         </PopoverTrigger>
                         <PopoverContent aria-label={title} className="admin-calendar-popover flex w-64 flex-col gap-1 p-2">

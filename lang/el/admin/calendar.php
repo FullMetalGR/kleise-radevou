@@ -43,6 +43,7 @@ return [
     ],
     'filters' => [
         'label' => 'Φίλτρα',
+        'active' => '{1} :count ενεργό|[2,*] :count ενεργά',
         'status' => 'Κατάσταση',
         'any_status' => 'Οποιαδήποτε κατάσταση',
         'service' => 'Υπηρεσία',
@@ -89,14 +90,13 @@ return [
         'block' => ':customer, :service',
         'block_erased' => 'Διαγραμμένος πελάτης, :service',
         'gap' => 'Χρόνος αναμονής',
-        'week_needs_width' => 'Η προβολή «Εβδομάδα» χρειάζεται πλατύτερη οθόνη.',
         'to_day' => 'Άνοιγμα της προβολής «Ημέρα»',
     ],
     'cells' => [
         'chip' => ':time, :customer, :status',
         'erased' => 'Διαγραμμένος πελάτης',
         'more' => '{1} :count ακόμη|[2,*] :count ακόμη',
-        'count' => '{1} :count κράτηση|[2,*] :count κρατήσεις',
+        'more_short' => '+:count',
         'open_day' => 'Άνοιγμα της ημέρας',
     ],
     'day' => [

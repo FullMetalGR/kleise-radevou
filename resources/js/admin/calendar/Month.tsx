@@ -1,13 +1,13 @@
 import { isoWeekday } from '@/lib/day';
-import { formatCount, type TenantClock } from '@/lib/format';
+import type { TenantClock } from '@/lib/format';
 import { weekdayName } from '@/lib/names';
 import { cn } from '@/lib/utils';
 import { useDesktop } from '@/lib/viewport';
 import { CappedChips } from './CappedChips';
 import { type Spot, TARGETED, useChipDrag } from './chip-drag';
-import { DateMenu } from './DateMenu';
+import { DateMenu, OPEN_DAY } from './DateMenu';
 import { type Chip, type ChipDrop, CLOSED_DAY, type Colouring, dayTitleOf, monthDaysOf } from './model';
-import { type CalendarKey, type CalendarWords, useCalendarWords } from './words';
+import { type CalendarWords, useCalendarWords } from './words';
 
 /*
  * Month: six weeks always, from the week holding the month's first day, the range the screen
@@ -15,10 +15,13 @@ import { type CalendarKey, type CalendarWords, useCalendarWords } from './words'
  * as any; the tenant's today has its number marked; a day the business is closed all day is
  * hatched and lists its bookings and opens its menu still.
  *
- * At desktop width a day lists its bookings as chips, the first two and a line saying how many
- * more, and the rest of the cell is the day's date menu, its one tab stop before the chips. Below
- * the breakpoint a cell is too narrow for a chip: it holds the day's number and how many bookings
- * it has, and the whole cell is the date menu.
+ * A day lists its bookings as chips, the first two and a line saying how many more, and the rest
+ * of the cell is the day's date menu, its one tab stop before the chips. Below the breakpoint the
+ * chips are their start times alone and the line a plus and the figure, which opens Day on the
+ * date rather than a popover; the day's number is a button opening Day too, where the menu offers
+ * more than that, and part of the menu where the menu is itself Open day. There the foot of every
+ * cell, a strip 24 pixels tall across it, is the menu's alone, busy day or empty: a padding under
+ * the chips rather than a least height, which a busy day's chips would fill.
  *
  * At desktop width a chip drags to another day where the booking is movable and a drop is handled,
  * the drop moving it by whole days, its time and members kept (calendar/chip-drag).
@@ -26,8 +29,6 @@ import { type CalendarKey, type CalendarWords, useCalendarWords } from './words'
 
 /** The most chips a Month day shows before the line saying how many more. */
 const CAP = 2;
-
-export const BOOKING_COUNT: CalendarKey = 'cells.count';
 
 type Props = {
     /** Any date of the month shown. */
@@ -53,14 +54,37 @@ type Props = {
 
 type Day = { date: string; title: string; chips: readonly Chip[]; other: boolean; closed: boolean; today: boolean };
 
-/** A cell's name: the day, then that the business is closed, then how many bookings where the cell says so and the day has any. */
-function nameOf(day: Day, words: CalendarWords, counted: boolean): string {
-    return [day.title, day.closed ? words.text(CLOSED_DAY) : null, counted && day.chips.length > 0 ? words.choice(BOOKING_COUNT, day.chips.length) : null].filter((part) => part !== null).join(', ');
+/** A cell's name: the day, then that the business is closed. */
+function nameOf(day: Day, words: CalendarWords): string {
+    return day.closed ? `${day.title}, ${words.text(CLOSED_DAY)}` : day.title;
 }
 
 /** A day as a drag reads it: the day alone, Month having no rows. */
 function spotOf(day: Day): Spot {
     return { key: day.date, date: day.date, staffId: null };
+}
+
+/**
+ * A day's number below the breakpoint, centred in a band as tall as a finger that is part of the
+ * menu behind: where the menu offers more than Open day, a button opening Day, named so, drawn as
+ * the pill and taking a press 10 pixels past each side of it, a touch area of 44 that the band
+ * holds clear of the chips; else part of the menu, which a press on it reaches.
+ */
+function PhoneNumber({ day, opens, onDay }: { day: Day; opens: boolean; onDay: (date: string) => void }) {
+    const words = useCalendarWords();
+
+    return (
+        <span className="flex h-11 items-center justify-center">
+            {opens ? (
+                <button type="button" className="admin-calendar-month__open focus-ring relative inline-flex cursor-pointer rounded-full after:absolute after:-inset-2.5" onClick={() => onDay(day.date)}>
+                    <span className="sr-only">{`${words.text(OPEN_DAY)}, ${day.title}`}</span>
+                    <DayNumber day={day} desktop={false} />
+                </button>
+            ) : (
+                <DayNumber day={day} desktop={false} />
+            )}
+        </span>
+    );
 }
 
 /** A day's number in its pill, 28px from the desktop breakpoint, today's on the highlight. */
@@ -119,26 +143,29 @@ export function Month({ date, weekStart, today, chips, closedDays, colouring, cl
                     >
                         <DateMenu
                             title={day.title}
-                            name={nameOf(day, words, !desktop)}
+                            name={nameOf(day, words)}
                             current={day.today}
                             onBook={onBook && (() => onBook(day.date))}
                             onClosure={onClosure && (() => onClosure(day.date))}
                             onDay={() => onDay(day.date)}
-                            className={desktop ? 'absolute inset-0 size-full' : 'flex size-full flex-col items-center gap-0.5 p-1'}
-                        >
-                            {!desktop && <DayNumber day={day} desktop={false} />}
-                            {!desktop && day.chips.length > 0 && (
-                                <span aria-hidden="true" className="admin-calendar-month__count text-xs font-semibold text-muted-foreground tabular-nums">
-                                    {formatCount(day.chips.length, words.locale)}
-                                </span>
+                            className="absolute inset-0 size-full"
+                        />
+                        <div className={cn('admin-calendar-month__body pointer-events-none relative flex min-w-0 flex-col [&_button]:pointer-events-auto', desktop ? 'gap-1.5 p-1.5' : 'gap-0.5 px-0.5 pt-0.5 pb-6')}>
+                            {desktop ? <DayNumber day={day} desktop /> : <PhoneNumber day={day} opens={onBook !== undefined || onClosure !== undefined} onDay={onDay} />}
+                            {day.chips.length > 0 && (
+                                <CappedChips
+                                    chips={day.chips}
+                                    cap={CAP}
+                                    title={day.title}
+                                    colouring={colouring}
+                                    clock={clock}
+                                    onOpen={onOpen}
+                                    carried={(chip) => drag.source(chip, spotOf(day))}
+                                    short={!desktop}
+                                    onMore={desktop ? undefined : () => onDay(day.date)}
+                                />
                             )}
-                        </DateMenu>
-                        {desktop && (
-                            <div className="pointer-events-none relative flex min-w-0 flex-col gap-1.5 p-1.5 [&_button]:pointer-events-auto">
-                                <DayNumber day={day} desktop />
-                                {day.chips.length > 0 && <CappedChips chips={day.chips} cap={CAP} title={day.title} colouring={colouring} clock={clock} onOpen={onOpen} carried={(chip) => drag.source(chip, spotOf(day))} />}
-                            </div>
-                        )}
+                        </div>
                     </li>
                 ))}
             </ol>
