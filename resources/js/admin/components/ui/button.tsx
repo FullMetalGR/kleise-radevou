@@ -96,6 +96,31 @@ type Props = Omit<ComponentProps<'button'>, 'children'> &
         children: ReactNode;
     };
 
+/** What every button is, whatever its variant and size. */
+const BASE =
+    'admin-button focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-body-sm font-bold whitespace-nowrap outline-none select-none disabled:cursor-not-allowed disabled:opacity-45 motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft motion-safe:enabled:active:scale-98';
+
+/**
+ * A link's hover and press. The button writes them behind the enabled state, so a disabled button
+ * keeps still, and an anchor is never in the enabled state, so a link in the button's look carries
+ * the same hover colour, glow and press of its own, with nothing in front.
+ */
+const LINK_STATES: Record<ButtonVariant, string> = {
+    primary: 'hover:bg-primary-deep hover:shadow-glow-hover motion-safe:active:scale-98',
+    secondary: 'hover:bg-muted hover:inset-ring-ink-tertiary motion-safe:active:scale-98',
+    tertiary: 'hover:bg-muted motion-safe:active:scale-98',
+    link: 'hover:underline motion-safe:active:scale-98',
+};
+
+/**
+ * The button's look for a link that goes to another page, so a page's main way to its form reads
+ * as its main button would: the same pill, size and colours, darkening on hover and shrinking a
+ * little while pressed. A link is never busy or disabled, so neither state's look applies to it.
+ */
+export function buttonLook(variant: ButtonVariant = 'secondary', size: ButtonSize = 'default'): string {
+    return cn(BASE, `admin-button--${variant}`, boxOf(variant, size, false, false), VARIANTS[variant], LINK_STATES[variant]);
+}
+
 export function Button({
     variant = 'secondary',
     destructive = false,
@@ -128,7 +153,7 @@ export function Button({
         <button
             type={type}
             className={cn(
-                'admin-button focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-body-sm font-bold whitespace-nowrap outline-none select-none disabled:cursor-not-allowed disabled:opacity-45 motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft motion-safe:enabled:active:scale-98',
+                BASE,
                 `admin-button--${variant}`,
                 boxOf(variant, size, iconOnly, wrap),
                 VARIANTS[variant],

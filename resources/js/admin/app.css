@@ -378,13 +378,15 @@
 }
 
 /*
- * The brand's scope: the console's shell and the signup's guest layout wear the brand by taking
- * its primary into the admin's own tokens inside the scope alone, so the admin's primitives keep
- * their shapes, the one rule mixes the scope's tints from that primary, and the admin, which
- * never enters the scope, keeps its theme unchanged. On the dark theme the primary is lightened
- * to read on the dark page and carries the brand's ink. The console's shell carries the primary
- * as a rule along the window's top edge. The scope sets no type: each frame keeps its body's, the
- * admin's faces in the console and the brand's system stack in the signup.
+ * The brand's scope: the console's body, its shell and the signup's guest layout wear the brand by
+ * taking its primary into the admin's own tokens inside the scope alone, so the admin's primitives
+ * keep their shapes, the one rule mixes the scope's tints from that primary, and the admin, which
+ * never enters the scope, keeps its theme unchanged. The console wears it on its body so the
+ * dialogs, menus and toasts it opens there, outside the shell, take the brand with the page. On
+ * the dark theme the primary is lightened to read on the dark page and carries the brand's ink.
+ * The console's shell carries the primary as a rule along the window's top edge. The scope sets no
+ * type: each frame keeps its body's, the admin's faces in the console and the brand's system stack
+ * in the signup.
  */
 .brand-scope {
     --primary: var(--brand-primary);

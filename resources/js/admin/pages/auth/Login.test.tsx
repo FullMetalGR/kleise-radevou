@@ -166,7 +166,7 @@ describe('the sign-in form', () => {
         expect(host.querySelectorAll('input')).toHaveLength(2);
     });
 
-    it('keeps the button at its own height and width where the page asks for nothing more, as the console\'s door does', () => {
+    it('keeps the button at its own height and width where the page asks for nothing more', () => {
         render(null, false);
 
         const classes = [...(host.querySelector('.admin-login-submit')?.classList ?? [])];

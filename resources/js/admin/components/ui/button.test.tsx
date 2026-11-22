@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Button, type ButtonVariant } from './button';
+import { Button, buttonLook, type ButtonVariant } from './button';
 import { mount, press, type Mounted } from './harness';
 
 /*
@@ -39,6 +39,34 @@ describe('the button', () => {
         view.render(<Button>Save</Button>);
         expect(button()?.classList.contains('admin-button--secondary')).toBe(true);
         expect(button()?.getAttribute('type')).toBe('button');
+    });
+
+    it('dresses a link that goes to another page as the button of its variant and size, no busy state on it', () => {
+        view.render(
+            <Button variant="primary" size="large">
+                New
+            </Button>,
+        );
+        const drawn = classesOf(button());
+
+        expect(classesOf(Object.assign(document.createElement('a'), { className: buttonLook('primary', 'large') }))).toEqual(expect.arrayContaining(drawn));
+        expect(buttonLook().split(' ')).toContain('admin-button--secondary');
+        expect(buttonLook().split(' ')).not.toContain('admin-button--busy');
+    });
+
+    it('gives a link the hover and the press of its variant without the enabled state, which never matches a link', () => {
+        for (const variant of ['primary', 'secondary', 'tertiary', 'link'] satisfies ButtonVariant[]) {
+            view.render(<Button variant={variant}>New</Button>);
+            const hovers = classesOf(button())
+                .filter((name) => name.startsWith('enabled:hover:'))
+                .map((name) => name.slice('enabled:'.length));
+            const look = buttonLook(variant).split(' ');
+
+            expect(hovers.length).toBeGreaterThan(0);
+            expect(look).toEqual(expect.arrayContaining(hovers));
+            expect(look.some((name) => /^hover:/.test(name))).toBe(true);
+            expect(look.some((name) => /^motion-safe:active:scale-/.test(name))).toBe(true);
+        }
     });
 
     it('carries the destructive flag beside any variant, and not without it', () => {

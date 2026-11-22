@@ -18,8 +18,8 @@ import { cn } from '@/lib/utils';
  * the button, leaving focus where it was.
  *
  * The console's door renders the same form on its own host, with a button class of its own so a
- * walk never reads one door's control for the other's, and its button at the default size; a
- * business's door asks for the large one across the form. Its words are the shell's login group,
+ * walk never reads one door's control for the other's; each door asks for the large button
+ * across the form. Its words are the shell's login group,
  * from the strings the form is given: the admin's in the page's language, the console's in
  * English from the console's adapter.
  */

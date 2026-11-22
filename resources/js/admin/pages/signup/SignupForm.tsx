@@ -27,6 +27,11 @@ import { Turnstile, type TurnstileWidget } from './Turnstile';
  * widget as any field's is; `attempt` is the count of refused answers, and each one mounts the
  * widget anew for a fresh token. Without the widget there is no check and no such field.
  *
+ * The widget draws a fixed 300px box. Where the form card leaves less room than that inside its
+ * padding, on the narrowest phones, the widget's row runs out across the card's side padding,
+ * 20px each side in the compact layout, and centres the box in the card, so it fits down to a
+ * 348px window. Its refusal stays inside the padding with every other field's.
+ *
  * The terms' box sits after the password and above the anti-spam check: one required checkbox
  * labelled by one sentence of signup.php, whose two link texts sit between the named tags <terms>
  * and <privacy>; tagged() turns each pair into a link to the legal page the server named in the
@@ -154,14 +159,16 @@ export function SignupForm({ data, strings, categories, timezones, centralHost, 
             {turnstile !== null && (
                 <div
                     id="signup-turnstile_token"
-                    className="admin-field admin-signup-check flex flex-col gap-1"
+                    className="admin-field admin-signup-check @container flex flex-col gap-1"
                     role="group"
                     aria-label={labels.check}
                     tabIndex={-1}
                     aria-invalid={check === '' ? undefined : true}
                     aria-describedby={check === '' ? undefined : 'signup-turnstile_token-error'}
                 >
-                    <Turnstile key={attempt} siteKey={turnstile.siteKey} script={turnstile.script} onToken={(token) => onChange('turnstile_token', token)} />
+                    <div className="@max-[300px]:-mx-5 @max-[300px]:flex @max-[300px]:justify-center">
+                        <Turnstile key={attempt} siteKey={turnstile.siteKey} script={turnstile.script} onToken={(token) => onChange('turnstile_token', token)} />
+                    </div>
                     {check !== '' && <ErrorLine id="signup-turnstile_token-error">{check}</ErrorLine>}
                 </div>
             )}

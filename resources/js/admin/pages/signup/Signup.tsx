@@ -1,5 +1,6 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { Card } from '@/components/ui/card';
 import type { CentralProps } from '@/types';
 import { type SignupCategory, type SignupData, SignupForm, type SignupLegal } from './SignupForm';
 import type { TurnstileWidget } from './Turnstile';
@@ -17,6 +18,9 @@ import type { TurnstileWidget } from './Turnstile';
  * the server says, the POST's path in the page's language, under /el for the Greek form. The
  * terms box starts unticked, and the two legal pages it links are the server's, in the page's
  * language.
+ *
+ * The page keeps its own column, narrower than the admin's door, and sets its heading and its form
+ * in one form card, so the tinted fields sit on the card's surface over the site's white page.
  */
 
 type Props = { categories: SignupCategory[]; timezones: string[]; centralHost: string; action: string; legal: SignupLegal; refusal: string | null; turnstile: TurnstileWidget | null };
@@ -31,30 +35,32 @@ export default function Signup({ categories, timezones, centralHost, action, leg
     return (
         <main className="admin-signup mx-auto flex max-w-md flex-col gap-6 px-6 py-12">
             <Head title={strings.form.title} />
-            <h1 className="text-2xl font-semibold">{strings.form.heading}</h1>
-            <SignupForm
-                data={form.data}
-                strings={strings}
-                categories={categories}
-                timezones={timezones}
-                centralHost={centralHost}
-                legal={legal}
-                refusal={refusal}
-                turnstile={turnstile}
-                attempt={attempt}
-                errors={form.errors}
-                processing={form.processing}
-                onChange={(field, value) => form.setData(field, value)}
-                onSubmit={() =>
-                    form.post(action, {
-                        onError: () => {
-                            form.setData('turnstile_token', '');
-                            setAttempt((count) => count + 1);
-                        },
-                        onFinish: () => form.reset('password'),
-                    })
-                }
-            />
+            <Card variant="form" className="flex flex-col gap-6">
+                <h1 className="text-dialog-title">{strings.form.heading}</h1>
+                <SignupForm
+                    data={form.data}
+                    strings={strings}
+                    categories={categories}
+                    timezones={timezones}
+                    centralHost={centralHost}
+                    legal={legal}
+                    refusal={refusal}
+                    turnstile={turnstile}
+                    attempt={attempt}
+                    errors={form.errors}
+                    processing={form.processing}
+                    onChange={(field, value) => form.setData(field, value)}
+                    onSubmit={() =>
+                        form.post(action, {
+                            onError: () => {
+                                form.setData('turnstile_token', '');
+                                setAttempt((count) => count + 1);
+                            },
+                            onFinish: () => form.reset('password'),
+                        })
+                    }
+                />
+            </Card>
         </main>
     );
 }

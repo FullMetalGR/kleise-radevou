@@ -1,5 +1,6 @@
 import { Head, useForm, usePage, usePoll } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { fill } from '../../../booking/placeholders';
 import type { CentralProps, SignupStrings } from '@/types';
 
@@ -15,6 +16,10 @@ import type { CentralProps, SignupStrings } from '@/types';
  * Every sentence here is the server's, the strings prop the central adapter shares in the
  * request's language, its placeholders filled through the one helper; the page holds none of its
  * own. The control posts where the server says, the resend's path in the page's language.
+ *
+ * The page keeps the signup's column and sets the notice and the control in one form card, as the
+ * signup sets its form. Its heading breaks anywhere, so a business named in one long word stays
+ * inside the card on a phone.
  */
 
 export const POLL_MS = 3000;
@@ -29,7 +34,7 @@ export function PendingNotice({ strings, business, email, verified, address }: W
     if (!verified) {
         return (
             <div className="admin-signup-pending flex flex-col gap-3" role="status" aria-live="polite">
-                <h1 className="text-2xl font-semibold">{words.waiting_heading}</h1>
+                <h1 className="text-dialog-title wrap-anywhere">{words.waiting_heading}</h1>
                 <p>{fill(words.waiting, { email: email ?? words.your_address, business: business ?? words.your_business, address })}</p>
             </div>
         );
@@ -37,7 +42,7 @@ export function PendingNotice({ strings, business, email, verified, address }: W
 
     return (
         <div className="admin-signup-pending flex flex-col gap-3" role="status" aria-live="polite">
-            <h1 className="text-2xl font-semibold">{fill(words.verified_heading, { business: business ?? words.your_business })}</h1>
+            <h1 className="text-dialog-title wrap-anywhere">{fill(words.verified_heading, { business: business ?? words.your_business })}</h1>
             <p>{fill(words.verified, { address })}</p>
         </div>
     );
@@ -66,15 +71,17 @@ export default function Pending({ business, email, verified, resend, address }: 
     return (
         <main className="mx-auto flex max-w-md flex-col gap-6 px-6 py-12">
             <Head title={verified ? strings.pending.verified_title : strings.pending.waiting_title} />
-            <PendingNotice strings={strings} business={business} email={email} verified={verified} address={address} />
-            {!verified && (
-                <ResendControl
-                    strings={strings}
-                    busy={form.processing}
-                    notice={flash?.message ?? null}
-                    onResend={() => form.post(resend, { preserveScroll: true })}
-                />
-            )}
+            <Card variant="form" className="flex flex-col gap-6">
+                <PendingNotice strings={strings} business={business} email={email} verified={verified} address={address} />
+                {!verified && (
+                    <ResendControl
+                        strings={strings}
+                        busy={form.processing}
+                        notice={flash?.message ?? null}
+                        onResend={() => form.post(resend, { preserveScroll: true })}
+                    />
+                )}
+            </Card>
         </main>
     );
 }

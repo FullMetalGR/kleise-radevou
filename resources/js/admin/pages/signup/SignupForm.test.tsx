@@ -447,6 +447,16 @@ describe('PendingNotice', () => {
         expect(host.textContent).toContain('We sent a link to owner@luna.example. Open it within 24 hours to set up Luna Studio at https://luna.kleiseradevou.gr.');
     });
 
+    it('sets its heading at the door\'s title size before the click and after it, broken anywhere so a long business name stays in the card', () => {
+        act(() => root.render(<PendingNotice strings={strings} business="Luna Studio" email="owner@luna.example" verified={false} address="https://luna.kleiseradevou.gr" />));
+
+        expect([...(host.querySelector('h1')?.classList ?? [])].sort()).toEqual(['text-dialog-title', 'wrap-anywhere']);
+
+        act(() => root.render(<PendingNotice strings={strings} business="Luna Studio" email="owner@luna.example" verified address="https://luna.kleiseradevou.gr" />));
+
+        expect([...(host.querySelector('h1')?.classList ?? [])].sort()).toEqual(['text-dialog-title', 'wrap-anywhere']);
+    });
+
     it('names neither the address nor the business to a browser that does not hold the signup', () => {
         act(() => root.render(<PendingNotice strings={strings} business={null} email={null} verified={false} address="https://luna.kleiseradevou.gr" />));
 

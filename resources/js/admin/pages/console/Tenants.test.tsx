@@ -156,6 +156,27 @@ describe('the tenant list', () => {
         expect(q('.admin-tenants-new')?.getAttribute('href')).toBe('/tenants/new');
     });
 
+    it('draws New tenant as the page\'s main button though it is a link', () => {
+        inertia.props = propsWith([LUNA]);
+        view.render(<Tenants />);
+
+        expect(q('.admin-tenants-new')?.tagName).toBe('A');
+        expect(q('.admin-tenants-new')?.classList.contains('admin-button--primary')).toBe(true);
+        expect([...(q('.admin-tenants-new')?.classList ?? [])].filter((name) => /^(h-8|rounded-lg)$/.test(name))).toEqual([]);
+    });
+
+    it('lays the filters out by their own card\'s width, the card a query container and six columns from its widest step, no window breakpoint left', () => {
+        inertia.props = propsWith([LUNA]);
+        view.render(<Tenants />);
+
+        const card = [...(q('.admin-tenants-filters')?.classList ?? [])];
+        const grid = [...(q('.admin-filter-bar__fields')?.classList ?? [])];
+
+        expect(card).toContain('@container');
+        expect(grid.filter((name) => /grid-cols-6$/.test(name))).toEqual(['@5xl:grid-cols-6']);
+        expect(grid.filter((name) => /^(sm|md|lg|xl|2xl|desktop|wide):/.test(name))).toEqual([]);
+    });
+
     it('words every status, state and plan of the vocabulary, one word each', () => {
         expect(Object.keys(STATUS_WORDS)).toEqual(['provisioning', 'active', 'suspended', 'closing', 'closed']);
         expect(new Set(Object.values(STATUS_WORDS)).size).toBe(5);

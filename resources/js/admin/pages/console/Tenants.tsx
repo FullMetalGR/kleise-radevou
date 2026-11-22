@@ -2,7 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { Building2 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import { SettledList } from '@/components/settled-list';
-import { Button } from '@/components/ui/button';
+import { Button, buttonLook } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { DateField } from '@/components/ui/date-field';
@@ -13,6 +13,7 @@ import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import type { TenantClock } from '@/lib/format';
 import { keepTyped, useAnsweredBar, usePartialRead } from '@/lib/partial-read';
+import { cn } from '@/lib/utils';
 import type { ConsoleProps } from '@/types';
 import { NO_PLAN, PLAN_WORDS, type PlanName, planWord, STATE_WORDS, STATUS_WORDS, type SubscriptionState, type TenantPlan, type TenantStatus } from './vocabulary';
 
@@ -35,6 +36,9 @@ import { NO_PLAN, PLAN_WORDS, type PlanName, planWord, STATE_WORDS, STATUS_WORDS
  * server's last answer, Clear stands while the server's answer names a filter, and a read that
  * fails says so above the rows it keeps. New tenant beside the heading opens the free tenant's
  * form.
+ *
+ * The bar's card is a query container and lays its six filters out by its own width, not the
+ * window's: one column, then two, then three, and all six in one row once the card is wide.
  */
 
 export type TenantRow = {
@@ -174,13 +178,13 @@ export default function Tenants() {
                 <PageHeader
                     title={TENANTS_TITLE}
                     actions={
-                        <Link href={NEW_TENANT_PATH} className="admin-tenants-new inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/85">
+                        <Link href={NEW_TENANT_PATH} className={cn('admin-tenants-new', buttonLook('primary'))}>
                             {NEW_TENANT}
                         </Link>
                     }
                 />
-                <Card className="admin-filter-bar admin-tenants-filters flex flex-col gap-3" aria-label="Filters">
-                    <div className="admin-filter-bar__fields grid grid-cols-1 gap-3 desktop:grid-cols-3 xl:grid-cols-6">
+                <Card className="admin-filter-bar admin-tenants-filters @container flex flex-col gap-3" aria-label="Filters">
+                    <div className="admin-filter-bar__fields grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-6">
                         <Field id="tenants-search" label="Search">
                             {(control) => <TextInput {...control} type="search" value={filters.search} placeholder="Slug or name" onChange={(event) => set({ search: event.target.value })} />}
                         </Field>

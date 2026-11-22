@@ -5,6 +5,7 @@ use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Tests\Browser\Support\Admin;
 use Tests\Browser\Support\Console;
+use Tests\Browser\Support\Look;
 
 /*
  * The provisional brand in a real browser: the site's pages and the signup's frame carry the
@@ -12,6 +13,8 @@ use Tests\Browser\Support\Console;
  * brand's scope, the admin's primary taking the brand's; and the admin keeps its own theme, the
  * platform's mark with the site's name on its sidebar the one thing of the brand it carries. Every
  * name is the configured public name. The build gate wrote the stylesheets this suite serves.
+ * The console's body wears the scope too, so the menus and dialogs it opens in the body take the
+ * brand's primary, whatever admin theme the body might also wear.
  *
  * The type splits along the same line: the site and the signup are set in the brand's system
  * stack and name neither of the admin's faces, while the admin and the console, its door and its
@@ -24,6 +27,11 @@ const BRAND_PRIMARY_RGB = 'rgb(29, 91, 143)';
 
 // A custom property's computed value on the first element a selector names.
 const BRAND_PROPERTY = "getComputedStyle(document.querySelector('%s')).getPropertyValue('%s').trim()";
+
+// The admin's primary inside the first element a selector names, as the screen shows it: a probe
+// placed there paints its ground with the token, so a colour the stylesheet writes in any form
+// reads back as rgb.
+const BRAND_PRIMARY_PAINTED = "(() => { const probe = document.createElement('span'); probe.style.backgroundColor = 'var(--primary)'; document.querySelector('%s').appendChild(probe); const colour = getComputedStyle(probe).backgroundColor; probe.remove(); return colour; })()";
 
 // Whether the first element a selector names is set first in the face given, which the browser
 // writes quoted at the head of the computed list.
@@ -83,6 +91,31 @@ it('wears the brand on the console\'s door and shell, the wordmark naming the pu
         ->assertScript(sprintf(BRAND_FACE_FIRST, '.admin-shell', 'Inter Variable'), true)
         ->assertScript(sprintf(BRAND_FACE_FIRST, '.admin-shell h1', 'Geologica Variable'), true)
         ->assertTitle('Tenants - '.siteName())
+        ->assertNoJavaScriptErrors();
+});
+
+it('wears the brand\'s primary over the console\'s whole page, its door, its overlays and every admin theme worn on its body included, and mixes the scope\'s tints from it', function () {
+    addOperator();
+
+    $this->visit(Console::url('/login'))
+        ->waitForText(adminLine('admin/shell.login.submit'))
+        ->assertScript(sprintf(BRAND_PRIMARY_PAINTED, 'body'), BRAND_PRIMARY_RGB);
+
+    $page = Console::signIn($this, 'pat@inbox.example', 'operator password')
+        ->waitForText('No tenants yet')
+        ->assertScript(sprintf(BRAND_PRIMARY_PAINTED, 'body'), BRAND_PRIMARY_RGB)
+        ->assertScript(sprintf(BRAND_PRIMARY_PAINTED, '.admin-shell'), BRAND_PRIMARY_RGB)
+        ->assertScript(sprintf(BRAND_PROPERTY, '.brand-scope', '--muted')." !== getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()", true);
+
+    foreach (Look::ALL_THEMES as $theme) {
+        $page->assertScript(Look::wear($theme, false), $theme)
+            ->assertScript(sprintf(BRAND_PRIMARY_PAINTED, 'body'), BRAND_PRIMARY_RGB)
+            ->assertScript(sprintf(BRAND_PRIMARY_PAINTED, '.admin-shell'), BRAND_PRIMARY_RGB);
+    }
+
+    $page->click('.admin-tenants-from')
+        ->assertVisible('.admin-date-field__popover')
+        ->assertScript(sprintf(BRAND_PRIMARY_PAINTED, '.admin-date-field__popover'), BRAND_PRIMARY_RGB)
         ->assertNoJavaScriptErrors();
 });
 

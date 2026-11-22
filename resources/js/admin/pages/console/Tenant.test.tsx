@@ -312,6 +312,24 @@ describe('a tenant\'s detail', () => {
         expect(text('.admin-tenant-people__none')).toBe(NO_USERS);
     });
 
+    it('runs the people\'s and the sessions\' tables to their cards\' edges, so their rows line up with every other card\'s, the empty sentence keeping the card\'s room', () => {
+        const room = (selector: string) => (view.host.querySelector(`${selector} > header + div`)?.className ?? '').split(' ').filter((name) => /^p[xy]?-/.test(name));
+        const session: OpenSupportSession = { id: 4, operator: 'Pat Operator', opened: '9 Mar 2026, 10:00', ends: '9 Mar 2026, 11:00' };
+
+        show(LUNA, null, [session]);
+
+        expect(room('.admin-tenant-people')).toEqual([]);
+        expect(room('.admin-tenant-sessions')).toEqual([]);
+        expect(view.host.querySelector('.admin-tenant-people > header + div > .admin-table-scroll .admin-table')).not.toBeNull();
+
+        view.unmount();
+        view = mount();
+        show({ ...LUNA, users: [] });
+
+        expect(room('.admin-tenant-people')).toEqual(['p-4']);
+        expect(room('.admin-tenant-sessions')).toEqual(['p-4']);
+    });
+
     it('counts the services, the active staff and the bookings by status in words, with the last activity', () => {
         show(LUNA);
 

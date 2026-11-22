@@ -297,7 +297,12 @@ function Fact({ label, className, children }: { label: string; className: string
     );
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+/*
+ * One card of the page under its heading. What it holds sits in the card's room, but a table runs
+ * to the card's edges: a table keeps its own inset, so its rows start where every other table
+ * card's rows do instead of a room further in.
+ */
+function Section({ id, title, table = false, children }: { id: string; title: string; table?: boolean; children: ReactNode }) {
     return (
         <Card flush className={`admin-card admin-tenant-${id}`} aria-labelledby={`tenant-${id}-head`}>
             <header className="border-b px-4 py-3">
@@ -305,7 +310,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
                     {title}
                 </h2>
             </header>
-            <div className="p-4">{children}</div>
+            <div className={table ? undefined : 'p-4'}>{children}</div>
         </Card>
     );
 }
@@ -487,7 +492,7 @@ function People({ slug, users }: { slug: string; users: Person[] }) {
     };
 
     return (
-        <Section id="people" title="People">
+        <Section id="people" title="People" table={users.length > 0}>
             {users.length === 0 ? (
                 <p className="admin-tenant-people__none text-sm text-muted-foreground">{NO_USERS}</p>
             ) : (
@@ -823,7 +828,7 @@ function SupportSessions({ sessions }: { sessions: OpenSupportSession[] }) {
     };
 
     return (
-        <Section id="sessions" title="Support sessions">
+        <Section id="sessions" title="Support sessions" table={sessions.length > 0}>
             {sessions.length === 0 ? (
                 <p className="admin-tenant-sessions__none text-sm text-muted-foreground">{NO_SESSIONS}</p>
             ) : (
