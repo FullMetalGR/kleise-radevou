@@ -11,7 +11,9 @@ import { Table, TableBody, TableHead, TableRow, Td, Th } from './table';
  * line. A table of a name and a figure or two turns to rows below the wide breakpoint alone, never
  * by its box. A table whose grid needs a wider box turns to rows below the wide breakpoint and
  * whenever its box is narrower than 1024px. A scroll table stays a grid at every width and scrolls
- * sideways where it does not fit. The grid breaks no word, whatever the table.
+ * sideways where it does not fit. A table whose screen writes its own row layout sits in no box at
+ * all, so its head can stay at the top of the window as the page scrolls. The grid breaks no word,
+ * whatever the table.
  */
 
 let view: Mounted;
@@ -22,7 +24,7 @@ beforeEach(() => {
 
 afterEach(() => view.unmount());
 
-function sample(compact?: 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'scroll'): void {
+function sample(compact?: 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'scroll' | 'own'): void {
     view.render(
         <Table compact={compact} className="probe">
             <TableHead>
@@ -194,6 +196,31 @@ describe('the data table', () => {
         expect(classes(box)).toEqual(expect.arrayContaining(['admin-table-scroll', '@container', 'overflow-x-auto']));
         expect(classes(table)).toEqual(expect.arrayContaining(['admin-table', 'probe']));
         expect(all('[class*="sticky"]')).toEqual([]);
+    });
+
+    it('a table whose screen writes its own rows sits in no sideways box, holds its head at the top of the window, and writes none of the rows layout', () => {
+        sample('own');
+
+        const table = one('table');
+
+        expect(one('.admin-table-scroll')).toBeNull();
+        expect(table?.parentElement).toBe(view.host);
+        // The table is the containing block of what a cell positions absolutely, as the box is for the other modes.
+        expect(classes(table)).toEqual(expect.arrayContaining(['admin-table', 'probe', 'relative']));
+        expect(classes(one('thead'))).toEqual(expect.arrayContaining(['sticky', 'top-0']));
+        expect(all('[class*="sticky"]')).toEqual([one('thead')]);
+        expect(written().filter((name) => name.startsWith('max-wide:') || name.startsWith('@max-') || name.includes('anywhere'))).toEqual([]);
+        expect(one('.admin-table__label')).toBeNull();
+        expect(one('.admin-table__value')).toBeNull();
+        expect(one('tbody td')?.textContent).toBe('row-email-token');
+        expect(classes(one('tbody tr'))).toContain('hover:bg-muted/70');
+
+        for (const other of ['rows', 'rows-below-wide', 'rows-below-wider-box', 'scroll'] as const) {
+            sample(other);
+
+            expect(all('[class*="sticky"]')).toEqual([]);
+            expect(one('.admin-table-scroll')).not.toBeNull();
+        }
     });
 
     it('a long value breaks inside its line in the rows layout alone, so the grid keeps whole words', () => {

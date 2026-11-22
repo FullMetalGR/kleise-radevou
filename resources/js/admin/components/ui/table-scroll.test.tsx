@@ -7,7 +7,9 @@ import { TableScroll } from './table-scroll';
 /*
  * Every data table's frame: a horizontal scroller around the table, so a table wider than the
  * screen scrolls inside its card and the page never does. The date picker's month grid is a
- * control laid out in a table, not a data table, and fits by construction.
+ * control laid out in a table, not a data table, and fits by construction. A table whose screen
+ * writes its own narrow layout goes without the frame, so its head row can stay in view while the
+ * page scrolls; the kit's one table element is still counted against the one frame it writes.
  */
 
 let view: Mounted;

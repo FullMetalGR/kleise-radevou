@@ -17,10 +17,10 @@ use Tests\Support\LunaFixture;
  * foot of the screen beside a Menu button, and the whole menu is behind the round Menu button
  * first in the page's first row, a drawer from the left edge; the Calendar opens on
  * Day, and Week, pressed, says it needs a wider screen and offers Day back, where a block opens the
- * booking dialog filling the screen; Bookings lists Customer, When, Status and Total and opens the
- * dialog from a row, its footer pinned under a body that scrolls; the dialog's Cancel goes through
- * its confirm to the toast, inside the screen and clear of the dialog's actions. Each walk opens
- * the rail from the control and reaches another screen through it. The dialog of a confirmed
+ * booking dialog filling the screen; Bookings reads every column of a booking in its row and
+ * opens the dialog from a row, its footer pinned under a body that scrolls; the dialog's Cancel
+ * goes through its confirm to the toast, inside the screen and clear of the dialog's actions. Each
+ * walk opens the rail from the control and reaches another screen through it. The dialog of a confirmed
  * booking is opened once more by an owner who reads Greek, where its three actions are wider than
  * its footer, and each stands inside the dialog. The confirm over the dialog rises from the bottom
  * edge as a sheet; one more walk opens a request's Reject at a tablet's width, types a reason, and
@@ -187,7 +187,7 @@ it('opens a booking from a block of the Day calendar on a phone, Week drawn as i
         ->assertNoJavaScriptErrors();
 });
 
-it('opens the dialog from a row of Bookings on a phone, the table without Service and Staff, the dialog filling the screen with its footer pinned under a scrolling body, and reaches the Calendar through the rail', function () {
+it('opens the dialog from a row of Bookings on a phone, the row showing Service and Staff, the dialog filling the screen with its footer pinned under a scrolling body, and reaches the Calendar through the rail', function () {
     $booking = phoneBooking('Tessa Trail', athensDaysOn(61, 9));
     $utc = fn (DateTimeImmutable $at): string => $at->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.uP');
     DB::table('tenant_luna.audit_log')->insert(array_map(fn (int $n): array => [
@@ -203,8 +203,8 @@ it('opens the dialog from a row of Bookings on a phone, the table without Servic
         ->assertPathIs('/admin/bookings')
         ->assertVisible('.admin-bookings__when')
         ->assertVisible('.admin-bookings__total')
-        ->assertMissing('.admin-bookings__services')
-        ->assertMissing('.admin-bookings__staff')
+        ->assertVisible('.admin-bookings__services')
+        ->assertVisible('.admin-bookings__staff')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
 
     $page->click('Tessa Trail')
@@ -509,6 +509,7 @@ it('keeps each select of Bookings\' filters inside its field on a phone in Greek
 
     $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
     $page->navigate(Admin::url('luna', '/bookings'))
+        ->click('.admin-filters-toggle')
         ->assertVisible('#bookings-service')
         ->assertScript(PhoneScripts::PAGE_LANGUAGE, SiteLanguage::Greek->value)
         ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)

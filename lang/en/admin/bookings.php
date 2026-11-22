@@ -70,6 +70,7 @@ return [
     ],
     'filters' => [
         'label' => 'Filters',
+        'active' => '{1} :count active|[2,*] :count active',
         'inbox' => 'Approval inbox',
         'clear' => 'Clear',
         'from' => 'From',

@@ -1,5 +1,7 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useShell } from '@/lib/strings';
+import { useDesktop } from '@/lib/viewport';
 
 /*
  * The pagination of a paged table: a fixed page size, Previous and Next disabled at the ends,
@@ -12,6 +14,9 @@ import { useShell } from '@/lib/strings';
  * rounding, half its height on one line and so a pill there; where the line wraps on a narrow
  * screen, its lines stay centred inside a rounded box, which a full rounding would swell into a
  * blob.
+ *
+ * Below the breakpoint Previous and Next are round arrows at the full 44px a finger needs, each
+ * named by its word for a screen reader, so the page line keeps the room between them on one line.
  */
 
 type Props = {
@@ -24,16 +29,31 @@ type Props = {
 export function Pagination({ page, total, pageSize, onPage }: Props) {
     const shell = useShell();
     const last = Math.max(1, Math.ceil(total / pageSize));
+    const desktop = useDesktop();
 
     return (
         <footer className="admin-pagination flex items-center justify-between gap-3 border-t px-6 py-3.5 text-sm">
-            <Button size="small" className="admin-pagination__previous" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+            <Button
+                size={desktop ? 'small' : 'default'}
+                iconOnly={!desktop}
+                icon={desktop ? undefined : <ChevronLeft />}
+                className="admin-pagination__previous"
+                disabled={page <= 1}
+                onClick={() => onPage(page - 1)}
+            >
                 {shell.text('kit.pagination.previous')}
             </Button>
             <span className="admin-pagination__page rounded-field bg-foreground px-3 py-1 text-center font-semibold text-background tabular-nums">
                 {shell.text('kit.pagination.page', { page: String(page), last: String(last) })}
             </span>
-            <Button size="small" className="admin-pagination__next" disabled={page >= last} onClick={() => onPage(page + 1)}>
+            <Button
+                size={desktop ? 'small' : 'default'}
+                iconOnly={!desktop}
+                icon={desktop ? undefined : <ChevronRight />}
+                className="admin-pagination__next"
+                disabled={page >= last}
+                onClick={() => onPage(page + 1)}
+            >
                 {shell.text('kit.pagination.next')}
             </Button>
         </footer>

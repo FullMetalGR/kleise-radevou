@@ -9,7 +9,9 @@ import { keyedBookings, WithBookings } from '@/testing/keyed';
 const words = keyedBookings();
 
 /*
- * The bookings table's columns and pagination.
+ * The bookings table's columns and pagination, and its own row layout: no sideways box, the head
+ * held at the top of the window, and below the wide breakpoint or in a narrow card each booking a
+ * block of the name and the total, the services, the staff, then the date and the status.
  */
 
 const CLOCK: TenantClock = { timezone: 'Europe/Athens', dateFormat: 'd/m/Y', timeFormat: 'H:i' };
@@ -76,6 +78,81 @@ describe('the bookings table', () => {
         expect(rows[1]?.className).toContain('line-through');
     });
 
+    it('marks a row awaiting approval with the amber bar at its left edge beside its chip, and no other row', () => {
+        render([booking('a'), booking('b', { status: 'awaiting_approval' }), booking('c', { status: 'cancelled' })]);
+
+        const rows = [...view.host.querySelectorAll('.admin-bookings__row')];
+        expect(rows.map((row) => row.classList.contains('admin-row--attention'))).toEqual([false, true, false]);
+        expect(rows[1]?.querySelector('.admin-chip')?.getAttribute('data-status')).toBe('awaiting_approval');
+        expect(rows[1]?.classList.contains('shadow-[inset_4px_0_0_var(--attention)]')).toBe(true);
+        expect(rows[2]?.classList.contains('admin-row--void')).toBe(true);
+    });
+
+    it('sits in no sideways box, its head held at the top of the window, and shows Service and Staff at every width, When and Total in the text face', () => {
+        render([booking('a')]);
+
+        expect(q('.admin-bookings .admin-table-scroll')).toBeNull();
+        expect([...(q('.admin-bookings thead')?.classList ?? [])]).toEqual(expect.arrayContaining(['sticky', 'top-0']));
+        expect(q('.admin-bookings')?.classList.contains('@container')).toBe(true);
+        expect(q('.admin-bookings')?.classList.contains('overflow-clip')).toBe(true);
+        expect(q('.admin-bookings')?.className).not.toMatch(/overflow-hidden/);
+
+        for (const selector of ['.admin-bookings__services', '.admin-bookings__staff', 'thead th:nth-child(2)', 'thead th:nth-child(3)']) {
+            expect([...(q(selector)?.classList ?? [])].filter((name) => name.startsWith('max-desktop:'))).toEqual([]);
+        }
+
+        for (const selector of ['.admin-bookings__when', '.admin-bookings__total']) {
+            expect(q(selector)?.className).not.toMatch(/mono/);
+        }
+    });
+
+    it('lays a row out as a block on a phone and in a narrow card, the same utilities under both conditions: the name and the total, the services, the staff, then the date and the status, with no cell labels', () => {
+        render([booking('a', { items: booking('a').items.slice(0, 1).map((item) => ({ ...item, service_name: 'x'.repeat(40) })) })]);
+
+        const under = (selector: string, condition: string) =>
+            [...(q(selector)?.classList ?? [])]
+                .filter((name) => name.startsWith(condition))
+                .map((name) => name.slice(condition.length))
+                .sort();
+        const parts = ['.admin-bookings table', '.admin-bookings thead', '.admin-bookings tbody', '.admin-bookings__row', '.admin-bookings__row > :first-child', '.admin-bookings__services', '.admin-bookings__staff', '.admin-bookings__when', '.admin-bookings__status', '.admin-bookings__total'];
+
+        for (const part of parts) {
+            expect(under(part, 'max-wide:').length).toBeGreaterThan(0);
+            expect(under(part, '@max-3xl:')).toEqual(under(part, 'max-wide:'));
+        }
+
+        const conditions = [...view.host.querySelectorAll('.admin-bookings > header, .admin-bookings table, .admin-bookings table *')].flatMap((element) => [...element.classList]).filter((name) => name.startsWith('@max-')).map((name) => name.split(':')[0]);
+        expect(conditions.length).toBeGreaterThan(0);
+        expect(new Set(conditions)).toEqual(new Set(['@max-3xl']));
+
+        expect(under('.admin-bookings table', 'max-wide:')).toContain('block');
+        expect(under('.admin-bookings thead', 'max-wide:')).toContain('sr-only');
+        expect(under('.admin-bookings__row', 'max-wide:')).toEqual(expect.arrayContaining(['grid', 'grid-cols-[minmax(0,1fr)_auto]']));
+        expect(under('.admin-bookings__total', 'max-wide:')).toEqual(expect.arrayContaining(['col-start-2', 'row-start-1']));
+        expect(under('.admin-bookings__services', 'max-wide:')).toEqual(expect.arrayContaining(['col-span-2', 'wrap-anywhere']));
+        expect(under('.admin-bookings__staff', 'max-wide:')).toEqual(expect.arrayContaining(['col-span-2', 'wrap-anywhere', 'text-muted-foreground']));
+        expect(under('.admin-bookings__status', 'max-wide:')).toContain('justify-self-end');
+        expect([...view.host.querySelectorAll('.admin-bookings__row > *')].map((cell) => cell.className.match(/admin-bookings__\w+/)?.[0] ?? 'name')).toEqual([
+            'name',
+            'admin-bookings__services',
+            'admin-bookings__staff',
+            'admin-bookings__when',
+            'admin-bookings__status',
+            'admin-bookings__total',
+        ]);
+        expect(q('.admin-table__label')).toBeNull();
+        expect(q('.admin-bookings__services')?.textContent).toBe('x'.repeat(40));
+    });
+
+    it('reads as a table with its column headers to a screen reader whatever the layout', () => {
+        render([booking('a')]);
+
+        expect(q('.admin-bookings table')?.getAttribute('role')).toBe('table');
+        expect([...view.host.querySelectorAll('thead th')].map((th) => [th.getAttribute('role'), th.getAttribute('scope')])).toEqual(Array.from({ length: 6 }, () => ['columnheader', 'col']));
+        expect([...view.host.querySelectorAll('.admin-bookings__row')].map((row) => row.getAttribute('role'))).toEqual(['row']);
+        expect([...view.host.querySelectorAll('.admin-bookings__row > *')].map((cell) => cell.getAttribute('role'))).toEqual(Array.from({ length: 6 }, () => 'cell'));
+    });
+
     it('draws the customer as a link of the theme colour, deepened to read at body size and underlined under the pointer, and in the body colour with no underline where the table is told the names are plain, a button that selects either way', () => {
         const onSelect = vi.fn();
         render([booking('a')], { onSelect });
@@ -93,6 +170,19 @@ describe('the bookings table', () => {
         expect(name?.classList.contains('enabled:hover:no-underline')).toBe(true);
         press(name);
         expect(onSelect).toHaveBeenCalledWith('a');
+    });
+
+    it('wraps the head labels and the customer\'s name rather than widening the table, the name breaking a long word only where it must in the grid and anywhere in the block rows, plain or not', () => {
+        const wraps = (element: Element | null | undefined) => [...(element?.classList ?? [])].filter((name) => name.startsWith('whitespace-'));
+
+        for (const plainNames of [false, true]) {
+            render([booking('a', { customer_name: 'Konstantina-Maria Papadopoulou-Chatzigeorgiou Theodoropoulou' })], { plainNames });
+
+            const name = q('.admin-row-select');
+            expect(wraps(name)).toEqual(['whitespace-normal']);
+            expect([...(name?.classList ?? [])].filter((part) => /(^|:)wrap-/.test(part)).sort()).toEqual(['@max-3xl:wrap-anywhere', 'max-wide:wrap-anywhere', 'wrap-break-word']);
+            expect([...view.host.querySelectorAll('thead th')].map(wraps)).toEqual(Array.from({ length: 6 }, () => ['whitespace-normal']));
+        }
     });
 
     it('drops the staff column when the staff axis is not real', () => {

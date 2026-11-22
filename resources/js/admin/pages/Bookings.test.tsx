@@ -116,6 +116,16 @@ describe('the bookings screen', () => {
         expect(view.host.querySelector('.admin-approval-inbox')?.textContent).toBe(words.text('filters.inbox'));
     });
 
+    it('lays the filter card out by its own width, the empty list offering no Clear of its own beside the filter card\'s', () => {
+        inertia.props = { ...propsWith(null), bookings: { rows: [], total: 0, page: 1, page_size: 25 } };
+        view.render(<Bookings />);
+
+        expect(view.host.querySelector('.admin-bookings-screen > .admin-filter-bar')?.classList.contains('@container')).toBe(true);
+        expect(view.host.querySelectorAll('.admin-filter-clear')).toHaveLength(1);
+        expect(view.host.querySelector('.admin-filter-bar .admin-filter-clear')).not.toBeNull();
+        expect(view.host.querySelector('.admin-bookings-empty button')).toBeNull();
+    });
+
     it('reads a page of the list and its query by one partial reload at the screen\'s own path, the URL replaced', () => {
         inertia.props = propsWith(null);
         view.render(<Bookings />);

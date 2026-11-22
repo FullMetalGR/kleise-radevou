@@ -5,7 +5,7 @@ import { TableScroll } from './table-scroll';
 /*
  * The admin's data table, in its sideways box. A soft head row over roomy cells, figures in
  * tabular digits, and a soft fill on the body row under the pointer. The grid breaks no word:
- * where it does not fit its box, the box scrolls sideways. A table has one of four modes.
+ * where it does not fit its box, the box scrolls sideways. A table has one of five modes.
  *
  * A rows table has a second layout for where a grid has no room: below the wide breakpoint, and
  * whenever its own box is narrower than 672px, so a table in a narrow card beside the sidebar
@@ -26,9 +26,14 @@ import { TableScroll } from './table-scroll';
  *
  * A scroll table keeps the grid at every width and scrolls sideways in its box where it does not
  * fit. Its caller keeps its own head and row markup.
+ *
+ * An own table is for a screen that writes its own narrow layout. It sits in no box at all, so
+ * nothing between it and the window scrolls and its head row can stay at the top of the window
+ * while the page scrolls through a long list; the table itself is positioned in the box's place.
+ * It writes none of the rows layout: its screen spells every condition on the parts it passes.
  */
 
-type Compact = 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'scroll';
+type Compact = 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'scroll' | 'own';
 
 const CompactContext = createContext<Compact>('rows');
 
@@ -78,7 +83,7 @@ type Part = keyof typeof ROWS;
 function rowsOf(compact: Compact, part: Part): string | false {
     const [belowWide, narrowBox, widerBox] = ROWS[part];
 
-    if (compact === 'scroll') {
+    if (compact === 'scroll' || compact === 'own') {
         return false;
     }
 
@@ -92,21 +97,22 @@ function rowsOf(compact: Compact, part: Part): string | false {
 const useRows = (part: Part) => rowsOf(useContext(CompactContext), part);
 
 export function Table({ compact = 'rows', className, children }: { compact?: Compact; className?: string; children: ReactNode }) {
-    return (
-        <CompactContext.Provider value={compact}>
-            <TableScroll>
-                <table role="table" className={cn(TABLE, rowsOf(compact, 'table'), className)}>
-                    {children}
-                </table>
-            </TableScroll>
-        </CompactContext.Provider>
+    const own = compact === 'own';
+    const table = (
+        <table role="table" className={cn(TABLE, own ? 'relative' : rowsOf(compact, 'table'), className)}>
+            {children}
+        </table>
     );
+
+    return <CompactContext.Provider value={compact}>{own ? table : <TableScroll>{table}</TableScroll>}</CompactContext.Provider>;
 }
 
 export function TableHead({ className, ...rest }: ComponentProps<'thead'>) {
+    const held = useContext(CompactContext) === 'own' && 'sticky top-0 z-10';
+
     return (
         <SectionContext.Provider value="head">
-            <thead role="rowgroup" className={cn(useRows('head'), className)} {...rest} />
+            <thead role="rowgroup" className={cn(useRows('head'), held, className)} {...rest} />
         </SectionContext.Provider>
     );
 }

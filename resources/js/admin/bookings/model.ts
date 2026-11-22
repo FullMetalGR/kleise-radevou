@@ -134,7 +134,12 @@ export function applicable(remembered: Filters, entitlements: readonly string[],
 }
 
 export function isUnfiltered(filters: Filters): boolean {
-    return (Object.keys(NO_FILTERS) as (keyof Filters)[]).every((field) => filters[field] === NO_FILTERS[field]);
+    return fieldsSet(filters) === 0;
+}
+
+/** How many fields of the bar differ from the cleared bar: the Approval inbox counts once, as the status it sets. */
+export function fieldsSet(filters: Filters): number {
+    return (Object.keys(NO_FILTERS) as (keyof Filters)[]).filter((field) => filters[field] !== NO_FILTERS[field]).length;
 }
 
 /** The server's parameters for a bar and a page, the empty fields and page one left out. */

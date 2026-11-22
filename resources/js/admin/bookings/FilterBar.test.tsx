@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, press, type Mounted } from '@/components/ui/harness';
+import { mount, onPhone, press, type Mounted } from '@/components/ui/harness';
 import { FilterBar } from './FilterBar';
 import { type Filters, NO_FILTERS, type Options } from './model';
 import { keyedBookings, WithBookings } from '@/testing/keyed';
 
 /*
- * The Bookings filter bar's gestures: the Approval inbox button and Clear. Every word renders
- * from the keyed bookings section and is read through it.
+ * The Bookings filter bar's gestures: the Approval inbox button and Clear, and on a phone the
+ * Filters button that folds the fields away, counting the filters set. Every word renders from the
+ * keyed bookings section and is read through it.
  */
 
 const words = keyedBookings();
@@ -41,17 +42,30 @@ function render(filters: Filters, onChange: (filters: Filters) => void = () => {
 const inbox = () => view.host.querySelector('.admin-approval-inbox');
 
 describe('the filter bar', () => {
-    it('sets awaiting approval alone from the Approval inbox, leaving From and To, primary while set and secondary otherwise', () => {
+    it('sets awaiting approval alone from the Approval inbox, leaving From and To, pressed and in the attention look while set, secondary and not pressed otherwise', () => {
         const onChange = vi.fn();
         const dated = { ...NO_FILTERS, from: '2026-11-01', to: '2026-11-30', status: 'confirmed' };
         render(dated, onChange);
 
         expect(inbox()?.classList.contains('admin-button--secondary')).toBe(true);
+        expect(inbox()?.getAttribute('aria-pressed')).toBe('false');
+        expect(inbox()?.classList.contains('bg-attention-soft')).toBe(false);
         press(inbox());
         expect(onChange).toHaveBeenCalledWith({ ...dated, status: 'awaiting_approval' });
 
-        render({ ...dated, status: 'awaiting_approval' });
-        expect(inbox()?.classList.contains('admin-button--primary')).toBe(true);
+        render({ ...dated, status: 'awaiting_approval' }, onChange);
+        expect(inbox()?.getAttribute('aria-pressed')).toBe('true');
+        expect([...(inbox()?.classList ?? [])]).toEqual(expect.arrayContaining(['bg-attention-soft', 'inset-ring-attention-line', 'text-attention-ink']));
+        expect([...(inbox()?.classList ?? [])].filter((name) => name.includes('primary'))).toEqual([]);
+        expect(inbox()?.querySelector('.admin-button__icon[aria-hidden="true"] svg')).not.toBeNull();
+        press(inbox());
+        expect(onChange).toHaveBeenLastCalledWith({ ...dated, status: 'awaiting_approval' });
+    });
+
+    it('rings the pressed inbox under the pointer in the attention ink, which stands out from the white card, never in the bare amber', () => {
+        render({ ...NO_FILTERS, status: 'awaiting_approval' }, vi.fn());
+
+        expect([...(inbox()?.classList ?? [])].filter((name) => name.startsWith('enabled:hover:inset-ring-'))).toEqual(['enabled:hover:inset-ring-attention-ink']);
     });
 
     it('clears every field', () => {
@@ -85,5 +99,88 @@ describe('the filter bar', () => {
 
         render(NO_FILTERS, () => {}, true, { ...OPTIONS, searchable: ['customer_name'] });
         expect(placeholder()).toBe(words.text('filters.search_name'));
+    });
+
+    it('lays the fields out by the room its own card has: one to a row on a phone, then two, three and six as the card holds them whole', () => {
+        render(NO_FILTERS);
+
+        const card = view.host.querySelector('.admin-filter-bar');
+        const fields = [...(view.host.querySelector('.admin-filter-bar__fields')?.classList ?? [])];
+
+        expect(card?.classList.contains('@container')).toBe(true);
+        expect(fields).toEqual(
+            expect.arrayContaining(['grid', 'grid-cols-1', 'desktop:@min-[31rem]:grid-cols-2', 'desktop:@min-[47rem]:grid-cols-3', 'desktop:@min-[95rem]:grid-cols-6']),
+        );
+        // No column count of the window's width alone: the sidebar takes a different share of each window.
+        expect(fields.filter((name) => /^(sm|md|lg|xl|2xl|desktop|wide):grid-cols/.test(name))).toEqual([]);
+    });
+
+    it('draws no Filters button from the breakpoint, the fields always open', () => {
+        render({ ...NO_FILTERS, status: 'confirmed' });
+
+        expect(view.host.querySelector('.admin-filters-toggle')).toBeNull();
+        expect(view.host.querySelector<HTMLElement>('.admin-filter-bar__fields')?.hidden).toBe(false);
+        expect(view.host.querySelector('.admin-filter-clear')).not.toBeNull();
+    });
+});
+
+describe('the filter bar on a phone', () => {
+    let undo: () => void = () => {};
+
+    beforeEach(() => {
+        undo = onPhone();
+    });
+
+    afterEach(() => undo());
+
+    const toggle = () => view.host.querySelector<HTMLButtonElement>('.admin-filters-toggle');
+
+    const fields = () => view.host.querySelector<HTMLElement>('.admin-filter-bar__fields');
+
+    it('folds the fields behind the Filters button, which names them, says whether they are open, and opens and closes them, beside the inbox and Clear', () => {
+        render(NO_FILTERS);
+
+        expect(toggle()?.tagName).toBe('BUTTON');
+        expect(toggle()?.textContent).toBe(words.text('filters.label'));
+        expect(toggle()?.querySelector('.admin-filters-toggle__count')).toBeNull();
+        expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+        expect(fields()?.id).not.toBe('');
+        expect(toggle()?.getAttribute('aria-controls')).toBe(fields()?.id);
+        expect(fields()?.hidden).toBe(true);
+        expect(toggle()?.closest('.admin-filter-bar__gestures')).not.toBeNull();
+        expect([inbox(), view.host.querySelector('.admin-filter-clear')].every((control) => control?.closest('.admin-filter-bar__gestures') !== null)).toBe(true);
+
+        press(toggle());
+        expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
+        expect(fields()?.hidden).toBe(false);
+        expect(view.host.querySelector('#bookings-from')).not.toBeNull();
+
+        press(toggle());
+        expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+        expect(fields()?.hidden).toBe(true);
+    });
+
+    it('counts each field set apart from the cleared bar on the button, the inbox once as the status it sets, and the count in words for a screen reader', () => {
+        render({ ...NO_FILTERS, status: 'awaiting_approval' });
+        expect(toggle()?.querySelector('.admin-filters-toggle__count')?.textContent).toBe('1');
+        expect(toggle()?.textContent).toBe(`${words.text('filters.label')}1, ${words.choice('filters.active', 1)}`);
+
+        render({ ...NO_FILTERS, status: 'awaiting_approval', staff: 2, search: 'ada' });
+        expect(toggle()?.querySelector('.admin-filters-toggle__count')?.textContent).toBe('3');
+        expect(toggle()?.querySelector('.sr-only')?.textContent).toBe(`, ${words.choice('filters.active', 3)}`);
+
+        render({ from: '2026-11-01', to: '2026-11-30', status: 'confirmed', staff: 2, service: 7, search: 'ada' });
+        expect(toggle()?.querySelector('.admin-filters-toggle__count')?.textContent).toBe('6');
+    });
+
+    it('keeps the inbox\'s pressed state and Clear, the one way to clear, while the fields are folded', () => {
+        const onChange = vi.fn();
+        render({ ...NO_FILTERS, status: 'awaiting_approval', search: 'ada' }, onChange);
+
+        expect(fields()?.hidden).toBe(true);
+        expect(inbox()?.getAttribute('aria-pressed')).toBe('true');
+        expect(view.host.querySelectorAll('.admin-filter-clear')).toHaveLength(1);
+        press(view.host.querySelector('.admin-filter-clear'));
+        expect(onChange).toHaveBeenCalledWith(NO_FILTERS);
     });
 });

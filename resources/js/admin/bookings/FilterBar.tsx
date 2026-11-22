@@ -1,3 +1,6 @@
+import { Clock } from 'lucide-react';
+import { useState } from 'react';
+import { FiltersToggle } from '@/components/filters-toggle';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DateField } from '@/components/ui/date-field';
@@ -7,18 +10,34 @@ import { Select } from '@/components/ui/select';
 import { statusLabel } from '@/components/ui/status-chip';
 import type { TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
-import { AWAITING_APPROVAL, type Choice, type Filters, NO_FILTERS, type Options } from './model';
+import { cn } from '@/lib/utils';
+import { useDesktop } from '@/lib/viewport';
+import { AWAITING_APPROVAL, type Choice, fieldsSet, type Filters, NO_FILTERS, type Options } from './model';
 import { type BookingsKey, type BookingsWords, useBookings } from './words';
 
 /*
- * The Bookings filter bar: one gesture row over a grid of fields. The Approval inbox button is
- * primary while the status filter is awaiting approval and sets that one filter alone; Clear
- * resets every field. Every change is handed up whole, and the screen resets the page and
- * remembers the bar. The search offers the email only where the server's options say the search
- * reads it, which is where the viewer may see it. Below the admin's breakpoint the fields stack
- * one to a row. Every word is a key of the bookings section, the search's hint one whole key by
- * whether it reads the email.
+ * The Bookings filter bar: one gesture row over a grid of fields. The Approval inbox button sets
+ * the status filter to awaiting approval and nothing else, and says it is pressed while that is
+ * the status, in the amber of a booking that waits on the business; pressing it again keeps it so.
+ * Clear resets every field and is the one way to. Every change is handed up whole, and the screen
+ * resets the page and remembers the bar. The search offers the email only where the server's
+ * options say the search reads it, which is where the viewer may see it. Every word is a key of
+ * the bookings section, the search's hint one whole key by whether it reads the email.
+ *
+ * The fields stand as many to a row as the card holds whole, each select's longest default value
+ * read in full in either language: one, then two, three and six as the card widens, by the card's
+ * own width, since the sidebar takes a different share of each window. Below the breakpoint the
+ * fields fold away behind a Filters button in the gesture row, which counts the fields set; they
+ * open folded on every visit.
  */
+
+const FIELDS_ID = 'bookings-filters';
+
+/**
+ * The inbox while it is the status, in the colours of a booking awaiting approval. Under the
+ * pointer its ring darkens to the attention ink: the bare amber is too faint against the card.
+ */
+const INBOX_ON = 'bg-attention-soft text-attention-ink inset-ring-attention-line enabled:hover:bg-attention-soft-strong enabled:hover:inset-ring-attention-ink';
 
 type Props = {
     filters: Filters;
@@ -47,18 +66,41 @@ export function FilterBar({ filters, options, staffShown, clock, weekStart, onCh
     const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
     const inbox = filters.status === AWAITING_APPROVAL;
     const searchHint = options.searchable.includes('customer_email') ? words.text('filters.search_name_email') : words.text('filters.search_name');
+    const desktop = useDesktop();
+    const [unfolded, setUnfolded] = useState(false);
+    const folding = desktop ? {} : { id: FIELDS_ID, hidden: !unfolded };
+    const count = fieldsSet(filters);
 
     return (
-        <Card className="admin-filter-bar flex flex-col gap-3" aria-label={words.text('filters.label')}>
-            <div className="admin-filter-bar__gestures flex items-center gap-3">
-                <Button variant={inbox ? 'primary' : 'secondary'} className="admin-approval-inbox" onClick={() => set({ status: AWAITING_APPROVAL })}>
+        <Card className="admin-filter-bar @container flex flex-col gap-3.5" aria-label={words.text('filters.label')}>
+            <div className="admin-filter-bar__gestures flex flex-wrap items-center gap-3">
+                <Button
+                    variant="secondary"
+                    icon={<Clock />}
+                    aria-pressed={inbox}
+                    className={cn('admin-approval-inbox max-desktop:flex-auto', inbox && INBOX_ON)}
+                    onClick={() => set({ status: AWAITING_APPROVAL })}
+                >
                     {words.text('filters.inbox')}
                 </Button>
-                <Button variant="link" className="admin-filter-clear" onClick={() => onChange(NO_FILTERS)}>
+                <Button variant="link" className="admin-filter-clear max-desktop:ms-auto" onClick={() => onChange(NO_FILTERS)}>
                     {words.text('filters.clear')}
                 </Button>
+                {!desktop && (
+                    <FiltersToggle
+                        open={unfolded}
+                        onToggle={() => setUnfolded((open) => !open)}
+                        controls={FIELDS_ID}
+                        label={words.text('filters.label')}
+                        count={count}
+                        countName={words.choice('filters.active', count)}
+                    />
+                )}
             </div>
-            <div className="admin-filter-bar__fields grid grid-cols-1 gap-3 desktop:grid-cols-3 xl:grid-cols-6">
+            <div
+                {...folding}
+                className="admin-filter-bar__fields grid grid-cols-1 gap-3.5 desktop:@min-[31rem]:grid-cols-2 desktop:@min-[47rem]:grid-cols-3 desktop:@min-[95rem]:grid-cols-6"
+            >
                 <Field id="bookings-from" label={words.text('filters.from')}>
                     {(control) => <DateField {...control} className="admin-filter-from" value={filters.from} clock={clock} weekStart={weekStart} onChange={(from) => set({ from })} />}
                 </Field>

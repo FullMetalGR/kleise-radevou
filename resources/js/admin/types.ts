@@ -477,6 +477,7 @@ export type BookingsStrings = {
     };
     filters: {
         label: string;
+        active: string;
         inbox: string;
         clear: string;
         from: string;

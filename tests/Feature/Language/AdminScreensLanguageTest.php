@@ -265,7 +265,7 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
     }
 
     // Nineteen rows and fifty-six props: shell.php's 145 leaves on every row, its kit's nine
-    // counted lines among them; bookings.php's 180 on ten (the two Home rows, the Bookings list, a
+    // counted lines among them; bookings.php's 181 on ten (the two Home rows, the Bookings list, a
     // booking opened by its address, a customer's page, the Calendar and the four Staff rows, whose
     // closures card lists bookings and opens the Move form); home.php's 181 on the two Home rows;
     // setup.php's on Home with setup open, counted below by its parts; customers.php's 146 on
@@ -286,7 +286,7 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
         + 8 // Opening hours
         + 2 // Online payments
         + 5; // Booking link
-    expect($walked)->toBe(['rows' => 19, 'props' => 56, 'leaves' => 19 * 145 + 10 * 180 + 2 * 181 + $setup + 2 * 146 + 4 * 116 + 38 + 5 * 169 + 2 * 144 + 2 * 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
+    expect($walked)->toBe(['rows' => 19, 'props' => 56, 'leaves' => 19 * 145 + 10 * 181 + 2 * 181 + $setup + 2 * 146 + 4 * 116 + 38 + 5 * 169 + 2 * 144 + 2 * 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
 });
 
 it('reads the Calendar in Greek for a user at el under view=day, view=week and view=month, and for a Greek viewer who holds viewOwnCalendar without viewBookings, pinned to her own row', function () {
