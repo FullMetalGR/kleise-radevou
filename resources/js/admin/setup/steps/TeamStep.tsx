@@ -1,7 +1,8 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CHECK_BOX } from '@/components/ui/check-field';
+import { Card } from '@/components/ui/card';
+import { CHECK_CARDS, CheckCard } from '@/components/ui/check-card';
 import { ErrorLine, Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { useOneWrite } from '@/lib/one-write';
@@ -118,73 +119,85 @@ function TeamPanel({ data, words, next, staff, closed }: PanelProps) {
     useStepPrimary(primaryOf(next, adding, words.text('adding'), !closed && data.members.length === 0));
     useStepDirty(touched(draft));
 
+    // A refusal of the services with nothing to say draws no line and points at none.
+    const servicesError = refused.service_ids || null;
+
     return (
         <div className="admin-setup-team flex flex-col gap-4">
             <p className="admin-setup-team__help text-sm text-muted-foreground">{words.text('help')}</p>
             {data.members.length === 0 ? (
                 <p className="admin-setup-team__empty text-sm text-muted-foreground">{words.text('empty')}</p>
             ) : (
-                <ul className="admin-setup-team__list flex flex-col divide-y rounded-lg border">
-                    {data.members.map((member) => (
-                        <li key={member.id} className="admin-setup-team__row flex flex-col gap-0.5 px-3 py-2 text-sm">
-                            <span className="admin-setup-team__name font-medium">{member.name}</span>
-                            <span className="admin-setup-team__services text-muted-foreground">{servicesOf(member, data.services).join(', ') || words.text('no_services')}</span>
-                        </li>
-                    ))}
-                </ul>
+                <Card variant="inner" flush>
+                    <ul className="admin-setup-team__list flex flex-col divide-y">
+                        {data.members.map((member) => (
+                            <li key={member.id} className="admin-setup-team__row flex flex-col gap-0.5 px-3 py-2 text-sm">
+                                <span className="admin-setup-team__name min-w-0 font-medium wrap-anywhere">{member.name}</span>
+                                <span className="admin-setup-team__services min-w-0 text-muted-foreground wrap-anywhere">{servicesOf(member, data.services).join(', ') || words.text('no_services')}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </Card>
             )}
-            <form
-                className="admin-setup-team__form flex flex-col gap-3 rounded-lg border p-3"
-                noValidate
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    add();
-                }}
-            >
-                <Field id="staff-name" label={staff.text('form.name')} error={refused.name ?? null}>
-                    {(control) => (
-                        <TextInput
-                            {...control}
-                            ref={nameField}
-                            value={draft.name}
-                            autoComplete="off"
-                            onChange={(event) => {
-                                const name = event.target.value;
-                                setDraft((current) => ({ ...current, name }));
-                                setRefused((current) => forgetting(current, 'name'));
-                            }}
-                        />
-                    )}
-                </Field>
-                <fieldset className="admin-setup-team__pick flex flex-col gap-2" aria-describedby={refused.service_ids === undefined ? undefined : 'staff-services-error'}>
-                    <legend className="mb-1 text-sm font-medium">{staff.text('form.services')}</legend>
-                    {data.services.length === 0 ? (
-                        <p className="admin-staff-services__none text-sm text-muted-foreground">{staff.text('form.no_services')}</p>
-                    ) : (
-                        <ul className="admin-staff-services flex flex-col gap-2">
-                            {data.services.map((service) => (
-                                <li key={service.id} className="admin-staff-services__row flex items-center gap-3">
-                                    <input type="checkbox" id={`staff-service-${service.id}`} className={`admin-staff-services__tick ${CHECK_BOX}`} checked={draft.service_ids.includes(service.id)} onChange={(event) => tick(service.id, event.target.checked)} />
-                                    <label htmlFor={`staff-service-${service.id}`} className="admin-staff-services__name text-sm">
-                                        {service.status === 'inactive' ? staff.text('form.inactive_service', { service: service.name }) : service.name}
-                                    </label>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    {refused.service_ids !== undefined && <ErrorLine id="staff-services-error">{refused.service_ids}</ErrorLine>}
-                </fieldset>
-                <div className="flex flex-wrap items-center gap-3">
-                    <Button type="submit" className="admin-setup-team__add" disabled={!canSave(draft)} busy={adding} busyLabel={words.text('adding')}>
-                        {words.text('add')}
-                    </Button>
-                    {!canSave(draft) && (
-                        <p className="admin-setup-team__reason text-sm text-muted-foreground" role="status">
-                            {staff.text('form.needs_name')}
-                        </p>
-                    )}
-                </div>
-            </form>
+            <Card variant="inner">
+                <form
+                    className="admin-setup-team__form flex flex-col gap-3"
+                    noValidate
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        add();
+                    }}
+                >
+                    <Field id="staff-name" label={staff.text('form.name')} error={refused.name ?? null}>
+                        {(control) => (
+                            <TextInput
+                                {...control}
+                                ref={nameField}
+                                value={draft.name}
+                                autoComplete="off"
+                                onChange={(event) => {
+                                    const name = event.target.value;
+                                    setDraft((current) => ({ ...current, name }));
+                                    setRefused((current) => forgetting(current, 'name'));
+                                }}
+                            />
+                        )}
+                    </Field>
+                    <fieldset className="admin-setup-team__pick flex flex-col gap-2" aria-describedby={servicesError === null ? undefined : 'staff-services-error'}>
+                        <legend className="mb-1 text-sm font-medium">{staff.text('form.services')}</legend>
+                        {data.services.length === 0 ? (
+                            <p className="admin-staff-services__none text-sm text-muted-foreground">{staff.text('form.no_services')}</p>
+                        ) : (
+                            <ul className={`admin-staff-services ${CHECK_CARDS}`}>
+                                {data.services.map((service) => (
+                                    <li key={service.id} className="flex min-w-0">
+                                        <CheckCard
+                                            id={`staff-service-${service.id}`}
+                                            name={service.status === 'inactive' ? staff.text('form.inactive_service', { service: service.name }) : service.name}
+                                            checked={draft.service_ids.includes(service.id)}
+                                            onChange={(checked) => tick(service.id, checked)}
+                                            className="admin-staff-services__row"
+                                            tickClassName="admin-staff-services__tick"
+                                            nameClassName="admin-staff-services__name"
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {servicesError !== null && <ErrorLine id="staff-services-error">{servicesError}</ErrorLine>}
+                    </fieldset>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button type="submit" className="admin-setup-team__add" disabled={!canSave(draft)} busy={adding} busyLabel={words.text('adding')}>
+                            {words.text('add')}
+                        </Button>
+                        {!canSave(draft) && (
+                            <p className="admin-setup-team__reason text-sm text-muted-foreground" role="status">
+                                {staff.text('form.needs_name')}
+                            </p>
+                        )}
+                    </div>
+                </form>
+            </Card>
             <p className="admin-setup-team__more text-sm text-muted-foreground">
                 {words.text('more')}{' '}
                 <Link className="admin-setup-team__open underline" href={STAFF_SCREEN}>

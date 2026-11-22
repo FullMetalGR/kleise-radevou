@@ -142,6 +142,26 @@ describe('the Services step', () => {
         expect(onStep).toHaveBeenCalledWith('link');
     });
 
+    it('sets the list and the add form each in an inner card, neither drawing an edge of its own', () => {
+        open([CUT]);
+
+        const drawn = (element: Element | null | undefined) => [...(element?.classList ?? [])].filter((name) => name === 'border' || name.startsWith('rounded-'));
+
+        for (const hook of ['ul.admin-setup-services__list', 'form.admin-setup-services__form']) {
+            const card = q(hook)?.parentElement;
+
+            expect(card?.tagName).toBe('SECTION');
+            expect(['bg-card', 'rounded-inner', 'ring-[1.5px]', 'ring-border'].every((look) => card?.classList.contains(look))).toBe(true);
+            expect(drawn(q(hook))).toEqual([]);
+        }
+    });
+
+    it('lets a long unbroken service name shrink and break anywhere, so the inner card never cuts it', () => {
+        open([CUT]);
+
+        expect(['min-w-0', 'wrap-anywhere'].every((look) => q('.admin-setup-services__name')?.classList.contains(look))).toBe(true);
+    });
+
     it('holds Add until the service has a name, said beside it', () => {
         open([]);
 

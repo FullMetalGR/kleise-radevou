@@ -52,7 +52,9 @@ import { cn } from '@/lib/utils';
  * and the whole viewport below it, the footer still pinned and the body still the one scroller:
  * the booking dialog and the wizard on a phone. Full is the whole viewport at every width, the
  * footer pinned and the body the one scroller: the setup wizard, which is a screen of its own
- * while it is up. The drawer is a panel pinned to the start edge at the viewport's full height,
+ * while it is up. What its title row, its body and its footer hold keeps to one column no wider
+ * than 62.5rem, centred, while the frame, the scroll and the footer's rule still span the window,
+ * and what the body holds is the query container its parts measure themselves against. The drawer is a panel pinned to the start edge at the viewport's full height,
  * 340 pixels wide or 88 parts in a hundred of a narrower screen, rounded at its far side, sliding
  * in from the edge where motion is welcome: the menu behind the first row's Menu button. Its title
  * is for a screen reader alone, as what it holds heads itself. A caller's own width cap wins over
@@ -86,21 +88,49 @@ const FRAME: Record<ModalVariant, string> = {
 };
 
 /**
- * Each part's room in a frame: a card's, the full frame's with it, set wide with the title at the
- * dialog's size, and below the breakpoint 18 pixels at the sides with the title a step down, so a
- * phone's width goes to the body; a prompt's title that step down at every width, as it asks one
- * short question; and the drawer's, which keeps its own: the title for a screen reader alone, and
- * the body's foot clear of a phone's home indicator.
+ * The full frame's sides: what a part holds at most 62.5rem wide and centred, never nearer the
+ * window's edge than 26 pixels, and below the breakpoint 18 pixels as on a card. A padding's
+ * percentage is taken of the frame's width, so every part still spans the window.
  */
-const ROOM = {
-    card: {
-        title: 'px-6.5 pt-5.5 pb-3 max-desktop:px-4.5 max-desktop:pt-4.5 max-desktop:pb-2',
+const COLUMN = 'px-[max(1.625rem,50%_-_31.25rem)] max-desktop:px-4.5';
+
+/** One line of the dialog's title at each width, and of a prompt's, the height an aside is centred in. */
+const DIALOG_LINE = 'h-[calc(var(--text-dialog-title)*var(--text-dialog-title--line-height))] max-desktop:h-[calc(var(--text-section-title)*var(--text-section-title--line-height))]';
+const PROMPT_LINE = 'h-[calc(var(--text-section-title)*var(--text-section-title--line-height))]';
+
+/**
+ * Each part's room in a frame: a card's, set wide with the title at the dialog's size, and below
+ * the breakpoint 18 pixels at the sides with the title a step down, so a phone's width goes to the
+ * body; a prompt's title that step down at every width, as it asks one short question; the full
+ * frame's, a card's room at the top and the foot with its sides the column's; and the drawer's,
+ * which keeps its own: the title for a screen reader alone, and the body's foot clear of a phone's
+ * home indicator.
+ */
+const CARD_ROOM = {
+    title: 'px-6.5 pt-5.5 pb-3 max-desktop:px-4.5 max-desktop:pt-4.5 max-desktop:pb-2',
+    type: 'text-dialog-title max-desktop:text-section-title',
+    prompt: 'text-section-title',
+    line: DIALOG_LINE,
+    promptLine: PROMPT_LINE,
+    body: 'px-6.5 pt-1 pb-5.5 max-desktop:px-4.5 max-desktop:pb-4.5',
+    footer: 'px-6.5 py-3.5 max-desktop:px-4.5 max-desktop:py-3',
+};
+
+type Room = typeof CARD_ROOM;
+
+const ROOM: Record<ModalVariant, Room> = {
+    centred: CARD_ROOM,
+    filling: CARD_ROOM,
+    full: {
+        title: `pt-5.5 pb-3 max-desktop:pt-4.5 max-desktop:pb-2 ${COLUMN}`,
         type: 'text-dialog-title max-desktop:text-section-title',
         prompt: 'text-section-title',
-        body: 'px-6.5 pt-1 pb-5.5 max-desktop:px-4.5 max-desktop:pb-4.5',
-        footer: 'px-6.5 py-3.5 max-desktop:px-4.5 max-desktop:py-3',
+        line: DIALOG_LINE,
+        promptLine: PROMPT_LINE,
+        body: `pt-1 pb-5.5 max-desktop:pb-4.5 ${COLUMN}`,
+        footer: `py-3.5 max-desktop:py-3 ${COLUMN}`,
     },
-    drawer: { title: 'sr-only', type: '', prompt: '', body: 'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]', footer: 'px-5 py-3' },
+    drawer: { title: '', type: 'sr-only', prompt: 'sr-only', line: '', promptLine: '', body: 'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]', footer: 'px-5 py-3' },
 };
 
 /**
@@ -156,18 +186,25 @@ type Props = {
 
 /**
  * The title on its own row, or with the aside after it on a shared one; either leaves the end of
- * the row clear where the close control is set over it. A title breaks anywhere, so one long
- * unbroken word wraps inside its row instead of running under the control.
+ * the row clear where the close control is set over it. On a shared row the title's room is the
+ * row's and the title keeps its type alone, and the aside sits in a box one of the title's lines
+ * high at the row's top, so it is centred on the title's first line rather than on a box taller
+ * than it, however many lines the title takes. A title breaks anywhere, so one long unbroken word
+ * wraps inside its row instead of running under the control.
  */
-function Heading({ title, aside, className, closable }: { title: string; aside: ReactNode; className: string; closable: boolean }) {
+function Heading({ title, aside, room, prompt, closable }: { title: string; aside: ReactNode; room: Room; prompt: boolean; closable: boolean }) {
+    const type = prompt ? room.prompt : room.type;
+
     if (aside === undefined) {
-        return <DialogPrimitive.Title className={cn('admin-modal__title shrink-0 wrap-anywhere', className, closable && CLEAR_OF_CLOSE)}>{title}</DialogPrimitive.Title>;
+        return <DialogPrimitive.Title className={cn('admin-modal__title shrink-0 wrap-anywhere', room.title, type, closable && CLEAR_OF_CLOSE)}>{title}</DialogPrimitive.Title>;
     }
 
+    const line = prompt ? room.promptLine : room.line;
+
     return (
-        <div className={cn('admin-modal__head flex shrink-0 items-center gap-2 pr-3', closable && CLEAR_OF_CLOSE)}>
-            <DialogPrimitive.Title className={cn('admin-modal__title min-w-0 flex-1 wrap-anywhere', className)}>{title}</DialogPrimitive.Title>
-            {aside}
+        <div className={cn('admin-modal__head flex shrink-0 items-start gap-2', room.title, closable && CLEAR_OF_CLOSE)}>
+            <DialogPrimitive.Title className={cn('admin-modal__title min-w-0 flex-1 wrap-anywhere', type)}>{title}</DialogPrimitive.Title>
+            <div className={cn('admin-modal__aside flex shrink-0 items-center', line)}>{aside}</div>
         </div>
     );
 }
@@ -187,7 +224,7 @@ export function Modal({ open, title, onClose, footer, aside, variant = 'centred'
         },
     });
 
-    const room = variant === 'drawer' ? ROOM.drawer : ROOM.card;
+    const room = ROOM[variant];
     const closable = variant === 'centred' || variant === 'filling';
 
     const escape = (event: KeyboardEvent) => {
@@ -241,8 +278,10 @@ export function Modal({ open, title, onClose, footer, aside, variant = 'centred'
                             onEscapeKeyDown={escape}
                             onInteractOutside={(event) => event.preventDefault()}
                         >
-                            <Heading title={title} aside={aside} className={cn(room.title, prompt ? room.prompt : room.type)} closable={closable} />
-                            <div className={cn('admin-modal__body min-h-0 flex-1 overflow-y-auto text-body', room.body)}>{children}</div>
+                            <Heading title={title} aside={aside} room={room} prompt={prompt} closable={closable} />
+                            <div className={cn('admin-modal__body min-h-0 flex-1 overflow-y-auto text-body', room.body)}>
+                                {variant === 'full' ? <div className="admin-modal__column @container">{children}</div> : children}
+                            </div>
                             {footer !== undefined && <div className={cn('admin-modal__footer flex shrink-0 justify-end gap-2 border-t max-desktop:flex-wrap', room.footer)}>{footer}</div>}
                             {closable && (
                                 <Button iconOnly icon={<Cross />} className={`admin-modal__close ${CLOSE}`} disabled={busy} onClick={onClose}>

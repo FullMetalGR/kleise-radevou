@@ -1,6 +1,7 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { formatAmount } from '@/lib/format';
@@ -122,46 +123,50 @@ function ServicesPanel({ rows, words, next, services, currency, granularity }: P
             {rows.length === 0 ? (
                 <p className="admin-setup-services__empty text-sm text-muted-foreground">{words.text('empty')}</p>
             ) : (
-                <ul className="admin-setup-services__list flex flex-col divide-y rounded-lg border">
-                    {rows.map((row) => (
-                        <li key={row.id} className="admin-setup-services__row flex flex-wrap items-baseline justify-between gap-x-3 px-3 py-2 text-sm">
-                            <span className="admin-setup-services__name font-medium">{row.name}</span>
-                            <span className="admin-setup-services__figures flex gap-3 text-muted-foreground">
-                                <span>{services.text('table.minutes', { n: String(row.duration_min) })}</span>
-                                <span className="font-mono">{formatAmount(row.price_minor, row.currency, shell.locale)}</span>
-                            </span>
-                        </li>
-                    ))}
-                </ul>
+                <Card variant="inner" flush>
+                    <ul className="admin-setup-services__list flex flex-col divide-y">
+                        {rows.map((row) => (
+                            <li key={row.id} className="admin-setup-services__row flex flex-wrap items-baseline justify-between gap-x-3 px-3 py-2 text-sm">
+                                <span className="admin-setup-services__name min-w-0 font-medium wrap-anywhere">{row.name}</span>
+                                <span className="admin-setup-services__figures flex gap-3 text-muted-foreground">
+                                    <span>{services.text('table.minutes', { n: String(row.duration_min) })}</span>
+                                    <span className="font-mono">{formatAmount(row.price_minor, row.currency, shell.locale)}</span>
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </Card>
             )}
-            <form
-                className="admin-setup-services__form flex flex-col gap-3 rounded-lg border p-3"
-                noValidate
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    add();
-                }}
-            >
-                <Field id="service-name" label={services.text('form.name')} error={refused.name ?? null}>
-                    {(control) => <TextInput {...control} ref={nameField} value={draft.name} autoComplete="off" onChange={(event) => set('name')(event.target.value)} />}
-                </Field>
-                <Field id="service-duration_min" label={services.text('form.duration')} help={services.text('form.duration_help', { n: String(granularity) })} error={refused.duration_min ?? null}>
-                    {(control) => <TextInput {...control} type="number" min={0} step={granularity} value={draft.duration_min} onChange={(event) => set('duration_min')(event.target.value)} />}
-                </Field>
-                <Field id="service-price" label={services.text('form.price', { currency })} help={services.text('form.price_help')} error={refused.price ?? null}>
-                    {(control) => <TextInput {...control} inputMode="decimal" className="tabular-nums" value={draft.price} onChange={(event) => set('price')(event.target.value)} />}
-                </Field>
-                <div className="flex flex-wrap items-center gap-3">
-                    <Button type="submit" className="admin-setup-services__add" disabled={!canSave(draft)} busy={adding} busyLabel={words.text('adding')}>
-                        {words.text('add')}
-                    </Button>
-                    {!canSave(draft) && (
-                        <p className="admin-setup-services__reason text-sm text-muted-foreground" role="status">
-                            {services.text('form.needs_name')}
-                        </p>
-                    )}
-                </div>
-            </form>
+            <Card variant="inner">
+                <form
+                    className="admin-setup-services__form flex flex-col gap-3"
+                    noValidate
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        add();
+                    }}
+                >
+                    <Field id="service-name" label={services.text('form.name')} error={refused.name ?? null}>
+                        {(control) => <TextInput {...control} ref={nameField} value={draft.name} autoComplete="off" onChange={(event) => set('name')(event.target.value)} />}
+                    </Field>
+                    <Field id="service-duration_min" label={services.text('form.duration')} help={services.text('form.duration_help', { n: String(granularity) })} error={refused.duration_min ?? null}>
+                        {(control) => <TextInput {...control} type="number" min={0} step={granularity} value={draft.duration_min} onChange={(event) => set('duration_min')(event.target.value)} />}
+                    </Field>
+                    <Field id="service-price" label={services.text('form.price', { currency })} help={services.text('form.price_help')} error={refused.price ?? null}>
+                        {(control) => <TextInput {...control} inputMode="decimal" className="tabular-nums" value={draft.price} onChange={(event) => set('price')(event.target.value)} />}
+                    </Field>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button type="submit" className="admin-setup-services__add" disabled={!canSave(draft)} busy={adding} busyLabel={words.text('adding')}>
+                            {words.text('add')}
+                        </Button>
+                        {!canSave(draft) && (
+                            <p className="admin-setup-services__reason text-sm text-muted-foreground" role="status">
+                                {services.text('form.needs_name')}
+                            </p>
+                        )}
+                    </div>
+                </form>
+            </Card>
             <p className="admin-setup-services__more text-sm text-muted-foreground">
                 {words.text('more')}{' '}
                 <Link className="admin-setup-services__open underline" href={SERVICES_SCREEN}>

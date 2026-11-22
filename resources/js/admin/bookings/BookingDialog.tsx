@@ -250,14 +250,14 @@ export const NOTE_LABEL: BookingsKey = 'dialog.facts.note';
 
 /**
  * The booking's status at the end of the title's row, its chip kept whole, with its term for a
- * screen reader alone. It is set down by the difference between the title's room above its line
- * and below it, so the chip's middle meets the line's rather than the room's.
+ * screen reader alone. The modal centres what is set beside its title on the title's first line,
+ * so the chip needs no offset of its own.
  */
 function BookingStatus({ status }: { status: string }) {
     const words = useBookings();
 
     return (
-        <span className="admin-booking-status mt-2.5 shrink-0">
+        <span className="admin-booking-status shrink-0">
             <span className="sr-only">{words.text('dialog.facts.status')}</span>
             <StatusChip status={status} />
         </span>

@@ -159,25 +159,52 @@ const button = (selector: string) => q(selector) as HTMLButtonElement;
 const finishPost = () => act(() => (inertia.post.mock.lastCall as [string, unknown, Callbacks])[2].onFinish?.());
 
 describe('the setup wizard', () => {
-    it('fills the viewport, titled as setup, the close button on the title\'s row', () => {
+    it('fills the viewport, titled as setup, the round close button on the title\'s row, named for a screen reader', () => {
         open('profile');
 
         expect(q('.admin-setup')?.classList.contains('admin-modal__frame--full')).toBe(true);
         expect(q('.admin-modal__title')?.textContent).toBe(words.text('title'));
-        expect(q('.admin-modal__head .admin-setup__close')?.textContent).toBe(words.text('close'));
+
+        const close = q('.admin-modal__head .admin-setup__close');
+        expect(close?.tagName).toBe('BUTTON');
+        expect(close?.textContent).toBe(words.text('close'));
+        expect(close?.querySelector('.sr-only')?.textContent).toBe(words.text('close'));
+        expect(close?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+        // Drawn at 40 pixels as the dialogs' close is, its press reaching 2 pixels past each side.
+        expect([...(close?.classList ?? [])]).toEqual(expect.arrayContaining(['admin-button--icon-only', 'relative', 'size-10', 'after:absolute', 'after:-inset-0.5']));
+        expect(q('.admin-setup .admin-modal__column')?.contains(q('.admin-setup__steps'))).toBe(true);
     });
 
-    it('lists the steps that apply as buttons in order at the breakpoint and above, a tick and its state on each closed one, the open one current, its name under the list', () => {
+    it('lists the steps that apply as pill buttons in order at the breakpoint and above, each with its number in a circle, a tick in it and its state on each closed one, the open one current and ringed, its name under the list', () => {
         open('hours');
 
-        expect(q('.admin-setup__steps')?.getAttribute('aria-label')).toBe(words.text('list'));
-        const steps = [...document.body.querySelectorAll<HTMLButtonElement>('.admin-setup__step')];
+        expect(q('nav.admin-setup__steps')?.getAttribute('aria-label')).toBe(words.text('list'));
+        const steps = [...document.body.querySelectorAll<HTMLButtonElement>('nav.admin-setup__steps > ol > li > button.admin-setup__step')];
         expect(steps.map((step) => step.dataset['step'])).toEqual(['profile', 'services', 'team', 'hours', 'payments', 'link']);
-        expect(steps.map((step) => step.querySelector('svg') !== null)).toEqual([false, true, true, false, false, false]);
         expect(texts('.admin-setup__step .sr-only')).toEqual([words.text('done'), words.text('skipped')]);
         expect(steps.map((step) => step.getAttribute('aria-current'))).toEqual([null, null, null, 'step', null, null]);
+
+        // The circle comes first and is for the eye alone: a closed step's tick, the others' number.
+        const circles = steps.map((step) => step.firstElementChild);
+        expect(circles.map((circle) => circle?.getAttribute('aria-hidden'))).toEqual(['true', 'true', 'true', 'true', 'true', 'true']);
+        expect(circles.map((circle) => ['admin-setup__number', 'size-7.5', 'rounded-full'].every((look) => circle?.classList.contains(look)))).toEqual([true, true, true, true, true, true]);
+        expect(circles.map((circle) => (circle?.querySelector('svg') === null ? circle.textContent : 'tick'))).toEqual(['1', 'tick', 'tick', '4', '5', '6'].map((each) => (each === 'tick' ? each : formatCount(Number(each), words.locale))));
+        expect(steps.map((step) => step.querySelectorAll('svg').length)).toEqual([0, 1, 1, 0, 0, 0]);
+
+        // Each step is a pill; the current one is ringed in 2 pixels of the theme colour.
+        expect(steps.every((step) => ['rounded-full', 'inset-ring-[1.5px]', 'aria-[current=step]:inset-ring-2', 'aria-[current=step]:inset-ring-primary'].every((look) => step.classList.contains(look)))).toBe(true);
         expect(q('h2.admin-setup__name')?.textContent).toBe(words.text('steps.hours.name'));
+        expect(q('h2.admin-setup__name')?.classList.contains('text-section-title')).toBe(true);
         expect(q('.admin-setup__position')).toBeNull();
+    });
+
+    it('darkens a step\'s ring under the pointer on every step but the open one, which keeps its ring in the theme colour', () => {
+        open('hours');
+
+        const steps = [...document.body.querySelectorAll<HTMLButtonElement>('button.admin-setup__step')];
+        const hovers = (step: Element) => [...step.classList].filter((name) => /(^|:)hover:/.test(name));
+        expect(steps.map((step) => hovers(step).length > 0)).toEqual([true, true, true, true, true, true]);
+        expect(steps.map((step) => hovers(step).every((name) => /:not-aria-\[current=step\]:/.test(name)))).toEqual([true, true, true, true, true, true]);
     });
 
     it('opens the step pressed in the list', () => {
@@ -194,8 +221,30 @@ describe('the setup wizard', () => {
         open('hours', setupOf({ steps: setupOf().steps.filter((fact) => fact.key !== 'team') }));
 
         expect(q('.admin-setup__steps')).toBeNull();
-        expect(q('.admin-setup__position')?.firstElementChild?.textContent).toBe(words.text('position', { number: formatCount(3, words.locale), total: formatCount(5, words.locale) }));
+        expect(q('.admin-setup__step')).toBeNull();
+        expect(q('h2.admin-setup__position')?.firstElementChild?.textContent).toBe(words.text('position', { number: formatCount(3, words.locale), total: formatCount(5, words.locale) }));
         expect(q('.admin-setup__position .admin-setup__name')?.textContent).toBe(words.text('steps.hours.name'));
+        expect(q('.admin-setup__position .admin-setup__name')?.classList.contains('text-card-title')).toBe(true);
+    });
+
+    it('keeps the blocked reason first in the footer, then Back, Skip for now and the primary last, the reason taking a line of its own below the breakpoint', () => {
+        stand.panels = {
+            payments: function Held() {
+                useStepPrimary({ label: 'Own primary', onPress: () => {}, blocked: 'Held for a reason', busy: null });
+
+                return null;
+            },
+        };
+        open('payments');
+
+        const footer = q('.admin-setup .admin-modal__footer');
+        const hookOf = (element: Element) => [...element.classList].find((name) => name.startsWith('admin-setup__'));
+        expect([...(footer?.children ?? [])].map(hookOf)).toEqual(['admin-setup__blocked', 'admin-setup__back', 'admin-setup__skip', 'admin-setup__primary']);
+        expect(q('#admin-setup-blocked')?.tagName).toBe('P');
+        expect([button('.admin-setup__back').disabled, button('.admin-setup__skip').disabled, button('.admin-setup__primary').disabled]).toEqual([false, false, true]);
+        expect(button('.admin-setup__primary').getAttribute('aria-describedby')).toBe('admin-setup-blocked');
+        expect(['admin-button--secondary', 'admin-button--secondary', 'admin-button--primary']).toEqual(['.admin-setup__back', '.admin-setup__skip', '.admin-setup__primary'].map((selector) => [...button(selector).classList].find((name) => /^admin-button--(primary|secondary)$/.test(name))));
+        expect([...(q('#admin-setup-blocked')?.classList ?? [])]).toEqual(expect.arrayContaining(['mr-auto', 'max-desktop:mr-0', 'max-desktop:basis-full']));
     });
 
     it('holds Back but on the first step, and the wizard\'s Next on a step that sets no primary of its own, which moves on and records nothing', () => {

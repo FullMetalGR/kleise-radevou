@@ -1,10 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\LoginController;
+use App\Infrastructure\Storage\TenantImages;
+use App\Site\SiteLanguage;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Pest\Browser\Api\Webpage;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Look;
 use Tests\Support\FakePaymentAdapter;
 
 /*
@@ -29,6 +33,13 @@ use Tests\Support\FakePaymentAdapter;
  * is caught and held where the router sends it, and the walk then opens the return address the
  * provider was handed, as the provider would at the end of its form. Home comes back with the
  * wizard on Online payments and the connection pending.
+ *
+ * The look, read in English and in Greek: each of the six steps at a phone's width with nothing
+ * running sideways and the footer's buttons inside the window, a blocked primary's reason on a
+ * line of its own above them; the step list on one line at 1440px in English, in at most two in
+ * Greek; and the close centred on the title's line with its end edge on the body's column at both
+ * widths. The window crossing the breakpoint with the wizard open, both ways, swaps the list and
+ * the one line and keeps the step, what was typed in it, the focus and the footer.
  */
 
 const WIZARD_SLUG = 'fern';
@@ -387,6 +398,344 @@ it('keeps a refused window on one level on the Opening hours step in Greek, at 1
         'refused, at 1024px' => [...$told, 'oneLine' => true, 'nameAndAddOnFoot' => true],
         'refused, at 390px' => [...$told, 'oneLine' => false, 'nameAndAddOnFoot' => false],
     ]);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+/**
+ * The wizard as it is drawn, read once the fonts are in and the layout has settled: whether the
+ * page or the dialog's body runs sideways; whether the footer's buttons sit inside the window;
+ * how many lines the step list takes, none where it is not drawn; whether the close's end edge is
+ * on the body's column and its middle on the title's line; whether the primary is blocked, and
+ * whether its reason, where it is, has a line of its own above every button.
+ */
+const WIZARD_LOOK = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const root = document.documentElement;
+        const frame = document.querySelector('.admin-setup');
+        const body = frame.querySelector('.admin-modal__body');
+        const column = frame.querySelector('.admin-modal__column').getBoundingClientRect();
+        const close = frame.querySelector('.admin-setup__close').getBoundingClientRect();
+        const words = document.createRange();
+        words.selectNodeContents(frame.querySelector('.admin-modal__title'));
+        const line = words.getClientRects()[0];
+        const middle = (rect) => (rect.top + rect.bottom) / 2;
+        const buttons = [...frame.querySelectorAll('.admin-modal__footer button')].map((button) => button.getBoundingClientRect());
+        const steps = [...frame.querySelectorAll('.admin-setup__step')].map((step) => Math.round(step.getBoundingClientRect().top));
+        const reason = frame.querySelector('#admin-setup-blocked');
+        const told = reason === null ? null : reason.getBoundingClientRect();
+        resolve({
+            sideways: root.scrollWidth > root.clientWidth || body.scrollWidth > body.clientWidth,
+            buttonsInside: buttons.length > 0 && buttons.every((button) => button.left >= 0 && button.right <= root.clientWidth),
+            stepLines: new Set(steps).size,
+            closeOnColumn: Math.abs(close.right - column.right) <= 1,
+            closeOnTitle: Math.abs(middle(close) - middle(line)) <= 2,
+            blocked: told !== null,
+            reasonOwnLine: told !== null && buttons.every((button) => button.top >= told.bottom - 1),
+        });
+    }))))
+    JS;
+
+/**
+ * A logo far wider than it is high and a cover stored for the business, as an upload leaves
+ * them: the files on the images disk under the business's own directory and their paths on its
+ * settings row.
+ */
+function wizardStoreImages(): void
+{
+    $disk = Storage::disk(TenantImages::DISK);
+    $directory = 'tenants/'.WIZARD_SLUG;
+    $disk->deleteDirectory($directory);
+    $paths = ['brand_logo_path' => $directory.'/logo-6c6f676f77696465.png', 'cover_path' => $directory.'/cover-636f766572777264.png'];
+
+    foreach ([[$paths['brand_logo_path'], drawnPng(640, 120, 30, 30, 30)], [$paths['cover_path'], drawnPng(1600, 600, 14, 116, 144)]] as [$path, $file]) {
+        $bytes = file_get_contents($file);
+        assert(is_string($bytes));
+        expect($disk->put($path, $bytes))->toBeTrue();
+    }
+
+    DB::table('tenant_'.WIZARD_SLUG.'.settings')->where('id', 1)->update($paths);
+}
+
+/**
+ * Opens the step from the list at 1440px and reads it there, then at 800px, then at a phone's
+ * width, where the one line names it; each width shot when a run saves screenshots.
+ *
+ * @param  Webpage  $page
+ * @return array{wide: array<string, mixed>, phone: array<string, mixed>}
+ */
+function wizardReadStep($page, string $step, SiteLanguage $language): array
+{
+    $name = adminLine('admin/setup.steps.'.$step.'.name', [], $language);
+    $current = sprintf('.admin-setup__step[data-step="%s"][aria-current="step"]', $step);
+    $suffix = $language === SiteLanguage::Greek ? '-el' : '';
+
+    $page->resize(1440, 900)
+        ->click(sprintf('.admin-setup__step[data-step="%s"]', $step))
+        ->assertVisible($current)
+        ->assertSeeIn('h2.admin-setup__name', $name);
+    $wide = $page->script(WIZARD_LOOK);
+    assert(is_array($wide));
+    /** @var array<string, mixed> $wide */
+    Look::shot($page, sprintf('setup-%s-1440%s', $step, $suffix));
+
+    $page->resize(800, 900)->assertVisible($current);
+    Look::shot($page, sprintf('setup-%s-800%s', $step, $suffix));
+
+    $page->resize(390, 844)
+        ->assertMissing('.admin-setup__steps')
+        ->assertSeeIn('.admin-setup__position .admin-setup__name', $name);
+    $phone = $page->script(WIZARD_LOOK);
+    assert(is_array($phone));
+    /** @var array<string, mixed> $phone */
+    Look::shot($page, sprintf('setup-%s-390%s', $step, $suffix));
+
+    return ['wide' => $wide, 'phone' => $phone];
+}
+
+it('draws each of the six steps with nothing sideways and the footer\'s buttons inside the window, a blocked reason on its own line above them on a phone, the step list on one line at 1440px, and the close on the title\'s line with its end edge on the body\'s column', function () {
+    wizardStoreImages();
+
+    try {
+        $page = Admin::signIn($this, WIZARD_SLUG, Admin::owner(WIZARD_SLUG), WIZARD_PASSWORD)->assertPathIs('/admin')->resize(1440, 900);
+        $page->assertVisible('.admin-setup__step[data-step="profile"][aria-current="step"]')
+            ->assertVisible('.admin-setup-logo__image')
+            ->assertVisible('.admin-setup-cover__image');
+
+        $reads = [];
+        $expected = [];
+
+        foreach (WIZARD_STEPS as $step) {
+            ['wide' => $reads[$step.' at 1440px'], 'phone' => $reads[$step.' at 390px']] = wizardReadStep($page, $step, SiteLanguage::English);
+
+            // A fresh business has no service, so the Services step's primary waits, saying why.
+            $blocked = $step === 'services';
+            $read = ['sideways' => false, 'buttonsInside' => true, 'closeOnColumn' => true, 'closeOnTitle' => true, 'blocked' => $blocked];
+            $expected[$step.' at 1440px'] = [...$read, 'stepLines' => 1, 'reasonOwnLine' => false];
+            $expected[$step.' at 390px'] = [...$read, 'stepLines' => 0, 'reasonOwnLine' => $blocked];
+        }
+
+        expect($reads)->toEqual($expected);
+
+        $page->assertNoJavaScriptErrors();
+    } finally {
+        Storage::disk(TenantImages::DISK)->deleteDirectory('tenants/'.WIZARD_SLUG);
+    }
+});
+
+it('reads the six steps in Greek with nothing sideways and the footer\'s buttons inside the window at a phone\'s width, the close on the title\'s line and the body\'s column, and the step list in at most two lines at 1440px', function () {
+    // The owner reads the admin in Greek, and the page says so of itself.
+    DB::table('users')->where('email', Admin::owner(WIZARD_SLUG))->update(['locale' => SiteLanguage::Greek->value]);
+
+    $page = Admin::signIn($this, WIZARD_SLUG, Admin::owner(WIZARD_SLUG), WIZARD_PASSWORD)->assertPathIs('/admin')->resize(1440, 900);
+    $page->assertVisible('.admin-setup__step[data-step="profile"][aria-current="step"]')
+        ->assertScript('document.documentElement.lang', SiteLanguage::Greek->value);
+
+    $reads = [];
+    $expected = [];
+
+    foreach (WIZARD_STEPS as $step) {
+        ['wide' => $wide, 'phone' => $reads[$step.' at 390px']] = wizardReadStep($page, $step, SiteLanguage::Greek);
+        $reads[$step.' at 1440px'] = [...$wide, 'stepLines' => in_array($wide['stepLines'] ?? null, [1, 2], true)];
+
+        $blocked = $step === 'services';
+        $read = ['sideways' => false, 'buttonsInside' => true, 'closeOnColumn' => true, 'closeOnTitle' => true, 'blocked' => $blocked];
+        $expected[$step.' at 1440px'] = [...$read, 'stepLines' => true, 'reasonOwnLine' => false];
+        $expected[$step.' at 390px'] = [...$read, 'stepLines' => 0, 'reasonOwnLine' => $blocked];
+    }
+
+    expect($reads)->toEqual($expected);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+it('keeps the wizard whole as the window crosses the breakpoint with it open, both ways: the list gives way to the one line and comes back, the step keeps what was typed and the focus, and the step and the footer still work', function () {
+    $position = fn (int $number): string => adminLine('admin/setup.position', ['number' => (string) $number, 'total' => (string) count(WIZARD_STEPS)]);
+
+    $page = Admin::signIn($this, WIZARD_SLUG, Admin::owner(WIZARD_SLUG), WIZARD_PASSWORD)->assertPathIs('/admin')->resize(1440, 900);
+    $page->assertVisible('.admin-setup__step[data-step="profile"][aria-current="step"]')
+        ->click('.admin-setup__step[data-step="services"]')
+        ->assertVisible('.admin-setup__step[data-step="services"][aria-current="step"]')
+        ->fill('#service-name', 'Trim')
+        ->fill('#service-price', '20')
+        ->assertScript(Admin::focusIsOn('#service-price'), true);
+
+    $page->resize(390, 844)
+        ->assertMissing('.admin-setup__steps')
+        ->assertSeeIn('.admin-setup__position', $position(2))
+        ->assertSeeIn('.admin-setup__position .admin-setup__name', adminLine('admin/setup.steps.services.name'))
+        ->assertValue('#service-name', 'Trim')
+        ->assertValue('#service-price', '20')
+        ->assertScript(Admin::focusIsOn('#service-price'), true)
+        ->click('.admin-setup-services__add')
+        ->assertSeeIn('.admin-setup-services__row .admin-setup-services__name', 'Trim')
+        ->assertScript(Admin::focusIsOn('#service-name'), true)
+        ->assertMissing('#admin-setup-blocked');
+
+    $page->resize(1440, 900)
+        ->assertMissing('.admin-setup__position')
+        ->assertVisible('.admin-setup__step[data-step="services"][aria-current="step"]')
+        ->assertSeeIn('.admin-setup__step[data-step="services"]', adminLine('admin/setup.done'))
+        ->assertScript(Admin::focusIsOn('#service-name'), true)
+        ->assertSeeIn('.admin-setup__primary', adminLine('admin/setup.next'))
+        ->click('.admin-setup__primary')
+        ->assertVisible('.admin-setup__step[data-step="team"][aria-current="step"]');
+
+    $page->resize(390, 844)
+        ->assertSeeIn('.admin-setup__position', $position(3))
+        ->click('.admin-setup__back')
+        ->assertSeeIn('.admin-setup__position', $position(2))
+        ->assertSeeIn('.admin-setup-services__row .admin-setup-services__name', 'Trim')
+        ->resize(1440, 900)
+        ->assertVisible('.admin-setup__step[data-step="services"][aria-current="step"]')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * The open step's ring once the pointer has rested on it past the ring's transition: whether the
+ * pointer is on it, and whether its inset ring is drawn in the theme colour.
+ */
+const WIZARD_OPEN_STEP_RING = <<<'JS'
+    new Promise((resolve) => setTimeout(() => {
+        const step = document.querySelector('.admin-setup__step[aria-current="step"]');
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--primary)';
+        document.body.append(probe);
+        const primary = getComputedStyle(probe).color;
+        probe.remove();
+        resolve({ hovered: step.matches(':hover'), primaryRing: getComputedStyle(step).boxShadow.includes(primary) });
+    }, 400))
+    JS;
+
+/**
+ * The step the keyboard is on and its focus outline against the dialog's body, a scroller that
+ * cuts what is drawn past its padding box: whether the keyboard put it there, whether it is in
+ * the list's first row with the body unscrolled, and whether the outline's top edge lies inside.
+ */
+const WIZARD_FOCUSED_STEP = <<<'JS'
+    (() => {
+        const step = document.activeElement;
+        const body = document.querySelector('.admin-setup .admin-modal__body');
+        const look = getComputedStyle(step);
+        const top = step.getBoundingClientRect().top;
+        const rows = [...document.querySelectorAll('.admin-setup__step')].map((each) => each.getBoundingClientRect().top);
+        const port = body.getBoundingClientRect().top + body.clientTop;
+        return {
+            step: step.dataset.step ?? null,
+            keyboard: step.matches(':focus-visible'),
+            firstRow: Math.abs(top - Math.min(...rows)) < 1 && body.scrollTop === 0,
+            outlineInside: top - parseFloat(look.outlineOffset) - parseFloat(look.outlineWidth) >= port - 0.01,
+        };
+    })()
+    JS;
+
+/**
+ * Each step's drawn pill and its touch area, the layer after it: the pill's drawn height, whether
+ * every touch area is at least 44px tall and as wide as its pill, and whether any reaches over a
+ * neighbour's drawn pill.
+ */
+const WIZARD_STEP_TOUCH = <<<'JS'
+    new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const steps = [...document.querySelectorAll('.admin-setup__step')].map((step) => {
+            const drawn = step.getBoundingClientRect();
+            const after = getComputedStyle(step, '::after');
+            const top = drawn.top + parseFloat(after.top);
+            const left = drawn.left + parseFloat(after.left);
+            const touch = after.position === 'absolute' ? { top, left, bottom: top + parseFloat(after.height), right: left + parseFloat(after.width) } : drawn;
+            return { drawn, touch };
+        });
+        const meets = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        resolve({
+            drawnHeights: [...new Set(steps.map(({ drawn }) => Math.round(drawn.height)))],
+            touchTall: steps.every(({ touch }) => touch.bottom - touch.top >= 44),
+            touchWide: steps.every(({ drawn, touch }) => touch.left <= drawn.left + 0.5 && touch.right >= drawn.right - 0.5),
+            overNeighbour: steps.some(({ touch }, at) => steps.some(({ drawn }, other) => other !== at && meets(touch, drawn))),
+        });
+    })))
+    JS;
+
+it('keeps the open step ringed in the theme colour under the pointer, a first-row step\'s focus outline whole inside the body, and each step a 44px touch target with its drawn size kept in the compact layout', function () {
+    $page = Admin::signIn($this, WIZARD_SLUG, Admin::owner(WIZARD_SLUG), WIZARD_PASSWORD)->assertPathIs('/admin')->resize(1440, 900);
+    $page->assertVisible('.admin-setup__step[data-step="profile"][aria-current="step"]')
+        ->hover('.admin-setup__step[aria-current="step"]');
+    $reads = ['hovered' => $page->script(WIZARD_OPEN_STEP_RING)];
+
+    $page->keys('.admin-setup__step[data-step="services"]', 'Shift+Tab');
+    $reads['focused'] = $page->script(WIZARD_FOCUSED_STEP);
+
+    $page->resize(820, 900)->assertVisible('.admin-setup__step[data-step="profile"][aria-current="step"]');
+    $reads['touch at 820px'] = $page->script(WIZARD_STEP_TOUCH);
+
+    expect($reads)->toBe([
+        'hovered' => ['hovered' => true, 'primaryRing' => true],
+        'focused' => ['step' => 'profile', 'keyboard' => true, 'firstRow' => true, 'outlineInside' => true],
+        'touch at 820px' => ['drawnHeights' => [42], 'touchTall' => true, 'touchWide' => true, 'overNeighbour' => false],
+    ]);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+/**
+ * Every service or member name the open step lists, and each member's line of services: whether
+ * each one's text lies inside its inner card, and whether the page or the dialog's body runs
+ * sideways.
+ */
+const WIZARD_NAMES_INSIDE = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const root = document.documentElement;
+        const body = document.querySelector('.admin-setup .admin-modal__body');
+        const names = [...document.querySelectorAll('.admin-setup-services__name, .admin-setup-team__name, .admin-setup-team__services')];
+        const inside = names.map((name) => {
+            const card = name.closest('section').getBoundingClientRect();
+            const text = document.createRange();
+            text.selectNodeContents(name);
+            const drawn = text.getBoundingClientRect();
+            return drawn.left >= card.left - 0.5 && drawn.right <= card.right + 0.5;
+        });
+        resolve({
+            names: names.length,
+            inside: inside.every(Boolean),
+            sideways: root.scrollWidth > root.clientWidth || body.scrollWidth > body.clientWidth,
+        });
+    }))))
+    JS;
+
+it('keeps a long unbroken service name and a long unbroken member name inside their inner cards at a phone\'s width, nothing sideways', function () {
+    $service = str_repeat('Colour', 10);
+    $member = 'maria.'.str_repeat('papadopoulou', 3).'@salonfern.example';
+    expect([strlen($service), strlen($member)])->toBe([60, 60]);
+
+    $page = Admin::signIn($this, WIZARD_SLUG, Admin::owner(WIZARD_SLUG), WIZARD_PASSWORD)->assertPathIs('/admin')->resize(1440, 900);
+    $page->assertVisible('.admin-setup__step[data-step="profile"][aria-current="step"]')
+        ->click('.admin-setup__step[data-step="services"]')
+        ->assertVisible('.admin-setup__step[data-step="services"][aria-current="step"]')
+        ->fill('#service-name', $service)
+        ->fill('#service-price', '20')
+        ->click('.admin-setup-services__add')
+        ->assertSeeIn('.admin-setup-services__row .admin-setup-services__name', $service);
+
+    $long = DB::table('tenant_'.WIZARD_SLUG.'.services')->where('name', $service)->value('id');
+    assert(is_int($long));
+
+    $page->click('.admin-setup__step[data-step="team"]')
+        ->assertVisible('.admin-setup__step[data-step="team"][aria-current="step"]')
+        ->fill('#staff-name', $member)
+        ->check('#staff-service-'.$long)
+        ->click('.admin-setup-team__add')
+        ->assertSeeIn('.admin-setup-team__row .admin-setup-team__name', $member)
+        ->assertSeeIn('.admin-setup-team__row .admin-setup-team__services', $service);
+
+    $reads = [];
+    $page->resize(390, 844)->assertMissing('.admin-setup__steps');
+    $reads['team'] = $page->script(WIZARD_NAMES_INSIDE);
+
+    $page->click('.admin-setup__back')
+        ->assertSeeIn('.admin-setup__position .admin-setup__name', adminLine('admin/setup.steps.services.name'));
+    $reads['services'] = $page->script(WIZARD_NAMES_INSIDE);
+
+    // The team step reads the member's name and the member's line of services.
+    $read = ['names' => 1, 'inside' => true, 'sideways' => false];
+    expect($reads)->toBe(['team' => ['names' => 2] + $read, 'services' => $read]);
 
     $page->assertNoJavaScriptErrors();
 });

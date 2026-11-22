@@ -1,11 +1,12 @@
 import { router } from '@inertiajs/react';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Tick } from '@/components/glyphs';
+import { Cross, Tick } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
 import { Confirm } from '@/components/ui/confirm';
 import { Modal } from '@/components/ui/modal';
 import { formatCount } from '@/lib/format';
 import { useShell } from '@/lib/strings';
+import { cn } from '@/lib/utils';
 import { useDesktop } from '@/lib/viewport';
 import { NOT_DONE, owningFailure } from '@/lib/visits';
 import { useToasts } from '@/toast/toasts';
@@ -16,10 +17,12 @@ import type { SetupStrings, SetupWords } from './words';
 
 /*
  * The setup wizard: the house modal filling the viewport at every width, the open step's panel in
- * its body. At the admin's breakpoint and above, the step list runs across the top as buttons, a
- * tick on each step done or skipped and the open one marked current, any of them opening its
- * step; below it the list gives way to one line, the step's place among those that apply and its
- * name. The footer holds Back, but on the first step; Skip for now on Team and Online payments
+ * its body, every part kept to the modal's centred column. At the admin's breakpoint and above, the
+ * step list runs across the top as round-ended buttons, each its number in a circle and its name,
+ * the circle ticked on each step done or skipped and the open one ringed as current, any of them
+ * opening its step; below it the list gives way to one line, the step's place among those that
+ * apply and its name. The close button is round and carries a cross alone, its name for a screen
+ * reader, as a dialog's close is drawn, at the end of the title's row. The footer holds Back, but on the first step; Skip for now on Team and Online payments
  * while still open, which records the skip and moves on; and the primary button, the open step's
  * own or the wizard's Next, which moves on and records nothing. The close button and Escape close
  * the wizard. Leaving a step that says it holds unsaved edits, by any of these or by the list,
@@ -87,7 +90,7 @@ export function SetupWizard({ setup, table, words, step, onStep, onClose }: Prop
             className="admin-setup"
             onClose={() => leave(onClose)}
             aside={
-                <Button variant="tertiary" className="admin-setup__close" onClick={() => leave(onClose)}>
+                <Button iconOnly icon={<Cross />} className="admin-setup__close relative size-10 after:absolute after:-inset-0.5" onClick={() => leave(onClose)}>
                     {words.text('close')}
                 </Button>
             }
@@ -227,8 +230,14 @@ function Discard({ open, words, onConfirm, onDismiss }: { open: boolean; words: 
 type HeadingProps = { setup: Setup; fact: StepFact; at: number; words: SetupWords; heldBy: string | undefined; onChoose: (step: StepKey) => void };
 
 /**
- * The step list and the open step's name at the breakpoint and above; below it the one line. The
- * open step's own button goes nowhere, and every button is held while the step's write is in flight.
+ * The step list and the open step's name at the breakpoint and above; below it the one line. Each
+ * step's button keeps to one line, its number's circle filled once the step is open or closed and
+ * a tick in place of the number once it is closed. The open step's own button goes nowhere, and
+ * every button is held while the step's write is in flight.
+ *
+ * The list stands a pixel below the body's top, so a first-row step's focus outline, drawn five
+ * pixels out, is not cut by the scrolling body. In the compact layout each 42px step reaches a
+ * 44px touch area a pixel past its top and bottom, well short of the next row.
  */
 function Heading({ setup, fact, at, words, heldBy, onChoose }: HeadingProps) {
     const desktop = useDesktop();
@@ -236,29 +245,37 @@ function Heading({ setup, fact, at, words, heldBy, onChoose }: HeadingProps) {
 
     if (!desktop) {
         return (
-            <h2 className="admin-setup__position mb-4 flex flex-wrap gap-x-2 text-base">
-                <span className="text-muted-foreground">{words.text('position', { number: formatCount(at + 1, words.locale), total: formatCount(setup.steps.length, words.locale) })}</span>
-                <span className="admin-setup__name font-semibold">{name}</span>
+            <h2 className="admin-setup__position mb-4 flex flex-wrap items-baseline gap-x-2">
+                <span className="text-body text-muted-foreground">{words.text('position', { number: formatCount(at + 1, words.locale), total: formatCount(setup.steps.length, words.locale) })}</span>
+                <span className="admin-setup__name text-card-title">{name}</span>
             </h2>
         );
     }
 
     return (
         <>
-            <nav className="admin-setup__steps mb-4" aria-label={words.text('list')}>
+            <nav className="admin-setup__steps mb-4 pt-px" aria-label={words.text('list')}>
                 <ol className="flex flex-wrap gap-2">
-                    {setup.steps.map((each) => (
+                    {setup.steps.map((each, index) => (
                         <li key={each.key}>
                             <button
                                 type="button"
-                                className="admin-setup__step inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 aria-[current=step]:border-primary aria-[current=step]:font-semibold"
+                                className="admin-setup__step focus-ring relative inline-flex items-center gap-2.5 rounded-full bg-card py-1.5 pr-4 pl-1.5 text-body font-semibold whitespace-nowrap inset-ring-[1.5px] inset-ring-border enabled:hover:not-aria-[current=step]:inset-ring-ink-tertiary disabled:cursor-not-allowed disabled:opacity-60 aria-[current=step]:inset-ring-2 aria-[current=step]:inset-ring-primary max-wide:after:absolute max-wide:after:inset-x-0 max-wide:after:-inset-y-px motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft"
                                 aria-current={each.key === fact.key ? 'step' : undefined}
                                 data-step={each.key}
                                 disabled={heldBy !== undefined}
                                 aria-describedby={heldBy}
                                 onClick={each.key === fact.key ? undefined : () => onChoose(each.key)}
                             >
-                                {isClosed(each) && <Tick />}
+                                <span
+                                    className={cn(
+                                        'admin-setup__number flex size-7.5 shrink-0 items-center justify-center rounded-full font-display text-label',
+                                        each.key === fact.key || isClosed(each) ? 'bg-primary text-primary-foreground' : 'bg-muted text-primary-deep',
+                                    )}
+                                    aria-hidden="true"
+                                >
+                                    {isClosed(each) ? <Tick /> : formatCount(index + 1, words.locale)}
+                                </span>
                                 {words.text(`steps.${each.key}.name`)}
                                 {isClosed(each) && <span className="sr-only">{words.text(each.done ? 'done' : 'skipped')}</span>}
                             </button>
@@ -266,7 +283,7 @@ function Heading({ setup, fact, at, words, heldBy, onChoose }: HeadingProps) {
                     ))}
                 </ol>
             </nav>
-            <h2 className="admin-setup__name mb-3 text-base font-semibold">{name}</h2>
+            <h2 className="admin-setup__name mb-3 text-section-title">{name}</h2>
         </>
     );
 }
@@ -293,7 +310,7 @@ function Footer({ words, primary, heldBy, skipping, onBack, onSkip }: FooterProp
     return (
         <>
             {blocked !== null && (
-                <p id="admin-setup-blocked" className="admin-setup__blocked mr-auto self-center text-sm text-muted-foreground">
+                <p id="admin-setup-blocked" className="admin-setup__blocked mr-auto self-center text-sm text-muted-foreground max-desktop:mr-0 max-desktop:basis-full">
                     {blocked}
                 </p>
             )}

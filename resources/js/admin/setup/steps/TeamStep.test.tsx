@@ -143,6 +143,39 @@ describe('the Team step', () => {
         expect(onStep).toHaveBeenCalledWith('link');
     });
 
+    it('sets the list and the add form each in an inner card, neither drawing an edge of its own, and draws each service to tick as a check card named by the service alone', () => {
+        open([{ id: 2, name: 'Maria', service_ids: [7] }]);
+
+        const drawn = (element: Element | null | undefined) => [...(element?.classList ?? [])].filter((name) => name === 'border' || name.startsWith('rounded-'));
+
+        for (const hook of ['ul.admin-setup-team__list', 'form.admin-setup-team__form']) {
+            const card = q(hook)?.parentElement;
+
+            expect(card?.tagName).toBe('SECTION');
+            expect(['bg-card', 'rounded-inner', 'ring-[1.5px]', 'ring-border'].every((look) => card?.classList.contains(look))).toBe(true);
+            expect(drawn(q(hook))).toEqual([]);
+        }
+
+        const rows = [...document.body.querySelectorAll('.admin-setup-team__pick ul.admin-staff-services > li > label.admin-staff-services__row')];
+        const box = (row: Element) => row.querySelector<HTMLInputElement>('input[type="checkbox"].admin-staff-services__tick');
+        expect(rows.map((row) => box(row)?.id)).toEqual(['staff-service-4', 'staff-service-7', 'staff-service-9']);
+        expect(rows.map((row) => document.getElementById(box(row)?.getAttribute('aria-labelledby') ?? '') === row.querySelector('.admin-staff-services__name'))).toEqual([true, true, true]);
+        expect(q('ul.admin-staff-services')?.classList.contains('grid')).toBe(true);
+        expect(q('.admin-setup-team__pick')?.hasAttribute('aria-describedby')).toBe(false);
+    });
+
+    it('lets a long unbroken member name shrink and break anywhere, so the inner card never cuts it', () => {
+        open([{ id: 2, name: 'Maria', service_ids: [7] }]);
+
+        expect(['min-w-0', 'wrap-anywhere'].every((look) => q('.admin-setup-team__name')?.classList.contains(look))).toBe(true);
+    });
+
+    it('lets a long unbroken service name on a member\'s line shrink and break anywhere, so the inner card never cuts it', () => {
+        open([{ id: 2, name: 'Maria', service_ids: [7] }]);
+
+        expect(['min-w-0', 'wrap-anywhere'].every((look) => q('.admin-setup-team__services')?.classList.contains(look))).toBe(true);
+    });
+
     it('offers the wizard\'s Next and no Skip for now on a Team skipped with no member', () => {
         open([], SERVICES, true);
 

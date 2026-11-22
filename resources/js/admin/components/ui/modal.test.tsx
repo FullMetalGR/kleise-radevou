@@ -528,6 +528,68 @@ describe('the shapes', () => {
         expect(document.querySelector('.admin-modal__close')).toBeNull();
     });
 
+    it('lays the full frame\'s title row, its body\'s content and its footer\'s content in one centred column at most 62.5rem wide, the phone\'s sides below the breakpoint, while the frame, the scroll and the footer\'s rule span the window; the body\'s content is the query container', () => {
+        view.render(<Shaped variant="full" />);
+
+        const column = ['px-[max(1.625rem,50%_-_31.25rem)]', 'max-desktop:px-4.5'];
+        const sides = (element: Element | null) => classesOf(element).filter((name) => /^(max-desktop:)?p[xlr]-/.test(name));
+
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toEqual(expect.arrayContaining(['pt-5.5', 'pb-3', 'max-desktop:pt-4.5', 'max-desktop:pb-2']));
+        expect(classesOf(document.querySelector('.admin-modal__body'))).toEqual(expect.arrayContaining(['overflow-y-auto', 'pt-1', 'pb-5.5', 'max-desktop:pb-4.5']));
+        expect(classesOf(document.querySelector('.admin-modal__footer'))).toEqual(expect.arrayContaining(['border-t', 'py-3.5', 'max-desktop:py-3']));
+
+        for (const part of ['.admin-modal__title', '.admin-modal__body', '.admin-modal__footer']) {
+            expect(sides(document.querySelector(part))).toEqual(column);
+        }
+
+        const content = document.querySelector('.admin-modal__body > .admin-modal__column');
+        expect(classesOf(content)).toEqual(['admin-modal__column', '@container']);
+        expect(content?.contains(document.querySelector('.long'))).toBe(true);
+        expect(classesOf(frame())).not.toContain('@container');
+
+        view.render(
+            <Modal open title="With aside" variant="full" onClose={() => {}} aside={<span className="aside" />}>
+                <p />
+            </Modal>,
+        );
+
+        expect(sides(document.querySelector('.admin-modal__head'))).toEqual(column);
+        expect(sides(document.querySelector('.admin-modal__title'))).toEqual([]);
+    });
+
+    it.each(['centred', 'filling'] as const)('keeps the %s frame\'s body content where it was, with no column of its own', (variant) => {
+        view.render(
+            <Modal open title="Shaped" variant={variant} onClose={() => {}}>
+                <p className="long" />
+            </Modal>,
+        );
+
+        expect(document.querySelector('.admin-modal__column')).toBeNull();
+        expect(document.querySelector('.long')?.parentElement).toBe(document.querySelector('.admin-modal__body'));
+    });
+
+    it('moves the title\'s room onto the row it shares with an aside, and sets the aside in a box one of the title\'s lines high at the row\'s top, so it centres on the title\'s first line at both widths, the title keeping its type alone', () => {
+        const room = ['px-6.5', 'pt-5.5', 'pb-3', 'max-desktop:px-4.5', 'max-desktop:pt-4.5', 'max-desktop:pb-2'];
+        const padding = (element: Element | null) => classesOf(element).filter((name) => /^(max-desktop:)?p[trblxy]?-/.test(name));
+
+        view.render(
+            <Modal open title="With aside" variant="filling" onClose={() => {}} aside={<span className="aside" />}>
+                <p />
+            </Modal>,
+        );
+
+        expect(classesOf(document.querySelector('.admin-modal__head'))).toEqual(expect.arrayContaining(['flex', 'items-start', ...room, 'pr-18', 'max-desktop:pr-16']));
+        expect(padding(document.querySelector('.admin-modal__title'))).toEqual([]);
+        expect(classesOf(document.querySelector('.admin-modal__title'))).toEqual(expect.arrayContaining(['text-dialog-title', 'max-desktop:text-section-title']));
+
+        const box = document.querySelector('.aside')?.parentElement ?? null;
+        expect(box?.parentElement).toBe(document.querySelector('.admin-modal__head'));
+        expect(classesOf(box)).toEqual(
+            expect.arrayContaining(['flex', 'items-center', 'shrink-0', 'h-[calc(var(--text-dialog-title)*var(--text-dialog-title--line-height))]', 'max-desktop:h-[calc(var(--text-section-title)*var(--text-section-title--line-height))]']),
+        );
+        expect(classesOf(box).some((name) => name.startsWith('text-') || name.startsWith('max-desktop:text-'))).toBe(false);
+    });
+
     it('sets an aside on the title\'s row after it, the title still what labels the dialog, and keeps the title on its own row without one', () => {
         view.render(
             <Modal open title="With aside" onClose={() => {}} aside={<button type="button" className="aside">Close</button>}>
