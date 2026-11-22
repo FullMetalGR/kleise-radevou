@@ -10,8 +10,11 @@ import { type CalendarWords, useCalendarWords } from './words';
  * its chip's own word, marks an approved booking awaiting the customer's payment, in its
  * provisional chip's dashed primary over the card, so it reads on any member's hue. The legend
  * draws the same two beside what each marks. The words not a chip's are keys of the calendar
- * section. The marker of a booking inside a closure is a pill in the same register, its own
- * outline in rose, first on the line and before a badge: worded where its block has the room for
+ * section. A block draws its badge where its body has the width for the badge whole and a start
+ * of the title after it; in a narrower body the title has the line, the badge is its word for a
+ * screen reader alone, and the block's outline tells the state as a chip's does. The marker of a
+ * booking inside a closure is a pill in the same register, its own outline in the theme's
+ * destructive red, first on the line and before a badge: worded where its block has the room for
  * the title beside it, an exclamation mark alone where it has not, and that mark in the legend
  * beside the words.
  */
@@ -27,12 +30,22 @@ const BADGES: Record<Badge, { word: Words; meaning: Words; className: string }> 
 /** The badges in the order the legend lists them. */
 export const BADGE_ORDER: readonly Badge[] = ['awaiting_approval', 'awaiting_payment'];
 
-export function BlockBadge({ badge }: { badge: Badge }) {
+/**
+ * The width of a block's body under which its badge is not drawn, one width whatever shares the
+ * line. The widest badge takes some 154px of the line, in Greek, and some 176px with the marker's
+ * mark before it, so from 195px on a badge is whole with at least some 18px of the title after
+ * it, and under it the title has the line. The word stays the badge's text there, read by a
+ * screen reader.
+ */
+const FITTED = '@max-[195px]:sr-only';
+
+/** A badge as the legend draws it, at any width; fitted: as a block draws it, by the width of the block's body it is measured against. */
+export function BlockBadge({ badge, fitted = false }: { badge: Badge; fitted?: boolean }) {
     const shell = useShell();
     const calendar = useCalendarWords();
     const { word, className } = BADGES[badge];
 
-    return <span className={cn('admin-calendar-badge mr-1 inline-block rounded-full border px-1.5 align-[1px] text-[10px] leading-[14px] font-bold tracking-wide uppercase', className)}>{word(shell, calendar)}</span>;
+    return <span className={cn('admin-calendar-badge mr-1 inline-block rounded-full border px-1.5 align-[1px] text-xs leading-[14px] font-bold tracking-wide uppercase', className, fitted && FITTED)}>{word(shell, calendar)}</span>;
 }
 
 /** What a badge marks, as the legend says it. */
@@ -41,16 +54,18 @@ export function badgeMeaning(badge: Badge, shell: ShellWords, calendar: Calendar
 }
 
 /** The marker's pill, drawn alike on a block and in the legend. */
-const INSIDE = 'mr-1 inline-block rounded-full border border-rose-600 bg-card px-1.5 align-[1px] text-[10px] leading-[14px] font-bold tracking-wide text-rose-700 uppercase dark:text-rose-300';
+const INSIDE = 'mr-1 inline-block rounded-full border border-destructive bg-card px-1.5 align-[1px] text-xs leading-[14px] font-bold tracking-wide text-destructive uppercase';
 
 /**
  * The width of a block's body under which the marker is its mark alone, by what shares the
- * title's line: 220px where the marker is the line's one pill, and 340px where a badge follows it,
- * the two pills together taking up to some 260px of the line in Greek.
+ * title's line: 241px where the marker is the line's one pill, which takes up to some 150px of
+ * the line in words, in Greek, and 385px where a badge follows it, the two pills together taking
+ * up to some 304px there. From either width on the title keeps at least some 90px of its line
+ * beside the one pill and some 80px beside the two.
  */
 const DRAWINGS = {
-    alone: { mark: 'hidden @max-[220px]:inline', words: '@max-[220px]:sr-only' },
-    beside: { mark: 'hidden @max-[340px]:inline', words: '@max-[340px]:sr-only' },
+    alone: { mark: 'hidden @max-[241px]:inline', words: '@max-[241px]:sr-only' },
+    beside: { mark: 'hidden @max-[385px]:inline', words: '@max-[385px]:sr-only' },
 };
 
 /**

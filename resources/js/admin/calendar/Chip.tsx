@@ -5,15 +5,18 @@ import { formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
 import { InsideMark } from './Badge';
-import { type Badge, blockHueOf, type Chip, type Colouring, fillOf } from './model';
+import { type Badge, blockFillOf, blockHueOf, type Chip, type Colouring, struckOf } from './model';
 import { type CalendarKey, useCalendarWords } from './words';
 
 /*
  * A booking chip: one line naming a booking in a day's cell or a list, its start time in the
  * tenant's format and the customer, the name cut short where the line runs out. It wears its hue
- * as a block does, the fill mixed toward the surface and a bar of the hue down its start edge,
- * Colour by deciding the hue. The marks follow the name and none of them is a word: a request is
- * outlined in its badge's amber, an approved booking awaiting payment in its badge's dashed sky, a
+ * as a block does, the fill mixed toward the surface and a four-pixel bar of the hue down its start
+ * edge, Colour by deciding the hue; a booking cancelled, rejected, missed or expired has the softer fill of
+ * the tertiary ink and its customer struck through. The marks follow the name and none of them is
+ * a word: a request is outlined solid in the attention colour deepened to an amber that holds as a
+ * line on a light ground, an approved
+ * booking awaiting payment dashed in the theme colour, as its badge is, a
  * note the customer wrote is a folded sheet and a closure holding the booking's time the
  * exclamation mark a narrow block wears, each of those two named for a screen reader and on
  * hover. The chip's own name says the time, the customer and the status in words, then the marks'
@@ -31,10 +34,15 @@ export const NOTED: CalendarKey = 'badges.noted';
 
 export const INSIDE: CalendarKey = 'badges.closure';
 
-/** The outline a badged booking's chip wears, its badge's own colours; the legend's swatch for it wears the same. */
+/**
+ * The outline a badged booking's chip wears, as its block's; the legend's swatch for it wears the
+ * same. A request's is coloured by the stylesheet's rule on its class, the amber its block's
+ * outline takes there, deeper than the attention colour, which is too pale a line on a light
+ * ground.
+ */
 export const CHIP_OUTLINES: Record<Badge, string> = {
-    awaiting_approval: 'outline-2 -outline-offset-1 outline-solid outline-amber-500',
-    awaiting_payment: 'outline-2 -outline-offset-1 outline-dashed outline-sky-600',
+    awaiting_approval: 'admin-calendar-outline--awaiting_approval outline-2 -outline-offset-1 outline-solid',
+    awaiting_payment: 'outline-2 -outline-offset-1 outline-dashed outline-primary',
 };
 
 type Props = Omit<ComponentProps<'button'>, 'children' | 'onClick' | 'type'> & {
@@ -59,17 +67,19 @@ export function BookingChip({ chip, colouring, clock, onOpen, className, style, 
     const hue = blockHueOf(chip, colouring);
     const time = formatTimeOfDay(chip.start.slice(11, 16), clock);
     const customer = chip.customer ?? words.text(ERASED_CUSTOMER);
+    const struck = struckOf(chip.status);
 
     return (
         <button
             type="button"
             {...rest}
             className={cn(
-                'admin-calendar-chip flex w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm border-l-3 px-1 py-px text-left text-xs leading-4 text-foreground outline-none hover:brightness-95 focus-visible:ring-3 focus-visible:ring-ring/50',
+                'admin-calendar-chip flex w-full min-w-0 cursor-pointer items-center gap-1 rounded-md border-l-4 px-1 py-px text-left text-xs leading-4 text-foreground outline-none hover:brightness-95 focus-visible:ring-3 focus-visible:ring-ring/50',
                 chip.badge === null ? null : ['admin-calendar-chip--outlined', CHIP_OUTLINES[chip.badge]],
+                struck && 'admin-calendar-chip--struck',
                 className,
             )}
-            style={{ backgroundColor: fillOf(hue), borderLeftColor: hue, ...style }}
+            style={{ backgroundColor: blockFillOf(hue, chip.status), borderLeftColor: hue, ...style }}
             data-uuid={chip.uuid}
             data-status={chip.status}
             data-badge={chip.badge ?? undefined}
@@ -79,7 +89,7 @@ export function BookingChip({ chip, colouring, clock, onOpen, className, style, 
             <span className="admin-calendar-chip__time shrink-0 font-medium tabular-nums" aria-hidden="true">
                 {time}
             </span>
-            <span className={cn('admin-calendar-chip__customer min-w-0 flex-1 truncate', chip.customer === null && 'italic')} aria-hidden="true">
+            <span className={cn('admin-calendar-chip__customer min-w-0 flex-1 truncate', chip.customer === null && 'italic', struck && 'line-through')} aria-hidden="true">
                 {customer}
             </span>
             {chip.noted && (

@@ -3,14 +3,15 @@ import type { EventLeaveArg, EventReceiveArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { type CSSProperties, type ReactNode, useEffect, useRef } from 'react';
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { isoWeekday, utcDayOf } from '@/lib/day';
 import { formatDate, formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { weekdayName } from '@/lib/names';
 import { useShell } from '@/lib/strings';
+import { useDesktop } from '@/lib/viewport';
 import type { Language } from '../../booking/language';
 import { BlockBadge, InsideMarker } from './Badge';
-import { type Block, blockHueOf, businessHoursOf, type ClosureBlock, closureBlocksOf, type Colouring, type DayColumn, dayAxisOf, type Drop, fillOf, nextLineOf, scrollTimeOf, slotDurationOf, slotHeightOf, TIMED_MINUTES, type View, wallOf } from './model';
+import { type Block, blockFillOf, blockHueOf, businessHoursOf, type ClosureBlock, closureBlocksOf, type Colouring, type DayColumn, dayAxisOf, type Drop, nextLineOf, scrollTimeOf, slotDurationOf, slotHeightOf, struckOf, TIMED_MINUTES, type View, wallOf } from './model';
 import { useCalendarWords, useClosureWords } from './words';
 
 /*
@@ -23,23 +24,37 @@ import { useCalendarWords, useClosureWords } from './words';
  *
  * A block's hue is what Colour by says: its member's, its service's category's or its status's chip
  * tone. Its fill is the hue mixed toward the surface, set on the element itself with a
- * full-saturation left border and the theme's text colour; a gap is hatch stripes in the hue over
- * nothing, inside a dashed border. The body is the title, bold and ellipsised, a badge before it
+ * full-saturation left border four pixels wide and the theme's text colour; a booking cancelled,
+ * rejected, missed or expired wears the softer fill of the tertiary ink and its title struck through, and
+ * one awaiting approval or payment its outline, the stylesheet's rule on its class; a gap is hatch
+ * stripes in the hue over nothing, inside a dashed border. The body is the title, bold and
+ * ellipsised, a badge before it
  * for a booking awaiting approval or awaiting payment alone, the marker for a booking a closure
  * holds before both, and the time range under it only when the block is at least forty-five
  * minutes long. The marker leads the line so that it is never the part a narrow column cuts off:
- * where the line overflows, the title goes, then the badge's far end. The body is a container, so
+ * where the line overflows, the title's end is what goes. The body is a container, so
  * that the marker draws itself by the body's width, worded or a mark alone, sooner the mark where
  * a badge shares the line, and leaves the title its room. The scroll on every view or date change
  * is one hour before the day's earliest block or the fixed morning hour, computed by the model and
- * carried on the wrapper as data-scroll-time.
+ * carried on the wrapper as data-scroll-time. From the desktop breakpoint the grid's box is bounded
+ * by the window, and by the grid's own height, its slots' and what stands round them, so a short
+ * span leaves no empty band under its last hour however the grid came to be drawn, and the slots
+ * scroll inside it under the day header, which stays at its top; the box opens at that scroll.
+ * Today's date in the day header sits on the highlight.
  *
  * Day as member columns, where the screen hands the columns: one time-grid instance per column side
  * by side in a row that scrolls sideways past a minimum column width, every instance on the same
  * step and the same axis, the shown members' earliest start to latest end that day and at least
- * 08:00 to 20:00, so their rows align under the page's one scroll, the axis labels drawn on the
- * first instance alone. Each instance's business hours are the member's windows of the day, so the
- * library hatches the time outside them, the whole column where there are none, its body then
+ * 08:00 to 20:00, so their rows align under the row's one scroll, the axis labels drawn on the
+ * first instance alone. From the desktop breakpoint the row is bounded by the window and scrolls
+ * both ways, opening at the scroll time, each column's head pinned at its top over the blocks. The
+ * row is named a scroller as the library names its own, which is how the library finds what to
+ * scroll under a block held at an edge, so a drag reaches the hours past the row's fold. A block
+ * there keeps a scroll margin of the heads' height and eight pixels above it, the stylesheet's
+ * rule, so one the keyboard reaches is brought out from under the heads with room for its focus
+ * ring; the margin is the block's and not a padding of the row's scroll, which a head's own
+ * button could never clear, a focus on one then running the row to its top. Each instance's
+ * business hours are the member's windows of the day, so the library hatches the time outside them, the whole column where there are none, its body then
  * carrying the pill naming the next working day; its closures are drawn as background blocks with
  * their words, and its slot hands the member with the date. The screen draws each column's head.
  * The trailing column of the other bookings has no hatch, no closure and no slot. The now line
@@ -113,7 +128,12 @@ function eventOf(block: Block, colouring: Colouring, draggable: boolean): EventI
         title: block.title,
         start: block.start,
         end: block.end,
-        classNames: [block.kind === 'gap' ? 'admin-calendar-gap' : 'admin-calendar-block', ...(block.badge === null ? [] : [`admin-calendar-block--${block.badge}`]), ...(block.inside ? ['admin-calendar-block--inside'] : [])],
+        classNames: [
+            block.kind === 'gap' ? 'admin-calendar-gap' : 'admin-calendar-block',
+            ...(block.badge === null ? [] : [`admin-calendar-block--${block.badge}`]),
+            ...(block.inside ? ['admin-calendar-block--inside'] : []),
+            ...(block.kind === 'booking' && struckOf(block.status) ? ['admin-calendar-block--struck'] : []),
+        ],
         extendedProps: { block, hue: blockHueOf(block, colouring) },
     };
 }
@@ -155,20 +175,18 @@ function paint(arg: EventMountArg): void {
         style.backgroundImage = `repeating-linear-gradient(135deg, color-mix(in srgb, ${hue} 40%, transparent) 0 4px, transparent 4px 8px)`;
         style.border = `1px dashed ${hue}`;
     } else {
-        style.backgroundColor = fillOf(hue);
+        style.backgroundColor = blockFillOf(hue, block.status);
         style.border = '0 solid transparent';
-        style.borderLeft = `3px solid ${hue}`;
+        style.borderLeft = `4px solid ${hue}`;
     }
 }
 
 /**
- * The title's line where the marker and a badge share it, in a body too narrow for the mark, the
- * widest badge (some 130px, in Greek) and an ellipsis: the line cuts its overflow there. An
- * ellipsis takes a pill it cannot fit away whole, and the cut takes the badge's far end alone.
+ * A block's body: the marker, the badge and the title, the time range under it on a block long
+ * enough; a closure's words. The body is the container its pills are measured against: the marker
+ * is worded and the badge drawn where the body has the width for them, and the title's line is
+ * ellipsised at every width.
  */
-const TWO_PILLS = ' @max-[180px]:text-clip';
-
-/** A block's body: the marker, the badge and the title, the time range under it on a block long enough; a closure's words. */
 function bodyOf(clock: TenantClock) {
     return (arg: EventContentArg) => {
         const extended = extendedOf(arg);
@@ -179,16 +197,17 @@ function bodyOf(clock: TenantClock) {
 
         const { block } = extended;
         const pills = block.inside && block.badge !== null;
+        const struck = block.kind === 'booking' && struckOf(block.status);
 
         return (
-            <div className={`admin-calendar-block__body @container overflow-hidden ${block.kind === 'gap' ? 'text-[11px] leading-[14px] text-muted-foreground' : 'text-xs'}`}>
-                <div className={`admin-calendar-block__title truncate ${block.kind === 'gap' ? '' : 'font-semibold'}${pills ? TWO_PILLS : ''}`}>
+            <div className={`admin-calendar-block__body @container overflow-hidden ${block.kind === 'gap' ? 'text-xs leading-[14px] text-muted-foreground' : 'text-xs'}`}>
+                <div className={`admin-calendar-block__title truncate ${block.kind === 'gap' ? '' : 'font-semibold'}${struck ? ' line-through' : ''}`}>
                     {block.inside && <InsideMarker beside={pills} />}
-                    {block.badge !== null && <BlockBadge badge={block.badge} />}
+                    {block.badge !== null && <BlockBadge badge={block.badge} fitted />}
                     {block.title}
                 </div>
                 {block.minutes >= TIMED_MINUTES && (
-                    <div className="admin-calendar-block__time text-[11px] leading-[14px] text-muted-foreground">
+                    <div className="admin-calendar-block__time text-xs leading-[14px] text-muted-foreground tabular-nums">
                         {formatTimeOfDay(block.start.slice(11, 16), clock)}-{formatTimeOfDay(block.end.slice(11, 16), clock)}
                     </div>
                 )}
@@ -290,6 +309,25 @@ function DayColumns({ columns, date, colouring, clock, shared, scrollTime, scale
     // The source instance's undo of a drop onto another column: its leave fires before the event
     // leaves it, so the undo runs once the other instance has received it.
     const leaving = useRef<(() => void) | null>(null);
+    const row = useRef<HTMLDivElement>(null);
+    const desktop = useDesktop();
+
+    // The row opens at the scroll time: the last slot of the first column at or before it is
+    // brought up under the heads, or the row stays at the axis's start where the time is earlier.
+    // A window grown to the desktop breakpoint opens there too: narrower, the row had no scroll
+    // of its own to open at.
+    useEffect(() => {
+        const scroller = row.current;
+        const lanes = [...(scroller?.querySelector('.admin-calendar-column')?.querySelectorAll<HTMLElement>('.fc-timegrid-slot-lane[data-time]') ?? [])];
+        const lane = lanes.filter((slot) => (slot.dataset['time'] ?? '') <= scrollTime).at(-1);
+
+        if (scroller === null || lane === undefined) {
+            return;
+        }
+
+        const head = scroller.querySelector<HTMLElement>('.admin-calendar-column__head')?.offsetHeight ?? 0;
+        scroller.scrollTop += lane.getBoundingClientRect().top - scroller.getBoundingClientRect().top - head;
+    }, [scrollTime, date, desktop]);
 
     /** A drop onto another member's column: put back in both instances, then handed with the member. */
     const received = (member: DayColumn['member']) => (arg: EventReceiveArg) => {
@@ -305,7 +343,7 @@ function DayColumns({ columns, date, colouring, clock, shared, scrollTime, scale
 
     return (
         <div className="admin-calendar-grid admin-calendar-columns" data-scroll-time={scrollTime} data-axis={`${axis.min}-${axis.max}`} style={scale}>
-            <div className="admin-calendar-columns__row flex overflow-x-auto">
+            <div ref={row} className="admin-calendar-columns__row fc-scroller flex overflow-x-auto desktop:max-h-(--admin-calendar-box) desktop:overflow-y-auto">
                 {columns.map((column, at) => {
                     const member = column.member;
                     const idle = column.hours !== null && column.hours.windows.length === 0;
@@ -315,11 +353,11 @@ function DayColumns({ columns, date, colouring, clock, shared, scrollTime, scale
                     return (
                         <div
                             key={column.key}
-                            className={`admin-calendar-column flex shrink grow flex-col ${at === 0 ? 'admin-calendar-column--axis min-w-62 basis-14' : 'admin-calendar-column--bare min-w-48 basis-0'} ${member === null ? 'admin-calendar-column--other' : ''}`}
+                            className={`admin-calendar-column flex shrink grow flex-col ${at === 0 ? 'admin-calendar-column--axis min-w-74 desktop:min-w-71.5 basis-14' : 'admin-calendar-column--bare min-w-60 desktop:min-w-57.5 basis-0'} ${member === null ? 'admin-calendar-column--other' : ''}`}
                             data-column={column.key}
                             data-staff-id={member?.id}
                         >
-                            <div className={`admin-calendar-column__head h-25 border-b ${at === 0 ? 'pl-14' : ''}`}>
+                            <div className={`admin-calendar-column__head h-25 shrink-0 border-b bg-card desktop:sticky desktop:top-0 desktop:z-20 ${at === 0 ? 'pl-14' : ''}`}>
                                 <div className="h-full border-l">{head?.(column)}</div>
                             </div>
                             <div className="admin-calendar-column__body relative">
@@ -367,9 +405,39 @@ function DayColumns({ columns, date, colouring, clock, shared, scrollTime, scale
 
 export function Grid({ view, date, blocks, colouring, granularity, weekStart, clock, onBlock, onSlot, span, columns, head, onDrop }: Props) {
     const shell = useShell();
+    const desktop = useDesktop();
     const calendar = useRef<FullCalendar>(null);
+    const box = useRef<HTMLDivElement>(null);
     const scrollTime = scrollTimeOf(blocks, date);
     const split = view === 'day' && columns !== undefined && columns.some((column) => column.member !== null);
+
+    /*
+     * The grid's own height, from the desktop breakpoint: everything round the slots' scroller, as
+     * drawn, and the slots whole, carried as a variable the box takes the smaller of it and the
+     * window's figure from. The slots are measured themselves and not the body round them, which
+     * the library stretches to fill a scroller taller than they are, so the figure is the same
+     * whatever height the box has when it is taken. A grid not laid out, hidden or in a test's
+     * document, measures nothing.
+     */
+    const fit = useCallback(() => {
+        const wrapper = box.current;
+        const root = wrapper?.querySelector<HTMLElement>('.fc');
+        const slots = wrapper?.querySelector<HTMLElement>('.fc-timegrid-slots');
+        const scroller = slots?.closest<HTMLElement>('.fc-scroller');
+
+        if (!desktop || !wrapper || !root || !slots || !scroller || root.offsetHeight === 0 || slots.offsetHeight === 0) {
+            return;
+        }
+
+        const height = `${root.offsetHeight - scroller.clientHeight + slots.offsetHeight}px`;
+
+        if (wrapper.style.getPropertyValue('--admin-calendar-fit') !== height) {
+            wrapper.style.setProperty('--admin-calendar-fit', height);
+            calendar.current?.getApi().updateSize();
+        }
+    }, [desktop]);
+
+    useLayoutEffect(fit, [fit, view, date, span?.min, span?.max, split]);
 
     useEffect(() => {
         calendar.current?.getApi().changeView(VIEWS[view], date);
@@ -379,8 +447,19 @@ export function Grid({ view, date, blocks, colouring, granularity, weekStart, cl
         calendar.current?.getApi().scrollToTime(scrollTime);
     }, [scrollTime, view, date]);
 
-    /** A column's head: the weekday, ICU's short name in the page's language, and the date in the tenant's format. */
-    const header = (arg: DayHeaderContentArg) => `${weekdayName(isoWeekday(utcDayOf(arg.date)), 'short', shell.language)} ${formatDate(utcDayOf(arg.date), clock)}`;
+    /** A column's head: the weekday, ICU's short name in the page's language, and the date in the tenant's format, today's on the highlight. */
+    const header = (arg: DayHeaderContentArg) => {
+        const day = utcDayOf(arg.date);
+        const weekday = weekdayName(isoWeekday(day), 'short', shell.language);
+
+        return arg.isToday ? (
+            <>
+                {weekday} <span className="admin-calendar-grid__today rounded-full bg-spark px-1.5 py-0.5 text-spark-foreground tabular-nums">{formatDate(day, clock)}</span>
+            </>
+        ) : (
+            `${weekday} ${formatDate(day, clock)}`
+        );
+    };
 
     const shared = sharedOf({ weekStart, granularity, scrollTime, clock, language: shell.language, onBlock, onDrop });
     const scale = scaleOf(granularity);
@@ -390,11 +469,16 @@ export function Grid({ view, date, blocks, colouring, granularity, weekStart, cl
     }
 
     return (
-        <div className="admin-calendar-grid" data-scroll-time={scrollTime} style={scale}>
+        <div ref={box} className="admin-calendar-grid desktop:h-[min(var(--admin-calendar-box),var(--admin-calendar-fit,var(--admin-calendar-box)))]" data-scroll-time={scrollTime} style={scale}>
             <FullCalendar
                 key={colouringKey(colouring)}
                 ref={calendar}
                 {...shared}
+                // From the desktop breakpoint the wrapper's height bounds the grid, so the library
+                // scrolls its slots inside it under the day header; below it the grid is as tall as
+                // its slots.
+                height={desktop ? '100%' : 'auto'}
+                windowResize={fit}
                 initialView={VIEWS[view]}
                 initialDate={date}
                 slotMinTime={view === 'week' && span !== undefined ? span.min : '00:00:00'}

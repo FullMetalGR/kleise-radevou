@@ -6,7 +6,7 @@ import { keyedCalendar, keyedShell, keyedShifts, WithCalendar } from '@/testing/
 import { Legend } from './Chrome';
 import { CLOSURE_HERE, type ColumnActions, ColumnHead, EDIT_THIS_DAYS_HOURS, NEW_BOOKING_HERE, OPEN_STAFF_PAGE } from './ColumnHead';
 import { Grid } from './Grid';
-import { type Block, categoryHueOf, type Closure, type DayHours, type HoursWindow, type Colouring, type DayColumn, fillOf, GAP_TITLE, NO_CATEGORY, NEXT_WORKING_THIS_DAY, NO_HOURS_AHEAD, NOT_WORKING_THIS_DAY, OTHER_BOOKINGS, statusHueOf, swatchesOf } from './model';
+import { type Block, blockFillOf, categoryHueOf, type Closure, type DayHours, type HoursWindow, type Colouring, type DayColumn, fillOf, GAP_TITLE, NO_CATEGORY, NEXT_WORKING_THIS_DAY, NO_HOURS_AHEAD, NOT_WORKING_THIS_DAY, OTHER_BOOKINGS, statusHueOf, swatchesOf } from './model';
 import { hueOf, NEUTRAL } from '@/lib/hue';
 
 /*
@@ -99,7 +99,7 @@ describe('the grid', () => {
         expect(eventOf('b2:0').classList.contains('admin-calendar-block')).toBe(true);
     });
 
-    it('fills a block with the hue mixed toward the surface and never an alpha, borders it in the full hue on the left alone, three pixels, and hatches a gap in the hue inside a dashed border', () => {
+    it('fills a block with the hue mixed toward the surface and never an alpha, borders it in the full hue on the left alone, four pixels, and hatches a gap in the hue inside a dashed border', () => {
         render();
 
         const elena = getComputedStyle(eventOf('b1:0'));
@@ -110,7 +110,8 @@ describe('the grid', () => {
         expect(elena.backgroundColor).toContain('color-mix(');
         expect(elena.backgroundColor).not.toMatch(/rgba|opacity/);
         expect(eventOf('b1:0').style.borderLeft).toContain(rgb(hueOf(2, [])));
-        expect(eventOf('b1:0').style.borderLeft).toContain('3px');
+        expect(eventOf('b1:0').style.borderLeft).toContain('4px');
+        expect(eventOf('b1:0').style.borderLeft).not.toContain('3px');
         expect(elena.color).toBe('var(--foreground)');
         expect(nikos.backgroundColor).toBe(fillOf(hueOf(4, [])));
         expect(nikos.backgroundColor).not.toBe(elena.backgroundColor);
@@ -174,19 +175,38 @@ describe('the grid', () => {
         expect(eventOf('b1:0').classList.contains('admin-calendar-block--inside')).toBe(false);
     });
 
-    it('draws the marker beside a badge by a width of its own, the lone mark coming sooner where two pills share the line, and cuts that line where it overflows instead of ellipsising a pill away', () => {
+    it('draws the marker beside a badge by a width of its own, the lone mark coming sooner where two pills share the line, and a badge by one width whatever shares its line, its word kept for a reader under it and every title\'s line ellipsised at any width', () => {
         render({ blocks: [{ ...ELENA, inside: true }, { ...REQUEST, inside: true }, UNPAID] });
 
         const drawn = (id: string) => eventOf(id).querySelector('.admin-calendar-inside__mark')?.className;
-        const line = (id: string) => eventOf(id).querySelector('.admin-calendar-block__title')?.className ?? '';
+        const badge = (id: string) => eventOf(id).querySelector('.admin-calendar-badge');
+        const title = (id: string) => eventOf(id).querySelector('.admin-calendar-block__title');
 
         expect(drawn('b1:0')).toContain('admin-calendar-inside__mark');
         expect(drawn('b3:0')).toContain('admin-calendar-inside__mark');
         expect(drawn('b1:0')).not.toBe(drawn('b3:0'));
-        expect(line('b3:0')).toContain('text-clip');
-        expect(line('b1:0')).toContain('truncate');
-        expect(line('b1:0')).not.toContain('text-clip');
-        expect(line('b4:0')).not.toContain('text-clip');
+
+        // A title's line wears no class by its body's width: it is ellipsised however narrow.
+        for (const id of ['b1:0', 'b3:0', 'b4:0']) {
+            expect(title(id)?.className).toContain('truncate');
+            expect(title(id)?.className).not.toContain('@max-');
+        }
+
+        // Under its width a badge is its word for a reader alone, as the marker's words are.
+        for (const id of ['b3:0', 'b4:0']) {
+            expect(badge(id)?.className).toMatch(/@max-\[\d+px\]:sr-only/);
+            expect(badge(id)?.getAttribute('aria-hidden')).toBeNull();
+        }
+
+        const unpaid = title('b4:0');
+
+        expect(unpaid instanceof Element ? heard(unpaid) : null).toBe(`${shell.text('kit.statuses.awaiting_payment')}Una Paid, Haircut`);
+
+        // The widths, read off the classes: the lone mark under 241px of body and under 385px
+        // beside a badge, and a badge drawn from 195px, less than both, beside the mark or alone.
+        const width = (classes: string | undefined) => Number(/@max-\[(\d+)px\]/.exec(classes ?? '')?.[1]);
+
+        expect([width(drawn('b1:0')), width(drawn('b3:0')), width(badge('b3:0')?.className), width(badge('b4:0')?.className)]).toEqual([241, 385, 195, 195]);
     });
 
     it('steps the slots at the granularity, labels the axis on the hour alone in the tenant time format, lays the week from the tenant week start, and shows one column in Day', () => {
@@ -294,6 +314,83 @@ describe('the grid', () => {
 
         expect(onBlock.mock.calls).toEqual([['b1'], ['b2']]);
     });
+
+    it('sets a block\'s times in the text face\'s even-width figures, never the mono face, the title and the time keeping their text', () => {
+        render();
+
+        const time = eventOf('b1:0').querySelector('.admin-calendar-block__time');
+
+        expect(time?.classList.contains('tabular-nums')).toBe(true);
+        expect(time?.className).not.toMatch(/font-mono/);
+        expect(time?.textContent).toBe('10:00-11:00');
+        expect(eventOf('b1:0').querySelector('.admin-calendar-block__title')?.textContent).toBe('Ada North, Haircut');
+    });
+
+    it('sets a block\'s time, a gap\'s words, a badge and the closure\'s mark at the small text size, none under it, each on the line a quarter of an hour holds', () => {
+        render({ blocks: [ELENA, { ...REQUEST, inside: true }, GAP] });
+
+        const parts = [
+            eventOf('b1:0').querySelector('.admin-calendar-block__time'),
+            eventOf('b2:0:gap').querySelector('.admin-calendar-block__body'),
+            eventOf('b3:0').querySelector('.admin-calendar-badge'),
+            eventOf('b3:0').querySelector('.admin-calendar-inside'),
+        ];
+
+        for (const part of parts) {
+            expect(part?.classList.contains('text-xs')).toBe(true);
+            expect(part?.classList.contains('leading-[14px]')).toBe(true);
+            // No size written out in pixels takes the small size's place.
+            expect(part?.className).not.toMatch(/text-\[\d+px\]/);
+        }
+    });
+
+    it('strikes the title of a booking cancelled, rejected, missed or expired and fills it softer in the tertiary ink, its bar still its hue, and strikes nothing else', () => {
+        const CANCELLED = block({ id: 'c:0', uuid: 'c', status: 'cancelled', title: 'Cy Cancel, Haircut' });
+        const REJECTED = block({ id: 'j:0', uuid: 'j', staffId: 4, start: '2026-11-06T12:00:00', end: '2026-11-06T13:00:00', status: 'rejected', title: 'Jo Refused, Haircut' });
+        const MISSED = block({ id: 'm:0', uuid: 'm', staffId: 4, start: '2026-11-04T12:00:00', end: '2026-11-04T13:00:00', status: 'no_show', title: 'Mo Missed, Haircut' });
+        const EXPIRED = block({ id: 'x:0', uuid: 'x', start: '2026-11-05T09:00:00', end: '2026-11-05T10:00:00', status: 'expired', title: 'Ex Pired, Haircut' });
+        render({ blocks: [ELENA, CANCELLED, REJECTED, MISSED, EXPIRED, REQUEST] });
+
+        for (const [id, status, staffId] of [['c:0', 'cancelled', 2], ['j:0', 'rejected', 4], ['m:0', 'no_show', 4], ['x:0', 'expired', 2]] as const) {
+            expect(eventOf(id).classList.contains('admin-calendar-block--struck')).toBe(true);
+            expect(eventOf(id).querySelector('.admin-calendar-block__title')?.classList.contains('line-through')).toBe(true);
+            expect(getComputedStyle(eventOf(id)).backgroundColor).toBe(blockFillOf(hueOf(staffId, []), status));
+            expect(getComputedStyle(eventOf(id)).backgroundColor).toContain('var(--ink-tertiary)');
+            expect(eventOf(id).style.borderLeft).toContain(rgb(hueOf(staffId, [])));
+            expect(eventOf(id).style.borderLeft).toContain('4px');
+        }
+
+        for (const id of ['b1:0', 'b3:0']) {
+            expect(eventOf(id).classList.contains('admin-calendar-block--struck')).toBe(false);
+            expect(eventOf(id).querySelector('.admin-calendar-block__title')?.classList.contains('line-through')).toBe(false);
+        }
+    });
+
+    it('sets today\'s date in Week\'s day header on the highlight, and no other day\'s', () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-11-03T10:00:00Z'));
+
+        try {
+            render();
+
+            const today = [...view.host.querySelectorAll<HTMLElement>('.admin-calendar-grid__today')];
+
+            expect(today).toHaveLength(1);
+            expect(today[0]?.closest<HTMLElement>('.fc-col-header-cell')?.dataset['date']).toBe('2026-11-03');
+            expect(today[0]?.className.split(' ')).toEqual(expect.arrayContaining(['bg-spark', 'text-spark-foreground', 'tabular-nums']));
+            expect(today[0]?.textContent).toBe('03/11/2026');
+            expect(today[0]?.closest('.fc-col-header-cell')?.textContent).toBe(`${intlWeekday('2026-11-03')} 03/11/2026`);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('bounds the one time grid\'s box from the desktop breakpoint by the window and by the grid\'s own height, the library scrolling its slots under its day header inside it', () => {
+        render();
+
+        expect(view.host.querySelector('.admin-calendar-grid')?.classList.contains('desktop:h-[min(var(--admin-calendar-box),var(--admin-calendar-fit,var(--admin-calendar-box)))]')).toBe(true);
+        expect(view.host.querySelector<HTMLElement>('.admin-calendar-grid > .fc')?.style.height).toBe('100%');
+    });
 });
 
 describe('dragging a booking', () => {
@@ -351,6 +448,7 @@ describe('Colour by on the grid', () => {
         expect(hueOn('b3:0')).toBe(statusHueOf('awaiting_payment'));
         expect(new Set([hueOn('b1:0'), hueOn('b2:0'), hueOn('b3:0')]).size).toBe(3);
         expect(eventOf('b1:0').style.borderLeft).toContain(statusHueOf('confirmed'));
+        expect(eventOf('b1:0').style.borderLeft).toContain('4px');
     });
 
     it('keeps the Staff choice grey where the staff choice is not real, the other two coloured', () => {
@@ -493,9 +591,11 @@ describe('Day as member columns', () => {
         expect(columns().map((column) => column.dataset['column'])).toEqual(['member-2', 'member-4', 'member-6', 'other']);
         expect(view.host.querySelectorAll('.admin-calendar-column .fc')).toHaveLength(4);
         expect(view.host.querySelector('.admin-calendar-columns__row')?.classList.contains('overflow-x-auto')).toBe(true);
-        // The first column carries the 56px axis, so its minimum is the others' and the axis's.
-        expect(columns()[0]?.classList.contains('min-w-62')).toBe(true);
-        expect(columns().slice(1).every((column) => column.classList.contains('min-w-48'))).toBe(true);
+        // A member's column is 240px below the desktop breakpoint and 230px from it; the first
+        // carries the 56px axis besides, so its minimum is the others' and the axis's.
+        const widths = (column: HTMLElement | undefined) => column?.className.split(' ').filter((name) => /^(desktop:)?min-w-/.test(name));
+        expect(widths(columns()[0])).toEqual(['min-w-74', 'desktop:min-w-71.5']);
+        expect(columns().slice(1).map(widths)).toEqual([0, 1, 2].map(() => ['min-w-60', 'desktop:min-w-57.5']));
         // The other bookings' 07:00 and Nikos's 21:00 widen the axis past 08:00 to 20:00.
         expect(view.host.querySelector('.admin-calendar-columns')?.getAttribute('data-axis')).toBe('07:00:00-21:00:00');
 
@@ -509,6 +609,29 @@ describe('Day as member columns', () => {
         expect(view.host.querySelectorAll('.admin-calendar-column .fc-col-header')).toHaveLength(0);
         expect(view.host.querySelectorAll('.stub-head')).toHaveLength(4);
         expect([...view.host.querySelectorAll('.stub-head')].map((head) => head.textContent)).toEqual(['Elena Papadaki', 'Nikos Georgiou', 'Maria Lambrou', cal.text(OTHER_BOOKINGS)]);
+    });
+
+    it('makes the columns\' row the one box that scrolls both ways from the desktop breakpoint, each column\'s head pinned at its top over the blocks on an opaque ground', () => {
+        day();
+
+        const row = view.host.querySelector('.admin-calendar-columns__row');
+
+        expect(row?.className.split(' ')).toEqual(expect.arrayContaining(['overflow-x-auto', 'desktop:overflow-y-auto', 'desktop:max-h-(--admin-calendar-box)']));
+
+        for (const head of view.host.querySelectorAll('.admin-calendar-column__head')) {
+            expect(head.className.split(' ')).toEqual(expect.arrayContaining(['desktop:sticky', 'desktop:top-0', 'desktop:z-20', 'bg-card']));
+        }
+    });
+
+    it('names the columns\' row a scroller as the library names its own, so a block dragged to the row\'s edge scrolls it, and leaves the row\'s scroll unpadded, a padding being one a head\'s own button could never clear', () => {
+        day();
+
+        const row = view.host.querySelector('.admin-calendar-columns__row');
+
+        expect(row?.classList.contains('fc-scroller')).toBe(true);
+        expect(row?.className.split(' ').filter((name) => /scroll-p/.test(name))).toEqual([]);
+        // The heads are 100px tall, the height a block's scroll margin clears with eight pixels over.
+        expect(view.host.querySelector('.admin-calendar-column__head')?.classList.contains('h-25')).toBe(true);
     });
 
     it('spans at least 08:00 to 20:00 where the hours and the blocks sit inside them', () => {
@@ -683,7 +806,8 @@ describe('a Day column\'s head', () => {
 
         expect(view.host.querySelector('.admin-calendar-head__initials')?.textContent).toBe('EP');
         expect(view.host.querySelector<HTMLElement>('.admin-calendar-head__initials')?.style.boxShadow).toContain(HUE);
-        expect(view.host.querySelector('.admin-calendar-head__hours')?.classList.contains('font-mono')).toBe(true);
+        expect(view.host.querySelector('.admin-calendar-head__hours')?.classList.contains('tabular-nums')).toBe(true);
+        expect(view.host.querySelector('.admin-calendar-head__hours')?.className).not.toMatch(/font-mono/);
         expect(view.host.querySelector('.admin-calendar-head__name')?.textContent).toBe('Elena Papadaki');
         expect(view.host.querySelector('.admin-calendar-head__hours')?.textContent).toBe('09:00-13:00, 14:00-18:00');
 

@@ -63,14 +63,16 @@ function spotOf(day: Day): Spot {
     return { key: day.date, date: day.date, staffId: null };
 }
 
-function DayNumber({ day }: { day: Day }) {
+/** A day's number in its pill, 28px from the desktop breakpoint, today's on the highlight. */
+function DayNumber({ day, desktop }: { day: Day; desktop: boolean }) {
     return (
         <span
             aria-hidden="true"
             className={cn(
-                'admin-calendar-month__number inline-flex size-6 items-center justify-center rounded-full text-xs font-medium tabular-nums',
+                'admin-calendar-month__number inline-flex items-center justify-center rounded-full tabular-nums',
+                desktop ? 'size-7 text-sm font-semibold' : 'size-6 text-xs font-medium',
                 day.other && 'text-muted-foreground/60',
-                day.today && 'admin-calendar-month__number--today bg-primary text-primary-foreground',
+                day.today && 'admin-calendar-month__number--today bg-spark text-spark-foreground',
             )}
         >
             {Number(day.date.slice(8, 10))}
@@ -96,7 +98,7 @@ export function Month({ date, weekStart, today, chips, closedDays, colouring, cl
         <div className="admin-calendar-month bg-card">
             <div className="admin-calendar-month__head grid grid-cols-7 border-b" aria-hidden="true">
                 {days.slice(0, 7).map((day) => (
-                    <span key={day.date} className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
+                    <span key={day.date} className="px-1.5 py-1 text-xs font-medium text-muted-foreground desktop:px-3 desktop:py-2 desktop:font-semibold">
                         {weekdayName(isoWeekday(day.date), 'short', words.language)}
                     </span>
                 ))}
@@ -109,7 +111,7 @@ export function Month({ date, weekStart, today, chips, closedDays, colouring, cl
                         {...(desktop ? drag.target(spotOf(day)) : {})}
                         className={cn(
                             'admin-calendar-month__day relative min-w-0 border-b border-l nth-[7n+1]:border-l-0 nth-last-[-n+7]:border-b-0',
-                            desktop ? 'min-h-24' : 'min-h-14',
+                            desktop ? 'min-h-32' : 'min-h-14',
                             day.other && 'admin-calendar-month__day--other bg-muted/40',
                             day.closed && 'admin-calendar-month__day--closed bg-(image:--admin-calendar-hatch)',
                             drag.over === day.date && TARGETED,
@@ -124,7 +126,7 @@ export function Month({ date, weekStart, today, chips, closedDays, colouring, cl
                             onDay={() => onDay(day.date)}
                             className={desktop ? 'absolute inset-0 size-full' : 'flex size-full flex-col items-center gap-0.5 p-1'}
                         >
-                            {!desktop && <DayNumber day={day} />}
+                            {!desktop && <DayNumber day={day} desktop={false} />}
                             {!desktop && day.chips.length > 0 && (
                                 <span aria-hidden="true" className="admin-calendar-month__count text-xs font-semibold text-muted-foreground tabular-nums">
                                     {formatCount(day.chips.length, words.locale)}
@@ -132,8 +134,8 @@ export function Month({ date, weekStart, today, chips, closedDays, colouring, cl
                             )}
                         </DateMenu>
                         {desktop && (
-                            <div className="pointer-events-none relative flex min-w-0 flex-col gap-1 p-1 [&_button]:pointer-events-auto">
-                                <DayNumber day={day} />
+                            <div className="pointer-events-none relative flex min-w-0 flex-col gap-1.5 p-1.5 [&_button]:pointer-events-auto">
+                                <DayNumber day={day} desktop />
                                 {day.chips.length > 0 && <CappedChips chips={day.chips} cap={CAP} title={day.title} colouring={colouring} clock={clock} onOpen={onOpen} carried={(chip) => drag.source(chip, spotOf(day))} />}
                             </div>
                         )}

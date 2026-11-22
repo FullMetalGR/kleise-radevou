@@ -99,6 +99,8 @@ describe('the grid of people', () => {
         expect(head('2026-11-03')?.getAttribute('title')).toBe(cal.text(TO_DAY));
         expect(head('2026-11-04')?.getAttribute('aria-current')).toBe('date');
         expect(head('2026-11-04')?.querySelector('.admin-calendar-week__today')?.textContent).toBe('4');
+        expect(head('2026-11-04')?.querySelector('.admin-calendar-week__today')?.className.split(' ')).toEqual(expect.arrayContaining(['bg-spark', 'text-spark-foreground']));
+        expect(view.host.querySelectorAll('.bg-spark')).toHaveLength(1);
         expect(view.host.querySelectorAll('[aria-current="date"]')).toHaveLength(1);
 
         press(head('2026-11-06'));

@@ -177,6 +177,22 @@ describe('Month', () => {
         expect(view.host.querySelectorAll('.admin-calendar-month__number--today')).toHaveLength(1);
     });
 
+    it('sets today\'s number on the highlight, every day\'s number in a 28px pill and every cell at least 128px tall from the desktop breakpoint, the six weeks kept', () => {
+        render();
+
+        const today = cell('2026-11-04')?.querySelector('.admin-calendar-month__number--today');
+        const numbers = [...view.host.querySelectorAll('.admin-calendar-month__number')];
+        const days = [...view.host.querySelectorAll('.admin-calendar-month__day')];
+
+        expect(today?.className.split(' ')).toEqual(expect.arrayContaining(['bg-spark', 'text-spark-foreground']));
+        expect(today?.className).not.toMatch(/bg-primary/);
+        expect(days).toHaveLength(42);
+        expect(numbers).toHaveLength(42);
+        expect(numbers.every((number) => number.classList.contains('size-7') && number.classList.contains('rounded-full'))).toBe(true);
+        expect(days.every((day) => day.className.split(' ').filter((name) => name.startsWith('min-h-')).join(' ') === 'min-h-32')).toBe(true);
+        expect([...(cell('2026-11-03')?.querySelectorAll<HTMLElement>('.admin-calendar-chip') ?? [])].map((chip) => chip.dataset['uuid'])).toEqual(['a', 'b']);
+    });
+
     it('drags a movable chip shown in a day to another day, handing on the chip and the day alone, and takes no drop on its own day', async () => {
         const onDrop = vi.fn();
         const moving = chip('m', '2026-11-04T09:00:00', { movable: true });

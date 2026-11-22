@@ -113,9 +113,33 @@ describe('a booking chip', () => {
         expect(chipEl()?.style.backgroundColor).toBe(fillOf(hueOf(2, [])));
         expect(chipEl()?.style.borderLeftColor).toBe(rgb(hueOf(2, [])));
         expect(chipEl('b')?.style.backgroundColor).toBe(fillOf(statusHueOf('awaiting_approval')));
+        // The bar is four pixels, a left border.
+        expect(chipEl()?.className.split(' ').filter((name) => name.startsWith('border-l-'))).toEqual(['border-l-4']);
     });
 
-    it('outlines a request in amber and an approved booking awaiting payment in dashed sky, and no other', () => {
+    it('strikes the customer of a booking cancelled, rejected, missed or expired on the tertiary ink\'s softer fill, its bar still its hue, and strikes nothing else', () => {
+        show(
+            <>
+                <BookingChip chip={chip({ uuid: 'c', status: 'cancelled' })} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} />
+                <BookingChip chip={chip({ uuid: 'j', status: 'rejected' })} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} />
+                <BookingChip chip={chip({ uuid: 'm', status: 'no_show' })} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} />
+                <BookingChip chip={chip({ uuid: 'x', status: 'expired' })} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} />
+                <BookingChip chip={chip()} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} />
+            </>,
+        );
+
+        for (const uuid of ['c', 'j', 'm', 'x']) {
+            expect(chipEl(uuid)?.classList.contains('admin-calendar-chip--struck')).toBe(true);
+            expect(chipEl(uuid)?.querySelector('.admin-calendar-chip__customer')?.classList.contains('line-through')).toBe(true);
+            expect(chipEl(uuid)?.style.backgroundColor).toBe('color-mix(in oklab, var(--ink-tertiary) 9%, var(--card))');
+            expect(chipEl(uuid)?.style.borderLeftColor).toBe(rgb(hueOf(2, [])));
+        }
+
+        expect(chipEl()?.classList.contains('admin-calendar-chip--struck')).toBe(false);
+        expect(chipEl()?.querySelector('.admin-calendar-chip__customer')?.classList.contains('line-through')).toBe(false);
+    });
+
+    it('outlines a request solid in the amber its block is outlined in, by the class the stylesheet colours, and an approved booking awaiting payment dashed in the theme colour, and no other', () => {
         show(
             <>
                 <BookingChip chip={chip({ uuid: 'r', status: 'awaiting_approval', badge: 'awaiting_approval' })} colouring={STAFF} clock={CLOCK} onOpen={() => undefined} />
@@ -125,9 +149,13 @@ describe('a booking chip', () => {
         );
 
         expect(chipEl('r')?.className.split(' ')).toEqual(expect.arrayContaining(CHIP_OUTLINES.awaiting_approval.split(' ')));
-        expect(chipEl('r')?.classList.contains('outline-amber-500')).toBe(true);
+        expect(chipEl('r')?.className.split(' ')).toEqual(expect.arrayContaining(['outline-solid', 'admin-calendar-outline--awaiting_approval']));
+        // The attention colour itself is too pale a line on a light ground, so no utility of it is worn.
+        expect(chipEl('r')?.classList.contains(['outline', 'attention'].join('-'))).toBe(false);
         expect(chipEl('p')?.className.split(' ')).toEqual(expect.arrayContaining(CHIP_OUTLINES.awaiting_payment.split(' ')));
-        expect(chipEl('p')?.classList.contains('outline-dashed')).toBe(true);
+        expect(chipEl('p')?.className.split(' ')).toEqual(expect.arrayContaining(['outline-dashed', 'outline-primary']));
+        // Off the raw palette: no outline names a fixed hue any more.
+        expect(Object.values(CHIP_OUTLINES).join(' ')).not.toMatch(/outline-(amber|sky)-/);
         expect(chipEl()?.classList.contains('admin-calendar-chip--outlined')).toBe(false);
         expect(heard(chipEl('r'))).toBe(nameOf('10:00', 'Ada North', 'awaiting_approval'));
     });

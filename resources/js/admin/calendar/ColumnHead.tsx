@@ -64,7 +64,7 @@ export function ColumnHead({ column, date, clock, hue, actions }: { column: DayC
         <>
             <Initials name={member.name} hue={hue} size="head" className="admin-calendar-head__initials" />
             <span className="admin-calendar-head__name max-w-full truncate text-sm font-semibold">{member.name}</span>
-            {hours !== null && <span className="admin-calendar-head__hours max-w-full truncate font-mono text-xs text-muted-foreground">{headHoursOf(hours, clock, words)}</span>}
+            {hours !== null && <span className="admin-calendar-head__hours max-w-full truncate text-xs text-muted-foreground tabular-nums">{headHoursOf(hours, clock, words)}</span>}
         </>
     );
 

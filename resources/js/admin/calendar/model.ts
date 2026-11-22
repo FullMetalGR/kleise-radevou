@@ -535,7 +535,24 @@ export const CLOSED_DAY: CalendarKey = 'closure.all_day';
 
 /** A block's fill: the hue mixed toward the surface, never applied as alpha, so hour rules do not bleed through and two blocks never stack into a third colour. */
 export function fillOf(hue: string): string {
-    return `color-mix(in oklab, ${hue} 18%, var(--card))`;
+    return `color-mix(in oklab, ${hue} 14%, var(--card))`;
+}
+
+/** The statuses whose booking no longer holds its time, drawn with its title struck through. */
+const STRUCK: readonly string[] = ['cancelled', 'rejected', 'no_show', 'expired'];
+
+/** Whether a booking of the status is drawn struck through: cancelled, rejected, missed or expired. */
+export function struckOf(status: string): boolean {
+    return STRUCK.includes(status);
+}
+
+/**
+ * The fill a booking wears: its hue's, or for one drawn struck a softer one, the tertiary ink
+ * mixed toward the surface whatever Colour by says, so a booking that no longer holds its time
+ * recedes; its bar keeps the hue.
+ */
+export function blockFillOf(hue: string, status: string): string {
+    return struckOf(status) ? 'color-mix(in oklab, var(--ink-tertiary) 9%, var(--card))' : fillOf(hue);
 }
 
 /** The hue a block wears: the member's own while the palette is in play, their picked colour or the spread's, else the neutral grey. */

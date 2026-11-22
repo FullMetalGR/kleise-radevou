@@ -323,11 +323,11 @@ describe('the admin\'s own theme', () => {
         }
     });
 
-    it('writes the calendar\'s now pill, which the destructive red fills, in the ink made for that red, so its time reads on the dark mode\'s pale red too', () => {
+    it('writes the calendar\'s now pill, which the now line\'s own red fills, in the destructive ink, so its time reads on the dark mode\'s pale red too', () => {
         const pill = rulesOf(ADMIN).filter((rule) => rule.selector === '.admin-calendar-now');
 
         expect(pill).toHaveLength(1);
-        expect(squeezed(pill[0]?.declarations ?? '')).toContain('background-color:var(--destructive);');
+        expect(squeezed(pill[0]?.declarations ?? '')).toContain('background-color:var(--now-line);');
         expect(squeezed(pill[0]?.declarations ?? '')).toMatch(/(^|;)color:var\(--destructive-foreground\)(;|$)/);
     });
 

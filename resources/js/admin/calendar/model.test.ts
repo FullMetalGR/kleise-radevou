@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { localeOf } from '../../booking/language';
 import { staffShown } from '@/bookings/model';
 import { keyedCalendar, keyedShifts } from '@/testing/keyed';
-import { applicableFilters, type Block, type Chip, moveOfChipDrop, moveOfDrop, blockHueOf, blocksOf, businessHoursOf, categoryHueOf, CALENDAR_FILTER_SHAPE, CALENDAR_VIEWS, type CalendarBooking, type CalendarItem, closureBlocksOf, colourOf, cut, dayAxisOf, dayColumnsOf, weekAxisOf, type DayHours, fillOf, headHoursOf, hoursOn, NO_HOURS_AHEAD, NEXT_WORKING_THIS_DAY, NOT_WORKING_THIS_DAY, nextLineOf, GAP_TITLE, idsOf, legendShown, MORNING, monthChipsOf, monthDaysOf, move, NO_CALENDAR_FILTERS, rangeOf, scrollTimeOf, slotDurationOf, slotHeightOf, shownRows, slotStaffOf, statusHueOf, swatchesOf, titleOf, wallOf, whoSummary } from './model';
+import { applicableFilters, type Block, blockFillOf, struckOf, type Chip, moveOfChipDrop, moveOfDrop, blockHueOf, blocksOf, businessHoursOf, categoryHueOf, CALENDAR_FILTER_SHAPE, CALENDAR_VIEWS, type CalendarBooking, type CalendarItem, closureBlocksOf, colourOf, cut, dayAxisOf, dayColumnsOf, weekAxisOf, type DayHours, fillOf, headHoursOf, hoursOn, NO_HOURS_AHEAD, NEXT_WORKING_THIS_DAY, NOT_WORKING_THIS_DAY, nextLineOf, GAP_TITLE, idsOf, legendShown, MORNING, monthChipsOf, monthDaysOf, move, NO_CALENDAR_FILTERS, rangeOf, scrollTimeOf, slotDurationOf, slotHeightOf, shownRows, slotStaffOf, statusHueOf, swatchesOf, titleOf, wallOf, whoSummary } from './model';
 import { hueOf, NEUTRAL, PALETTE, paletteHue } from '@/lib/hue';
 
 /*
@@ -370,11 +370,22 @@ describe('colour', () => {
     });
 
     it('mixes the fill toward the surface and never as alpha, and wears the neutral grey where the choice is not real', () => {
-        expect(fillOf('#e69f00')).toBe('color-mix(in oklab, #e69f00 18%, var(--card))');
+        expect(fillOf('#e69f00')).toBe('color-mix(in oklab, #e69f00 14%, var(--card))');
+        expect(fillOf('#2563eb')).toBe('color-mix(in oklab, #2563eb 14%, var(--card))');
         expect(fillOf('#e69f00')).not.toMatch(/rgba|\/\s*\d|opacity/);
         expect(colourOf(2, true, [])).toBe(hueOf(2, []));
         expect(colourOf(2, false, [])).toBe(NEUTRAL);
         expect(colourOf(4, false, [{ id: 4, colour: 'purple' }])).toBe(NEUTRAL);
+    });
+
+    it('strikes a booking cancelled, rejected, missed or expired and fills it softer in the tertiary ink whatever its hue, every other status on its hue\'s fill', () => {
+        expect(['cancelled', 'rejected', 'no_show', 'expired'].map(struckOf)).toEqual([true, true, true, true]);
+        expect(['pending', 'awaiting_approval', 'awaiting_payment', 'confirmed', 'completed', 'unknown'].some(struckOf)).toBe(false);
+        expect(blockFillOf('#e69f00', 'cancelled')).toBe('color-mix(in oklab, var(--ink-tertiary) 9%, var(--card))');
+        expect(blockFillOf('#e69f00', 'rejected')).toBe(blockFillOf('#e69f00', 'cancelled'));
+        expect(blockFillOf('#56b4e9', 'no_show')).toBe(blockFillOf('#e69f00', 'expired'));
+        expect(blockFillOf('#e69f00', 'confirmed')).toBe(fillOf('#e69f00'));
+        expect(blockFillOf('#e69f00', 'awaiting_approval')).toBe(fillOf('#e69f00'));
     });
 
     it('draws a member who picked a colour in it while the palette is in play', () => {

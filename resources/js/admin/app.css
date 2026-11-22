@@ -651,23 +651,26 @@
 
 /*
  * The calendar grid, over FullCalendar's time grid: the library's own variables mapped onto the
- * theme's tokens so the rules, the page and today's column follow the theme, and the block body's
- * shape. A block's colours are set on the element itself by the
+ * theme's tokens so the rules, the page and Week's today column follow the theme, the working
+ * hours on the card's own colour in every theme, Day's column untinted on today, the now line in
+ * its own red, and the block body's shape. A block's colours are set on the element itself by the
  * grid, from the hue function; nothing here names a hue.
  */
 @layer components {
     .admin-calendar-grid {
+        background-color: var(--card);
         --fc-border-color: var(--border);
         --fc-page-bg-color: var(--card);
         --fc-neutral-bg-color: var(--muted);
         --fc-today-bg-color: color-mix(in oklab, var(--primary) 6%, var(--card));
         --fc-highlight-color: color-mix(in oklab, var(--primary) 14%, var(--card));
         --fc-event-text-color: var(--foreground);
-        --fc-now-indicator-color: var(--destructive);
+        --fc-now-indicator-color: var(--now-line);
         --fc-small-font-size: 0.75rem;
     }
 
-    .admin-calendar-columns {
+    .admin-calendar-columns,
+    .admin-calendar-grid .fc-timeGridDay-view {
         --fc-today-bg-color: transparent;
     }
 
@@ -676,17 +679,24 @@
         @apply text-xs text-muted-foreground;
     }
 
+    .admin-calendar-grid .fc .fc-col-header-cell {
+        @apply font-semibold;
+    }
+
     .admin-calendar-grid .fc .fc-timegrid-event {
-        @apply cursor-pointer rounded-sm px-1.5 py-0.75 shadow-none;
+        @apply cursor-pointer px-1.5 py-0.75 shadow-none;
     }
 
     /*
      * Day's member columns and Month's days: the light hatch of the time outside a member's hours
      * and of a day the business is closed, a closure's hatch and its border, and the gap's
      * swatch, all from the theme's tokens so each theme and the dark mode hold; one spelling each
-     * for the calendar and the legend's entries.
+     * for the calendar and the legend's entries. And the time grid's box from the desktop width:
+     * the window's height less a rem above and below, so the whole box is in view once it is
+     * scrolled to the window's top, the slots scrolling inside it.
      */
     .admin-calendar {
+        --admin-calendar-box: calc(100dvh - 2rem);
         --admin-calendar-hatch: repeating-linear-gradient(135deg, var(--muted) 0 6px, var(--card) 6px 12px);
         --admin-calendar-closure: repeating-linear-gradient(135deg, var(--border) 0 6px, var(--muted) 6px 12px);
         --admin-calendar-closure-border: color-mix(in oklab, var(--muted-foreground) 30%, var(--card));
@@ -708,7 +718,7 @@
     }
 
     .admin-calendar-now {
-        @apply rounded-full bg-destructive px-1.5 font-mono text-[11px] leading-4 font-semibold text-destructive-foreground;
+        @apply rounded-full bg-now-line px-1.5 text-xs leading-4 font-bold text-destructive-foreground tabular-nums;
     }
 }
 
@@ -718,8 +728,8 @@
  * library's selectors by one class each: an hour is sixty pixels whatever the step, each slot
  * the height the grid's wrapper carries as a variable from the tenant's granularity, so a click
  * or a drag still lands on a bookable start; the library's spacer in an empty slot goes, or it
- * would hold a short slot open; a rule on the hour alone; the labels on the hour, in mono, on a
- * 56px axis, each centred on its rule but the first, and taking no height of their own, so a slot
+ * would hold a short slot open; a rule on the hour alone; the labels on the hour, in even-width
+ * figures, on a 56px axis, each centred on its rule but the first, and taking no height of their own, so a slot
  * shorter than a label's line keeps its height; the blocks four pixels in from each side.
  */
 .admin-calendar-grid .fc .fc-timegrid-slot {
@@ -748,8 +758,8 @@
     box-sizing: border-box;
     min-width: 56px;
     padding: 0 8px 0 0;
-    font-family: var(--font-mono);
-    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
     line-height: 14px;
     color: var(--muted-foreground);
     text-align: right;
@@ -761,6 +771,48 @@
 
 .admin-calendar-grid .fc .fc-timegrid-col-events {
     margin: 0 4px;
+}
+
+/*
+ * A block's corners, the event radius over the library's own, and a day header's room. A booking
+ * awaiting approval is outlined solid in amber and one awaiting payment dashed in the theme
+ * colour, inside the block's edge, so neither state rests on the hue alone. The amber is the
+ * attention colour mixed half way to its ink: the attention colour itself is too pale a line on
+ * a light ground, and half way is as near to it as holds three to one, with a fifth to spare,
+ * on a block's fill, the card and the stripes of either hatch in every theme; in dark, where the
+ * ink is the paler of the two, it holds more. The one rule colours the block's outline and, by
+ * the class a chip and the legend's sample carry, theirs. A block wearing either outline keeps it
+ * under the keyboard's focus and adds a ring in the theme colour outside it, past a gap of the
+ * card's colour, since the outline is the property a focus ring would otherwise take.
+ */
+.admin-calendar-grid .fc .fc-timegrid-event {
+    @apply rounded-event;
+}
+
+.admin-calendar-grid .fc .fc-col-header-cell-cushion {
+    padding: 8px 4px;
+}
+
+.admin-calendar-grid .fc .admin-calendar-block--awaiting_approval {
+    outline: 2px solid;
+    outline-offset: -1px;
+}
+
+.admin-calendar-grid .fc .admin-calendar-block--awaiting_approval,
+.admin-calendar-outline--awaiting_approval {
+    outline-color: color-mix(in oklab, var(--attention) 50%, var(--attention-ink));
+}
+
+.admin-calendar-grid .fc .admin-calendar-block--awaiting_payment {
+    outline: 2px dashed var(--primary);
+    outline-offset: -1px;
+}
+
+.admin-calendar-grid .fc .admin-calendar-block--awaiting_approval:focus-visible,
+.admin-calendar-grid .fc .admin-calendar-block--awaiting_payment:focus-visible {
+    box-shadow:
+        0 0 0 2px var(--card),
+        0 0 0 4px var(--primary);
 }
 
 /*
@@ -784,8 +836,8 @@
 }
 
 /*
- * The now line, 2px in the destructive token, and at the axis a pill showing the time in place of
- * the library's arrow.
+ * The now line, 2px in its own red, and at the axis a pill showing the time in place of the
+ * library's arrow.
  */
 .admin-calendar-grid .fc .fc-timegrid-now-indicator-line {
     border-top-width: 2px;
@@ -809,6 +861,17 @@
  */
 .admin-calendar-columns .fc .fc-non-business {
     background: var(--admin-calendar-hatch);
+}
+
+/*
+ * A block brought into view in Day's columns, as the keyboard's focus brings it, stops the heads'
+ * 100px and eight more under the row's top, clear of the heads pinned there with room for its
+ * focus ring. The margin applies where the row scrolls, from the desktop breakpoint.
+ */
+.admin-calendar-columns .fc .admin-calendar-block {
+    @variant desktop {
+        scroll-margin-top: 108px;
+    }
 }
 
 .admin-calendar-columns .fc .fc-bg-event.admin-calendar-closure {

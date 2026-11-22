@@ -60,15 +60,15 @@ function DayHead({ date, today, marked, clock, onDay }: { date: string; today: s
             title={words.text(TO_DAY)}
             aria-current={date === today ? 'date' : undefined}
             className={cn(
-                'admin-calendar-week__day flex min-w-0 cursor-pointer flex-col items-center gap-0.5 border-b border-l px-1 py-1.5 text-xs outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset',
+                'admin-calendar-week__day flex min-w-0 cursor-pointer flex-col items-center gap-0.5 border-b border-l px-1 py-2.5 text-xs outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset',
                 marked && 'admin-calendar-week__day--marked bg-accent',
             )}
             onClick={() => onDay(date)}
         >
-            <span aria-hidden="true" className="font-medium text-muted-foreground">
+            <span aria-hidden="true" className="font-semibold text-muted-foreground">
                 {weekdayName(isoWeekday(date), 'short', words.language)}
             </span>
-            <span aria-hidden="true" className={cn('inline-flex size-6 items-center justify-center rounded-full font-medium tabular-nums', date === today && 'admin-calendar-week__today bg-primary text-primary-foreground')}>
+            <span aria-hidden="true" className={cn('inline-flex size-6 items-center justify-center rounded-full font-medium tabular-nums', date === today && 'admin-calendar-week__today bg-spark text-spark-foreground')}>
                 {Number(date.slice(8, 10))}
             </span>
             <span className="sr-only">{dayTitleOf(date, clock, words)}</span>
@@ -81,7 +81,7 @@ function RowHead({ row, colouring, marked }: { row: WeekRow; colouring: Colourin
     const name = row.member === null ? words.text(OTHER_BOOKINGS) : row.member.name;
 
     return (
-        <div data-row={row.key} className={cn('admin-calendar-week__person flex min-w-0 items-center gap-2 border-b px-2 py-2 text-sm font-medium', row.member === null && 'text-muted-foreground', marked && 'admin-calendar-week__person--marked bg-accent')}>
+        <div data-row={row.key} className={cn('admin-calendar-week__person flex min-w-0 items-center gap-2.5 border-b py-2.5 pr-2 pl-4 text-sm font-semibold', row.member === null && 'text-muted-foreground', marked && 'admin-calendar-week__person--marked bg-accent')}>
             {row.member !== null && <Initials name={row.member.name} hue={colourOf(row.member.id, colouring.palette, colouring.own)} size="row" />}
             <span className="truncate" title={name}>
                 {name}
@@ -154,7 +154,7 @@ export function StaffWeek({ days, rows, today, colouring, clock, onOpen, onBook,
     const [hover, setHover] = useState<Hover>(null);
 
     return (
-        <div className="admin-calendar-week grid grid-cols-[minmax(8rem,11rem)_repeat(7,minmax(0,1fr))] bg-card">
+        <div className="admin-calendar-week grid grid-cols-[minmax(8rem,13.75rem)_repeat(7,minmax(0,1fr))] bg-card">
             <div className="border-b" aria-hidden="true" />
             {days.map((date) => (
                 <DayHead key={date} date={date} today={today} marked={hover?.day === date} clock={clock} onDay={onDay} />
