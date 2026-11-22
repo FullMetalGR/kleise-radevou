@@ -41,8 +41,11 @@ import type { BillingStrings, EmailsStrings, LanguageChoice, PaymentsStrings, Se
  * while the staff feature is absent; Payments, on every plan, the tenant's payment provider,
  * generated from the registry; Emails one checkbox per message of the catalog, reading the off
  * list the other way round, each tagged with who it goes to, and a message the server holds on
- * checked and disabled with the sentence saying why. After the form, and outside it since nothing
- * in it is saved, Danger zone, the seventh section on every plan: Export everything and Close this
+ * checked and disabled with the sentence saying why. Each message is laid as the check field lays
+ * its own, the box in a column beside the label so a long label wraps beside it and never under
+ * it, the sentence under the label; it is written by hand on the box's look because its label
+ * carries the audience and its sentence is pointed at by id. After the form, and outside it
+ * since nothing in it is saved, Danger zone, the seventh section on every plan: Export everything and Close this
  * account, DangerZone, for a viewer holding manageSettings, the close's day and way back from the
  * page's close prop, its words the billing section's.
  *
@@ -432,22 +435,22 @@ function Editor({ seed, initial, settings, urls, links, limits, countries, langu
             <Section id="emails" title={words.text('sections.emails')}>
                 <ul className="admin-settings-emails grid gap-x-6 gap-y-3 @xl:col-span-2 @xl:grid-cols-2">
                     {settings.messages.map((message) => (
-                        <li key={message.key} className="admin-settings-email flex flex-wrap items-center gap-x-2 gap-y-1" data-audience={message.audience}>
+                        <li key={message.key} className="admin-settings-email grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5" data-audience={message.audience}>
                             <input
                                 type="checkbox"
                                 id={`settings-email-${message.key}`}
-                                className={`admin-settings-email__tick ${CHECK_BOX}`}
+                                className={`admin-settings-email__tick mt-px ${CHECK_BOX}`}
                                 checked={message.locked || isOn(form.emails_off, message.key)}
                                 disabled={message.locked}
                                 aria-describedby={message.locked ? `settings-email-${message.key}-locked` : undefined}
                                 onChange={(event) => set('emails_off')(switched(form.emails_off, message.key, event.target.checked))}
                             />
-                            <label htmlFor={`settings-email-${message.key}`} className="admin-settings-email__label text-sm font-medium">
+                            <label htmlFor={`settings-email-${message.key}`} className="admin-settings-email__label min-w-0 text-body font-semibold">
                                 {message.label}
-                                <span className="admin-settings-email__audience ml-2 text-xs font-normal text-muted-foreground">{emails.text(audienceTag(message))}</span>
+                                <span className="admin-settings-email__audience ml-2 text-xs font-normal whitespace-nowrap text-muted-foreground">{emails.text(audienceTag(message))}</span>
                             </label>
                             {message.locked ? (
-                                <HelpLine id={`settings-email-${message.key}-locked`} className="admin-settings-email__locked w-full">
+                                <HelpLine id={`settings-email-${message.key}-locked`} className="admin-settings-email__locked col-start-2">
                                     {emails.text(LOCKED_SENTENCE)}
                                 </HelpLine>
                             ) : null}

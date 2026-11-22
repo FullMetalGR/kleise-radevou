@@ -1421,6 +1421,30 @@ describe('Emails', () => {
         press(document.querySelector('.admin-settings-save'));
         expect(lastVisit(inertia.put)[1].emails_off).toEqual(['mystery_key', 'approved', 'reminder']);
     });
+
+    it('lays each choice as the check field lays its own, the box in a column of its own beside the label, which wraps in its column and never under the box, the audience inside the label and never broken across lines, the locked line under the label, and no opacity class on a locked box', () => {
+        render(propsWith({ messages: LOCKED_MESSAGES }));
+        const rows = Array.from(document.querySelectorAll('.admin-settings-emails > .admin-settings-email'));
+
+        expect(rows).toHaveLength(17);
+
+        for (const row of rows) {
+            expect([...row.classList]).toEqual(expect.arrayContaining(['grid', 'grid-cols-[auto_minmax(0,1fr)]', 'items-start', 'gap-x-3']));
+            expect([...row.classList].filter((name) => /^flex/.test(name))).toEqual([]);
+            expect(row.children[0]?.matches('input.admin-settings-email__tick[type="checkbox"]')).toBe(true);
+            expect(row.children[1]?.matches('label.admin-settings-email__label')).toBe(true);
+            expect([...(row.children[1]?.classList ?? [])]).toEqual(expect.arrayContaining(['text-body', 'font-semibold', 'min-w-0']));
+            expect([...(row.children[0]?.classList ?? [])]).toEqual(expect.arrayContaining(['mt-px']));
+            // The audience is one phrase: it moves to the next line whole, with the label's last word.
+            expect([...(row.children[1]?.querySelector(':scope > span.admin-settings-email__audience')?.classList ?? [])]).toEqual(expect.arrayContaining(['whitespace-nowrap']));
+        }
+
+        const locked = document.querySelector('.admin-settings-email__locked');
+        expect(locked?.parentElement?.children[2]).toBe(locked);
+        expect([...(locked?.classList ?? [])]).toEqual(expect.arrayContaining(['col-start-2']));
+        expect([...(document.querySelector('#settings-email-approved')?.classList ?? [])].filter((name) => /opacity/.test(name))).toEqual([]);
+        expect([...(document.querySelector('.admin-settings-emails')?.classList ?? [])].filter((name) => /grid-cols-/.test(name))).toEqual(['@xl:grid-cols-2']);
+    });
 });
 
 describe('Opening hours', () => {
@@ -1828,6 +1852,84 @@ describe('Payments with nothing connected', () => {
         fail(visit, { status: 403, data: { code: 'subscription_required', message: 'subscription_required', data: { status: 403, state: 'canceled', detail: GATE } } });
         expect(text('.admin-payments__refusal')).toBe(GATE);
         expect(value('#payments-tillpoint-merchant_code')).toBe('M-0042');
+    });
+});
+
+/** The inner card's look: the smaller radius inside a line ring, its own room, on a section element. */
+function isInnerCard(element: Element | null | undefined): boolean {
+    return element?.tagName === 'SECTION' && ['rounded-inner', 'ring-[1.5px]', 'ring-border', 'p-4'].every((look) => element.classList.contains(look));
+}
+
+/** The classes of any box inside the payments section drawn by hand, a border or a radius of its own, the kit's notices aside. */
+function handDrawn(): string[] {
+    return Array.from(document.querySelectorAll('.admin-payments, .admin-payments *'))
+        .filter((element) => element.closest('.admin-notice') === null)
+        .flatMap((element) => [...element.classList].filter((name) => /^rounded-(?:sm|md|lg|xl)$|^border$/.test(name)));
+}
+
+describe('Payments cards', () => {
+    it('draws each provider of the list as an inner card inside its list item, named by its own third-level heading, and the credential form as an inner card of its own inside it', () => {
+        render(propsWith());
+        const items = Array.from(document.querySelectorAll('ul.admin-payments-providers > li.admin-payments-provider[data-provider]'));
+
+        expect(items.map((item) => item.getAttribute('data-provider'))).toEqual(['cardhouse', 'tillpoint']);
+        expect(items.map((item) => item.children.length === 1 && isInnerCard(item.firstElementChild))).toEqual([true, true]);
+        expect(items.map((item) => item.querySelector(':scope > section > h3.admin-payments-provider__name')?.textContent)).toEqual(['Cardhouse', 'Tillpoint']);
+        expect(document.querySelectorAll('.admin-payments h2')).toHaveLength(0);
+        expect(handDrawn()).toEqual([]);
+
+        press(document.querySelector('.admin-payments-provider[data-provider="tillpoint"] .admin-payments-own'));
+        const form = document.querySelector('.admin-payments-provider[data-provider="tillpoint"] .admin-payments-credentials');
+
+        expect(isInnerCard(form)).toBe(true);
+        expect(form?.getAttribute('role')).toBe('group');
+        expect(form?.getAttribute('aria-labelledby')).toBe('payments-tillpoint-credentials');
+        expect(handDrawn()).toEqual([]);
+
+        // A secret field stays masked as the browser draws a password, and is never filled from a store.
+        const secrets = Array.from(document.querySelectorAll<HTMLInputElement>('.admin-payments-credentials input[type="password"]'));
+        expect(secrets.map((input) => [input.id, input.getAttribute('autocomplete'), input.value])).toEqual([
+            ['payments-tillpoint-api_token', 'new-password', ''],
+            ['payments-tillpoint-signing_phrase', 'new-password', ''],
+        ]);
+    });
+
+    it('draws a connection as one inner card holding its name, its state as a notice with its icon and its words in every state, its masks and its webhook address, which breaks anywhere to stay inside the card', () => {
+        const states = { active: 'success', restricted: 'warning', pending: 'info', disabled: 'info' } as const;
+
+        for (const [state, kind] of Object.entries(states)) {
+            render(propsWith({ payments: connected({ state: state as keyof typeof states }) }));
+            const card = document.querySelector('.admin-payments-connection');
+            const notice = card?.querySelector('.admin-payments-state');
+
+            expect(isInnerCard(card)).toBe(true);
+            expect(card?.getAttribute('data-state')).toBe(state);
+            expect(card?.querySelector('h3.admin-payments-connection__name')?.textContent).toBe('Tillpoint');
+            expect(notice?.classList.contains('admin-notice')).toBe(true);
+            expect(notice?.classList.contains(`admin-notice--${kind}`)).toBe(true);
+            expect(notice?.querySelector('.admin-notice__icon svg')).not.toBeNull();
+            expect(notice?.querySelector('.admin-payments-state__sentence')?.textContent).toBe(payments.text(`states.${state}` as PaymentsKey, { provider: 'Tillpoint' }));
+            expect(handDrawn()).toEqual([]);
+        }
+
+        render(propsWith({ payments: connected() }));
+        const card = document.querySelector('.admin-payments-connection');
+        const address = card?.querySelector('code.admin-payments-webhook__url');
+
+        expect(card?.querySelectorAll('.admin-payments-secret__mask')).toHaveLength(2);
+        expect(card?.querySelectorAll('input')).toHaveLength(0);
+        expect(address?.textContent).toBe(WEBHOOK);
+        expect([...(address?.classList ?? [])]).toEqual(expect.arrayContaining(['block', 'min-w-0', 'break-all']));
+        expect(document.querySelectorAll('.admin-payments h2')).toHaveLength(0);
+
+        // Copy keeps its words as its name, and nothing names it over them.
+        const copy = card?.querySelector('button.admin-payments-copy');
+        expect(copy?.textContent).toBe(payments.text('webhook.copy'));
+        expect(copy?.hasAttribute('aria-label')).toBe(false);
+        expect(copy?.hasAttribute('aria-labelledby')).toBe(false);
+
+        press(document.querySelector('.admin-payments-replace'));
+        expect(isInnerCard(card?.querySelector('.admin-payments-credentials'))).toBe(true);
     });
 });
 
@@ -2328,6 +2430,25 @@ describe('Danger zone', () => {
         expect(saved).toEqual([]);
         expect(created).not.toHaveBeenCalled();
         expect(document.querySelector('.admin-settings-export')?.getAttribute('aria-busy')).toBeNull();
+    });
+});
+
+describe('Danger zone layout', () => {
+    it('is the page\'s last card, one column at every width, each sentence a help line over its button at full size, closing the account set off under the export by a rule', () => {
+        render(propsWith());
+        const cards = Array.from(document.querySelectorAll('.admin-settings-page .admin-section'));
+        const zone = document.querySelector('.admin-settings-danger');
+        const body = zone?.children[1];
+
+        expect(cards.at(-1)).toBe(zone);
+        expect([...(body?.classList ?? [])].filter((name) => /grid-cols-/.test(name))).toEqual([]);
+        expect(document.querySelector('.admin-settings-danger__what')?.classList.contains('admin-field__help')).toBe(true);
+        expect(document.querySelector('.admin-settings-close__what')?.classList.contains('admin-field__help')).toBe(true);
+        expect([...(document.querySelector('.admin-settings-close')?.classList ?? [])]).toEqual(expect.arrayContaining(['border-t', 'pt-4']));
+        expect(Array.from(zone?.querySelectorAll('button') ?? []).map((button) => [button.className.includes('h-11'), button.className.includes('admin-button--small')])).toEqual([
+            [true, false],
+            [true, false],
+        ]);
     });
 });
 

@@ -8,6 +8,7 @@ use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Look;
 
 /*
  * Closing the account in a real browser: luna's owner, subscribed at the fake provider on the
@@ -81,4 +82,40 @@ it('closes the account from the Danger zone through its dialog, lands on Billing
         ->assertNoJavaScriptErrors();
 
     expect(DB::table('tenant_luna.settings')->value('theme'))->toBe('violet');
+});
+
+it('opens the close prompt from the Danger zone, the page\'s last card, inside the window in Greek at 1440px and on a phone, and leaves it closed on Keep, and on Escape on the phone, the keyboard back on the button that opened it and nothing sent', function () {
+    $last = "(() => { const cards = document.querySelectorAll('.admin-settings-page .admin-section'); return cards[cards.length - 1].classList.contains('admin-settings-danger'); })()";
+    $inside = "document.fonts.ready.then(() => { const box = document.querySelector('.admin-close-prompt').getBoundingClientRect(); return box.left >= 0 && box.right <= document.documentElement.clientWidth + 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1; })";
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1440, 900);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/settings.booking_page.snippet', [], SiteLanguage::Greek))
+        ->assertScript($last, true)
+        ->click('.admin-settings-close__button')
+        ->waitForText(adminLine('admin/billing.danger.close.title', [], SiteLanguage::Greek))
+        ->assertScript($inside, true);
+    Look::shot($page, 'settings-close-prompt-1440-el');
+    $page->click('.admin-close-prompt__keep')
+        ->assertCount('.admin-close-prompt', 0)
+        ->assertScript(Admin::focusIsOn('.admin-settings-close__button'), true);
+
+    $page->resize(390, 844)
+        ->click('.admin-settings-close__button')
+        ->waitForText(adminLine('admin/billing.danger.close.title', [], SiteLanguage::Greek))
+        ->assertScript($inside, true);
+    Look::shot($page, 'settings-close-prompt-390-el');
+    $page->click('.admin-close-prompt__keep')
+        ->assertCount('.admin-close-prompt', 0)
+        ->assertScript(Admin::focusIsOn('.admin-settings-close__button'), true)
+        ->click('.admin-settings-close__button')
+        ->waitForText(adminLine('admin/billing.danger.close.title', [], SiteLanguage::Greek))
+        ->keys('.admin-close-prompt__keep', 'Escape')
+        ->assertCount('.admin-close-prompt', 0)
+        ->assertScript(Admin::focusIsOn('.admin-settings-close__button'), true)
+        ->assertNoJavaScriptErrors();
+
+    expect(DB::table('tenants')->where('slug', 'luna')->value('status'))->not->toBe('closing')
+        ->and(array_filter(billingFake()->asked, fn (array $question): bool => $question[0] === 'cancel'))->toBe([]);
 });

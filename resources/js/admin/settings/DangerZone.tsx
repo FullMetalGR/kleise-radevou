@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Confirm } from '@/components/ui/confirm';
+import { HelpLine } from '@/components/ui/field';
 import { Section } from '@/components/ui/section';
 import { useDownload } from '@/lib/download';
 import { useShell } from '@/lib/strings';
@@ -127,21 +128,21 @@ export function DangerZone({ close, zone, closable }: Props) {
     return (
         <Section id="danger" title={words.text('danger.title')} wide danger className="admin-settings-danger">
             <div className="flex flex-col gap-3">
-                <p className="admin-settings-danger__what text-sm text-muted-foreground">{words.text(EXPORT_WHAT)}</p>
+                <HelpLine className="admin-settings-danger__what">{words.text(EXPORT_WHAT)}</HelpLine>
                 <Button className="admin-settings-export self-start" busy={download.busy} busyLabel={words.text('danger.export.busy')} onClick={() => download.start(EXPORT_PATH)}>
                     {words.text(EXPORT_EVERYTHING)}
                 </Button>
                 {(closable || close.notice !== null) && (
-                    <div className="admin-settings-close flex flex-col gap-3 border-t pt-3">
+                    <div className="admin-settings-close flex flex-col gap-3 border-t pt-4">
                         {close.notice === null ? (
                             <>
-                                <p className="admin-settings-close__what text-sm text-muted-foreground">{words.choice(CLOSE_WHAT, close.window.count, days)}</p>
+                                <HelpLine className="admin-settings-close__what">{words.choice(CLOSE_WHAT, close.window.count, days)}</HelpLine>
                                 <Button destructive className="admin-settings-close__button self-start" onClick={() => setOpen(true)}>
                                     {words.text(CLOSE_ACCOUNT)}
                                 </Button>
                             </>
                         ) : (
-                            <p className="admin-settings-close__closing text-sm">{close.notice}</p>
+                            <p className="admin-settings-close__closing text-body-sm">{close.notice}</p>
                         )}
                     </div>
                 )}

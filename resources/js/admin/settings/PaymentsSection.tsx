@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { type KeyboardEvent, type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Field, HelpLine, useFocusFirstFailing } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
@@ -190,7 +191,11 @@ type ListProps = {
     form: (provider: PaymentProvider) => ReactNode;
 };
 
-/** Nothing connected: the degrade line, then each provider with its modes and what each costs, before any is chosen. */
+/**
+ * Nothing connected: the degrade line, then each provider with its modes and what each costs,
+ * before any is chosen. Each provider is an inner card inside its list item, so the list stays a
+ * list, and the card is a section that adds no landmark, being named by nothing.
+ */
 function ProviderList({ providers, held, open, onOpen, platform, onPlatform, form }: ListProps) {
     const words = usePayments();
 
@@ -201,14 +206,16 @@ function ProviderList({ providers, held, open, onOpen, platform, onPlatform, for
             </Notice>
             <ul className="admin-payments-providers flex flex-col gap-3">
                 {providers.map((provider) => (
-                    <li key={provider.slug} className="admin-payments-provider flex flex-col gap-2 rounded-lg border p-3" data-provider={provider.slug}>
-                        <h3 className="admin-payments-provider__name font-medium">{provider.name}</h3>
-                        <ul className="flex flex-col gap-2">
-                            {provider.modes.map((mode) => (
-                                <ModeRow key={mode.mode} mode={mode} provider={provider} disabled={held || open === provider.slug} onOwn={() => onOpen(provider.slug)} platform={platform(provider)} onPlatform={() => onPlatform(provider)} />
-                            ))}
-                        </ul>
-                        {form(provider)}
+                    <li key={provider.slug} className="admin-payments-provider min-w-0" data-provider={provider.slug}>
+                        <Card variant="inner" className="flex min-w-0 flex-col gap-3">
+                            <h3 className="admin-payments-provider__name text-body font-semibold">{provider.name}</h3>
+                            <ul className="flex flex-col gap-3">
+                                {provider.modes.map((mode) => (
+                                    <ModeRow key={mode.mode} mode={mode} provider={provider} disabled={held || open === provider.slug} onOwn={() => onOpen(provider.slug)} platform={platform(provider)} onPlatform={() => onPlatform(provider)} />
+                                ))}
+                            </ul>
+                            {form(provider)}
+                        </Card>
                     </li>
                 ))}
             </ul>
@@ -272,13 +279,14 @@ type FormProps = {
  * secret field is a password input that starts empty and never holds a stored value. A save is
  * the whole set: the form's own checks refuse a missing or overlong field in the server's words,
  * marking the fields and moving focus to the first failing one, and send nothing. The form marks
- * fields from its own checks alone; a refusal from the server reads as the section's notice.
+ * fields from its own checks alone; a refusal from the server reads as the section's notice. It
+ * is an inner card inside the provider's, a group named by its title.
  */
 function CredentialForm({ provider, replacing, control, onSave, onCancel }: FormProps) {
     const [values, setValues] = useState<Record<string, string>>({});
     const [attempted, setAttempted] = useState(false);
     const [refusals, setRefusals] = useState(0);
-    const container = useFocusFirstFailing<HTMLDivElement>(refusals);
+    const container = useFocusFirstFailing<HTMLElement>(refusals);
     const words = usePayments();
     const problems = credentialProblems(provider.fields, values, words);
     const heading = `payments-${provider.slug}-credentials`;
@@ -306,8 +314,8 @@ function CredentialForm({ provider, replacing, control, onSave, onCancel }: Form
     };
 
     return (
-        <div ref={container} role="group" aria-labelledby={heading} className="admin-payments-credentials flex flex-col gap-3 rounded-lg border p-3">
-            <p id={heading} className="admin-payments-credentials__title font-medium">
+        <Card ref={container} variant="inner" role="group" aria-labelledby={heading} className="admin-payments-credentials flex min-w-0 flex-col gap-3">
+            <p id={heading} className="admin-payments-credentials__title text-body font-semibold">
                 {words.text(replacing ? 'credentials.replace_title' : 'credentials.title', { provider: provider.name })}
             </p>
             {replacing && <HelpLine className="admin-payments-credentials__replace">{words.text(REPLACE_SENTENCE)}</HelpLine>}
@@ -335,7 +343,7 @@ function CredentialForm({ provider, replacing, control, onSave, onCancel }: Form
                     {words.text('buttons.cancel')}
                 </Button>
             </div>
-        </div>
+        </Card>
     );
 }
 
@@ -364,7 +372,7 @@ type ConnectionProps = {
  * one offers to resume it, and the fee in force stands under the mode. An active platform row
  * whose provider still lists information it needs says so in one line in place of quoting the
  * list, linking the provider's page through the same onboarding wherever this build still
- * registers the provider.
+ * registers the provider. The connection is one inner card, Replace's form an inner card inside it.
  */
 function ConnectionView({ connection, provider, clock, control, visit, open, onOpen, form, refusal, onboarding }: ConnectionProps) {
     const own = connection.mode === 'own';
@@ -372,9 +380,9 @@ function ConnectionView({ connection, provider, clock, control, visit, open, onO
     const post = (action: PaymentAction, path: string) => () => visit(action, nothing, (options) => router.post(path, {}, options));
 
     return (
-        <div className="admin-payments-connection flex flex-col gap-3" data-state={connection.state}>
+        <Card variant="inner" className="admin-payments-connection flex min-w-0 flex-col gap-3" data-state={connection.state}>
             <div>
-                <h3 className="admin-payments-connection__name font-medium">{connection.name}</h3>
+                <h3 className="admin-payments-connection__name text-body font-semibold">{connection.name}</h3>
                 <HelpLine className="admin-payments-connection__mode">{modeLine(connection.mode, words)}</HelpLine>
                 {connection.fee !== null && <FeeInForce cost={feeInForceOf(connection.fee, connection.name, words)} rateUrl={provider?.rate_url} />}
             </div>
@@ -384,7 +392,7 @@ function ConnectionView({ connection, provider, clock, control, visit, open, onO
             {own && connection.webhook_url !== null && <WebhookUrl url={connection.webhook_url} name={connection.name} control={control('rotate')} visit={visit} refusal={refusal} />}
             <ConnectionControls connection={connection} provider={provider} control={control} visit={visit} post={post} open={open} onOpen={onOpen} refusal={refusal} onboarding={onboarding} />
             {provider !== undefined && form(provider)}
-        </div>
+        </Card>
     );
 }
 
@@ -593,7 +601,7 @@ function WebhookUrl({ url, name, control, visit, refusal }: WebhookProps) {
     return (
         <div className="admin-payments-webhook flex flex-col gap-1">
             <p className="text-sm font-medium">{words.text('webhook.title')}</p>
-            <code className="admin-payments-webhook__url break-all rounded bg-muted px-2 py-1 text-sm">
+            <code className="admin-payments-webhook__url block min-w-0 rounded-field bg-muted px-3 py-2 text-sm break-all">
                 {url}
             </code>
             <HelpLine className="admin-payments-webhook__help">{words.text('webhook.help', { provider: name })}</HelpLine>

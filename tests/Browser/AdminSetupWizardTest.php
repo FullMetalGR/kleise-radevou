@@ -306,3 +306,87 @@ it('comes back from the provider\'s hosted onboarding onto the Online payments s
         ->toBe([['provider' => FakePaymentAdapter::SLUG, 'mode' => 'platform', 'state' => 'pending']])
         ->and(wizardFacts()['setup_payments_skipped_at'])->toBeFalse();
 });
+
+/**
+ * Monday's first window on the Opening hours step as it stands: whether the day's name stands
+ * beside the window, the row on one line; whether Start, End and Remove keep one level, the two
+ * fields' tops and feet the same and Remove's foot on theirs; whether Remove stands beside the
+ * two fields, starting above the End field's foot and past its right edge; whether the day's name
+ * and Add window end on the fields' foot, which only a row on one line can; whether each time is
+ * shown whole, on one line inside its field's padding; whether a refusal's sentence runs under
+ * the fields from the window's left edge to its right, inside the window; whether it takes one
+ * line where the row is one line and no more than two where it stacks; whether Start points at it
+ * and is marked; and whether the page scrolls sideways.
+ */
+const WIZARD_FIRST_WINDOW = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const day = document.querySelector('.admin-weekly__day[data-weekday="1"]');
+        const line = day.querySelector('.admin-weekly__window');
+        const [from, to] = [line.querySelector('.admin-weekly__start'), line.querySelector('.admin-weekly__end')];
+        const [name, add, frame, start, end, remove] = [day.querySelector('h3'), day.querySelector('.admin-weekly__add'), line, from, to, line.querySelector('.admin-weekly__remove')].map((part) => part.getBoundingClientRect());
+        const sentence = line.querySelector('.admin-field__error');
+        const told = sentence === null ? null : sentence.getBoundingClientRect();
+        const near = (one, other) => Math.abs(one - other) <= 1;
+        const whole = (time) => {
+            const text = document.createRange();
+            text.selectNodeContents(time);
+            const [drawn, look] = [text.getBoundingClientRect(), getComputedStyle(time)];
+            return text.getClientRects().length === 1 && drawn.width <= time.clientWidth - parseFloat(look.paddingLeft) - parseFloat(look.paddingRight) + 0.5;
+        };
+        const oneLine = name.right <= frame.left + 1 && name.top < frame.bottom;
+        resolve({
+            oneLine,
+            level: near(start.top, end.top) && near(start.bottom, end.bottom) && near(remove.bottom, end.bottom),
+            removeBeside: remove.top < end.bottom && remove.left >= end.right - 1,
+            nameAndAddOnFoot: oneLine && near(name.bottom, start.bottom) && near(add.bottom, start.bottom),
+            timesWhole: [from, to].every(whole),
+            sentenceAcross: told !== null && told.top >= start.bottom && near(told.left, frame.left) && near(told.right, frame.right) && told.bottom <= frame.bottom + 1,
+            sentenceBrief: told !== null && Math.round(told.height / parseFloat(getComputedStyle(sentence).lineHeight)) <= (oneLine ? 1 : 2),
+            startPointsAtIt: sentence !== null && from.getAttribute('aria-describedby') === sentence.id && from.getAttribute('aria-invalid') === 'true',
+            pageScrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        });
+    }))))
+    JS;
+
+it('keeps a refused window on one level on the Opening hours step in Greek, at 1440px, at 1024px and on a phone: Start, End and Remove together, the day\'s name and Add window on the fields\' foot where the row is one line, the sentence on a line of its own across the window with Start pointing at it, and on the phone Remove beside its two fields with no time cut', function () {
+    $monday = '.admin-weekly__day[data-weekday="1"]';
+    // The owner reads the admin in Greek, and the page says so of itself.
+    DB::table('users')->where('email', Admin::owner(WIZARD_SLUG))->update(['locale' => 'el']);
+
+    $page = Admin::signIn($this, WIZARD_SLUG, Admin::owner(WIZARD_SLUG), WIZARD_PASSWORD)->assertPathIs('/admin')->resize(1440, 900);
+    $page->assertVisible('.admin-setup__step[data-step="profile"][aria-current="step"]')
+        ->assertScript('document.documentElement.lang', 'el')
+        ->click('.admin-setup__step[data-step="hours"]')
+        ->assertVisible('.admin-setup__step[data-step="hours"][aria-current="step"]')
+        ->assertCount($monday.' .admin-weekly__window', 1);
+
+    // Nothing is refused yet: the row as a phone stacks it.
+    $rows = [];
+    $page->resize(390, 844);
+    $rows['on a phone, nothing refused'] = $page->script(WIZARD_FIRST_WINDOW);
+
+    // End set before Start: the save is refused, and the sentence lands under that window.
+    $page->resize(1440, 900)
+        ->click($monday.' .admin-weekly__end')
+        ->click('.admin-time-field__option[data-value="08:00"]')
+        ->assertAttribute($monday.' .admin-weekly__end', 'value', '08:00')
+        ->click('.admin-setup__primary')
+        ->assertVisible($monday.' .admin-weekly__window .admin-field__error');
+
+    foreach ([1440, 1024, 390] as $width) {
+        $page->resize($width, 844);
+        $rows['refused, at '.$width.'px'] = $page->script(WIZARD_FIRST_WINDOW);
+    }
+
+    $level = ['level' => true, 'removeBeside' => true, 'timesWhole' => true, 'pageScrolls' => false];
+    $told = [...$level, 'sentenceAcross' => true, 'sentenceBrief' => true, 'startPointsAtIt' => true];
+
+    expect($rows)->toEqual([
+        'on a phone, nothing refused' => [...$level, 'oneLine' => false, 'nameAndAddOnFoot' => false, 'sentenceAcross' => false, 'sentenceBrief' => false, 'startPointsAtIt' => false],
+        'refused, at 1440px' => [...$told, 'oneLine' => true, 'nameAndAddOnFoot' => true],
+        'refused, at 1024px' => [...$told, 'oneLine' => true, 'nameAndAddOnFoot' => true],
+        'refused, at 390px' => [...$told, 'oneLine' => false, 'nameAndAddOnFoot' => false],
+    ]);
+
+    $page->assertNoJavaScriptErrors();
+});

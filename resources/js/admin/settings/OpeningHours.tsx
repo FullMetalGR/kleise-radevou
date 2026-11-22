@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { HelpLine } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { ISO_WEEKDAYS, weekdayName } from '@/lib/names';
@@ -81,17 +82,17 @@ export function OpeningHours({ branch, week, roster, clock, granularity, saving,
     }
 
     return (
-        <div className="admin-settings-hours flex flex-col gap-3 @xl:col-span-2">
-            <p className="text-sm text-muted-foreground">{words.text('hours.intro')}</p>
+        <div className="admin-settings-hours flex flex-col gap-4 @xl:col-span-2">
+            <HelpLine className="admin-settings-hours__intro">{words.text('hours.intro')}</HelpLine>
             <WeeklyEditor rules={rules} onChange={setRules} clock={clock} granularity={granularity} idPrefix="opening" />
             <div className="flex items-center gap-3">
                 <Button variant="primary" className="admin-settings-hours-save" disabled={wait !== null} busy={saving} busyLabel={words.text('hours.saving')} onClick={() => onSave(rules)}>
                     {words.text('hours.save')}
                 </Button>
                 {wait !== null && (
-                    <p className="admin-settings-hours__wait text-sm text-muted-foreground" role="status">
+                    <HelpLine className="admin-settings-hours__wait" role="status">
                         {wait}
-                    </p>
+                    </HelpLine>
                 )}
             </div>
         </div>

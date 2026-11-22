@@ -4,10 +4,13 @@ use App\Http\Controllers\Admin\PaymentsController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Requests\PaymentCredentialsRequest;
 use App\Infrastructure\Payment\PaymentRoutes;
+use App\Site\SiteLanguage;
 use App\Tenancy\TenantUrls;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
 use Tests\Browser\Support\Admin;
+use Tests\Browser\Support\Look;
+use Tests\Browser\Support\PhoneScripts;
 use Tests\Support\FakePaymentAdapter;
 
 /*
@@ -39,6 +42,44 @@ function paymentsWalkLine(string $key, array $values = []): string
 
 /** Whether any input inside the Payments section holds a value. */
 const PAYMENTS_WALK_FILLED = "[...document.querySelectorAll('.admin-section--payments input')].some((input) => input.value !== '')";
+
+/**
+ * Every payment card on the page against the Payments card around it: how many are drawn, how
+ * many scroll sideways inside themselves, reach past the Payments card's edges or hold a part
+ * that reaches past their own, and whether the page scrolls sideways.
+ */
+const PAYMENTS_CARDS_INSIDE = <<<'JS'
+    document.fonts.ready.then(() => {
+        const section = document.querySelector('.admin-section--payments').getBoundingClientRect();
+        const cards = [...document.querySelectorAll('.admin-payments-provider > section, .admin-payments-credentials, .admin-payments-connection')];
+        const past = (box, edges) => box.left < edges.left - 1 || box.right > edges.right + 1;
+        return {
+            drawn: cards.length,
+            sideways: cards.filter((card) => card.scrollWidth > card.clientWidth + 1).length,
+            outside: cards.filter((card) => past(card.getBoundingClientRect(), section)).length,
+            spill: cards.filter((card) => [...card.querySelectorAll('*')].some((part) => part.getClientRects().length > 0 && past(part.getBoundingClientRect(), card.getBoundingClientRect()))).length,
+            page: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        };
+    })
+    JS;
+
+/**
+ * The webhook address against its connection card: whether it stays inside the card with nothing
+ * of it scrolled out of sight, and how many lines it is broken across.
+ */
+const PAYMENTS_WEBHOOK_WRAPS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const card = document.querySelector('.admin-payments-connection').getBoundingClientRect();
+        const address = document.querySelector('.admin-payments-webhook__url');
+        const box = address.getBoundingClientRect();
+        const style = getComputedStyle(address);
+        const text = box.height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+        return {
+            inside: box.left >= card.left - 1 && box.right <= card.right + 1 && address.scrollWidth <= address.clientWidth + 1,
+            lines: Math.round(text / parseFloat(style.lineHeight)),
+        };
+    })
+    JS;
 
 beforeEach(function () {
     dropDemoSchemas();
@@ -170,4 +211,59 @@ it('connects the fake provider in own mode, keeps Enter off the settings save, r
     expect(DB::table('tenant_luna.payment_connections')->count())->toBe(0)
         ->and(DB::table('payment_routes')->count())->toBe(0)
         ->and((array) settingsOf('luna')->first())->toBe($before);
+});
+
+it('keeps every payment card inside the Payments card on a phone in Greek and at 1440px, none scrolling sideways, with nothing connected, the credentials open, connected and restricted, and breaks a long webhook address across lines inside its card', function () {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+    $held = ['sideways' => 0, 'outside' => 0, 'spill' => 0, 'page' => false];
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/payments.degrade', [], SiteLanguage::Greek))
+        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390);
+    $none = $page->script(PAYMENTS_CARDS_INSIDE);
+    assert(is_array($none) && is_int($none['drawn']));
+    expect($none)->toMatchArray($held)
+        ->and($none['drawn'])->toBeGreaterThanOrEqual(2);
+    Look::shot($page, 'settings-payments-none-390-el');
+
+    $page->click(PAYMENTS_WALK_PAYDESK.' .admin-payments-own')
+        ->assertVisible('#payments-paydesk-api_token')
+        ->assertAttribute('#payments-paydesk-api_token', 'type', 'password');
+    expect($page->script(PAYMENTS_CARDS_INSIDE))->toBe(['drawn' => $none['drawn'] + 1, ...$held]);
+    Look::shot($page, 'settings-payments-credentials-390-el');
+
+    // Connected in own mode under a token far longer than a phone's line, so the address can only
+    // stay inside its card by breaking.
+    connectPaymentFake();
+    DB::table('tenant_luna.payment_connections')->update(['webhook_token' => str_repeat('k7Qm2xWv', 8)]);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/payments.states.active', ['provider' => 'Paydesk'], SiteLanguage::Greek));
+    expect($page->script(PAYMENTS_CARDS_INSIDE))->toBe(['drawn' => 1, ...$held]);
+    $wrapped = $page->script(PAYMENTS_WEBHOOK_WRAPS);
+    assert(is_array($wrapped));
+    expect($wrapped['inside'])->toBeTrue()
+        ->and($wrapped['lines'])->toBeGreaterThanOrEqual(2);
+    Look::shot($page, 'settings-payments-connected-390-el');
+
+    $page->resize(1440, 900);
+    expect($page->script(PAYMENTS_CARDS_INSIDE))->toBe(['drawn' => 1, ...$held]);
+    $rewrapped = $page->script(PAYMENTS_WEBHOOK_WRAPS);
+    assert(is_array($rewrapped));
+    expect($rewrapped['inside'])->toBeTrue();
+    Look::shot($page, 'settings-payments-connected-1440');
+
+    // Restricted, the provider's reason quoted verbatim inside the state's notice.
+    DB::table('tenant_luna.payment_connections')->update(['state' => 'restricted', 'requirements' => json_encode(['reason' => 'The provider holds payouts until the business address is confirmed.'], JSON_THROW_ON_ERROR)]);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/payments.states.restricted', ['provider' => 'Paydesk'], SiteLanguage::Greek))
+        ->assertPresent('.admin-payments-state.admin-notice--warning .admin-notice__icon svg');
+    expect($page->script(PAYMENTS_CARDS_INSIDE))->toBe(['drawn' => 1, ...$held]);
+    Look::shot($page, 'settings-payments-restricted-1440');
+
+    $page->resize(390, 844);
+    expect($page->script(PAYMENTS_CARDS_INSIDE))->toBe(['drawn' => 1, ...$held])
+        ->and($page->script(PAYMENTS_WEBHOOK_WRAPS))->toMatchArray(['inside' => true]);
+    Look::shot($page, 'settings-payments-restricted-390-el');
+    $page->assertNoJavaScriptErrors();
 });

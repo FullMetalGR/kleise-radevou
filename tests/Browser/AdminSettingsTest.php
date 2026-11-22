@@ -206,6 +206,86 @@ const LOGO_LOADED = <<<'JS'
     })
     JS;
 
+/**
+ * A day of the weekly editor as it stands: the editor's width; whether the day's name, its first
+ * window and Add window stand side by side on one line, or stack, the name over the windows and
+ * Add window under the last; whether every part of the day stays inside the Opening hours card;
+ * the width the one line needs, the name's column, the first window's parts on their own line
+ * and Add window, with the gaps between them; the widths of the day's time fields, narrowest and
+ * widest; whether every window's Remove stands beside its two fields, starting above the End
+ * field's foot and past its right edge; and whether every time is shown whole, on one line inside
+ * its field's padding.
+ */
+const WEEKLY_DAY = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const day = document.querySelector('.admin-weekly__day[data-weekday="%d"]');
+        const card = document.querySelector('.admin-section--opening-hours').getBoundingClientRect();
+        const times = [...day.querySelectorAll('.admin-weekly__start, .admin-weekly__end')];
+        const whole = (time) => {
+            const text = document.createRange();
+            text.selectNodeContents(time);
+            const [drawn, look] = [text.getBoundingClientRect(), getComputedStyle(time)];
+            return text.getClientRects().length === 1 && drawn.width <= time.clientWidth - parseFloat(look.paddingLeft) - parseFloat(look.paddingRight) + 0.5;
+        };
+        const beside = (line) => {
+            const [end, remove] = [line.querySelector('.admin-weekly__end'), line.querySelector('.admin-weekly__remove')].map((part) => part.getBoundingClientRect());
+            return remove.top < end.bottom && remove.left >= end.right - 1;
+        };
+        const name = day.querySelector('h3').getBoundingClientRect();
+        const windows = [...day.querySelectorAll('.admin-weekly__window')].map((line) => line.getBoundingClientRect());
+        const parts = [...day.querySelector('.admin-weekly__window').children].map((part) => part.getBoundingClientRect());
+        const add = day.querySelector('.admin-weekly__add').getBoundingClientRect();
+        const first = windows[0];
+        const gap = parseFloat(getComputedStyle(day).columnGap);
+        const line = parts.reduce((sum, part) => sum + part.width, 0) + parseFloat(getComputedStyle(day.querySelector('.admin-weekly__window')).columnGap) * (parts.length - 1);
+        resolve({
+            editor: Math.round(day.parentElement.getBoundingClientRect().width),
+            windows: windows.length,
+            oneLine: name.right <= first.left + 1 && parts.at(-1).right <= add.left + 1 && add.top < first.bottom && add.bottom > first.top && name.top < first.bottom,
+            stacked: name.bottom <= first.top + 1 && add.top >= windows.at(-1).bottom - 1,
+            inside: [...day.querySelectorAll('*')].every((part) => { const box = part.getBoundingClientRect(); return box.width === 0 || (box.left >= card.left - 1 && box.right <= card.right + 1); }),
+            needs: Math.ceil(16 * 8 + gap * 2 + line + add.width),
+            narrowest: Math.round(Math.min(...times.map((time) => time.getBoundingClientRect().width))),
+            widest: Math.round(Math.max(...times.map((time) => time.getBoundingClientRect().width))),
+            removeBeside: [...day.querySelectorAll('.admin-weekly__window')].every(beside),
+            timesWhole: times.every(whole),
+            pageScrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        });
+    }))))
+    JS;
+
+/**
+ * The email choices' audiences as they stand: how many rows there are, how many audiences are
+ * broken across lines, how many leave their label's column or push it wider than it is, and the
+ * widest audience beside the narrowest column, with whether the one fits the other.
+ */
+const EMAIL_AUDIENCES = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const rows = [...document.querySelectorAll('.admin-settings-email')].map((row) => {
+            const label = row.querySelector('.admin-settings-email__label');
+            const column = label.getBoundingClientRect();
+            const pieces = [...label.querySelector('.admin-settings-email__audience').getClientRects()];
+            return {
+                column: column.width,
+                pieces: pieces.length,
+                width: pieces.reduce((sum, piece) => sum + piece.width, 0),
+                outside: label.scrollWidth > label.clientWidth || pieces.some((piece) => piece.left < column.left - 1 || piece.right > column.right + 1),
+            };
+        });
+        const widest = Math.ceil(Math.max(...rows.map((row) => row.width)));
+        const column = Math.floor(Math.min(...rows.map((row) => row.column)));
+        resolve({
+            rows: rows.length,
+            broken: rows.filter((row) => row.pieces !== 1).length,
+            outside: rows.filter((row) => row.outside).length,
+            widest,
+            column,
+            fits: widest <= column,
+            pageScrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        });
+    }))))
+    JS;
+
 beforeAll(fn () => ForeignSite::start());
 afterAll(fn () => ForeignSite::stop());
 
@@ -617,5 +697,40 @@ it('shows a stored cover on a phone as wide as its row with its file\'s name who
     expect($row)->toMatchArray(['lines' => 1, 'under' => true, 'nameInRow' => true, 'pageScrolls' => false])
         ->and($row['image'] ?? null)->toBe($row['row'] ?? null);
 
+    $page->assertNoJavaScriptErrors();
+});
+
+it('holds a day of two windows in Greek on one line in Opening hours at 1440px, the editor wider than the line needs, and stacks it on a phone inside its card with Remove beside each window\'s two fields and no time cut, each email choice\'s audience in one piece inside its column, the page never sideways', function () {
+    DB::table('tenants')->where('slug', 'luna')->update(['entitlements' => '{}']);
+    DB::table('tenant_luna.staff')->whereIn('name', ['Elena Papadaki', 'Nikos Georgiou'])->update(['status' => 'inactive']);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1440, 900);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/settings.hours.intro', [], SiteLanguage::Greek))
+        ->click('.admin-weekly__day[data-weekday="1"] .admin-weekly__add')
+        ->assertCount('.admin-weekly__day[data-weekday="1"] .admin-weekly__window', 2)
+        ->assertVisible('.admin-weekly__day:last-child .admin-weekly__closed');
+
+    // The one line the row is laid on from a 48rem editor has to fit inside 48rem in Greek.
+    $wide = $page->script(sprintf(WEEKLY_DAY, 1));
+    assert(is_array($wide));
+    // On that line a time field is 8rem wide.
+    expect($wide)->toMatchArray(['windows' => 2, 'oneLine' => true, 'stacked' => false, 'inside' => true, 'narrowest' => 128, 'widest' => 128, 'removeBeside' => true, 'timesWhole' => true, 'pageScrolls' => false])
+        ->and($wide['needs'])->toBeLessThanOrEqual(768)
+        ->and($wide['editor'])->toBeGreaterThanOrEqual(768);
+    Look::shot($page, 'settings-hours-1440-el');
+
+    // On a phone the fields give way, so Remove stays on its own window's line, and no time is cut.
+    $page->resize(390, 844);
+    $narrow = $page->script(sprintf(WEEKLY_DAY, 1));
+    assert(is_array($narrow));
+    expect($narrow)->toMatchArray(['windows' => 2, 'oneLine' => false, 'stacked' => true, 'inside' => true, 'removeBeside' => true, 'timesWhole' => true, 'pageScrolls' => false])
+        ->and($narrow['widest'] ?? null)->toBeLessThanOrEqual(128);
+    Look::shot($page, 'settings-hours-390-el');
+
+    // The same phone, the email choices: no audience is broken across lines or leaves its column.
+    $audiences = $page->script(EMAIL_AUDIENCES);
+    expect($audiences)->toMatchArray(['rows' => 17, 'broken' => 0, 'outside' => 0, 'fits' => true, 'pageScrolls' => false]);
     $page->assertNoJavaScriptErrors();
 });
