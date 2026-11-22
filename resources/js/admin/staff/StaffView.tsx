@@ -22,8 +22,9 @@ import { useStaff } from './words';
  * link button stays beside the title: copying configures nothing. The page is a size container and
  * its sections sit on a grid that asks it, not the window, how wide it is: where it is at least
  * 56rem wide, Basics and the closures run across both columns and the services sit beside the
- * weekly pattern; narrower, every section is a row of its own. Every word is a key of the staff
- * section, read through the screen's words.
+ * weekly pattern; narrower, every section is a row of its own. Each value sits just under its
+ * label, however much taller a pair beside it runs, and a long word in any value breaks inside its
+ * box. Every word is a key of the staff section, read through the screen's words.
  */
 
 /** A section that runs across both columns of the wide page. */
@@ -61,15 +62,15 @@ export function StaffView({ member, services, users, clock, notice, listHref, on
 
             <div className="grid gap-4 @4xl:grid-cols-2">
                 <Section id="basics" title={words.text('form.basics')} className={ACROSS}>
-                    <dl className="grid gap-1 text-sm">
+                    <dl className="grid content-start gap-1 text-sm">
                         <dt className="text-muted-foreground">{words.text('view.email')}</dt>
                         <dd className="admin-staff-view__email wrap-anywhere">{member.email ?? none}</dd>
                     </dl>
-                    <dl className="grid gap-1 text-sm">
+                    <dl className="grid content-start gap-1 text-sm">
                         <dt className="text-muted-foreground">{words.text('view.user')}</dt>
                         <dd className="admin-staff-view__user wrap-anywhere">{user === undefined ? none : userLabel(user, words)}</dd>
                     </dl>
-                    <dl className="grid gap-1 text-sm">
+                    <dl className="grid content-start gap-1 text-sm">
                         <dt className="text-muted-foreground">{words.text('view.online')}</dt>
                         <dd className="admin-staff-view__online">{words.text(member.online ? 'view.yes' : 'view.no')}</dd>
                     </dl>
@@ -125,15 +126,15 @@ function Presentation({ member }: { member: StaffMember }) {
 
     return (
         <>
-            <dl className="grid gap-1 text-sm">
+            <dl className="grid content-start gap-1 text-sm">
                 <dt className="text-muted-foreground">{words.text('view.title')}</dt>
                 <dd className="admin-staff-view__title wrap-anywhere">{member.title ?? none}</dd>
             </dl>
-            <dl className="grid gap-1 text-sm @xl:col-span-2">
+            <dl className="grid content-start gap-1 text-sm @xl:col-span-2">
                 <dt className="text-muted-foreground">{words.text('view.bio')}</dt>
-                <dd className="admin-staff-view__bio whitespace-pre-line">{member.bio ?? none}</dd>
+                <dd className="admin-staff-view__bio whitespace-pre-line wrap-anywhere">{member.bio ?? none}</dd>
             </dl>
-            <dl className="grid gap-1 text-sm @xl:col-span-2">
+            <dl className="grid content-start gap-1 text-sm @xl:col-span-2">
                 <dt className="text-muted-foreground">{words.text('view.photo')}</dt>
                 <dd className="admin-staff-view__photo flex items-center gap-3">
                     {member.photo === null ? (

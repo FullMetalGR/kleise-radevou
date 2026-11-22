@@ -20,7 +20,7 @@ use Illuminate\Notifications\Notifiable;
  *
  * The locale is the language the user chose for the admin and their mails, null where they chose
  * none and read as the tenant default. It is not fillable: nothing writes it at a user's creation,
- * and the top bar's language control writes it for the signed-in user alone.
+ * and the shell's language control writes it for the signed-in user alone.
  *
  * @property int $id
  * @property int $tenant_id

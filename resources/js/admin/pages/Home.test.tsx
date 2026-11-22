@@ -1129,6 +1129,23 @@ describe('Home\'s To mark', () => {
         expect(view.host.querySelector('.admin-home-to-mark__count')?.classList.contains('tabular-nums')).toBe(true);
     });
 
+    it('shows the house outline when the card itself takes the keyboard\'s focus, and no ring of its own', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        const looks = [...(toMarkCard()?.classList ?? [])];
+
+        expect(looks).toContain('focus-ring');
+        expect(looks.filter((name) => name.startsWith('focus-visible:') || name.startsWith('outline-'))).toEqual([]);
+    });
+
+    it('scrolls its list with room kept at the top and the foot for the outline of a control brought into view', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        expect([...(view.host.querySelector('.admin-home-to-mark__list')?.classList ?? [])]).toEqual(expect.arrayContaining(['max-h-[420px]', 'overflow-y-auto', 'scroll-py-2']));
+    });
+
     it('shows the count beside the title with its whole sentence as the accessible text, and names each checkbox for its booking', () => {
         inertia.props = propsWith({ to_mark: toMark() });
         renderHome();
@@ -1483,5 +1500,13 @@ describe('Home\'s To mark', () => {
         expect(classesOf(rowPart('t1', 'no-show'))).toContain('max-desktop:flex-1');
         expect(classesOf(view.host.querySelector('.admin-home-to-mark__bulk'))).toEqual(expect.arrayContaining(['max-desktop:flex-col', 'max-desktop:items-stretch']));
         ['mark-completed', 'mark-no-show', 'mark-rest'].forEach((name) => expect(classesOf(view.host.querySelector(`.admin-home-to-mark__${name}`))).toEqual(expect.arrayContaining(['max-desktop:w-full', 'max-desktop:h-auto', 'max-desktop:min-h-11', 'max-desktop:max-w-full', 'max-desktop:whitespace-normal'])));
+    });
+
+    it('lets a row\'s two marks drop one under the other below the breakpoint where its line cannot hold both, so neither runs past the list that cuts it', () => {
+        inertia.props = propsWith({ to_mark: toMark() });
+        renderHome();
+
+        const marks = view.host.querySelector('.admin-home-to-mark__row[data-booking="t1"] .admin-home-to-mark__marks');
+        expect([...(marks?.classList ?? [])].filter((utility) => utility.includes('wrap'))).toEqual(['max-desktop:flex-wrap']);
     });
 });

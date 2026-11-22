@@ -15,9 +15,9 @@ use Inertia\Response as InertiaResponse;
 /**
  * The Audit screen, GET /audit under operator: the platform audit log newest first, fifty a page,
  * inside the console's shell. Each row carries the instant spelled on the console's clock, the
- * top bar naming the zone once for the screen, the operator's name, the action as its vocabulary
- * value, which the page words, the tenant's slug or null, and the payload's facts in the key
- * list's order.
+ * shell naming the zone once for the screen, the operator's name, the action as its vocabulary
+ * value, which the page words, the tenant's slug or null, and the payload's facts in the key list's
+ * order.
  *
  * ?tenant={slug} narrows the list to the tenant that slug names, and the filter hands back the
  * slug as the row holds it; a malformed slug, or one no tenant holds, reads as unset, the whole

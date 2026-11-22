@@ -15,9 +15,8 @@ import type { ConsoleProps } from '@/types';
  * closed and then newest activity first, the order the server reads them in, twenty-five a page by
  * the admin's pagination, inside the console's shell. Each row is the subject, a link to the
  * thread, the business by name, a link to its page on this console, the newest message's instant
- * as the server spelled it on the console's clock, which the top bar names once for the screen,
- * and the status in words, marked Awaiting reply while the ticket is open and the business wrote
- * last.
+ * as the server spelled it on the console's clock, which the shell names once for the screen, and
+ * the status in words, marked Awaiting reply while the ticket is open and the business wrote last.
  *
  * The page lives in the query string, which the server reads, and nowhere else: a page is a
  * partial reload of the list, and nothing is optimistic, the rows on screen being the server's
@@ -36,7 +35,7 @@ export type TicketSummary = {
     status: TicketStatus;
     /** Open, with the business having written last. */
     awaiting: boolean;
-    /** The newest message's instant, spelled by the server on the console's clock, which the top bar names. */
+    /** The newest message's instant, spelled by the server on the console's clock, which the shell names. */
     last_message: string;
 };
 

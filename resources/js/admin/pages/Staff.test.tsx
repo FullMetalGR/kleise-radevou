@@ -429,6 +429,10 @@ describe('the list screen', () => {
 
         // The screen's root is a query container, so its table's head can read the card's width.
         expect(document.querySelector('.admin-staff-screen')?.classList.contains('@container')).toBe(true);
+        // The card's heading takes the first cell's sides, so heading and grid start on one line.
+        const firstCell = [...(document.querySelector('.admin-staff th')?.classList ?? [])].find((name) => name.startsWith('first:pl-'));
+        expect(firstCell).toBeDefined();
+        expect(document.querySelector('.admin-staff > header')?.classList.contains(`px-${firstCell?.slice('first:pl-'.length)}`)).toBe(true);
     });
 
     it('draws each name after the member\'s initials ringed in their calendar colour as a link to their page, the Title column, and the hours figure linking to Shifts', () => {
@@ -637,6 +641,15 @@ describe('the list screen', () => {
 });
 
 describe('the detail page', () => {
+    it('spaces a waiting state under its page header as the loaded form is spaced', () => {
+        render(propsWith({ kind: 'detail', id: 99 }));
+
+        const screen = document.querySelector('.admin-staff-detail');
+
+        expect(screen?.firstElementChild?.classList.contains('admin-page-header')).toBe(true);
+        expect([...(screen?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'flex-col', 'gap-4']));
+    });
+
     it('renders Basics, Services performed with the inactive service marked and tickable, the pattern\'s read-only line linking to Shifts and no weekly editor, and Exceptions and Danger zone on a persisted row alone', () => {
         render(propsWith({ kind: 'detail', id: 2 }));
 

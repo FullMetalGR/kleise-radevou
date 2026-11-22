@@ -77,7 +77,7 @@ export function BookingsTable({ rows, total, page, pageSize, staffShown, plainNa
 
     return (
         <Card flush className="admin-card admin-bookings @container" aria-labelledby="bookings-head">
-            <header className={cn('flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b px-6 pt-5 pb-3.5', BLOCK.inset)}>
+            <header className={cn('flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b px-6.5 pt-5 pb-3.5', BLOCK.inset)}>
                 <h2 id="bookings-head" className="text-section-title font-semibold">
                     {words.text('table.title')}
                 </h2>

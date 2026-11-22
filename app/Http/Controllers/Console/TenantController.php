@@ -30,12 +30,12 @@ use Symfony\Component\HttpFoundation\Response;
  * inside the console's shell, its route named under console.tenants so the rail lights Tenants.
  * The facts are sent as the page shows them in sections, the account, the plan and the
  * subscription, the people and the activity, each vocabulary value as itself for the page to word
- * and every instant spelled on the console's clock, which the top bar names once for the screen.
+ * and every instant spelled on the console's clock, which the shell names once for the screen.
  * closing_at carries beside it the instant the retention window ends, thirty days on in elapsed
- * time, read from ClosingWindow::endOf, the window's one home, and the day it ends on the
- * console's clock, ClosingWindow::dayOf's, which a closing row's sentence names as the day it is
- * deleted on. The names the catalogue gives floor and staff, Solo and Team from
- * config/billing.php, ride beside the facts for the page to word those two plans by.
+ * time, read from ClosingWindow::endOf, the window's one home, and the day it ends on the console's
+ * clock, ClosingWindow::dayOf's, which a closing row's sentence names as the day it is deleted on.
+ * The names the catalogue gives floor and staff, Solo and Team from config/billing.php, ride beside
+ * the facts for the page to word those two plans by.
  *
  * The links go out to the hosted page and the admin's sign-in on the tenant's own origin, and to
  * the Audit screen narrowed to the tenant. The page offers Close and Reopen, from the status and

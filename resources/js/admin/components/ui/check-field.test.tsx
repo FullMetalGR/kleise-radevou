@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHECK_BOX, CheckField } from './check-field';
 import { mount, press, type Mounted } from './harness';
@@ -63,6 +65,34 @@ describe('the check field', () => {
         expect(view.host.querySelectorAll('p')).toHaveLength(0);
         expect(box()?.hasAttribute('aria-describedby')).toBe(false);
         expect(view.host.querySelector('label')?.getAttribute('for')).toBe('inactive');
+    });
+
+    it('draws a locked, ticked box itself in the theme colour at full strength, the browser\'s own disabled paint being too faint to read as ticked', () => {
+        const locked = CHECK_BOX.split(' ').filter((name) => name.startsWith('disabled:checked:'));
+
+        expect(locked).toEqual(
+            expect.arrayContaining([
+                'disabled:checked:appearance-none',
+                'disabled:checked:bg-primary',
+                'disabled:checked:before:bg-primary-foreground',
+                'disabled:checked:before:size-3',
+            ]),
+        );
+        expect(CHECK_BOX.split(' ')).toContain('disabled:cursor-not-allowed');
+        // A box the person can still change keeps the browser's own paint in the theme colour.
+        expect(CHECK_BOX.split(' ').filter((name) => /^(checked:|enabled:)/.test(name))).toEqual([]);
+    });
+
+    it('hands a locked, ticked box back to the browser in forced colours, its drawn tick hidden, where a fill of its own would be repainted as the page', () => {
+        expect(CHECK_BOX.split(' ').filter((name) => name.startsWith('forced-colors:'))).toEqual(['forced-colors:disabled:checked:appearance-auto', 'forced-colors:disabled:checked:before:hidden']);
+    });
+
+    it('lets the native box follow the mode: the stylesheet declares a light scheme on the root and a dark one under the dark mode', () => {
+        const sheet = readFileSync(resolve(process.cwd(), 'resources/js/admin/app.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+        const first = (selector: string) => new RegExp(`(?:^|\\n)${selector} \\{([^{}]*)\\}`).exec(sheet)?.[1] ?? '';
+
+        expect(first(':root')).toMatch(/(^|;)\s*color-scheme: light;/);
+        expect(first('\\.dark')).toMatch(/(^|;)\s*color-scheme: dark;/);
     });
 
     it('hands the new state to its owner', () => {

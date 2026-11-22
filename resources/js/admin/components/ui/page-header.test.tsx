@@ -73,7 +73,7 @@ describe('the page header', () => {
         expect(row?.lastElementChild).toBe(end);
         expect(end?.lastElementChild).toBe(actions);
         expect(actions?.querySelector('button')?.textContent).toBe('action-token');
-        expect(classesOf(end)).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'ms-auto', 'min-w-0']));
+        expect(classesOf(end)).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'min-w-0']));
         expect(classesOf(actions)).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'min-w-0']));
 
         view.render(<PageHeader key="bare" title="title-token" />);
@@ -97,13 +97,38 @@ describe('the page header', () => {
         expect(q('.admin-page-header__lead')).toBeNull();
     });
 
-    it('sets the breadcrumb above the row', () => {
+    it('pushes the buttons to the far end by the room the part before them gives up, so buttons that wrap under the title start at the row\'s start and wrap from there', () => {
+        view.render(<PageHeader title="title-token" status={<span className="probe-status">status-token</span>} actions={<button type="button">action-token</button>} />);
+
+        const row = q('.admin-page-header__row');
+        // The hook's underscores are escaped, as a selector inside a utility needs them.
+        const before = String.raw`[&>:has(+.admin-page-header\_\_end)]`;
+
+        expect(classesOf(row)).toContain(`${before}:me-auto`);
+        expect(q('.admin-page-header__end')?.previousElementSibling).toBe(q('.probe-status'));
+        expect(classesOf(q('.admin-page-header__end')).filter((name) => name.startsWith('ms-') || name.startsWith('mx-') || name.startsWith('m-') || name.startsWith('justify-'))).toEqual([]);
+    });
+
+    it('sets the breadcrumb above the row, in a holder that lays it out as the header did and gives it the same room above as the row has', () => {
         view.render(<PageHeader title="title-token" breadcrumb={<nav className="probe-crumb">crumb-token</nav>} />);
 
         const root = q('header.admin-page-header');
+        const holder = q('.admin-page-header__crumb');
+        const row = q('.admin-page-header__row');
+        const room = classesOf(row).filter((name) => name.startsWith('pt-'));
 
-        expect(root?.firstElementChild).toBe(q('.probe-crumb'));
-        expect(q('.probe-crumb')?.nextElementSibling).toBe(q('.admin-page-header__row'));
+        expect(root?.firstElementChild).toBe(holder);
+        expect(holder?.children).toHaveLength(1);
+        expect(holder?.firstElementChild).toBe(q('.probe-crumb'));
+        expect(holder?.nextElementSibling).toBe(row);
+        expect(room).toHaveLength(1);
+        expect(classesOf(holder)).toEqual(['admin-page-header__crumb', 'flex', 'flex-col', ...room]);
+        expect(classesOf(root)).toEqual(expect.arrayContaining(['flex', 'flex-col']));
+
+        view.render(<PageHeader key="bare" title="title-token" />);
+
+        expect(q('.admin-page-header__crumb')).toBeNull();
+        expect(q('header.admin-page-header')?.firstElementChild).toBe(q('.admin-page-header__row'));
     });
 
     it('keeps the hook class of the screen that places it', () => {

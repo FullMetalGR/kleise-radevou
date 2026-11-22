@@ -20,7 +20,7 @@ pest()->use(RefreshDatabase::class);
 /*
  * The tenant list: GET / under operator lists every tenant row newest signup first, twenty-five a
  * page, each with its slug, name, status, plan, subscription state and the signup instant in the
- * console's zone, the zone itself named once by the top bar from the shared prop. The plan is
+ * console's zone, the zone itself named once by the page header from the shared prop. The plan is
  * derived by TenantPlan and never stored, and the plan filter narrows in SQL to exactly the rows
  * the derivation names. search matches the slug and the name by substring, its wildcards literal;
  * status, state and plan each take one of their words; from and to are two dates over the signup

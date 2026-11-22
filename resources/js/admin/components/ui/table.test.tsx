@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mount, type Mounted } from './harness';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from './table';
@@ -10,10 +11,11 @@ import { Table, TableBody, TableHead, TableRow, Td, Th } from './table';
  * shows its column name on the left and its value on the right, a long value breaking inside its
  * line. A table of a name and a figure or two turns to rows below the wide breakpoint alone, never
  * by its box. A table whose grid needs a wider box turns to rows below the wide breakpoint and
- * whenever its box is narrower than 1024px. A scroll table stays a grid at every width and scrolls
- * sideways where it does not fit. A table whose screen writes its own row layout sits in no box at
- * all, so its head can stay at the top of the window as the page scrolls. The grid breaks no word,
- * whatever the table.
+ * whenever its box is narrower than 1024px. A table whose screen writes its own row layout sits in
+ * no box at all, so its head can stay at the top of the window as the page scrolls. Those are the
+ * four modes; none keeps its grid at every width by scrolling it. The grid breaks no word, whatever
+ * the table, so a grid that still does not fit scrolls sideways in its box as a last resort, and
+ * its first and last cells keep the card's own 26px inset.
  */
 
 let view: Mounted;
@@ -24,7 +26,9 @@ beforeEach(() => {
 
 afterEach(() => view.unmount());
 
-function sample(compact?: 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'scroll' | 'own'): void {
+type Compact = ComponentProps<typeof Table>['compact'];
+
+function sample(compact?: Compact): void {
     view.render(
         <Table compact={compact} className="probe">
             <TableHead>
@@ -95,13 +99,11 @@ describe('the data table', () => {
         expect(classes(one('table'))).toEqual(expect.arrayContaining(BOTH('block')));
     });
 
-    it('a scroll table writes none', () => {
-        sample('scroll');
+    it('offers four modes, rows, rows below the wide breakpoint, rows in a box narrower than 1024px and the screen\'s own, and none that keeps its grid at every width by scrolling it sideways', () => {
+        // @ts-expect-error no mode keeps its grid at every width by scrolling it sideways in its box
+        const sideways = <Table compact="scroll">{null}</Table>;
 
-        const conditional = written().filter((name) => name.startsWith('max-wide:') || name.startsWith('@max-'));
-
-        expect(conditional).toEqual([]);
-        expect(one('.admin-table__label')).toBeNull();
+        expect(sideways.props.compact).toBe('scroll');
     });
 
     it('a table that turns to rows below the wide breakpoint alone writes every utility of that condition and none of its box', () => {
@@ -134,7 +136,7 @@ describe('the data table', () => {
         expect(one('tbody td .admin-table__label')?.textContent).toBe('Email');
         expect(one('tbody td .admin-table__value')?.textContent).toBe('row-email-token');
 
-        for (const other of ['rows', 'rows-below-wide', 'scroll'] as const) {
+        for (const other of ['rows', 'rows-below-wide', 'own'] as const) {
             sample(other);
 
             expect(written().filter((name) => name.startsWith('@max-5xl:'))).toEqual([]);
@@ -171,19 +173,39 @@ describe('the data table', () => {
         expect(one('tbody td .admin-table__value')?.textContent).toBe('row-email-token');
     });
 
-    it('leaves a cell with no label without one, so an actions cell starts at the left', () => {
-        view.render(
-            <Table>
-                <TableBody>
-                    <TableRow>
-                        <Td>actions-token</Td>
-                    </TableRow>
-                </TableBody>
-            </Table>,
-        );
+    it('leaves a cell with no label without one, and in the rows layout puts its value at the end of its line, where an actions cell sits in the grid', () => {
+        const actions = (compact?: Compact) =>
+            view.render(
+                <Table compact={compact}>
+                    <TableBody>
+                        <TableRow>
+                            <Td label="Name">name-token</Td>
+                            <Td className="text-right">actions-token</Td>
+                        </TableRow>
+                    </TableBody>
+                </Table>,
+            );
+        const ends = (selector: string) => classes(one(`${selector} .admin-table__value`)).filter((name) => name.endsWith('ml-auto'));
 
-        expect(one('td .admin-table__label')).toBeNull();
-        expect(one('td')?.textContent).toBe('actions-token');
+        actions();
+
+        expect(one('td:last-child .admin-table__label')).toBeNull();
+        expect(one('td:last-child')?.textContent).toBe('actions-token');
+        expect(ends('td:last-child')).toEqual(BOTH('ml-auto'));
+        expect(ends('td:first-child')).toEqual([]);
+
+        actions('rows-below-wide');
+
+        expect(ends('td:last-child')).toEqual(['max-wide:ml-auto']);
+
+        actions('rows-below-wider-box');
+
+        expect(ends('td:last-child')).toEqual(['max-wide:ml-auto', '@max-5xl:ml-auto']);
+
+        actions('own');
+
+        expect(one('td:last-child')?.textContent).toBe('actions-token');
+        expect(written().filter((name) => name.endsWith('ml-auto'))).toEqual([]);
     });
 
     it('the table sits in the sideways box', () => {
@@ -215,7 +237,7 @@ describe('the data table', () => {
         expect(one('tbody td')?.textContent).toBe('row-email-token');
         expect(classes(one('tbody tr'))).toContain('hover:bg-muted/70');
 
-        for (const other of ['rows', 'rows-below-wide', 'rows-below-wider-box', 'scroll'] as const) {
+        for (const other of ['rows', 'rows-below-wide', 'rows-below-wider-box'] as const) {
             sample(other);
 
             expect(all('[class*="sticky"]')).toEqual([]);
@@ -238,19 +260,20 @@ describe('the data table', () => {
 
         expect(new Set(breaks())).toEqual(new Set(['max-wide:wrap-anywhere']));
 
-        sample('scroll');
+        sample('own');
 
         expect(breaks()).toEqual([]);
     });
 
-    it('draws the soft head row, roomier cells and figures that line up', () => {
+    it('draws the soft head row, roomier cells and figures that line up, the first and last cells at the card\'s 26px inset', () => {
         sample('rows');
 
         expect(classes(one('table'))).toEqual(expect.arrayContaining(['text-body-sm', 'tabular-nums']));
         expect(classes(one('thead th'))).toEqual(
-            expect.arrayContaining(['bg-muted', 'text-small', 'font-bold', 'text-muted-foreground', 'whitespace-nowrap', 'first:pl-6', 'last:pr-6']),
+            expect.arrayContaining(['bg-muted', 'text-small', 'font-bold', 'text-muted-foreground', 'whitespace-nowrap', 'first:pl-6.5', 'last:pr-6.5']),
         );
-        expect(classes(one('tbody td'))).toEqual(expect.arrayContaining(['border-t', 'px-4', 'py-2.5', 'font-medium']));
+        expect(classes(one('tbody td'))).toEqual(expect.arrayContaining(['border-t', 'px-4', 'py-2.5', 'font-medium', 'first:pl-6.5', 'last:pr-6.5']));
+        expect(written().filter((name) => /^(?:first:pl|last:pr)-/.test(name) && !name.endsWith('-6.5'))).toEqual([]);
         expect(classes(one('tbody th'))).toEqual(expect.arrayContaining(['font-medium', 'text-left']));
     });
 
@@ -262,7 +285,7 @@ describe('the data table', () => {
     });
 
     it('lets a class its caller passes win over its own', () => {
-        sample('scroll');
+        sample('rows');
 
         expect(classes(one('thead th:last-child'))).toContain('text-right');
         expect(classes(one('thead th:last-child'))).not.toContain('text-left');

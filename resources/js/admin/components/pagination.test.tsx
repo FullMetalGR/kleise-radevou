@@ -46,7 +46,7 @@ describe('the pagination', () => {
         expect(page?.classList.contains('rounded-field')).toBe(true);
         expect(page?.classList.contains('rounded-full')).toBe(false);
         expect(footer?.classList.contains('border-t')).toBe(true);
-        expect(footer?.classList.contains('px-6')).toBe(true);
+        expect(footer?.classList.contains('px-6.5')).toBe(true);
         expect(footer?.classList.contains('py-3.5')).toBe(true);
     });
 

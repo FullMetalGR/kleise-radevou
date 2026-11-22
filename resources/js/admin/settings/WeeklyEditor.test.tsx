@@ -137,6 +137,8 @@ describe('the weekly editor', () => {
 
         expect(sentence?.textContent).toBe('refused-window');
         expect(sentence?.id).toBe('weekly-1-1-start-error');
+        // The sentence lands after a save with the focus elsewhere, so it is said at once.
+        expect(document.querySelectorAll('#weekly-1-1-start-error[role="alert"]')).toHaveLength(1);
 
         // The sentence is the window's last part, after Remove and inside neither field, so it
         // has the window's width and Start, End and Remove keep one level.

@@ -8,9 +8,9 @@ use Tests\Browser\Support\Console;
 /*
  * The tenant list in a real browser: an operator signs in through the console's door and lands on
  * the list, the console's home, where the two demo tenants the seeder provisioned through
- * tenant:provision list as Free, the console's zone named once in the top bar; a search narrows
- * the list to one, Clear lifts it, and the status narrows it again, to none for suspended and to
- * both for active, each answer the server's and each filter in the address bar.
+ * tenant:provision list as Free, the console's zone named once in the page header; a search
+ * narrows the list to one, Clear lifts it, and the status narrows it again, to none for suspended
+ * and to both for active, each answer the server's and each filter in the address bar.
  *
  * From the list an operator opens luna's detail: its name, its plan Free and its state active, the
  * counts the demo catalog and hours seeders leave, read from the seeded schema rather than spelled

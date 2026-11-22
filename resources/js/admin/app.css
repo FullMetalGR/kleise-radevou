@@ -72,9 +72,8 @@
  * The admin's type and shape scales, utilities its screens draw from. A text size carries its
  * line and, where the scale sets them, its tracking and weight, so text-page-title is the whole
  * title; a corner radius is named for what it rounds, rounded-tile to rounded-event; ease-soft
- * is the one easing; max-w-page is the widest a page's content runs. The class joiner knows
- * every name (lib/utils.ts), so a named size or radius is never read as a colour or kept beside
- * another of its kind.
+ * is the one easing. The class joiner knows every name (lib/utils.ts), so a named size or radius
+ * is never read as a colour or kept beside another of its kind.
  */
 @theme {
     --text-page-title: 2.5rem;
@@ -128,7 +127,6 @@
     --radius-field: 0.875rem;
     --radius-event: 0.75rem;
     --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
-    --container-page: 87.5rem;
     --container-shell-narrow: 92.5rem;
 }
 
@@ -166,6 +164,7 @@
  * The two selectors weigh the same, so dark comes second.
  */
 :root {
+    color-scheme: light;
     --radius: 0.625rem;
     --primary: oklch(0.205 0 0);
     --primary-foreground: oklch(0.985 0 0);
@@ -205,6 +204,7 @@
 }
 
 .dark {
+    color-scheme: dark;
     --primary: oklch(0.922 0 0);
     --primary-foreground: oklch(0.205 0 0);
     --ring: oklch(0.556 0 0);
@@ -563,9 +563,8 @@
     }
 
     /*
-     * The compact chip, a counted one's: a booking status's figure stands where its counted
-     * line places it, an unknown status's before the label; the label giving way first. Its type
-     * is the admin's least, 12px.
+     * The compact chip, the one Home's activity line sets after its words: tighter round its
+     * label, which gives way first where the line runs short. Its type is the admin's least, 12px.
      */
     .admin-chip--compact {
         @apply max-w-full gap-1 px-2 py-0 text-xs leading-4.5;
@@ -573,10 +572,6 @@
 
     .admin-chip--compact:has(> .admin-chip__icon) {
         @apply pl-1.5;
-    }
-
-    .admin-chip__count {
-        @apply font-semibold tabular-nums;
     }
 
     .admin-chip__label {
@@ -647,6 +642,17 @@
 
         .admin-day-calendar__today:not(.rdp-outside) .rdp-day_button {
             box-shadow: inset 0 0 0 1.5px var(--primary);
+        }
+
+        /*
+         * Today chosen: the fill would swallow a ring in the primary, so the ring is drawn in the
+         * fill's own ink, held 4px inside the circle's edge: inset shadows start inside the clear
+         * 2px border the day picker gives a chosen day, and 2px of the fill come first.
+         */
+        .rdp-selected.admin-day-calendar__today:not(.rdp-outside) .rdp-day_button {
+            box-shadow:
+                inset 0 0 0 2px var(--primary),
+                inset 0 0 0 3.5px var(--primary-foreground);
         }
     }
 }
@@ -817,7 +823,36 @@
     @apply rounded-event;
 }
 
+/*
+ * A block too short for its title under its padding: the padding above and below goes, the
+ * library's own above the body with it, and the body is centred in the block, so the title's line
+ * lies inside the block's box at every length, filling it at the least height, and the block
+ * after it never covers its letters. A pill on the line, the badge or the closure's marker, sets
+ * its words on a 12px line on the line's baseline, so with its border it is the line's own 14px
+ * and the line stays 14px rather than growing past the block.
+ */
+.admin-calendar-grid .fc .fc-timegrid-event.admin-calendar-block--short {
+    padding-block: 0;
+}
+
+.admin-calendar-grid .fc .admin-calendar-block--short .fc-event-main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 0;
+}
+
+.admin-calendar-grid .fc .admin-calendar-block--short :is(.admin-calendar-badge, .admin-calendar-inside) {
+    line-height: 12px;
+    vertical-align: baseline;
+}
+
+/*
+ * A day header fills its column's width, so the head inside it, a container, is measured against
+ * the column and turns to its short form where the column is narrower than the whole date.
+ */
 .admin-calendar-grid .fc .fc-col-header-cell-cushion {
+    display: block;
     padding: 8px 4px;
 }
 
@@ -854,6 +889,22 @@
     box-shadow:
         0 0 0 2px var(--card),
         0 0 0 4px var(--primary);
+}
+
+/*
+ * A focused block stands clear. The library lays a dimming layer of its own over a focused
+ * block, which goes, kept only on a block a finger's long press picked, where the dim marks the
+ * pick. And the keyboard's block rises over the blocks beside it, so its ring is drawn whole
+ * rather than under a neighbour's edge. The library writes each block's stacking on the element
+ * itself, which only a rule marked important outranks; the rise stays inside the column's own
+ * layer, so the sticky heads still pass over it.
+ */
+.admin-calendar-grid .fc .fc-event:focus:not(.fc-event-selected)::after {
+    content: none;
+}
+
+.admin-calendar-grid .fc .fc-timegrid-event-harness:has(> .fc-event:focus-visible) {
+    z-index: 999 !important;
 }
 
 /*
@@ -966,6 +1017,31 @@ body:has(.admin-help-panel) .admin-toaster {
     @variant desktop {
         right: min(400px + 2rem, 100% - 21rem);
     }
+}
+
+/*
+ * Room under a form's floating save bar for the control the keyboard reaches: the page scrolls a
+ * focused control up until it stands clear above the bar, never under it. The room is the bar's
+ * distance from the bottom of the screen and its height, with a little to spare: one row of the
+ * button; where a line says why Save is unavailable, that line beside the button on four lines,
+ * as the longest reason runs at the narrowest wide page; and below the wide breakpoint the bar
+ * along the foot of the screen too, with the line on as many as seven rows of its own above the
+ * button, a phone's narrowest width.
+ */
+html:has(.admin-save-bar) {
+    scroll-padding-bottom: 6rem;
+}
+
+html:has(.admin-save-bar__reason) {
+    scroll-padding-bottom: 8rem;
+}
+
+html:has(.admin-bottom-bar):has(.admin-save-bar) {
+    scroll-padding-bottom: calc(11rem + env(safe-area-inset-bottom));
+}
+
+html:has(.admin-bottom-bar):has(.admin-save-bar__reason) {
+    scroll-padding-bottom: calc(20.25rem + env(safe-area-inset-bottom));
 }
 
 /*

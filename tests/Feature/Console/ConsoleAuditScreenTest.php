@@ -20,8 +20,8 @@ pest()->use(RefreshDatabase::class);
  * The Audit screen: GET /audit under operator lists the platform audit log newest first, fifty a
  * page, each row with the operator's name and the tenant's slug joined in one query, the action as
  * its vocabulary value for the page to word, the payload's facts in the key list's order, and the
- * instant spelled on the console's clock, the zone left to the top bar, which names it once from
- * the shared prop. ?tenant={slug} narrows the list to one tenant, a malformed or unknown slug
+ * instant spelled on the console's clock, the zone left to the page header, which names it once
+ * from the shared prop. ?tenant={slug} narrows the list to one tenant, a malformed or unknown slug
  * reading as unset, and ?page= picks the page, anything malformed reading as the first. The rail
  * the console's adapter shares carries Audit, current on this screen, after Tenants and Messages.
  */
@@ -103,7 +103,7 @@ it('lists the rows newest first, the operator\'s name and the tenant\'s slug joi
     ]);
 });
 
-it('spells each instant in the zone the configuration names, and shares that zone for the top bar', function () {
+it('spells each instant in the zone the configuration names, and shares that zone for the page header', function () {
     config(['console.timezone' => 'America/New_York']);
     $pat = addOperator();
     auditScreenRow($pat, PlatformAuditAction::SignIn, '2026-10-14 06:00:00');

@@ -237,11 +237,12 @@ export default function Services() {
     return (
         <ServicesProvider words={words}>
             <Head title={words.text(id === 'new' ? 'page.new' : 'page.detail_title')} />
-            <div className="admin-service-screen">
+            <div className="admin-service-screen flex flex-col gap-4">
                 <ListDetail
                     rows={props.services}
                     state={{ loading, error }}
                     id={id}
+                    title={words.text('page.detail_title')}
                     loadingLabel={words.text('page.loading')}
                     errorSentence={words.text(LIST_ERROR)}
                     notFoundSentence={words.text(NOT_FOUND)}

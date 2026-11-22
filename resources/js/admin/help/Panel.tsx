@@ -2,6 +2,7 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import { type KeyboardEvent, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
 import { Cross } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
+import { FORCED_EDGE } from '@/components/ui/input';
 import { Tab, TabList, TabPanel, Tabs } from '@/components/ui/tabs';
 import type { TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
@@ -262,7 +263,7 @@ export function Panel({ session, words, help, desktop, clock, bubble }: Props) {
                 aria-describedby={undefined}
                 className={cn(
                     'admin-help-panel z-40 flex flex-col bg-card text-card-foreground outline-none print:hidden',
-                    desktop ? 'fixed right-4 bottom-20 h-[min(600px,calc(100vh-6rem))] w-[400px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-tile-compact shadow-modal' : 'fixed inset-0',
+                    desktop ? `fixed right-4 bottom-20 h-[min(600px,calc(100vh-6rem))] w-[400px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-tile-compact shadow-modal ${FORCED_EDGE}` : 'fixed inset-0',
                 )}
                 onOpenAutoFocus={focusFirst}
                 onCloseAutoFocus={focusAfter}

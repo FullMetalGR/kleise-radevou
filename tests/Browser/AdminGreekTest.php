@@ -24,31 +24,31 @@ use Tests\Support\RecordingPlatformMessages;
 use Tests\Support\WeeklyHours;
 
 /*
- * The admin in Greek in a real browser (a walk by keys): with luna's owner at el, a customer's page
- * read through to its erasure prompt, a service opened in its form, the door at a tenant whose
- * default is el and the shell a sign-in lands in, the Bookings list with a booking opened in its
- * dialog and its Move form, Home with every part shown, read on this week, this month and today,
- * the setup wizard through its six steps from the list, its one line on a phone and the banner, a
- * member's page with its closures card's date picker open and the Staff list searched for nobody,
- * the Settings page with a provider's credentials open, the Settings page whole on Solo with
- * Opening hours' weekly editor, a refused save and a landed one, the Team screen with a removal
- * opened to its confirm, the Calendar on Day, Week and Month with its menus and the closure dialog,
- * Shifts with its two editors, the Billing screen in a trial with the plan choice open and then on
- * the plan with Staff with the removal refused, and the Settings page's Emails list and Danger zone
- * with the close's dialog opened and kept, and Reports on an empty range, on this week with every
- * part shown, with a member chosen and with a custom range picked through the date picker. On each
- * the visible text and every node's aria-label, title, placeholder and alt hold no English value of
- * the walked files of two words or more and no placeholder left unfilled, read from the files
- * through the translator on this side: a value on the shared list (languageSharedValues) is left
- * out, and so is a value an admin file still without its Greek twin holds too; a file with its
- * Greek twin excuses nothing, so the rail, the top bar and the kit around every screen walked read
- * Greek. The tenant's own text, the services' and the members' names, the closures' reasons, the
- * customer's and the users', the business's profile, is taken out of the text and of each attribute
- * first. The root carries lang el. The bookings' walk, Home's, the Staff walks, the Settings walks,
- * the Calendar's and Shifts' also find no English month or weekday name, ICU's in English, shown in
- * any case, and the bookings' walk opens the Move form's month grid, where the names show, to see
- * the booking's month as ICU names it in Greek. A screen given its Greek is added here as a case,
- * and its files to the walk.
+ * The admin in Greek in a real browser (a walk by keys): with luna's owner at el, a customer's
+ * page read through to its erasure prompt, a service opened in its form, the door at a tenant
+ * whose default is el and the shell a sign-in lands in, the Bookings list with a booking opened in
+ * its dialog and its Move form, Home with every part shown, read on this week, this month and
+ * today, the setup wizard through its six steps from the list, its one line on a phone and the
+ * banner, a member's page with its closures card's date picker open and the Staff list searched
+ * for nobody, the Settings page with a provider's credentials open, the Settings page whole on
+ * Solo with Opening hours' weekly editor, a refused save and a landed one, the Team screen with a
+ * removal opened to its confirm, the Calendar on Day, Week and Month with its menus and the
+ * closure dialog, Shifts with its two editors, the Billing screen in a trial with the plan choice
+ * open and then on the plan with Staff with the removal refused, and the Settings page's Emails
+ * list and Danger zone with the close's dialog opened and kept, and Reports on an empty range, on
+ * this week with every part shown, with a member chosen and with a custom range picked through the
+ * date picker. On each the visible text and every node's aria-label, title, placeholder and alt
+ * hold no English value of the walked files of two words or more and no placeholder left unfilled,
+ * read from the files through the translator on this side: a value on the shared list
+ * (languageSharedValues) is left out, and so is a value an admin file still without its Greek twin
+ * holds too; a file with its Greek twin excuses nothing, so the rail, the page header and the kit
+ * around every screen walked read Greek. The tenant's own text, the services' and the members'
+ * names, the closures' reasons, the customer's and the users', the business's profile, is taken
+ * out of the text and of each attribute first. The root carries lang el. The bookings' walk,
+ * Home's, the Staff walks, the Settings walks, the Calendar's and Shifts' also find no English
+ * month or weekday name, ICU's in English, shown in any case, and the bookings' walk opens the
+ * Move form's month grid, where the names show, to see the booking's month as ICU names it in
+ * Greek. A screen given its Greek is added here as a case, and its files to the walk.
  *
  * The bookings are written straight to luna's rows, days from today, because the browser and the
  * application both read the real clock here.
@@ -337,7 +337,7 @@ it('reads a service opened in its form in Greek, no English value of the walked 
         ->assertNoJavaScriptErrors();
 });
 
-it('reads the door in Greek at a tenant whose default is el, and the rail and the top bar of the shell a sign-in lands in, no English value of the walked files left', function () {
+it('reads the door in Greek at a tenant whose default is el, and the rail and the page header of the shell a sign-in lands in, no English value of the walked files left', function () {
     DB::table('tenants')->where('slug', 'luna')->update(['locale' => SiteLanguage::Greek->value]);
     DB::table('tenant_luna.settings')->where('id', 1)->update(['language' => null]);
     $walk = adminGreekScript();

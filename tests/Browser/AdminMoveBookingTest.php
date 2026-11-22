@@ -175,6 +175,48 @@ it('moves a booking from the dialog to another free time and reads it at the new
     expect(moveStartOf($uuid))->toBe('11:00');
 });
 
+/**
+ * A script answering, of the Move footer, whether the line saying why Save waits is gone, whether
+ * Save is enabled, whether Back and Save stand on one row in that order, whether the pair ends at
+ * the footer's inner right edge, and whether the pair spans the footer's row with the two of one
+ * width, a space between each.
+ */
+const MOVE_FOOTER = <<<'JS'
+    (() => {
+        const footer = document.querySelector('.admin-modal__footer');
+        const group = footer?.querySelector('.admin-move__buttons');
+        const back = group?.querySelector('.admin-move__back');
+        const save = group?.querySelector('.admin-move__save');
+        if (!footer || !group || !back || !save) {
+            return 'not on the page';
+        }
+        const box = (part) => part.getBoundingClientRect();
+        const look = getComputedStyle(footer);
+        const left = box(footer).left + parseFloat(look.borderLeftWidth) + parseFloat(look.paddingLeft);
+        const right = box(footer).right - parseFloat(look.borderRightWidth) - parseFloat(look.paddingRight);
+        const row = Math.abs(box(back).top - box(save).top) <= 0.5 && box(back).right <= box(save).left;
+        const spans = Math.abs(box(group).left - left) <= 0.5 && Math.abs(box(back).width - box(save).width) <= 1;
+        return [footer.querySelector('.admin-move__why') === null, !save.disabled, row, Math.abs(box(group).right - right) <= 0.5, spans].join(' ');
+    })()
+    JS;
+
+it('lays the footer with a time chosen as the detail\'s: no line saying why, Back and Save at the right end on a desktop, and sharing the row evenly on a phone', function () {
+    $day = moveWednesday();
+    $uuid = moveBooking('Cora Cut', $day, '10:00');
+
+    $page = moveOpen($this, $uuid, $day);
+    $size = movePlaywright($page)->viewportSize();
+    $page->assertScript(MOVE_FOOTER, 'false false true true false')
+        ->select('#move-time', moveStart($day, '11:00'))
+        ->assertScript(MOVE_FOOTER, 'true true true true false');
+    $page->resize(1440, 900)
+        ->assertScript(MOVE_FOOTER, 'true true true true false');
+    $page->resize(390, 844)
+        ->assertScript(MOVE_FOOTER, 'true true true true true');
+    $page->resize($size['width'], $size['height'])
+        ->assertNoJavaScriptErrors();
+});
+
 it('warns where the chosen time is outside the member\'s working hours, and the move lands once confirmed', function () {
     $day = moveWednesday();
     $uuid = moveBooking('Cora Cut', $day, '10:00');

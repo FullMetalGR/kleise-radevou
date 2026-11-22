@@ -18,14 +18,17 @@ import type { HomeWords } from './words';
  * no-show, under its day, Today first, then older days latest first, each older one its long
  * weekday and its date in the tenant's format; the count of every one in the header strip, its
  * whole sentence the accessible text, and, where the server listed fewer than it counted, a line
- * saying so under the list. The list scrolls inside the card; the bulk controls sit under it, out
+ * saying so under the list. The list scrolls inside the card, keeping room at its top and its foot
+ * for the outline of a control the keyboard brings into view; the bulk controls sit under it, out
  * of the scroll, so they stay in reach.
  *
  * A row's text opens the booking dialog as Home's other rows do; its Completed and No-show mark it
  * at once with no dialog. A row's checkbox and its day's select it for the bulk marks, which ask
  * once before they run. A viewer who may not manage bookings is shown the rows alone: no
- * checkbox, no button and no bulk control. Below the breakpoint a row stacks and the bulk buttons
- * take the full width, a label too long for a narrow phone wrapping inside its button.
+ * checkbox, no button and no bulk control. Below the breakpoint a row stacks, its two marks side
+ * by side under its text and one under the other where the line cannot hold both in a language of
+ * longer words, so neither runs past the list that cuts it; the bulk buttons take the full width,
+ * a label too long for a narrow phone wrapping inside its button.
  *
  * While a mark is in flight a row's text and the bulk buttons do nothing, as the marks do nothing:
  * a booking opened then would interrupt the mark's visit and lose its answer, the row left listed
@@ -33,7 +36,8 @@ import type { HomeWords } from './words';
  * left open over rows that may have gone. So the question always counts what is listed and posted.
  *
  * The question hands focus back to the button that asked it. Where the mark took that button away,
- * the last selected row gone or the list empty, the card takes the focus, not the page.
+ * the last selected row gone or the list empty, the card takes the focus, not the page, and shows
+ * the house outline while it holds it.
  */
 
 /** A day of To mark: its date, whether it is the tenant's today, and its rows in order. */
@@ -110,7 +114,7 @@ function RowMarks({ uuid, marking }: { uuid: string; marking: Marking }) {
     const busy = marking.busy !== null && marking.busy.uuid === uuid ? marking.busy.action : null;
 
     return (
-        <span className="admin-home-to-mark__marks flex shrink-0 gap-2 max-desktop:w-full max-desktop:pl-7">
+        <span className="admin-home-to-mark__marks flex shrink-0 gap-2 max-desktop:w-full max-desktop:flex-wrap max-desktop:pl-7">
             <Button className="admin-home-to-mark__complete max-desktop:flex-1" busy={busy === 'complete'} busyLabel={words.text('busy.complete')} onClick={() => marking.markOne(uuid, 'complete')}>
                 {words.text('actions.complete')}
             </Button>
@@ -274,13 +278,13 @@ export function ToMark({ list, manage, clock, words, staffShown, onOpen }: Card)
     const rows: Rows = { manage, clock, words, staffShown, onOpen: open, selection, marking };
 
     return (
-        <Card flush ref={card} tabIndex={-1} className="admin-home-to-mark outline-none focus-visible:ring-3 focus-visible:ring-ring/50" aria-labelledby="home-to-mark-title">
+        <Card flush ref={card} tabIndex={-1} className="admin-home-to-mark focus-ring" aria-labelledby="home-to-mark-title">
             <Strip titleId="home-to-mark-title" title={words.text('to_mark.title')} aside={<Count count={list.count} words={words} />} />
             {listed.length === 0 ? (
                 <EmptyState className="admin-home-to-mark__empty py-8">{words.text('to_mark.empty')}</EmptyState>
             ) : (
                 <>
-                    <div className="admin-home-to-mark__list max-h-[420px] overflow-y-auto">
+                    <div className="admin-home-to-mark__list max-h-[420px] scroll-py-2 overflow-y-auto">
                         {list.days.map((day, index) => (
                             <Day key={day.date} day={day} first={index === 0} {...rows} />
                         ))}

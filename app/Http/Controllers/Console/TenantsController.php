@@ -20,7 +20,7 @@ use Inertia\Response as InertiaResponse;
  * tenant's detail, which the page links the slug to, by the slug or, on a closed row, by its id
  * (ListedTenant::detailPath()), the name, the status, the plan TenantPlan derives, the
  * subscription state, each as its vocabulary value for the page to word, and the signup instant
- * spelled on the console's clock; the top bar names that clock once for the screen from the shared
+ * spelled on the console's clock; the shell names that clock once for the screen from the shared
  * prop. Beside them ride the names the catalogue gives floor and staff, Solo and Team from
  * config/billing.php, which the page words those two plans by in the column and the filter.
  *

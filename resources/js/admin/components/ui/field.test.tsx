@@ -139,6 +139,19 @@ describe('the error line on its own', () => {
         expect(line?.textContent).toBe('Choose a service from the list.');
         expect(line?.hasAttribute('role')).toBe(false);
     });
+
+    it('is an alert where its caller asks, so a refusal that lands while the reader is elsewhere is said at once', () => {
+        view.render(
+            <ErrorLine id="window-error" role="alert">
+                The end comes before the start.
+            </ErrorLine>,
+        );
+        const line = view.host.querySelector('#window-error');
+
+        expect(line?.getAttribute('role')).toBe('alert');
+        expect(line?.classList.contains('admin-field__error')).toBe(true);
+        expect(line?.textContent).toBe('The end comes before the start.');
+    });
 });
 
 describe('the frame around something that is no control', () => {

@@ -29,7 +29,7 @@ use LogicException;
  *
  * The sign-in page is outside the shell and receives the tenant, the empty user, the flash, the
  * brand, the language, the theme and the strings alone, the brand being the public name the title
- * template and the top bar's wordmark read. The language, is the one every page is answered in and
+ * template and the shell's wordmark read. The language, is the one every page is answered in and
  * the admin's root view writes as its lang: the signed-in user's users.locale, else the tenant
  * default, the tenant default where nobody is signed in or support acts, the resolver's answer for
  * the principal as the locale middleware asked it. The theme, settings.theme, is the word the root
@@ -47,9 +47,9 @@ use LogicException;
  * wizard's words, the wizard group of lang/{locale}/admin/customers.php in the request's language;
  * every other user receives null for both and no button.
  *
- * The top bar's language control: its labels, languages, each language's code and its own name,
- * read from site.language in that language as the site's switch reads it, are shared to a signed-in
- * user alone; support, which has no user row to write, is offered none.
+ * The shell's language control: its labels, languages, each language's code and its own name, read
+ * from site.language in that language as the site's switch reads it, are shared to a signed-in user
+ * alone; support, which has no user row to write, is offered none.
  *
  * The narrowing record rides beside them, the row's list filtered to the slugs this build knows,
  * for the shell's banner. It costs nothing: the row is loaded. So does free, whether the tenant is
@@ -202,9 +202,9 @@ final readonly class AdminProps
     }
 
     /**
-     * The top bar control's choices: each language's code and its own name, site.language read in
-     * that language, as the site's switch is labelled (ChromeComposer); the Settings screen's
-     * default language reads the same list.
+     * The shell's language control's choices: each language's code and its own name, site.language
+     * read in that language, as the site's switch is labelled (ChromeComposer); the Settings
+     * screen's default language reads the same list.
      *
      * @return list<array{value: string, name: string}>
      */

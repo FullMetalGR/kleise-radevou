@@ -43,7 +43,7 @@ export type State = {
 /**
  * What a calendar slot opens the wizard with, 4: the day and the first segment's staff pin; a
  * customer's page's Book now opens it with the customer, the step then counted answered and
- * still editable; the top bar opens with none.
+ * still editable; the shell's New booking button opens with none.
  */
 export type Prefill = { date?: string; staffId?: number | null; customer?: Customer };
 

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { key, mount, press, type Mounted } from './harness';
+import { FORCED_EDGE } from './input';
 import { RadioPills } from './radio-pills';
+import { CHOSEN } from './segmented';
 
 /*
  * The radio pills: one setting of a few short choices as a fieldset named by its legend, each
@@ -79,6 +81,23 @@ describe('the radio pills', () => {
 
         expect(radios().map((radio) => radio.checked)).toEqual([false, true, false]);
         expect(labels().map((label) => ['bg-foreground', 'text-background'].every((look) => label.classList.contains(look)))).toEqual([false, true, false]);
+    });
+
+    it('paints the chosen pill in the system\'s highlight in forced colours, where its fill would be repainted as the page', () => {
+        view.render(<Harness />);
+
+        expect(labels().map((label) => CHOSEN.split(' ').every((look) => label.classList.contains(look)))).toEqual([false, true, false]);
+    });
+
+    it('draws a real line round every pill where the system forces its own colours, so choosing one moves none, and shows the keyboard focus there in the system\'s colour for text', () => {
+        view.render(<Harness />);
+
+        expect(labels().map((label) => label.classList.contains(FORCED_EDGE))).toEqual([true, true, true]);
+        expect(labels().map((label) => [...label.classList].filter((look) => look.startsWith('forced-colors:has-focus-visible:')))).toEqual([
+            ['forced-colors:has-focus-visible:outline-[CanvasText]'],
+            ['forced-colors:has-focus-visible:outline-[CanvasText]'],
+            ['forced-colors:has-focus-visible:outline-[CanvasText]'],
+        ]);
     });
 
     it('shows the keyboard focus on the pill, the radio inside it being hidden', () => {

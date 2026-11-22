@@ -225,6 +225,31 @@ describe('the time field', () => {
         expect(listbox()).toBeNull();
     });
 
+    it('pages by the six rows the list shows whole, its 18rem less the surface\'s padding over 44px rows, and stops at either end', () => {
+        view.render(<Start initial="09:00" />);
+
+        press(trigger());
+
+        expect(listbox()?.closest('.admin-popover')?.className).toContain('max-h-[min(18rem,');
+        expect(listbox()?.closest('.admin-popover')?.classList.contains('p-1.5')).toBe(true);
+        expect(option('09:00')?.classList.contains('min-h-11')).toBe(true);
+
+        key(listbox(), 'PageDown');
+        expect(highlighted()).toBe('09:30');
+
+        key(listbox(), 'PageUp');
+        key(listbox(), 'PageUp');
+        expect(highlighted()).toBe('08:30');
+
+        key(listbox(), 'Home');
+        key(listbox(), 'PageUp');
+        expect(highlighted()).toBe('00:00');
+
+        key(listbox(), 'End');
+        key(listbox(), 'PageDown');
+        expect(highlighted()).toBe('23:55');
+    });
+
     it('jumps on typing through the display labels first: "9" on a twelve-hour tenant is nine in the morning', () => {
         view.render(<Start initial="" clock={H12} />);
         press(trigger());

@@ -322,6 +322,27 @@ it('lays Team out on a desktop with the invitation on one line, the count on the
     Look::shot($page, 'team-1024-'.$language->value);
 })->with([SiteLanguage::English, SiteLanguage::Greek]);
 
+it('gives each member\'s sign-in link and Remove a touch 44px tall wherever the members read as rows on a window wider than a phone, a member with a sixty-character name among them', function (SiteLanguage $language) {
+    $long = addTenantUser('elena@luna.example', 'manager');
+    DB::table('users')->where('id', $long)->update(['name' => 'Alexandra-Maria Konstantinopoulou-Papadimitriou of Nea Ionia']);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1300, 800);
+    $page->navigate(Admin::url('luna', '/team'))
+        ->assertVisible('.admin-team-member:nth-child(2)')
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value);
+
+    // At 1300px and at 1024px the window is wider than a phone's layout, but the members' box is
+    // narrower than the grid wants, so they read as rows and each link answers a finger.
+    foreach ([1300, 1024] as $width) {
+        $page->resize($width, 800)
+            ->assertScript(PhoneScripts::TEAM_TABLE_AS_ROWS, true)
+            ->assertScript(TEAM_WALK_ACTIONS_TAKE_A_TOUCH, true)
+            ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    }
+    $page->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
 it('stacks the invitation on a phone, sets each member\'s role across its row under its name with a touch area for each of its two links, and changes a role there', function (SiteLanguage $language) {
     addTenantUser('elena@luna.example', 'manager');
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);

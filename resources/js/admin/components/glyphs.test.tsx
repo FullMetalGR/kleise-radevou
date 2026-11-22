@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Caret, ChipAlert, ChipCard, ChipClock, Chevron, ChipCross, ChipHourglass, ChipTick, ChipTimer, Cross, Info, Moon, NoteSheet, Plus, SignOut, Success, Sun, Tick, Warning } from './glyphs';
@@ -6,8 +8,11 @@ import { mount, type Mounted } from './ui/harness';
 /*
  * The admin's small glyphs come from the one icon set every screen draws from, each by the
  * set's own name, so a caret here and an icon on another screen share their stroke and their
- * corners. Each is decoration and hidden from assistive technology.
+ * corners. Each is decoration and hidden from assistive technology. None is drawn by hand.
  */
+
+/** An icon drawn by hand: an inline svg or a path of its own, where the set's icon would stand. */
+const DRAWN_BY_HAND = /<(?:svg|path)\b/g;
 
 let view: Mounted;
 
@@ -77,5 +82,19 @@ describe('the glyphs', () => {
         };
 
         expect([<Info key="info" />, <Warning key="warning" />, <Success key="success" />, <Cross key="cross" />].map(held)).toEqual([true, true, true, true]);
+    });
+
+    it('holds no icon drawn by hand, so every glyph is the set\'s', () => {
+        const source = readFileSync(join(process.cwd(), 'resources/js/admin/components/glyphs.tsx'), 'utf8');
+
+        expect(source.match(DRAWN_BY_HAND) ?? []).toEqual([]);
+    });
+
+    it('counts an inline svg and a path of its own as drawn by hand, and leaves an icon of the set alone', () => {
+        // The planted icon is put together from parts, so it stands in no source as a whole.
+        const planted = ['<sv', 'g viewBox="0 0 16 16" aria-hidden="true"><pa', 'th d="M2 8h12" /></sv', 'g>'].join('');
+
+        expect(planted.match(DRAWN_BY_HAND)).toEqual(['<sv' + 'g', '<pa' + 'th']);
+        expect('<ChevronDown aria-hidden="true" />'.match(DRAWN_BY_HAND)).toBeNull();
     });
 });

@@ -4,10 +4,10 @@ use App\Platform\ConsoleTime;
 
 /*
  * The console's one clock: an instant spelled in the console's configured zone, in the house's
- * spelled-out form, with the zone named for a message and without it for a screen, whose top bar
- * names it once. The zone is handed in here as configuration hands it in, so the suite boots
- * nothing; Europe/Athens is the default, and its two clock changes of 2026 are where a spelling
- * that converted by a fixed offset would go wrong.
+ * spelled-out form, with the zone named for a message and without it for a screen, whose page
+ * header names it once. The zone is handed in here as configuration hands it in, so the suite
+ * boots nothing; Europe/Athens is the default, and its two clock changes of 2026 are where a
+ * spelling that converted by a fixed offset would go wrong.
  */
 
 function consoleInstant(string $utc): DateTimeImmutable
@@ -50,7 +50,7 @@ it('refuses a zone the configuration misspells, rather than falling back to anot
     new ConsoleTime('Europe/Atlantis');
 })->throws(DateInvalidTimeZoneException::class);
 
-it('spells an instant for a console screen in the console\'s zone without naming it, the top bar naming the zone once', function () {
+it('spells an instant for a console screen in the console\'s zone without naming it, the page header naming the zone once', function () {
     $time = new ConsoleTime('Europe/Athens');
 
     expect($time->onScreen(consoleInstant('2026-10-14 09:00')))->toBe('Wednesday 14 October 2026 at 12:00')

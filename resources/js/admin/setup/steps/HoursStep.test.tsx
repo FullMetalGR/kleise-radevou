@@ -231,6 +231,9 @@ describe('the Opening hours step', () => {
         const second = windowsOn(2)[1];
         expect(second?.querySelector('.admin-field__error')?.textContent).toBe('refused-window');
         expect(windowsOn(2)[0]?.querySelector('.admin-field__error')).toBeNull();
+        // The focus lands on the refused window's Start, and the sentence is said at once.
+        expect(document.activeElement?.id).toBe('setup-hours-2-1-start');
+        expect(second?.querySelector('.admin-field__error')?.getAttribute('role')).toBe('alert');
         expect(moves).toEqual([]);
         expect(q('.admin-setup__primary')?.textContent).toBe(hours.text('save'));
 

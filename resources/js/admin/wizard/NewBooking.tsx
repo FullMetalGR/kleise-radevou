@@ -9,11 +9,11 @@ import type { Prefill } from './model';
 
 /*
  * The wizard's opening: one place that knows whether it is open and with what prefill, provided to
- * the whole shell so the top bar's New booking button and a calendar slot open it over whatever
- * screen is showing, and a customer's page's Book now opens it with the customer. Each opening
- * mounts a fresh wizard, so nothing of a closed one survives into the next. The server hands a
- * catalog to a user who may book by hand and null to everybody else, and the wizard exists only
- * for the first; its words ride beside the catalog by the same rule, read in the page's language.
+ * the whole shell so its New booking button and a calendar slot open it over whatever screen is
+ * showing, and a customer's page's Book now opens it with the customer. Each opening mounts a fresh
+ * wizard, so nothing of a closed one survives into the next. The server hands a catalog to a user
+ * who may book by hand and null to everybody else, and the wizard exists only for the first; its
+ * words ride beside the catalog by the same rule, read in the page's language.
  */
 
 type Opening = { open: (prefill?: Prefill) => void };

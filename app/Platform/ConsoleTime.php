@@ -13,7 +13,7 @@ use Illuminate\Container\Attributes\Config;
  * console is on no tenant's clock, so an instant on a console screen or in a message to an
  * operator is spelled here and nowhere else, in the console's own spelled-out English form, its
  * weekday, day, month, year and time: with the zone named in a message, and without it on a
- * screen, whose top bar names it once.
+ * screen, whose shell names it once.
  *
  * The console stays English, so its spelling is its own and PHP's English names, where the
  * tenant's surfaces use ICU's spelling in a language (TenantTime).
@@ -51,7 +51,7 @@ final readonly class ConsoleTime
 
     /**
      * An instant as a console screen spells it: the console's clock reading alone, since the
-     * console's top bar names the zone once for every instant on the screen.
+     * console's shell names the zone once for every instant on the screen.
      */
     public function onScreen(DateTimeImmutable $instant): string
     {

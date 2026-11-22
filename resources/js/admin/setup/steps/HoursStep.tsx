@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { useFocusFirstFailing } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { clockOf, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
@@ -86,9 +87,12 @@ type FieldsProps = {
 function HoursFields({ data, rules, onChange, refusals, clock, granularity, words }: FieldsProps) {
     const shell = useShell();
     const members = data.mode === 'members';
+    // A refused save hands the focus to the first Start it marked, so the reader lands on the
+    // window at fault and hears its sentence.
+    const fields = useFocusFirstFailing<HTMLDivElement>(refusals);
 
     return (
-        <div className="admin-setup-hours flex flex-col gap-3">
+        <div ref={fields} className="admin-setup-hours flex flex-col gap-3">
             <p className="admin-setup-hours__help text-sm text-muted-foreground">{words.text('help')}</p>
             {members && <p className="admin-setup-hours__members text-sm">{words.text('members', { names: listOf(data.members, shell.language) })}</p>}
             {members && data.differs && (

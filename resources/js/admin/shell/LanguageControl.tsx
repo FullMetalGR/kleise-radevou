@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { FORCED_EDGE } from '@/components/ui/input';
+import { FORCED_CHOSEN } from '@/components/ui/segmented';
 import { cn } from '@/lib/utils';
 import type { LanguageChoice } from '../types';
 
@@ -28,13 +30,13 @@ type Props = {
 
 export function LanguageControl({ choices, current, choosing, onChoose }: Props) {
     return (
-        <div className="admin-language inline-flex items-center gap-0.5 rounded-full bg-card p-1 inset-ring inset-ring-border">
+        <div className={`admin-language inline-flex items-center gap-0.5 rounded-full bg-card p-1 inset-ring inset-ring-border ${FORCED_EDGE}`}>
             {choices.map((choice) => (
                 <Button
                     key={choice.value}
                     variant="tertiary"
                     size="small"
-                    className={cn('admin-language__choice', choice.value === current && 'bg-primary text-primary-foreground enabled:hover:bg-primary')}
+                    className={cn('admin-language__choice', choice.value === current && `bg-primary text-primary-foreground enabled:hover:bg-primary ${FORCED_CHOSEN}`)}
                     lang={choice.value}
                     aria-pressed={choice.value === current}
                     busy={choosing === choice.value}

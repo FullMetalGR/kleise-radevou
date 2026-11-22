@@ -334,6 +334,26 @@ function minutesBetween(start: string, end: string): number {
     return Math.round((parseInstant(end) - parseInstant(start)) / 60000);
 }
 
+/** Whether a wire value reads as an instant, which the strict reader would otherwise throw on. */
+function reads(wire: string): boolean {
+    try {
+        parseInstant(wire);
+
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Whether every instant an item carries reads, the optional ranges where they are sent: an item
+ * with one that does not is left out of what the calendar draws, so one bad value costs its own
+ * block or chip and never the whole screen.
+ */
+function readable(item: CalendarItem): boolean {
+    return [item.start, item.end, item.block_start_utc, item.block_end_utc, item.processing_ends_utc].every((wire) => wire === null || wire === undefined || reads(wire));
+}
+
 /**
  * The blocks one window answer draws, 5.2, for the members shown: a block per item over its
  * occupied range including buffers where the payload carries it, else over the customer's
@@ -347,7 +367,7 @@ export function blocksOf(bookings: readonly CalendarBooking[], staff: readonly n
 
     for (const booking of bookings) {
         for (const item of booking.items) {
-            if (staff !== null && !staff.includes(item.staff_id)) {
+            if ((staff !== null && !staff.includes(item.staff_id)) || !readable(item)) {
                 continue;
             }
 
@@ -517,7 +537,7 @@ export function chipsByDayOf(bookings: readonly CalendarBooking[], picked: (book
     const days = new Map<string, Chip[]>();
 
     for (const booking of bookings) {
-        const chip = chipOf(booking, picked(booking), timezone, closed);
+        const chip = chipOf(booking, picked(booking).filter(readable), timezone, closed);
 
         if (chip !== null) {
             const day = chip.start.slice(0, 10);

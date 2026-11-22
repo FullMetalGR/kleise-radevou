@@ -36,9 +36,9 @@ import type { SharedProps, TeamStrings } from '@/types';
  * only in that layout, so letting it wrap and giving the value the whole line changes nothing in
  * the grid. In the grid the role's segments share their cell and wrap into it where the cell is
  * narrow, and the sign-in link's words wrap too, their lines starting at the left edge as Remove
- * under them does, so the grid fits its box from 64rem in a language of longer words. Below the
- * wide breakpoint the two links are each 44 pixels tall for a finger, the words drawn as they are
- * above it.
+ * under them does, so the grid fits its box from 64rem in a language of longer words. Wherever
+ * the members read as rows the two links are each 44 pixels tall for a finger, the words drawn as
+ * they are in the grid.
  *
  * Nothing is optimistic. A role pressed writes at once and the row shows the server's answer; one
  * write runs at a time, the pressed control busy and every other held with the wait's sentence; a
@@ -175,7 +175,7 @@ export default function Team() {
                     <HelpLine className="admin-team-invite__help">{words.text('invite.roles_help')}</HelpLine>
                 </Card>
                 <Card flush className="admin-team-members" aria-labelledby="team-members-title">
-                    <header className="px-6 pt-5 pb-3.5 max-wide:px-4.5 @max-5xl:px-4.5">
+                    <header className="px-6.5 pt-5 pb-3.5 max-wide:px-4.5 @max-5xl:px-4.5">
                         <h2 id="team-members-title" className="text-section-title">
                             {words.text('members.title')}
                         </h2>
@@ -220,7 +220,7 @@ export default function Team() {
                                         <span className="inline-flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
                                             <Button
                                                 variant="link"
-                                                className="admin-team-link shrink text-left whitespace-normal max-wide:min-h-11"
+                                                className="admin-team-link shrink text-left whitespace-normal max-wide:min-h-11 @max-5xl:min-h-11"
                                                 busy={busy('link', member)}
                                                 busyLabel={words.text('members.sending')}
                                                 disabled={held && !busy('link', member)}
@@ -232,7 +232,7 @@ export default function Team() {
                                             <Button
                                                 variant="link"
                                                 destructive
-                                                className="admin-team-remove max-wide:min-h-11"
+                                                className="admin-team-remove max-wide:min-h-11 @max-5xl:min-h-11"
                                                 disabled={member.you || held}
                                                 aria-describedby={member.you ? `team-remove-self-${String(member.id)}` : held ? WAIT_ID : undefined}
                                                 onClick={() => setRemoving(member)}

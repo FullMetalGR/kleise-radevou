@@ -645,8 +645,8 @@ it('spells the admin surface under the prefix, verb by path: the door, the set-p
         'POST /admin/billing/plan' => adminAccess('permission:manageBilling'),
         'POST /admin/billing/portal' => adminAccess('permission:manageBilling'),
         'POST /admin/billing/checkout' => adminAccess('permission:manageBilling'),
-        // The top bar's language control, the signed-in user's own language: every user owns it and
-        // no permission does, and it is a person's preference, so never behind the gate.
+        // The page header's language control, the signed-in user's own language: every user owns
+        // it and no permission does, and it is a person's preference, so never behind the gate.
         'PUT /admin/language/{language}' => adminAccess(RequiresSignIn::NAME),
         // The help tickets, which every signed-in user of the business may ask whatever their role,
         // so no permission does, and which a lapsed subscription still reaches, so never the gate.

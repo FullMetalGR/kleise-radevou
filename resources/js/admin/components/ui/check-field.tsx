@@ -13,11 +13,17 @@ import { cn } from '@/lib/utils';
 
 /**
  * The box's look, the one spelling of it, for the check field and for a tick a screen writes by
- * hand beside its own label: 20px, tinted by the theme colour, the field's focus outline. A
- * disabled box keeps the browser's own disabled paint and takes no dimming on top of it: that
- * paint is already faint, and a locked box that is ticked has to go on reading as ticked.
+ * hand beside its own label: 20px, tinted by the theme colour, the field's focus outline. A box
+ * the person can change is the browser's own, painted in the theme colour. A locked box that is
+ * ticked has to go on reading as ticked, and the browser's disabled paint fades it to near the
+ * card, so that one box is drawn here: the theme colour at full strength with a tick of the
+ * colour for words on it, the lock told by the pointer and by the sentence beside it. An unticked
+ * locked box keeps the browser's faint paint, which reads as unticked. Where the system forces
+ * its own colours a fill of ours would be repainted as the page, so there the browser draws every
+ * box again and the drawn tick is put away.
  */
-export const CHECK_BOX = 'size-5 shrink-0 cursor-pointer accent-primary focus-ring-field disabled:cursor-not-allowed';
+export const CHECK_BOX =
+    'size-5 shrink-0 cursor-pointer accent-primary focus-ring-field disabled:cursor-not-allowed disabled:checked:grid disabled:checked:appearance-none disabled:checked:place-content-center disabled:checked:rounded-[3px] disabled:checked:bg-primary disabled:checked:before:size-3 disabled:checked:before:bg-primary-foreground disabled:checked:before:[clip-path:polygon(14%_44%,0_65%,50%_100%,100%_16%,80%_0%,43%_62%)] forced-colors:disabled:checked:appearance-auto forced-colors:disabled:checked:before:hidden';
 
 type Props = {
     id: string;

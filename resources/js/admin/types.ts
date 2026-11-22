@@ -1008,6 +1008,7 @@ export type StaffStrings = {
         none: string;
         window: string;
         delete: string;
+        delete_label: string;
         deleting: string;
         wait_removing: string;
         wait_adding: string;

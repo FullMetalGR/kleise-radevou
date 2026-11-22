@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { FORCED_EDGE } from './input';
+import { CHOSEN } from './segmented';
 import { cn } from '@/lib/utils';
 
 /*
@@ -28,9 +30,13 @@ type Props<T extends string> = {
     children?: ReactNode;
 };
 
-/** A pill's look; the chosen one's fill is added beside it. */
-const PILL =
-    'admin-radio-pills__option inline-flex h-11 cursor-pointer items-center rounded-full px-4.5 text-body-sm font-semibold has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary has-disabled:cursor-not-allowed has-disabled:opacity-45 motion-safe:transition-colors motion-safe:duration-200';
+/**
+ * A pill's look; the chosen one's fill is added beside it. Where the system forces its own colours
+ * every pill takes a real line, the chosen one's in its highlight, so choosing one moves none, and
+ * the keyboard's outline takes the system's colour for text, which the chosen pill would otherwise
+ * keep in the theme colour.
+ */
+const PILL = `admin-radio-pills__option inline-flex h-11 cursor-pointer items-center rounded-full px-4.5 text-body-sm font-semibold has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary forced-colors:has-focus-visible:outline-[CanvasText] has-disabled:cursor-not-allowed has-disabled:opacity-45 motion-safe:transition-colors motion-safe:duration-200 ${FORCED_EDGE}`;
 
 export function RadioPills<T extends string>({ name, legend, value, options, disabled = false, onChange, className, children }: Props<T>) {
     return (
@@ -41,7 +47,7 @@ export function RadioPills<T extends string>({ name, legend, value, options, dis
                     const chosen = option.value === value;
 
                     return (
-                        <label key={option.value} className={cn(PILL, chosen ? 'bg-foreground text-background' : 'bg-card text-foreground inset-ring-[1.5px] inset-ring-border has-enabled:hover:inset-ring-ink-tertiary')}>
+                        <label key={option.value} className={cn(PILL, chosen ? CHOSEN : 'bg-card text-foreground inset-ring-[1.5px] inset-ring-border has-enabled:hover:inset-ring-ink-tertiary')}>
                             <input type="radio" className="sr-only" name={name} value={option.value} checked={chosen} disabled={disabled} onChange={() => onChange(option.value)} />
                             {option.label}
                         </label>

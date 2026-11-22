@@ -21,14 +21,13 @@ use Inertia\Middleware;
  * the flash, the operator, the console guard's operator's name or null, the validation errors
  * Inertia's base share hands every page, the rail as nav, ConsoleNav's for an operator with the
  * count of help tickets awaiting a reply and empty for anyone else, and the console's zone, which
- * the shell's top bar names once for every instant on the screen and the date fields read their
- * today in, and the brand, the public name the shell's
- * wordmark, the door and the title template read, and the strings, the admin's shell section read
- * through the translator with the locale fixed to English, since the console's door and shell
- * render the admin's kit, which spells no word of its own, and the console stays English; the
- * console's own pages keep their vocabulary. No tenant is resolved on this host, so nothing a
- * tenant page shares is handed here; the admin build's manifest is the asset version, as it is on
- * the other two hosts.
+ * the shell names once for every instant on the screen and the date fields read their today in, and
+ * the brand, the public name the shell's wordmark, the door and the title template read, and the
+ * strings, the admin's shell section read through the translator with the locale fixed to English,
+ * since the console's door and shell render the admin's kit, which spells no word of its own, and
+ * the console stays English; the console's own pages keep their vocabulary. No tenant is resolved
+ * on this host, so nothing a tenant page shares is handed here; the admin build's manifest is the
+ * asset version, as it is on the other two hosts.
  */
 final class HandleConsoleInertiaRequests extends Middleware
 {

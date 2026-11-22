@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { REACH } from './button';
 
 /*
  * The trail from a detail screen back to its list, a navigation region named by its label. Each
@@ -8,8 +9,12 @@ import { Fragment } from 'react';
  * a link. The slashes between the steps are drawn for the eye and hidden from a reader.
  */
 
-/** The look of a link back up the trail, which a page's other way back to its list shares. */
-export const CRUMB_LINK = 'focus-ring rounded-sm font-semibold text-primary-deep underline-offset-4 hover:underline';
+/**
+ * The look of a link back up the trail, which a page's other way back to its list shares:
+ * underlined at rest in every theme, so it is told from the words beside it by more than its
+ * weight, the line thicker under the pointer, and a touch 44px high in the compact layout.
+ */
+export const CRUMB_LINK = `focus-ring rounded-sm font-semibold text-primary-deep underline underline-offset-4 hover:decoration-2 ${REACH}`;
 
 type Crumb = {
     label: string;

@@ -13,10 +13,10 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * The top bar's language control: the signed-in user's own language, written as users.locale for
- * them alone, so two users of one tenant read the admin in two languages. The language is the
- * path's last segment, one of the two by the route's constraint, so a body is never read and no
- * other value reaches here.
+ * The shell's language control: the signed-in user's own language, written as users.locale for them
+ * alone, so two users of one tenant read the admin in two languages. The language is the path's
+ * last segment, one of the two by the route's constraint, so a body is never read and no other
+ * value reaches here.
  *
  * A support session's write is refused 404, as the control is not rendered for it: it has no user
  * row to write. It is a person's

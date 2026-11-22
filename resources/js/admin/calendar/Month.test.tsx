@@ -303,6 +303,15 @@ describe('Month below the breakpoint', () => {
         expect(cell('2026-11-03')?.querySelector('.admin-calendar-month__body')?.classList.contains('pointer-events-none')).toBe(true);
     });
 
+    it('gives a cell no least height of its own, the number\'s 44px band over the 24px foot already standing taller than any it would set', () => {
+        render();
+
+        const days = [...view.host.querySelectorAll('.admin-calendar-month__day')];
+
+        expect(days).toHaveLength(42);
+        expect(days.flatMap((day) => [...day.classList].filter((name) => name.startsWith('min-h-')))).toEqual([]);
+    });
+
     it('leaves the number to the day where the day is itself the one control, opening Day', () => {
         const onDay = vi.fn();
         render({ onDay, onBook: undefined, onClosure: undefined });

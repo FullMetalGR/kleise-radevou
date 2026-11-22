@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type Mounted, press } from '@/components/ui/harness';
+import { FORCED_EDGE } from '@/components/ui/input';
+import { FORCED_CHOSEN } from '@/components/ui/segmented';
 import type { LanguageChoice } from '../types';
 import { LanguageControl } from './LanguageControl';
 
@@ -79,5 +81,18 @@ describe('LanguageControl', () => {
         expect([choice('en'), choice('el')].map((button) => button?.classList.contains('admin-button--small'))).toEqual([true, true]);
         expect([choice('en'), choice('el')].map((button) => button?.classList.contains('bg-primary'))).toEqual([false, true]);
         expect(choice('el')?.classList.contains('text-primary-foreground')).toBe(true);
+    });
+
+    it('draws a real line round the pill where the system forces its own colours, its only edge being a ring', () => {
+        render('el', null);
+
+        expect(mounted.host.querySelector('.admin-language')?.classList.contains(FORCED_EDGE)).toBe(true);
+    });
+
+    it('paints the pressed language in the system\'s highlight where the system forces its own colours, the other in nothing of it', () => {
+        render('el', null);
+
+        expect([choice('en'), choice('el')].map((button) => FORCED_CHOSEN.split(' ').every((name) => button?.classList.contains(name)))).toEqual([false, true]);
+        expect([...(choice('en')?.classList ?? [])].filter((name) => name.startsWith('forced-colors:'))).toEqual([]);
     });
 });

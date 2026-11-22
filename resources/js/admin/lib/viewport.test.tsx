@@ -231,12 +231,73 @@ describe('the token', () => {
     });
 
     it('counts a breakpoint variant and a media query, and leaves a container variant alone', () => {
-        expect(VIEWPORT_QUESTION.test('max-[900px]:hidden')).toBe(true);
-        expect(VIEWPORT_QUESTION.test('sm:min-[900px]:flex')).toBe(true);
+        // Each class is put together from parts, so the stylesheet never ships a rule for it.
+        expect(VIEWPORT_QUESTION.test('max-[90' + '0px]:hidden')).toBe(true);
+        expect(VIEWPORT_QUESTION.test('s' + 'm:min-[90' + '0px]:flex')).toBe(true);
         expect(VIEWPORT_QUESTION.test("window.matchMedia('(min-width: 900px)')")).toBe(true);
         expect(VIEWPORT_QUESTION.test('@media (min-width: 900px)')).toBe(true);
-        expect(VIEWPORT_QUESTION.test('@max-[220px]:sr-only')).toBe(false);
-        expect(VIEWPORT_QUESTION.test('@min-[220px]:inline')).toBe(false);
+        expect(VIEWPORT_QUESTION.test('@max-[22' + '0px]:sr-only')).toBe(false);
+        expect(VIEWPORT_QUESTION.test('@min-[22' + '0px]:inline')).toBe(false);
+    });
+});
+
+/*
+ * A class asked of one of the stock breakpoints, sm to 2xl, or of its max- or min- form, at the
+ * start of a class or after another variant, whatever follows its colon but a space or a quote.
+ * The admin answers to its own two breakpoints and to the width of a box; a stock one would be a
+ * third line nothing else in the layout knows. A container variant, the same word behind an "@",
+ * asks how wide its own box is and is not one; neither is an object's key, which a space follows.
+ */
+const STOCK_BREAKPOINT = /(?<![\w@-])(?:(?:max|min)-)?(?:sm|md|lg|xl|2xl):[^\s'"`]+/g;
+
+const stockBreakpoints = (text: string) => [...text.matchAll(STOCK_BREAKPOINT)].map(([name]) => name);
+
+/*
+ * The same question asked in the stylesheet: a block under a stock breakpoint's variant, or a
+ * stock-prefixed class in an @apply list.
+ */
+function stockInStylesheet(css: string): string[] {
+    const variants = [...css.matchAll(/@variant\s+(?:(?:max|min)-)?(?:sm|md|lg|xl|2xl)(?![\w-])/g)].map(([rule]) => rule);
+    const applied = [...css.matchAll(/@apply\s+([^;}]+)/g)].flatMap(([, list]) => stockBreakpoints(list ?? ''));
+
+    return [...variants, ...applied];
+}
+
+describe('the stock breakpoints', () => {
+    it('are asked by no admin source: the layout answers to its own two breakpoints and to the boxes it sits in', () => {
+        const offenders = sourcesUnder(ADMIN).flatMap((path) => stockBreakpoints(readFileSync(path, 'utf8')).map((name) => `${relative(ADMIN, path)}: ${name}`));
+
+        expect(offenders).toEqual([]);
+    });
+
+    it('are asked by no rule of the admin\'s stylesheet: no block under a stock variant, no stock class in an @apply list', () => {
+        expect(stockInStylesheet(readFileSync(join(ADMIN, 'app.css'), 'utf8'))).toEqual([]);
+    });
+
+    it('counts a stock variant block and a stock class applied in the stylesheet, in their max- and min- forms, and leaves the admin\'s own variants and plain applied classes alone', () => {
+        // Each name is put together from parts, so the stylesheet never ships a rule for it.
+        const variants = ['@variant ' + 'm' + 'd', '@variant ' + 'max-s' + 'm', '@variant ' + 'min-2x' + 'l'];
+        const applied = ['l' + 'g:flex', 'hover:x' + 'l:p-2'];
+        const css = [
+            ...variants.map((rule) => `.a { ${rule} { display: none; } }`),
+            `.b { @apply inline-flex ${applied[0]} gap-1; }`,
+            `.c { @apply ${applied[1]}; }`,
+            '.d { @variant max-desktop { display: none; } @variant desktop { display: flex; } }',
+            '.e { @apply max-w-full text-xs; }',
+        ].join('\n');
+
+        expect(stockInStylesheet(css)).toEqual([...variants, applied[0], 'x' + 'l:p-2']);
+    });
+
+    it('counts a stock breakpoint at the start of a class and after another variant, in its max- and min- forms, and leaves the admin\'s own, a container variant and an object\'s key alone', () => {
+        // Each class is put together from parts, so the stylesheet never ships a rule for it.
+        const planted = ['s' + 'm:flex', 'm' + 'd:hidden', 'max-l' + 'g:block', 'min-x' + 'l:grid', '2x' + 'l:p-4', 'm' + 'd:*:flex-auto', 'm' + 'd:**:p-2', 'l' + 'g:@container'];
+        const kept = ['@x' + 'l:flex', '@max-m' + 'd:block', 'max-wide:block', 'desktop:px-6'];
+
+        expect(stockBreakpoints(`<p className="${planted.join(' ')}" />`)).toEqual(planted);
+        expect(stockBreakpoints(`<p className="hover:${planted[1]}" />`)).toEqual([planted[1]]);
+        expect(stockBreakpoints(`<p className="${kept.join(' ')}" />`)).toEqual([]);
+        expect(stockBreakpoints('const widths = { sm: 640, md: 768 };')).toEqual([]);
     });
 });
 

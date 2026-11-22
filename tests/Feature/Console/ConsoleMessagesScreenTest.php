@@ -20,7 +20,7 @@ pest()->use(RefreshDatabase::class);
  * The console's contact messages: GET /messages under operator lists the contact form's messages
  * newest first, twenty-five a page, the view open by default, the messages with no archived_at,
  * or archived on request, a malformed value reading as unset; each message carries its received
- * instant spelled on the console's clock, the zone left to the top bar, the sender's name and
+ * instant spelled on the console's clock, the zone left to the page header, the sender's name and
  * address, the language it was sent in and the message in full. POST /messages/{id}/archive
  * writes archived_at as the clock's now where it is null and records contact_archived with the
  * message's id under message in the same transaction; a repeat writes and records nothing and

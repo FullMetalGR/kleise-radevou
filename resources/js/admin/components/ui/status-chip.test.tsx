@@ -1,9 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { formatCount } from '@/lib/format';
-import { ShellProvider } from '@/lib/strings';
-import { KEYED_SHELL, keyedShell } from '@/testing/keyed';
+import { keyedShell } from '@/testing/keyed';
 import { mount, type Mounted } from './harness';
 import { StatusChip, statusLabel } from './status-chip';
 
@@ -15,8 +13,8 @@ import { StatusChip, statusLabel } from './status-chip';
  * hourglass, a cross, an alert or a timer, and the four that ended without the visit strike their
  * label through, never the icon. A status the client does not know renders the base chip with the
  * raw value as its label. A catalog row's active and inactive keep their two shapes and take the
- * word their caller gives. The compact form, Home's, reads a booking status's whole kit.counted
- * line chosen by the count, the figure in its own span.
+ * word their caller gives. The compact form Home's activity line passes is the same chip, tighter,
+ * at the admin's least type. A chip carries no figure: a count beside a status is its screen's.
  * Each word is the shell's, read through the keyed table.
  */
 
@@ -133,78 +131,11 @@ describe('the status chip', () => {
         expect(chip('on_hold_forever')).toEqual({ shape: null, label: 'on_hold_forever', base: true });
     });
 
-    it('reads a counted booking status as its whole kit.counted line, the figure in its own span', () => {
-        for (const count of [1, 2, 1234]) {
-            view.render(<StatusChip status="awaiting_approval" count={count} />);
+    it('takes no count, a figure beside a status being its screen\'s to spell', () => {
+        // @ts-expect-error the chip draws a status in its word and its icon, never a figure
+        const counted = <StatusChip status="awaiting_approval" count={3} />;
 
-            const element = view.host.querySelector('.admin-chip');
-            expect(element?.classList.contains('admin-chip--attention')).toBe(true);
-            expect(element?.classList.contains('admin-chip--compact')).toBe(true);
-            expect(element?.getAttribute('data-status')).toBe('awaiting_approval');
-            expect(element?.querySelector('.admin-chip__count')?.textContent).toBe(formatCount(count, shell.locale));
-            expect(element?.textContent).toBe(shell.choice('kit.counted.awaiting_approval', count));
-            expect(element?.textContent).not.toContain(shell.text('kit.statuses.awaiting_approval'));
-        }
-
-        view.render(<StatusChip status="no_show" count={2} />);
-        expect(view.host.querySelector('.admin-chip')?.textContent).toBe(shell.choice('kit.counted.no_show', 2));
-
-        view.render(<StatusChip status="confirmed" />);
-        expect(view.host.querySelector('.admin-chip')?.classList.contains('admin-chip--compact')).toBe(false);
-        expect(view.host.querySelector('.admin-chip__count')).toBeNull();
-    });
-
-    it('sets each run of a counted line\'s words in its own label span, the figure outside them', () => {
-        const marker = '\u0001figure\u0001';
-        const statuses = ['confirmed', 'awaiting_approval', 'pending', 'awaiting_payment', 'cancelled', 'rejected', 'no_show', 'completed', 'expired'] as const;
-
-        for (const language of ['en', 'el'] as const) {
-            const words = keyedShell(language);
-
-            for (const status of statuses) {
-                for (const count of [1, 2]) {
-                    view.render(
-                        <ShellProvider strings={KEYED_SHELL} language={language}>
-                            <StatusChip status={status} count={count} />
-                        </ShellProvider>,
-                    );
-
-                    const runs = words
-                        .choice(`kit.counted.${status}`, count, { count: marker })
-                        .split(marker)
-                        .map((part) => part.trim())
-                        .filter((part) => part !== '');
-                    const element = view.host.querySelector('.admin-chip');
-                    const labels = [...(element?.querySelectorAll('.admin-chip__label') ?? [])].map((span) => span.textContent);
-                    const figure = element?.querySelector('.admin-chip__count');
-
-                    expect(labels).toEqual(runs);
-                    expect(figure?.textContent).toBe(formatCount(count, words.locale));
-                    expect(figure?.closest('.admin-chip__label')).toBeNull();
-                    expect(figure?.querySelector('.admin-chip__label')).toBeNull();
-                }
-            }
-        }
-    });
-
-    it('spells the counted line\'s figure in the shell\'s locale, grouped as the language groups it', () => {
-        view.render(
-            <ShellProvider strings={KEYED_SHELL} language="el">
-                <StatusChip status="awaiting_approval" count={1234} />
-            </ShellProvider>,
-        );
-        const greek = keyedShell('el');
-        expect(view.host.querySelector('.admin-chip__count')?.textContent).toBe(formatCount(1234, greek.locale));
-        expect(view.host.querySelector('.admin-chip')?.textContent).toBe(greek.choice('kit.counted.awaiting_approval', 1234));
-        expect(formatCount(1234, greek.locale)).not.toBe(formatCount(1234, shell.locale));
-    });
-
-    it('splices the figure before the raw value for a status the chip does not know', () => {
-        view.render(<StatusChip status="on_hold_forever" count={1234} />);
-        const element = view.host.querySelector('.admin-chip');
-        expect(element?.querySelector('.admin-chip__count')?.textContent).toBe(formatCount(1234, shell.locale));
-        expect(element?.querySelector('.admin-chip__label')?.textContent).toBe('on_hold_forever');
-        expect(element?.textContent).toBe(`${formatCount(1234, shell.locale)} on_hold_forever`);
+        expect(counted.props.status).toBe('awaiting_approval');
     });
 });
 
@@ -260,15 +191,15 @@ describe('each status\'s look', () => {
         expect(applied(ruled('on_hold_forever'))).toEqual([]);
     });
 
-    it('the compact chip keeps its count, its icon and type no smaller than 12px', () => {
-        view.render(<StatusChip status="awaiting_approval" count={3} />);
+    it('the compact chip, as Home\'s activity line passes it, keeps its icon and its word and type no smaller than 12px', () => {
+        view.render(<StatusChip status="awaiting_approval" className="admin-chip--compact" />);
 
         const element = view.host.querySelector('.admin-chip');
 
         expect(element?.classList.contains('admin-chip--compact')).toBe(true);
         expect(element?.querySelector('.admin-chip__icon svg')?.classList.contains('lucide-clock')).toBe(true);
-        expect(element?.querySelector('.admin-chip__count')?.textContent).toBe(formatCount(3, shell.locale));
-        expect(element?.textContent).toBe(shell.choice('kit.counted.awaiting_approval', 3));
+        expect([...(element?.children ?? [])].map((child) => child.className)).toEqual(['admin-chip__icon', 'admin-chip__label']);
+        expect(element?.textContent).toBe(shell.text('kit.statuses.awaiting_approval'));
         expect(applied('.admin-chip--compact')).toEqual(['gap-1', 'leading-4.5', 'max-w-full', 'px-2', 'py-0', 'text-xs']);
         expect(applied('.admin-chip--compact:has(> .admin-chip__icon)')).toEqual(['pl-1.5']);
     });

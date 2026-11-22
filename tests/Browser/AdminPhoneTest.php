@@ -467,9 +467,9 @@ it('fits the wizard, Month, Services, Staff and Settings to a phone, none of the
 });
 
 it('keeps Settings\' save bar clear of the help bubble in Greek while it says why Save is unavailable, the sentence wrapped inside its column on a phone with the address in it broken, and at a width where the bar is as wide as what it holds', function () {
-    // The sentence is one line in English on a desktop. In Greek it runs to several on a phone,
-    // beside a wider button, and to more than a row holds at 1000 pixels, so at both widths the
-    // bar reaches as far as it is let, toward the corner the bubble stands over.
+    // The sentence is one line in English on a desktop. In Greek it runs to a few lines on a
+    // phone, on rows of their own above Save, and to more than a row holds at 1000 pixels, so at
+    // both widths the bar reaches as far as it is let, toward the corner the bubble stands over.
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
     $reason = adminLine('admin/settings.validation.public_email', [], SiteLanguage::Greek);
 

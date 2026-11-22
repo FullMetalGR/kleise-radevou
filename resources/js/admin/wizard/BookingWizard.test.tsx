@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { key, mount, type Mounted, press } from '@/components/ui/harness';
+import { FORCED_EDGE } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import type { TenantClock } from '@/lib/format';
 import { KEYED_BOOKINGS, KEYED_CUSTOMERS, KEYED_SHELL, KEYED_WIZARD, keyedShell, keyedWizard } from '@/testing/keyed';
@@ -391,6 +392,26 @@ describe('step 1, 4.3', () => {
         expect(steps()[1]?.value).toBe('2026-11-02');
     });
 
+    it('draws a real line round every start where the system forces its own colours, so choosing one moves none, and paints the chosen one in the system\'s highlight there, its keyboard outline in the system\'s colour for text', async () => {
+        render();
+        await toWhen();
+
+        const slots = [...dialog().querySelectorAll('.admin-wizard-slot')];
+
+        expect(slots.length).toBeGreaterThan(0);
+
+        for (const slot of slots) {
+            expect([...slot.classList].filter((name) => name.startsWith('forced-colors:'))).toEqual([
+                FORCED_EDGE,
+                'forced-colors:aria-pressed:border-[Highlight]',
+                'forced-colors:aria-pressed:bg-[Highlight]',
+                'forced-colors:aria-pressed:text-[HighlightText]',
+                'forced-colors:aria-pressed:forced-color-adjust-none',
+                'forced-colors:aria-pressed:focus-visible:outline-[CanvasText]',
+            ]);
+        }
+    });
+
     it('keeps the slot on the same day, clears it on toggling same-staff and on a change to the chain, and refuses to remove the only segment', async () => {
         render();
         await toWhen();
@@ -597,7 +618,7 @@ describe('step 2 and the submission, 4.4', () => {
     });
 });
 
-/** The top bar's button as the layout writes it, over the opening API a calendar slot will use too. */
+/** The page header's button as the layout writes it, over the opening API a calendar slot will use too. */
 function NewBookingButton() {
     const { open } = useNewBooking();
 

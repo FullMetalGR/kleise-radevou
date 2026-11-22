@@ -11,9 +11,16 @@ import { cn } from '@/lib/utils';
  * body face. A dense row passes its own height in className; the textarea keeps its own.
  */
 
+/**
+ * A real 1px line round a part whose only edge is a ring or a shadow, drawn only where the
+ * person's system forces its own colours. There every shadow is dropped and every fill repainted
+ * as the page, so a field, a button, a menu, a dialog or a toast would stand on the page with no
+ * edge at all; the system paints the line in its own colour for text.
+ */
+export const FORCED_EDGE = 'forced-colors:border';
+
 /** The shared look, without a height: the select and the pickers' triggers wear it too. */
-export const FIELD =
-    'w-full rounded-field bg-card px-3.5 text-body text-foreground inset-ring-[1.5px] inset-ring-border outline-none focus-ring-field placeholder:text-ink-tertiary aria-invalid:inset-ring-2 aria-invalid:inset-ring-destructive disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-45 motion-safe:transition-shadow';
+export const FIELD = `w-full rounded-field bg-card px-3.5 text-body text-foreground inset-ring-[1.5px] inset-ring-border outline-none focus-ring-field placeholder:text-ink-tertiary aria-invalid:inset-ring-2 aria-invalid:inset-ring-destructive disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-45 motion-safe:transition-shadow ${FORCED_EDGE}`;
 
 /** A single-line field's height. */
 export const FIELD_HEIGHT = 'h-11.5';

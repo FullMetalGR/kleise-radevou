@@ -384,6 +384,10 @@ it('keeps a refused window on one level on the Opening hours step in Greek, at 1
         ->click('.admin-setup__primary')
         ->assertVisible($monday.' .admin-weekly__window .admin-field__error');
 
+    // The refused save hands the focus to that window's Start, and its sentence is said at once.
+    $page->assertScript('document.activeElement === document.querySelector(\''.$monday.' .admin-weekly__start\')', true)
+        ->assertAttribute($monday.' .admin-weekly__window .admin-field__error', 'role', 'alert');
+
     foreach ([1440, 1024, 390] as $width) {
         $page->resize($width, 844);
         $rows['refused, at '.$width.'px'] = $page->script(WIZARD_FIRST_WINDOW);

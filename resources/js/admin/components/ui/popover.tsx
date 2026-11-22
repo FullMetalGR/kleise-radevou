@@ -1,6 +1,7 @@
 import { Popover as PopoverPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
+import { FORCED_EDGE } from './input';
 import { NestedOverlay } from './modal';
 
 /*
@@ -36,9 +37,10 @@ export const PopoverAnchor = PopoverPrimitive.Anchor;
 /**
  * The surface every popover and dropdown menu opens on: the popover fill, the menu's rounding and
  * the floating shadow, whose own hairline stands in for a border, with a little room inside the
- * edge so a row's own rounding shows. A content that wants more room inside says so.
+ * edge so a row's own rounding shows; where the system forces its own colours the shadow is
+ * dropped and a real line takes its place. A content that wants more room inside says so.
  */
-export const MENU_SURFACE = 'rounded-menu border-0 bg-popover p-1.5 text-popover-foreground shadow-float';
+export const MENU_SURFACE = `rounded-menu border-0 bg-popover p-1.5 text-popover-foreground shadow-float ${FORCED_EDGE}`;
 
 /**
  * A row of a pick list: 44px, rounded as a field is, the soft fill on the keyboard's active row

@@ -18,9 +18,9 @@ pest()->use(DatabaseTruncation::class);
 
 /*
  * An admin user in Greek beside a colleague in English at the same tenant. Each reads the same
- * screen in their own language, each changes it through the top bar's route for themself alone,
- * and the business mail about one booking reaches each in the language they read at the send.
- * Every expected line is read through the translator, never spelled here.
+ * screen in their own language, each changes it through the page header's route for themself
+ * alone, and the business mail about one booking reaches each in the language they read at the
+ * send. Every expected line is read through the translator, never spelled here.
  */
 
 const TAL_OWNER = 'owner@luna.example';
@@ -88,7 +88,7 @@ function talWrittenIn(string $address): string
     };
 }
 
-it('shows one screen to a Greek owner and an English manager each in their own language, lets each change it through the top bar for themself alone, and writes the business mail about one booking to each in the language they read at the send', function () {
+it('shows one screen to a Greek owner and an English manager each in their own language, lets each change it through the page header for themself alone, and writes the business mail about one booking to each in the language they read at the send', function () {
     settingsOf('luna')->update(['language' => SiteLanguage::Greek->value]);
     DB::table('users')->where('email', TAL_OWNER)->update(['locale' => 'el']);
     DB::table('users')->where('id', addTenantUser(TAL_MANAGER, 'manager'))->update(['locale' => 'en']);
@@ -108,7 +108,7 @@ it('shows one screen to a Greek owner and an English manager each in their own l
         ->and(talWrittenIn(TAL_MANAGER))->toBe('en')
         ->and(linesShownIn((string) seamAt(TAL_OWNER)->getSubject(), 'business-mail', SiteLanguage::Greek))->each->toStartWith('new_booking.');
 
-    // The owner moves to English through the top bar; the manager keeps hers.
+    // The owner moves to English through the page header; the manager keeps hers.
     $this->actingAs(talUser(TAL_OWNER))->from(tenantUrl('luna', '/admin/bookings'))
         ->put(tenantUrl('luna', '/admin/language/en'))
         ->assertRedirect(tenantUrl('luna', '/admin/bookings'));

@@ -27,10 +27,10 @@ import { type BookingStatus, NO_PLAN, type PlanName, planWord, STATE_WORDS, STAT
  * services, the active staff, the bookings by status and the last booking made, none of it for a
  * provisioning row, which has no data of its own yet.
  *
- * Every instant is as the server spelled it on the console's clock, which the top bar names once
- * for the screen, and each vocabulary value is in words. The links go out to the tenant's own
- * origin in a new tab, the booking page and the admin's sign-in, and to the Audit screen narrowed
- * to the tenant.
+ * Every instant is as the server spelled it on the console's clock, which the shell names once for
+ * the screen, and each vocabulary value is in words. The links go out to the tenant's own origin in
+ * a new tab, the booking page and the admin's sign-in, and to the Audit screen narrowed to the
+ * tenant.
  *
  * A closed row, which the drop left with no slug, no schema and no users, is the same page read by
  * its id: the account with the instant it closed and the plan and the subscription as the row keeps

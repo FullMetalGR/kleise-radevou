@@ -30,15 +30,18 @@ import { IMAGE_TYPES, type StoredImage } from './model';
 
 /**
  * A native file chooser drawn as the kit draws its fields: as tall as any field, in the field's
- * ring, as wide as its contents. The chooser's button sits 5px inside it at the small button's
- * 36px, in the secondary button's ring and type, and the chosen file's name beside it is muted.
+ * ring, as wide as its contents and never wider than its row. Its width is the row's, held to its
+ * contents, so it gives way on a narrow row and never widens the row past its card, as a chooser
+ * whose own width came from its contents would. The chooser's button sits 5px inside it at the
+ * small button's 36px, in the secondary button's ring and type, and the chosen file's name beside
+ * it is muted.
  * Shared by every file input of Settings and the staff page.
  */
 export const FILE_INPUT = cn(
     FIELD,
     PRESSED_HOVER,
     FIELD_HEIGHT,
-    'w-auto max-w-full p-1.25 pr-3.5 text-sm text-muted-foreground file:mr-3 file:h-9 file:cursor-pointer file:rounded-full file:border-[1.5px] file:border-border file:bg-card file:px-3.5 file:text-sm file:font-bold file:text-foreground hover:file:bg-muted',
+    'w-full max-w-max p-1.25 pr-3.5 text-sm text-muted-foreground file:mr-3 file:h-9 file:cursor-pointer file:rounded-full file:border-[1.5px] file:border-border file:bg-card file:px-3.5 file:text-sm file:font-bold file:text-foreground hover:file:bg-muted',
 );
 
 /** What a slot says: the line where nothing is stored, and its three buttons. */

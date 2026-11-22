@@ -5,7 +5,7 @@ import { cn } from './utils';
 
 /*
  * The class joiner knows the admin's own scales by name: a text size, a corner radius, a shadow,
- * an easing, a page width and a face each conflict with another of their kind, the later one
+ * an easing and a face each conflict with another of their kind, the later one
  * winning, and never with a colour, which a size or a shadow by its name alone would read as.
  */
 describe('the class joiner over the admin\'s own scales', () => {
@@ -28,10 +28,6 @@ describe('the class joiner over the admin\'s own scales', () => {
 
     it('keeps the later of two easings', () => {
         expect(cn('ease-out', 'ease-soft')).toBe('ease-soft');
-    });
-
-    it('keeps the later of two widths, the page\'s against a stock one', () => {
-        expect(cn('max-w-3xl', 'max-w-page')).toBe('max-w-page');
     });
 
     it('keeps the later of two faces, and a face beside a weight', () => {
@@ -90,9 +86,21 @@ function themeNames(css: string): Array<[Scale, string]> {
 }
 
 /*
+ * The names the joiner is told, each under its scale, read out of the lists in its own source.
+ */
+function joinerNames(source: string): Array<[Scale, string]> {
+    const theme = /theme:\s*\{([\s\S]*?)\}/.exec(source)?.[1] ?? '';
+
+    return [...theme.matchAll(/(\w+):\s*\[([^\]]*)\]/g)].flatMap(([, scale, list]) =>
+        isScale(scale) ? [...(list ?? '').matchAll(/'([^']+)'/g)].map(([, name]): [Scale, string] => [scale, name ?? '']) : [],
+    );
+}
+
+/*
  * The stylesheet's theme and the joiner agree. A name added to a theme block and not to the
  * joiner's list makes a utility the joiner misreads: it drops text-page-title beside
- * text-foreground as one colour after another, and keeps rounded-tile beside rounded-xl.
+ * text-foreground as one colour after another, and keeps rounded-tile beside rounded-xl. A name
+ * left in the joiner's list after its token went names a utility that draws nothing.
  */
 describe('the class joiner and the stylesheet\'s theme blocks', () => {
     it('knows every text size, corner radius, shadow, easing and width the theme blocks name', () => {
@@ -104,6 +112,14 @@ describe('the class joiner and the stylesheet\'s theme blocks', () => {
 
         expect(named).not.toEqual([]);
         expect(unknown).toEqual([]);
+    });
+
+    it('is told no name the theme blocks do not declare: every name in its lists is a token of its scale', () => {
+        const declared = new Set(themeNames(readFileSync(join(process.cwd(), 'resources/js/admin/app.css'), 'utf8')).map(([scale, name]) => `${scale}-${name}`));
+        const told = joinerNames(readFileSync(join(process.cwd(), 'resources/js/admin/lib/utils.ts'), 'utf8')).map(([scale, name]) => `${scale}-${name}`);
+
+        expect(told).not.toEqual([]);
+        expect(told.filter((name) => !declared.has(name))).toEqual([]);
     });
 
     it('reads a name out of a plain and an inline block, and passes over a size\'s own line, a colour, a comment and a property outside the theme', () => {

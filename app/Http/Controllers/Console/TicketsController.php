@@ -29,7 +29,7 @@ use Symfony\Component\HttpFoundation\Response;
  * names, and the page is a closure, so paging is a partial reload of the list alone. Each row
  * carries the ticket's subject, its business by name with the business's console page, its status
  * as its value, which the page words, the newest message's instant spelled on the console's clock,
- * the top bar naming the zone once, and whether it awaits a reply: open, with the business having
+ * the shell naming the zone once, and whether it awaits a reply: open, with the business having
  * written last.
  *
  * A thread is the ticket with the same facts and its messages oldest first, each with its side,

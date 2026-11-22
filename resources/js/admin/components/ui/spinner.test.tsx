@@ -9,7 +9,7 @@ import { Spinner } from './spinner';
  * where the person has not asked for less motion. With a label it is a status a screen reader
  * announces by that label; without one it is decoration beside words that already say what is
  * loading, hidden from assistive technology. The button keeps its own spinner inside its label,
- * and nothing else in the sources spells a turning ring by hand.
+ * and nothing else in the admin's sources spells a turning ring by hand.
  */
 
 let view: Mounted;
@@ -26,7 +26,8 @@ const classes = () => [...(spinner()?.classList ?? [])];
 /** The turning utility, put together here so this file does not spell it whole. */
 const TURN = ['animate', 'spin'].join('-');
 
-const RESOURCES = join(process.cwd(), 'resources');
+/** The admin's own sources: the booking page and the server views keep their own looks. */
+const ADMIN = join(process.cwd(), 'resources', 'js', 'admin');
 
 /** Every file under the folder given whose text could spell a utility class. */
 function filesUnder(directory: string): string[] {
@@ -80,11 +81,11 @@ describe('the spinner', () => {
     });
 
     it('is the one turning ring spelled in the sources, beside the button\'s own', () => {
-        const spelled = filesUnder(RESOURCES)
+        const spelled = filesUnder(ADMIN)
             .filter((path) => readFileSync(path, 'utf8').includes(TURN))
-            .map((path) => relative(RESOURCES, path).split('\\').join('/'))
+            .map((path) => relative(ADMIN, path).split('\\').join('/'))
             .sort();
 
-        expect(spelled).toEqual(['js/admin/components/ui/button.tsx', 'js/admin/components/ui/spinner.tsx']);
+        expect(spelled).toEqual(['components/ui/button.tsx', 'components/ui/spinner.tsx']);
     });
 });

@@ -31,6 +31,13 @@ import { MENU_OPTION, MENU_SURFACE, Popover, PopoverContent, PopoverTrigger } fr
 const TIME = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/;
 const TYPE_AHEAD_MS = 1000;
 
+/**
+ * The rows Page Up and Page Down move by: the rows the list shows whole, its 18rem less the
+ * surface's 6px above and below over 44px rows, so a page lands on the row just past the last one
+ * in view.
+ */
+const PAGE_ROWS = 6;
+
 function secondsOf(value: string): number | null {
     const match = TIME.exec(value);
 
@@ -118,7 +125,7 @@ export function TimeField({ value, onChange, clock, granularity, className, disa
 
     const keys = (event: KeyboardEvent<HTMLUListElement>) => {
         const last = times.length - 1;
-        const moves: Record<string, number> = { ArrowDown: highlight + 1, ArrowUp: highlight - 1, Home: 0, End: last, PageDown: highlight + 12, PageUp: highlight - 12 };
+        const moves: Record<string, number> = { ArrowDown: highlight + 1, ArrowUp: highlight - 1, Home: 0, End: last, PageDown: highlight + PAGE_ROWS, PageUp: highlight - PAGE_ROWS };
         const move = moves[event.key];
         const time = times[highlight];
 

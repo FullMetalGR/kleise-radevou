@@ -403,7 +403,8 @@ type StandingProps = { connection: PaymentConnection; registered: boolean; contr
  * us whose provider still lists information it needs, the one line saying so in place of the
  * list, with the provider's page linked through a fresh onboarding link where this build still
  * registers the provider. That link runs on from the sentence, where its colour alone does not
- * tell it from the sentence's ink, so it is underlined at rest.
+ * tell it from the sentence's ink, so it is underlined at rest. What the provider said is a
+ * sentence too, so it reads in the body face at the body weight under the notice's heavier one.
  */
 function Standing({ connection, registered, control, onResume }: StandingProps) {
     const reason = connection.information_due ? null : reasonOf(connection.requirements);
@@ -413,7 +414,7 @@ function Standing({ connection, registered, control, onResume }: StandingProps) 
         <>
             <Notice kind={STATE_KINDS[connection.state] ?? 'info'} className="admin-payments-state">
                 <span className="admin-payments-state__sentence">{stateSentence(connection, words)}</span>
-                {reason !== null && <q className="admin-payments-reason mt-1 block font-mono">{reason}</q>}
+                {reason !== null && <q className="admin-payments-reason mt-1 block font-normal">{reason}</q>}
             </Notice>
             {connection.information_due && (
                 <p className="admin-payments-due text-sm">
@@ -585,7 +586,7 @@ type WebhookProps = { url: string; name: string; control: Control; visit: Paymen
  * control that leaves the credentials alone. The change is behind a confirmation in Disconnect's
  * shape naming that the provider must be told the new address: Keep and Escape leave the token
  * alone, no path dismisses it while the change is in flight, it closes on the landed answer and a
- * refusal leaves it open.
+ * refusal leaves it open. The two buttons sit 8px apart, which keeps them on one line on a phone.
  */
 function WebhookUrl({ url, name, control, visit, refusal }: WebhookProps) {
     const [confirming, setConfirming] = useState(false);
@@ -605,7 +606,7 @@ function WebhookUrl({ url, name, control, visit, refusal }: WebhookProps) {
                 {url}
             </code>
             <HelpLine className="admin-payments-webhook__help">{words.text('webhook.help', { provider: name })}</HelpLine>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
                 <Button className="admin-payments-copy" onClick={() => copy(url)}>
                     {words.text('webhook.copy')}
                 </Button>

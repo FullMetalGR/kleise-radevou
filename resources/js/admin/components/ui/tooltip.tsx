@@ -1,5 +1,6 @@
 import { Tooltip as TooltipPrimitive } from 'radix-ui';
 import { type ReactNode, useState } from 'react';
+import { FORCED_EDGE } from './input';
 
 /*
  * The tooltip, on Radix's primitive as the popover is, for a control that shows no words of its
@@ -45,7 +46,7 @@ export function Tooltip({ label, side = 'right', disabled = false, children }: P
             <TooltipPrimitive.Root open={open && !disabled} onOpenChange={(next) => setOpen(next && !disabled)}>
                 <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
                 <TooltipPrimitive.Portal>
-                    <TooltipPrimitive.Content side={side} sideOffset={10} collisionPadding={8} className="admin-tooltip z-50 rounded-full bg-foreground px-3 py-1.5 text-small font-semibold text-background shadow-float">
+                    <TooltipPrimitive.Content side={side} sideOffset={10} collisionPadding={8} className={`admin-tooltip z-50 rounded-full bg-foreground px-3 py-1.5 text-small font-semibold text-background shadow-float ${FORCED_EDGE}`}>
                         {label}
                     </TooltipPrimitive.Content>
                 </TooltipPrimitive.Portal>

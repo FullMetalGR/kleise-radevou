@@ -257,7 +257,8 @@ const WEEKLY_DAY = <<<'JS'
 /**
  * The email choices' audiences as they stand: how many rows there are, how many audiences are
  * broken across lines, how many leave their label's column or push it wider than it is, and the
- * widest audience beside the narrowest column, with whether the one fits the other.
+ * widest audience beside the narrowest column, with the whole pixels the one leaves to spare in
+ * the other.
  */
 const EMAIL_AUDIENCES = <<<'JS'
     document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -280,7 +281,7 @@ const EMAIL_AUDIENCES = <<<'JS'
             outside: rows.filter((row) => row.outside).length,
             widest,
             column,
-            fits: widest <= column,
+            spare: column - widest,
             pageScrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
         });
     }))))
@@ -729,8 +730,274 @@ it('holds a day of two windows in Greek on one line in Opening hours at 1440px, 
         ->and($narrow['widest'] ?? null)->toBeLessThanOrEqual(128);
     Look::shot($page, 'settings-hours-390-el');
 
-    // The same phone, the email choices: no audience is broken across lines or leaves its column.
-    $audiences = $page->script(EMAIL_AUDIENCES);
-    expect($audiences)->toMatchArray(['rows' => 17, 'broken' => 0, 'outside' => 0, 'fits' => true, 'pageScrolls' => false]);
+    // The same phone and the narrowest one read, the email choices: no audience is broken across
+    // lines or leaves its column, and the widest leaves its column 2 pixels to spare.
+    $audiences = [];
+    foreach ([390, 320] as $width) {
+        $page->resize($width, 844);
+        $audience = $page->script(EMAIL_AUDIENCES);
+        assert(is_array($audience));
+        $audiences[$width] = $audience;
+    }
+    foreach ($audiences as $audience) {
+        expect($audience)->toMatchArray(['rows' => 17, 'broken' => 0, 'outside' => 0, 'pageScrolls' => false])
+            ->and($audience['spare'] ?? null)->toBeGreaterThanOrEqual(2);
+    }
+    $page->assertNoJavaScriptErrors();
+});
+
+/**
+ * The save bar's reason against Save, read once the fonts are in and the layout has settled:
+ * whether the line stands above the button or beside it, how many lines it takes, whether it
+ * stays inside the bar, and whether the page scrolls sideways.
+ */
+const SAVE_BAR_REASON_PLACE = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const bar = document.querySelector('.admin-save-bar');
+        const reason = bar.querySelector('.admin-save-bar__reason');
+        const [edges, save, line] = [bar, bar.querySelector('button'), reason].map((part) => part.getBoundingClientRect());
+        resolve({
+            above: line.bottom <= save.top + 1,
+            beside: line.left >= save.right - 1 && line.top < save.bottom && line.bottom > save.top,
+            lines: Math.round(line.height / parseFloat(getComputedStyle(reason).lineHeight)),
+            inside: reason.scrollWidth <= reason.clientWidth + 1 && line.left >= edges.left - 1 && line.right <= edges.right + 1,
+            pageScrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        });
+    }))))
+    JS;
+
+it('puts the save bar\'s reason on a line of its own above Save on a phone in Greek, a few lines across the bar, and beside Save on a wide page', function () {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+    $reason = adminLine('admin/settings.validation.reminder', [], SiteLanguage::Greek);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/settings.sections.booking_rules', [], SiteLanguage::Greek))
+        ->clear('#settings-reminder')
+        ->assertSeeIn('.admin-save-bar__reason', $reason);
+
+    $rows = [];
+    foreach ([390, 320, 1440] as $width) {
+        $page->resize($width, 844);
+        $row = $page->script(SAVE_BAR_REASON_PLACE);
+        assert(is_array($row));
+        $rows[$width] = $row;
+        Look::shot($page, 'settings-save-bar-reason-'.$width.'-el');
+    }
+
+    // Beside Save on a phone the sentence would have a column a few words wide.
+    expect($rows[390])->toMatchArray(['above' => true, 'beside' => false, 'inside' => true, 'pageScrolls' => false])
+        ->and($rows[390]['lines'] ?? null)->toBeLessThanOrEqual(5)
+        ->and($rows[320])->toMatchArray(['above' => true, 'beside' => false, 'inside' => true, 'pageScrolls' => false])
+        ->and($rows[320]['lines'] ?? null)->toBeLessThanOrEqual(7)
+        ->and($rows[1440])->toMatchArray(['above' => false, 'beside' => true, 'inside' => true, 'pageScrolls' => false]);
+    $page->assertNoJavaScriptErrors();
+});
+
+/**
+ * Once the fonts are in and the layout has settled at the width just set, measures the room the
+ * page keeps under the save bar against the bar where it floats, as whole pixels past the bar's
+ * top, then takes the first field of the form that the bar stands over at its own width and that
+ * the page can scroll under the bar, stands it a few pixels under the bar's top, focuses it as the
+ * keyboard does from elsewhere, and says whether the bar covered it first and, two frames on,
+ * whether the field then ends above the bar. A field whose top the bar covers lies wholly in that
+ * room, and so is scrolled clear, only where the room reaches past the top.
+ */
+const FOCUS_UNDER_THE_BAR = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        const bar = document.querySelector('.admin-save-bar');
+        const edges = bar.getBoundingClientRect();
+        const kept = Math.floor(parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) - (innerHeight - edges.top));
+        const room = document.documentElement.scrollHeight - innerHeight;
+        const control = [...document.querySelectorAll('.admin-page form :is(input:not([type="hidden"]):not([type="file"]), select, textarea)')].find((field) => {
+            const box = field.getBoundingClientRect();
+            const top = box.top + window.scrollY;
+            return !bar.contains(field) && box.width > 0 && box.left < edges.right && box.right > edges.left && top > innerHeight && top < room;
+        });
+        document.activeElement?.blur();
+        window.scrollBy(0, control.getBoundingClientRect().top - bar.getBoundingClientRect().top - 4);
+        const [box, over] = [control, bar].map((part) => part.getBoundingClientRect());
+        const covered = box.top > over.top && box.top < over.bottom && box.left < over.right && box.right > over.left;
+        control.focus();
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve({ kept, covered, clear: control.getBoundingClientRect().bottom <= bar.getBoundingClientRect().top + 1 })));
+    }))))
+    JS;
+
+it('scrolls a field the keyboard reaches under the floating save bar up above it in Greek, on a phone over the bar along the foot and on a wide page, with Save alone and with a reason several lines long', function () {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/settings.sections.booking_rules', [], SiteLanguage::Greek));
+
+    // Each state reads the room one rule keeps under the bar: Save alone on a phone and on a wide
+    // page, then the reason on rows of its own above Save on the phones, the most rows at 320, and
+    // beside Save from the wide breakpoint, the most lines at its narrowest.
+    $rooms = [];
+    foreach ([390, 1440] as $width) {
+        $page->resize($width, 844);
+        $rooms['save alone at '.$width] = $page->script(FOCUS_UNDER_THE_BAR);
+    }
+    $page->clear('#settings-reminder')
+        ->assertSeeIn('.admin-save-bar__reason', adminLine('admin/settings.validation.reminder', [], SiteLanguage::Greek));
+    foreach ([390, 320, 900, 1440] as $width) {
+        $page->resize($width, 844);
+        $rooms['reason at '.$width] = $page->script(FOCUS_UNDER_THE_BAR);
+    }
+
+    foreach ($rooms as $state => $room) {
+        assert(is_array($room));
+        expect($room)->toMatchArray(['covered' => true, 'clear' => true], $state)
+            ->and($room['kept'] ?? null)->toBeGreaterThanOrEqual(2, $state);
+    }
+    $page->assertNoJavaScriptErrors();
+});
+
+/**
+ * The webhook address's two buttons as they stand: whether Copy URL and Change URL share one
+ * line, the room their row leaves past the two and the gap between them, and whether Change URL
+ * ends inside the row.
+ */
+const WEBHOOK_BUTTONS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const copy = document.querySelector('.admin-payments-copy');
+        const row = copy.parentElement;
+        const [one, other, box] = [copy, row.querySelector('.admin-payments-rotate'), row].map((part) => part.getBoundingClientRect());
+        return {
+            oneLine: Math.abs(one.top - other.top) <= 1,
+            room: Math.floor(box.width - one.width - other.width - parseFloat(getComputedStyle(row).columnGap)),
+            inside: other.right <= box.right + 1,
+        };
+    })
+    JS;
+
+it('keeps Copy URL and Change URL on one line under the webhook address on a phone in Greek', function () {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+    connectPaymentFake();
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/payments.states.active', ['provider' => 'Paydesk'], SiteLanguage::Greek));
+
+    $row = $page->script(WEBHOOK_BUTTONS);
+    Look::shot($page, 'settings-webhook-390-el');
+    assert(is_array($row));
+    expect($row)->toMatchArray(['oneLine' => true, 'inside' => true])
+        ->and($row['room'] ?? null)->toBeGreaterThanOrEqual(2);
+    $page->assertNoJavaScriptErrors();
+});
+
+/**
+ * Scrolls the row until the named link's far edge stands 3 pixels inside the row's, whole in the
+ * row but nearer its edge than the room a link the keyboard reaches is brought in with, notes the
+ * row's scroll as the next press goes down and again as its click arrives, and says whether the
+ * link stands so.
+ */
+const ROW_THROUGH_A_PRESS = <<<'JS'
+    (() => {
+        const list = document.querySelector('.admin-settings-tabs ul');
+        const link = list.querySelector('a[href="#%s"]');
+        // The test's driver scrolls a target into view, inside the row's scroll padding, before it
+        // presses, as a hand does not; with no padding the link already stands in view for it.
+        list.style.scrollPaddingInline = '0';
+        list.scrollLeft += link.getBoundingClientRect().right - (list.getBoundingClientRect().right - 3);
+        window.rowThroughPress = [];
+        const note = () => window.rowThroughPress.push(list.scrollLeft);
+        window.addEventListener('pointerdown', note, { capture: true, once: true });
+        window.addEventListener('click', note, { capture: true, once: true });
+        const [box, row] = [link, list].map((part) => part.getBoundingClientRect());
+        return box.left >= row.left && box.right <= row.right && box.right > row.right - 8;
+    })()
+    JS;
+
+it('leaves the row of section links still under a pointer pressing a link near its edge on a phone in Greek, so the press lands on the link it went down on', function () {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => SiteLanguage::Greek->value]);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/settings'))
+        ->waitForText(adminLine('admin/settings.sections.booking_rules', [], SiteLanguage::Greek))
+        ->assertScript(sprintf(ROW_THROUGH_A_PRESS, 'section-emails'), true)
+        ->click('.admin-settings-tabs a[href="#section-emails"]');
+
+    $notes = $page->script('window.rowThroughPress');
+    assert(is_array($notes));
+    expect($notes)->toHaveCount(2)
+        ->and($notes[1] ?? null)->toBe($notes[0] ?? null);
+    $page->assertScript(FOCUS_SECTION, 'section-emails')->assertNoJavaScriptErrors();
+});
+
+/**
+ * The image chooser named by its id against the grid of its section: whether the grid's one column
+ * stays inside the grid's padding and the chooser inside its column, and whether the page scrolls
+ * sideways.
+ */
+const IMAGE_CHOOSER_ROW = <<<'JS'
+    document.fonts.ready.then(() => {
+        const input = document.getElementById('%s');
+        const grid = input.closest('.admin-section').querySelector(':scope > div.grid');
+        const look = getComputedStyle(grid);
+        const room = grid.clientWidth - parseFloat(look.paddingLeft) - parseFloat(look.paddingRight);
+        const [field, chooser] = [input.closest('.admin-field'), input].map((part) => part.getBoundingClientRect());
+        return {
+            column: parseFloat(look.gridTemplateColumns) <= room + 0.5,
+            inside: chooser.right <= field.right + 0.5 && grid.scrollWidth <= grid.clientWidth,
+            pageScrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        };
+    })
+    JS;
+
+it('keeps every image chooser inside its card on a phone, the photo on a member\'s page and the logo and cover in Settings, none widening its column past the card\'s padding', function () {
+    $elena = DB::table('tenant_luna.staff')->where('name', 'Elena Papadaki')->value('id');
+    assert(is_int($elena));
+    $fits = ['column' => true, 'inside' => true, 'pageScrolls' => false];
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/staff/'.$elena))->waitForText(adminLine('admin/staff.form.photo'));
+    expect($page->script(sprintf(IMAGE_CHOOSER_ROW, 'staff-photo')))->toBe($fits);
+    Look::shot($page, 'staff-photo-chooser-390');
+
+    $page->navigate(Admin::url('luna', '/settings'))->waitForText(adminLine('admin/settings.booking_page.snippet'));
+    expect($page->script(sprintf(IMAGE_CHOOSER_ROW, 'settings-logo')))->toBe($fits)
+        ->and($page->script(sprintf(IMAGE_CHOOSER_ROW, 'settings-cover')))->toBe($fits);
+    Look::shot($page, 'settings-image-choosers-390');
+    $page->assertNoJavaScriptErrors();
+});
+
+/**
+ * Once the fonts are in and the layout has settled at the width just set, stands the chosen
+ * theme pill the given distance under the top of the screen, moves the choice one pill on with
+ * the arrow key, and says how far the page scrolled for the focus that follows and whether the
+ * pill it lands on stands below the row of section links.
+ */
+const THEME_ARROW = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const pill = document.querySelector('.admin-settings-theme--chosen');
+        window.scrollBy(0, pill.getBoundingClientRect().top - %d);
+        pill.focus({ preventScroll: true });
+        const before = window.scrollY;
+        pill.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve({
+            moved: Math.round(window.scrollY - before),
+            clear: document.activeElement.getBoundingClientRect().top >= document.querySelector('.admin-settings-tabs').getBoundingClientRect().bottom,
+        })));
+    }))))
+    JS;
+
+it('leaves the page where it stands as the arrow key moves the theme choice, scrolling it only far enough to keep a pill near the top clear of the row of section links', function () {
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/settings'))->waitForText(adminLine('admin/settings.booking_page.snippet'));
+
+    foreach ([390, 1440] as $width) {
+        $page->resize($width, 900);
+        // Well down the screen the focus moves nothing; just under the row it scrolls the page
+        // back a little, so the pill is not left under the row.
+        $far = $page->script(sprintf(THEME_ARROW, 300));
+        $near = $page->script(sprintf(THEME_ARROW, 80));
+        assert(is_array($near));
+        expect($far)->toBe(['moved' => 0, 'clear' => true])
+            ->and($near['clear'] ?? null)->toBeTrue()
+            ->and($near['moved'] ?? null)->toBeLessThan(0)->toBeGreaterThanOrEqual(-24);
+    }
     $page->assertNoJavaScriptErrors();
 });

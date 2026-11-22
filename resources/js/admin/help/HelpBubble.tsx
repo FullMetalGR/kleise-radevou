@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useEffect, useRef } from 'react';
+import { FORCED_EDGE } from '@/components/ui/input';
 import { clockOf, type TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
 import { useDesktop } from '@/lib/viewport';
@@ -115,7 +116,7 @@ function Bubble({ help, path, clock }: { help: Bubbled; path: string; clock: Ten
                 <button
                     ref={bubble}
                     type="button"
-                    className="admin-help-bubble focus-ring fixed right-4 bottom-4 z-40 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-float outline-none hover:bg-primary-deep print:hidden motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-soft"
+                    className={`admin-help-bubble focus-ring fixed right-4 bottom-4 z-40 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-float outline-none hover:bg-primary-deep print:hidden motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-soft ${FORCED_EDGE}`}
                     aria-label={shell.text(help.unread ? 'help.unread' : 'help.name')}
                     aria-busy={session.opening ? true : undefined}
                 >

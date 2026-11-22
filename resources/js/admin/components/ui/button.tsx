@@ -1,5 +1,6 @@
 import type { ComponentProps, MouseEvent, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { FORCED_EDGE } from './input';
 
 /*
  * The button. Four variants: primary, secondary (the default), tertiary, and link, which carries
@@ -11,10 +12,12 @@ import { cn } from '@/lib/utils';
  *
  * Every button but the link is a pill in bold type, 44px high, 36 small and 48 large. An icon sits
  * before the label, hidden from assistive technology; an icon-only button is round, its label
- * kept for a screen reader alone. The primary carries the theme colour and a soft glow of it, the
- * secondary sits on the card with a line inside its edge, the tertiary has no line. Every one
- * shows the focus ring on keyboard focus, darkens on hover and shrinks a little while pressed,
- * the movement only where the person has not asked for less of it.
+ * kept for a screen reader alone. The small button and the link answer a touch 44px high in the
+ * compact layout. The primary carries the theme colour and a soft glow of it, the secondary sits
+ * on the card with a line inside its edge, the tertiary has no line; where the system forces its
+ * own colours the primary and the secondary take a real line, their fill and ring dropped. Every
+ * one shows the focus ring on keyboard focus, darkens on hover and shrinks a little while
+ * pressed, the movement only where the person has not asked for less of it.
  *
  * A button keeps to one line. One whose label is wider than a phone's row in a language of longer
  * words is told to wrap: below the admin's breakpoint it holds to its row's width and the label
@@ -30,8 +33,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'link';
 type ButtonSize = 'small' | 'default' | 'large';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-    primary: 'bg-primary text-primary-foreground shadow-glow enabled:hover:bg-primary-deep enabled:hover:shadow-glow-hover disabled:shadow-none',
-    secondary: 'bg-card text-foreground inset-ring-[1.5px] inset-ring-border enabled:hover:bg-muted enabled:hover:inset-ring-ink-tertiary',
+    primary: `bg-primary text-primary-foreground shadow-glow enabled:hover:bg-primary-deep enabled:hover:shadow-glow-hover disabled:shadow-none ${FORCED_EDGE}`,
+    secondary: `bg-card text-foreground inset-ring-[1.5px] inset-ring-border enabled:hover:bg-muted enabled:hover:inset-ring-ink-tertiary ${FORCED_EDGE}`,
     tertiary: 'text-foreground enabled:hover:bg-muted',
     link: 'h-auto rounded-md p-0 text-primary-deep underline-offset-4 enabled:hover:underline',
 };
@@ -48,16 +51,27 @@ const DESTRUCTIVE: Record<ButtonVariant, string> = {
     link: 'text-destructive',
 };
 
+/**
+ * The touch area a control drawn under 44px gets in the compact layout, where a finger is the
+ * pointer: a layer of its own, 44px high and never narrower than 44px, centred on the control, so
+ * the control keeps its drawn size. The layer is out of the flow at every width, so it adds
+ * nothing to a row's gaps, and takes its size below the wide breakpoint alone. It reaches past a
+ * control's sides only where the control is narrower than 44px, so in a row of tabs or segments
+ * no two layers meet. A place that positions its control itself keeps its own position.
+ */
+export const REACH =
+    'relative after:absolute max-wide:after:top-1/2 max-wide:after:left-1/2 max-wide:after:h-11 max-wide:after:w-full max-wide:after:min-w-11 max-wide:after:-translate-1/2';
+
 /** Each height with its padding and type; the small one sets its label a little smaller. */
 const SIZES: Record<ButtonSize, string> = {
-    small: 'admin-button--small h-9 px-3.5 text-sm',
+    small: `admin-button--small h-9 px-3.5 text-sm ${REACH}`,
     default: 'h-11 px-4.5',
     large: 'admin-button--large h-12 px-6 text-body',
 };
 
 /** An icon-only button is as wide as it is high at each height. */
 const ICON_ONLY_SIZES: Record<ButtonSize, string> = {
-    small: 'admin-button--small size-9',
+    small: `admin-button--small size-9 ${REACH}`,
     default: 'size-11',
     large: 'admin-button--large size-12',
 };
@@ -174,12 +188,13 @@ export function Button({
 }
 
 /**
- * The button's box at its size: a link has none of its own, an icon-only button is the square,
- * and any other the padded height, with the wrap where it is told to.
+ * The button's box at its size: a link has none of its own but the touch area, being as low as
+ * its line of text, an icon-only button is the square, and any other the padded height, with the
+ * wrap where it is told to.
  */
 function boxOf(variant: ButtonVariant, size: ButtonSize, iconOnly: boolean, wrap: boolean): string {
     if (variant === 'link') {
-        return '';
+        return REACH;
     }
 
     if (iconOnly) {
@@ -191,11 +206,13 @@ function boxOf(variant: ButtonVariant, size: ButtonSize, iconOnly: boolean, wrap
 
 /**
  * What the button shows: the spinner while busy, else the icon, before the label, each hidden
- * from assistive technology; an icon-only button keeps the label for a screen reader alone.
+ * from assistive technology; an icon-only button keeps the label for a screen reader alone. The
+ * spinner turns only where the person has not asked for less motion; a still ring and the busy
+ * label say the same without it.
  */
 function Face({ busy, icon, iconOnly, children }: { busy: boolean; icon: ReactNode; iconOnly: boolean; children: ReactNode }) {
     const mark = busy ? (
-        <span className="admin-button__spinner size-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+        <span className="admin-button__spinner size-3.5 shrink-0 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" aria-hidden="true" />
     ) : (
         icon !== undefined && (
             <span className="admin-button__icon inline-flex shrink-0 [&_svg:not([class*='size-'])]:size-4.5" aria-hidden="true">

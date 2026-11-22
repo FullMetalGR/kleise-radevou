@@ -22,7 +22,9 @@ import { DEFAULT_WINDOW, type WeeklyWindow } from '@/shifts/model';
  * Its words are the shell's shared ones, since two screens read them, and each day is named by ICU
  * in the page's language. A refusal naming one window, by its place in the rules, is a sentence on
  * a line of its own under that window's fields and Remove, as wide as the window, and the window's
- * Start points at it and is marked as failing; a blank sentence is no refusal.
+ * Start points at it, beside anything its field part points at, and is marked as failing; a blank
+ * sentence is no refusal. The line is an alert, since it lands after a save with the focus on the
+ * save's own button, so a screen reader says it at once.
  *
  * The editor is the size container its rows ask, so a row reads the same in Settings and in the
  * setup wizard's dialog. Where the editor is at least 48rem wide a row is one line of three
@@ -90,8 +92,8 @@ export function WeeklyEditor({ rules, onChange, clock, granularity, idPrefix = '
                                         {(control) => (
                                             <TimeField
                                                 {...control}
-                                                aria-describedby={refused ? `${startId}-error` : undefined}
-                                                aria-invalid={refused || undefined}
+                                                aria-describedby={[control['aria-describedby'], refused ? `${startId}-error` : undefined].filter((id) => id !== undefined).join(' ') || undefined}
+                                                aria-invalid={refused || control['aria-invalid']}
                                                 className="admin-weekly__start"
                                                 value={rule.start}
                                                 onChange={(start) => replace(index, { ...rule, start })}
@@ -108,7 +110,9 @@ export function WeeklyEditor({ rules, onChange, clock, granularity, idPrefix = '
                                     </Button>
                                     {refused && (
                                         <div className="basis-full @3xl:col-span-full">
-                                            <ErrorLine id={`${startId}-error`}>{refusal}</ErrorLine>
+                                            <ErrorLine id={`${startId}-error`} role="alert">
+                                                {refusal}
+                                            </ErrorLine>
                                         </div>
                                     )}
                                 </div>

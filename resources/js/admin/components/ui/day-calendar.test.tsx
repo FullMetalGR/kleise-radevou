@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Language, localeOf } from '../../../booking/language';
@@ -189,6 +191,18 @@ describe('the day calendar', () => {
         expect(day('2026-09-24')?.getAttribute('aria-current')).toBe('date');
         expect(document.querySelectorAll('[aria-current="date"]')).toHaveLength(1);
         expect(selected()).toHaveLength(0);
+    });
+
+    it('marks a chosen today with a ring in the fill\'s own ink, which shows on the fill where the primary ring would not', () => {
+        view.render(<DayCalendar selected="2026-09-24" weekStart={1} today="2026-09-24" onChange={() => {}} />);
+
+        const cell = day('2026-09-24')?.closest('td');
+        const css = readFileSync(resolve(process.cwd(), 'resources/js/admin/app.css'), 'utf8');
+        const ring = /\.rdp-selected\.admin-day-calendar__today:not\(\.rdp-outside\) \.rdp-day_button \{([^}]*)\}/.exec(css)?.[1] ?? '';
+
+        expect(cell?.classList.contains('rdp-selected')).toBe(true);
+        expect(cell?.classList.contains('admin-day-calendar__today')).toBe(true);
+        expect(ring.replace(/\s+/g, ' ').trim()).toBe('box-shadow: inset 0 0 0 2px var(--primary), inset 0 0 0 3.5px var(--primary-foreground);');
     });
 
     it('opens on the month of today for a value that is not a date', () => {

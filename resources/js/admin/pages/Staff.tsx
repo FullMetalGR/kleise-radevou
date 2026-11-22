@@ -311,11 +311,12 @@ export default function Staff() {
     return (
         <StaffProvider words={words}>
             <Head title={words.text(id === 'new' ? 'page.new' : 'page.detail_title')} />
-            <div className="admin-staff-detail">
+            <div className="admin-staff-detail flex flex-col gap-4">
                 <ListDetail
                     rows={props.staff}
                     state={{ loading, error }}
                     id={id}
+                    title={words.text('page.detail_title')}
                     loadingLabel={words.text('page.loading')}
                     errorSentence={words.text(LIST_ERROR)}
                     notFoundSentence={words.text(NOT_FOUND)}

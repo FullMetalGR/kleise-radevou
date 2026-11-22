@@ -5,13 +5,15 @@ import { TableScroll } from './table-scroll';
 /*
  * The admin's data table, in its sideways box. A soft head row over roomy cells, figures in
  * tabular digits, and a soft fill on the body row under the pointer. The grid breaks no word:
- * where it does not fit its box, the box scrolls sideways. A table has one of five modes.
+ * where it does not fit its box, the box scrolls sideways. A table has one of four modes, and its
+ * first and last cells keep the card's own inset, so a column lines up with the card's title.
  *
  * A rows table has a second layout for where a grid has no room: below the wide breakpoint, and
  * whenever its own box is narrower than 672px, so a table in a narrow card beside the sidebar
  * reads too. There each row is a block and each cell a line with its column name on the left and
- * its value on the right, a long value breaking inside its line, and the head row leaves the
- * screen while staying in the reading order. Each part names its role, so a screen reader still
+ * its value on the right, a long value breaking inside its line; a cell with no label, a row's
+ * actions, puts its value at the end of its line, where it stands in the grid. The head row leaves
+ * the screen while staying in the reading order. Each part names its role, so a screen reader still
  * reads a table whatever the parts display as. Every condition is written out in full, once, here;
  * outside this part only a card's header that keeps its table's inset reads them, the same ones as
  * its table.
@@ -24,16 +26,13 @@ import { TableScroll } from './table-scroll';
  * is narrower than 1024px. It is for a table whose grid is wide, a row of controls among its
  * columns, which the card beside the sidebar cannot hold in a narrower window.
  *
- * A scroll table keeps the grid at every width and scrolls sideways in its box where it does not
- * fit. Its caller keeps its own head and row markup.
- *
  * An own table is for a screen that writes its own narrow layout. It sits in no box at all, so
  * nothing between it and the window scrolls and its head row can stay at the top of the window
  * while the page scrolls through a long list; the table itself is positioned in the box's place.
  * It writes none of the rows layout: its screen spells every condition on the parts it passes.
  */
 
-type Compact = 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'scroll' | 'own';
+type Compact = 'rows' | 'rows-below-wide' | 'rows-below-wider-box' | 'own';
 
 const CompactContext = createContext<Compact>('rows');
 
@@ -43,11 +42,11 @@ const SectionContext = createContext<'head' | 'body'>('body');
 const TABLE = 'admin-table w-full text-body-sm tabular-nums';
 
 const HEAD_CELL =
-    'bg-muted px-4 py-[11px] text-left align-middle text-small font-bold tracking-[0.01em] whitespace-nowrap text-muted-foreground first:pl-6 last:pr-6';
+    'bg-muted px-4 py-[11px] text-left align-middle text-small font-bold tracking-[0.01em] whitespace-nowrap text-muted-foreground first:pl-6.5 last:pr-6.5';
 
 const BODY_ROW = 'hover:bg-muted/70 motion-safe:transition-colors motion-safe:duration-150';
 
-const CELL = 'border-t px-4 py-2.5 text-left align-middle font-medium first:pl-6 last:pr-6';
+const CELL = 'border-t px-4 py-2.5 text-left align-middle font-medium first:pl-6.5 last:pr-6.5';
 
 const LABEL = 'admin-table__label hidden shrink-0 text-left text-label text-muted-foreground';
 
@@ -55,7 +54,7 @@ const LABEL = 'admin-table__label hidden shrink-0 text-left text-label text-mute
  * What the rows layout changes, part by part: every utility once per condition, the window below
  * the wide breakpoint first, the box narrower than 672px second and the box narrower than 1024px
  * third. A value breaks inside a word here alone: in the grid the same rule would let a column
- * shrink below its longest word.
+ * shrink below its longest word. A value with no label beside it takes the end of its line.
  */
 const ROWS = {
     table: ['max-wide:block', '@max-2xl:block', '@max-5xl:block'],
@@ -72,6 +71,7 @@ const ROWS = {
         '@max-5xl:flex @max-5xl:items-center @max-5xl:justify-between @max-5xl:gap-3.5 @max-5xl:border-t-0 @max-5xl:px-0 @max-5xl:py-1 @max-5xl:text-right @max-5xl:wrap-anywhere @max-5xl:first:pl-0 @max-5xl:last:pr-0',
     ],
     label: ['max-wide:block', '@max-2xl:block', '@max-5xl:block'],
+    end: ['max-wide:ml-auto', '@max-2xl:ml-auto', '@max-5xl:ml-auto'],
 } as const;
 
 type Part = keyof typeof ROWS;
@@ -83,7 +83,7 @@ type Part = keyof typeof ROWS;
 function rowsOf(compact: Compact, part: Part): string | false {
     const [belowWide, narrowBox, widerBox] = ROWS[part];
 
-    if (compact === 'scroll' || compact === 'own') {
+    if (compact === 'own') {
         return false;
     }
 
@@ -144,6 +144,7 @@ export function Th({ className, ...rest }: ComponentProps<'th'>) {
 export function Td({ label, header = false, className, children, ...rest }: ComponentProps<'td'> & { label?: string; header?: boolean }) {
     const rows = useRows('cell');
     const labelled = useRows('label');
+    const end = useRows('end');
     const look = cn(CELL, rows, className);
     const content = rows ? (
         <>
@@ -152,7 +153,7 @@ export function Td({ label, header = false, className, children, ...rest }: Comp
                     {label}
                 </span>
             )}
-            <div className="admin-table__value min-w-0">{children}</div>
+            <div className={cn('admin-table__value min-w-0', label === undefined && end)}>{children}</div>
         </>
     ) : (
         children

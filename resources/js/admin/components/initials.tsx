@@ -8,8 +8,12 @@ import { cn } from '@/lib/utils';
  * shadow, so the hue needs no rule and the circle keeps its size; the head's ring is the widest.
  * A customer's circle has no ring and ignores a hue. A circle with no ring sits on the theme's
  * strong tint in the deepened theme colour, which reads on that tint in every theme, so it never
- * draws card on card.
+ * draws card on card. Where the system forces its own colours the shadow is dropped, so there a
+ * ringed circle takes an outline inside its edge in the system's colour instead.
  */
+
+/** A ringed circle's edge where the system forces its own colours. */
+const FORCED_RING = 'forced-colors:outline-2 forced-colors:-outline-offset-2';
 
 const SIZES = {
     head: { className: 'size-11.5 text-label', ring: 3 },
@@ -34,7 +38,7 @@ export function Initials({ name, hue, size, className }: { name: string; hue?: s
 
     return (
         <span
-            className={cn('flex shrink-0 items-center justify-center rounded-full font-display font-bold', ringed ? 'bg-card text-foreground' : 'bg-tint-strong text-primary-deep', sized, className)}
+            className={cn('flex shrink-0 items-center justify-center rounded-full font-display font-bold', ringed ? ['bg-card text-foreground', FORCED_RING] : 'bg-tint-strong text-primary-deep', sized, className)}
             style={ringed ? { boxShadow: `inset 0 0 0 ${ring}px ${hue}` } : undefined}
             aria-hidden="true"
         >

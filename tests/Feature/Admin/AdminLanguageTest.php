@@ -22,7 +22,7 @@ pest()->use(RefreshDatabase::class);
  * nobody signed in, the door and the set-password page, and a support session, which has no user,
  * read the tenant default. The language rides in the block every admin page carries, the admin's
  * root view writes it as its lang, and on every route under /admin the application's locale is it
- * for the length of the request, read here where the root view renders. The top bar's control:
+ * for the length of the request, read here where the root view renders. The page header's control:
  * its two labels, each language's own name read from site.language as the site's switch reads it,
  * are shared to a signed-in user, and its write, PUT /admin/language/{language}, signed-in,
  * answers 404 for a support session.
@@ -93,8 +93,8 @@ function adminSupportSession(): int
 }
 
 /**
- * The top bar control's labels as the server reads them: each language's own name, site.language
- * in that language, read through the translator as the site's switch reads it.
+ * The page header control's labels as the server reads them: each language's own name,
+ * site.language in that language, read through the translator as the site's switch reads it.
  *
  * @return list<array{value: string, name: string}>
  */
@@ -162,7 +162,7 @@ it('answers a support session in the tenant default, since no user stands behind
         ->and($locale())->toBe('el');
 });
 
-it('shares the top bar control\'s labels to a signed-in user, each language named in its own language, read as the site\'s switch reads it', function () {
+it('shares the page header control\'s labels to a signed-in user, each language named in its own language, read as the site\'s switch reads it', function () {
     $owner = adminLanguageAt(SiteLanguage::English);
 
     $this->actingAs($owner)->get(tenantUrl('luna', '/admin'))

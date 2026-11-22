@@ -434,11 +434,25 @@ it('moves Colour bookings by on the arrow keys in the Calendar colours card, eac
     $page->assertNoJavaScriptErrors();
 });
 
+/**
+ * The read-only member page's label and value pairs: the widest space between a label's foot and
+ * its value's top, and whether the bio keeps inside its own box.
+ */
+const STAFF_VIEW_PAIRS = <<<'JS'
+    document.fonts.ready.then(() => {
+        const gaps = [...document.querySelectorAll('.admin-staff-view dl')].map((pair) => pair.querySelector('dd').getBoundingClientRect().top - pair.querySelector('dt').getBoundingClientRect().bottom);
+        const bio = document.querySelector('.admin-staff-view__bio');
+        return { widestGap: Math.round(Math.max(...gaps)), bioInside: bio.scrollWidth <= bio.clientWidth + 1 };
+    })
+    JS;
+
 it('lays a member\'s read-only page on two columns at 1440px and on one on a phone, the list with its colours card and the page never scrolling sideways on a phone, a name and an email of one long word wrapping where they stand and each swatch answering a press just outside its pill', function (SiteLanguage $language) {
     $elena = DB::table('tenant_luna.staff')->where('name', 'Elena Papadaki')->value('id');
     assert(is_int($elena));
     // A name and an email of one unbroken word each, wider than a phone.
     DB::table('tenant_luna.staff')->where('id', $elena)->update(['name' => str_repeat('Papadakipoulou', 5), 'email' => str_repeat('papadakipoulou', 4).'@luna.example']);
+    // A title of many words and a bio of one unbroken word, for the read-only page's pairs.
+    DB::table('tenant_luna.staff')->where('id', $elena)->update(['title' => 'Senior colour, cutting and styling specialist for weddings', 'bio' => str_repeat('Papadakipoulou', 6)]);
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
 
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(390, 844);
@@ -459,12 +473,22 @@ it('lays a member\'s read-only page on two columns at 1440px and on one on a pho
         ->assertScript(STAFF_VALUES_KEPT, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     Look::shot($page, 'staff-view-390-'.$language->value);
+    $pairs = ['390' => $page->script(STAFF_VIEW_PAIRS)];
 
     $page->resize(1440, 900)
         ->assertScript(STAFF_VIEW_COLUMNS, 'two')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
     Look::shot($page, 'staff-view-1440-'.$language->value);
+    $pairs['1440'] = $page->script(STAFF_VIEW_PAIRS);
+
+    // Each value sits just under its label, though a pair beside it runs taller, and the bio's
+    // one long word breaks inside its box.
+    foreach ($pairs as $pair) {
+        assert(is_array($pair));
+        expect($pair['widestGap'] ?? null)->toBeLessThanOrEqual(6)
+            ->and($pair['bioInside'] ?? null)->toBeTrue();
+    }
 })->with([SiteLanguage::English, SiteLanguage::Greek]);
 
 it('stands a member\'s form on one column on a phone with its closures as labelled rows and Save clear of the last control, a new member\'s form too, and the closures as a table at 1440px, the page never scrolling sideways', function (SiteLanguage $language) {
@@ -509,4 +533,25 @@ it('stands a member\'s form on one column on a phone with its closures as labell
     // In the table's grid Delete is its words alone, so the row is no taller for it.
     expect($page->script(CLOSURE_DELETE_HEIGHT))->toBeGreaterThan(0)->toBeLessThan(44);
     Look::shot($page, 'staff-form-1440-'.$language->value);
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('gives a closure\'s Delete a box 44px high where the closures read as rows on a window wider than a phone, the card too narrow for their grid', function (SiteLanguage $language) {
+    $elena = DB::table('tenant_luna.staff')->where('name', 'Elena Papadaki')->value('id');
+    assert(is_int($elena));
+    DB::table('tenant_luna.blackouts')->insert(['staff_id' => $elena, 'date' => athensToday()->modify('+20 days')->format('Y-m-d'), 'start_time' => '14:00', 'end_time' => '16:00', 'reason' => 'A sixty-character reason for closing, written out at length.']);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(980, 900);
+    $page->navigate(Admin::url('luna', '/staff/'.$elena))
+        ->waitForText(adminLine('admin/staff.page.exceptions', [], $language));
+
+    // Wider than the phone's layout, the window still leaves the closures' card under the width
+    // their grid wants, so they read as rows and Delete answers a finger as it does on a phone.
+    foreach ([980, 950] as $width) {
+        $page->resize($width, 900)
+            ->assertScript(CLOSURE_ROWS, 'rows')
+            ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+        expect($page->script(CLOSURE_DELETE_HEIGHT))->toBeGreaterThanOrEqual(44);
+    }
+    $page->assertNoJavaScriptErrors();
 })->with([SiteLanguage::English, SiteLanguage::Greek]);

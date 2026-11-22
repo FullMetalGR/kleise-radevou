@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type Mounted, press } from './harness';
-import { Breadcrumb } from './breadcrumb';
+import { Breadcrumb, CRUMB_LINK } from './breadcrumb';
+import { REACH } from './button';
 
 /*
  * The trail back from a detail screen to its list: a navigation region named by its label, each
@@ -84,5 +85,22 @@ describe('the breadcrumb', () => {
         expect([...(q('.admin-breadcrumb__list')?.classList ?? [])]).toEqual(expect.arrayContaining(['text-primary-deep', 'font-semibold']));
         expect([...(q('.admin-breadcrumb__current')?.classList ?? [])]).toEqual(expect.arrayContaining(['text-foreground', 'font-semibold']));
         expect([...(q('nav.admin-breadcrumb')?.classList ?? [])]).toContain('text-body-sm');
+    });
+
+    it('underlines a link at rest in every theme, so weight is not all that tells it from the words beside it, and thickens the line on hover', () => {
+        view.render(<Breadcrumb label="trail-token" items={[{ label: 'list-token', href: '/list' }, { label: 'page-token' }]} />);
+
+        const link = [...(q('.admin-breadcrumb__list')?.classList ?? [])];
+
+        expect(link).toEqual(expect.arrayContaining(['underline', 'underline-offset-4', 'hover:decoration-2']));
+        expect(link.filter((name) => name.startsWith('hover:'))).toEqual(['hover:decoration-2']);
+        expect(CRUMB_LINK.split(' ')).toEqual(expect.arrayContaining(['underline', 'hover:decoration-2']));
+    });
+
+    it('gives a link the kit\'s 44px reach in the compact layout, the line of text being far lower than a finger', () => {
+        view.render(<Breadcrumb label="trail-token" items={[{ label: 'list-token', href: '/list' }, { label: 'page-token' }]} />);
+
+        expect([...(q('.admin-breadcrumb__list')?.classList ?? [])]).toEqual(expect.arrayContaining(REACH.split(' ')));
+        expect(CRUMB_LINK.split(' ')).toEqual(expect.arrayContaining(REACH.split(' ')));
     });
 });

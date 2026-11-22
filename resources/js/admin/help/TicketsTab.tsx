@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Field, HelpLine, useFocusFirstFailing } from '@/components/ui/field';
 import { Textarea, TextInput } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { formatInstant, type TenantClock } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { LONGEST_MESSAGE, LONGEST_SUBJECT, type ListState, type Tickets } from './tickets';
@@ -21,8 +22,8 @@ import type { HelpWords } from './words';
  * fill against the start, so who wrote it is seen by its side as well as said by its name; the
  * status is a word in a pill under the subject. A thread opens on its newest message, the reply
  * box in view under it, and comes back there each time a message is added. A view whose read is
- * under way says so and marks itself busy; one whose read did not come back says that and offers
- * to try again.
+ * under way says so, the list with the shared spinner before its words, and marks itself busy;
+ * one whose read did not come back says that and offers to try again.
  */
 
 type Props = { tickets: Tickets; words: HelpWords; clock: TenantClock };
@@ -59,7 +60,12 @@ function Unread({ words }: { words: HelpWords }) {
 
 function Rows({ list, words, clock, onOpen }: { list: ListState; words: HelpWords; clock: TenantClock; onOpen: (uuid: string) => void }) {
     if (list.rows === null) {
-        return list.loading ? <HelpLine role="status">{words.text('list.loading')}</HelpLine> : null;
+        return list.loading ? (
+            <HelpLine role="status">
+                <Spinner size="inline" className="mr-2" />
+                {words.text('list.loading')}
+            </HelpLine>
+        ) : null;
     }
 
     if (list.rows.length === 0) {
@@ -202,7 +208,12 @@ function Conversation({ thread, tickets, words, clock }: Props & { thread: HelpT
  */
 function Pending({ loading, tickets, words }: { loading: boolean; tickets: Tickets; words: HelpWords }) {
     if (loading) {
-        return <HelpLine role="status">{words.text('thread.loading')}</HelpLine>;
+        return (
+            <HelpLine role="status">
+                <Spinner size="inline" className="mr-2" />
+                {words.text('thread.loading')}
+            </HelpLine>
+        );
     }
 
     return <Failed text={words.text('thread.failed')} words={words} onRetry={tickets.retry} />;

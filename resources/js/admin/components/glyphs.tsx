@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 /*
- * The admin's small glyphs, the Calendar's and Shifts', the notice's, the top bar's and the status
+ * The admin's small glyphs, the Calendar's and Shifts', the notice's, the shell's and the status
  * chip's, drawn by the one icon set every screen draws from, as inline SVG in the text's colour:
  * the admin's build refuses a character outside ASCII in a built asset, so a caret, a chevron, a
  * plus, a tick, a cross, an alert, a moon or a sun is never a glyph of a font. Each is decoration,

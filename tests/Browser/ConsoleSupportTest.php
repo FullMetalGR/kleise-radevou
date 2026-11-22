@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Browser\Support\Admin;
 use Tests\Browser\Support\Console;
+use Tests\Browser\Support\PhoneScripts;
 
 /*
  * A support session walked in a real browser: an operator signs in to the console, opens luna's
@@ -21,6 +22,11 @@ use Tests\Browser\Support\Console;
  *
  * The booking is written straight to luna's rows, two months on, because the browser and the
  * application both read the real clock here, as the session's sixty minutes do.
+ *
+ * Then the console's header on a business's detail: its back link to the list stands as far under
+ * the page's top as a title does, and the line naming the console's zone ends at the row's end
+ * beside the title on a desktop and starts at the row's start where it drops under the title on a
+ * phone, on the list too, where the list's own button comes first.
  */
 
 beforeEach(function () {
@@ -136,4 +142,61 @@ it('opens support on luna from the console, cancels a booking as support under t
         ->and(DB::table('support_sessions')->whereNull('opened_at')->orWhereNull('ended_at')->count())->toBe(0)
         ->and(DB::table('tenant_luna.bookings')->where('uuid', $uuid)->value('status'))->toBe('cancelled')
         ->and(DB::table('tenant_luna.audit_log')->pluck('actor')->all())->toBe(['support:'.$operator->id]);
+});
+
+/**
+ * The room in CSS pixels between the top of the page's main region and the top of the header's
+ * first part, the breadcrumb where the screen has one.
+ */
+const CONSOLE_HEAD_ROOM = <<<'JS'
+    document.fonts.ready.then(() => {
+        const first = document.querySelector('.admin-page-header')?.firstElementChild?.firstElementChild;
+        const main = document.querySelector('main');
+
+        return first === null || first === undefined || main === null ? -1 : Math.round(first.getBoundingClientRect().top - main.getBoundingClientRect().top);
+    })
+    JS;
+
+/**
+ * Where the console's zone line stands in the header's row: "far end" where it ends at the row's
+ * end on the title's line, "start" where it sits on a line under the title and starts at the
+ * row's start, "neither" otherwise.
+ */
+const CONSOLE_ZONE_PLACE = <<<'JS'
+    document.fonts.ready.then(() => {
+        const zone = document.querySelector('.admin-console-zone')?.getBoundingClientRect();
+        const row = document.querySelector('.admin-page-header__row')?.getBoundingClientRect();
+        const title = document.querySelector('.admin-page-header__row h1')?.getBoundingClientRect();
+
+        if (zone === undefined || row === undefined || title === undefined) {
+            return 'missing';
+        }
+
+        if (zone.top < title.bottom && zone.bottom > title.top && Math.abs(zone.right - row.right) <= 1) {
+            return 'far end';
+        }
+
+        return zone.top >= title.bottom && Math.abs(zone.left - row.left) <= 1 ? 'start' : 'neither';
+    })
+    JS;
+
+it('gives a business\'s back link to the list the room the header\'s row has above it, and starts the zone line at the row\'s start wherever it drops under the title', function () {
+    addOperator();
+
+    $page = Console::signIn($this, 'pat@inbox.example', 'operator password')->waitForText('2 of 2');
+    $page->navigate(Console::url('/tenants/luna'))->waitForText('Support sessions');
+
+    foreach ([1440 => 'far end', 390 => 'start', 320 => 'start'] as $width => $place) {
+        $page->resize($width, 844)->assertScript(CONSOLE_ZONE_PLACE, $place);
+        // The back link stands as far under the page's top as the title would without it.
+        expect($page->script(CONSOLE_HEAD_ROOM))->toBeGreaterThanOrEqual(20);
+    }
+
+    // The list's own button holds the zone line's first line on a narrow phone, so the zone
+    // line drops under both, starting at the row's start rather than under the button's end.
+    $page->navigate(Console::url('/'))->waitForText('2 of 2');
+    $page->resize(320, 844)
+        ->assertScript(CONSOLE_ZONE_PLACE, 'start')
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertNoJavaScriptErrors();
 });

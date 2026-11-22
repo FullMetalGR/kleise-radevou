@@ -20,9 +20,10 @@ import { type StaffKey, type StaffWords, useStaff } from './words';
  * dates the server folded printing its first and last, an all-day closure the dates alone and a
  * partial one the dates and its window, then a muted cell beside, and a Delete at the row's end.
  * Where the card has no room for the grid the table reads as rows, each cell under its label.
- * Delete is its words alone, and below the wide breakpoint a touch lands on a box 44px high. Every
- * date and time is spelled in the tenant's formats with no conversion at all, because they carry
- * no instant and converting would shift a closure onto the wrong day.
+ * Delete is its words alone, named for the closure on its row, and wherever the table reads as
+ * rows a touch lands on a box 44px high. Every date and time is spelled in the tenant's formats
+ * with no conversion at all, because they carry no instant and converting would shift a closure
+ * onto the wrong day.
  *
  * On the Staff list the card is everybody's: given whom Who offers, the muted line names the
  * line's member, or Whole business, beside the reason, and the form opens on Who, Whole business
@@ -86,7 +87,7 @@ const WHOLE = '';
  * as rows, below the wide breakpoint or on a card under 42rem (the card is its own query
  * container), so the heading, the rows and the form share a start line.
  */
-const SIDES = 'px-6 max-wide:px-4.5 @max-2xl:px-4.5';
+const SIDES = 'px-6.5 max-wide:px-4.5 @max-2xl:px-4.5';
 
 /** The column beside the dates: a scope's card shows each closure's reason, the list's whom it closes. */
 const REASON_COLUMN = 'closures.reason_column' satisfies StaffKey;
@@ -142,6 +143,7 @@ export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity,
     const [end, setEnd] = useState(DEFAULT_WINDOW.end);
     const heading = `${idPrefix}-head`;
     const held = inFlight !== null;
+    const deleting = (blackout: Line) => inFlight?.action === 'remove' && keyOf(inFlight.blackout) === keyOf(blackout);
     const words = useStaff();
     const shell = useShell();
     const aside: StaffKey = who === null ? REASON_COLUMN : 'closures.who';
@@ -181,9 +183,10 @@ export function BlackoutsCard({ title, blackouts, clock, weekStart, granularity,
                                     <Button
                                         variant="link"
                                         destructive
-                                        className="admin-blackouts__delete max-wide:min-h-11"
+                                        className="admin-blackouts__delete max-wide:min-h-11 @max-2xl:min-h-11"
+                                        aria-label={deleting(blackout) ? undefined : words.text('closures.delete_label', { when: blackoutLabel(blackout, clock, words) })}
                                         disabled={held}
-                                        busy={inFlight?.action === 'remove' && keyOf(inFlight.blackout) === keyOf(blackout)}
+                                        busy={deleting(blackout)}
                                         busyLabel={words.text('closures.deleting')}
                                         onClick={() => onRemove(blackout)}
                                     >

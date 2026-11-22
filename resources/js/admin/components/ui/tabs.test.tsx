@@ -1,6 +1,8 @@
 import { act, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { REACH } from './button';
 import { key, mount, settle, type Mounted } from './harness';
+import { CHOSEN } from './segmented';
 import { Tab, TabList, TabPanel, Tabs } from './tabs';
 
 /*
@@ -80,6 +82,17 @@ describe('the tabs', () => {
         expect(tabs()[1]?.getAttribute('aria-selected')).toBe('true');
         expect(tabs()[1]?.classList.contains('bg-foreground')).toBe(true);
         expect(tabs()[0]?.classList.contains('bg-foreground')).toBe(false);
+    });
+
+    it('gives each 38px tab the kit\'s 44px reach in the compact layout, and paints the chosen one in the system\'s highlight in forced colours', () => {
+        view.render(<Harness />);
+
+        const [first, second] = tabs();
+
+        expect(tabs().every((tab) => REACH.split(' ').every((name) => tab.classList.contains(name)))).toBe(true);
+        expect(tabs().every((tab) => tab.classList.contains('h-9.5'))).toBe(true);
+        expect([...(first?.classList ?? [])]).toEqual(expect.arrayContaining(CHOSEN.split(' ')));
+        expect([...(second?.classList ?? [])].some((name) => name.startsWith('forced-colors:'))).toBe(false);
     });
 
     it('moves between the tabs on the arrow keys, the tab reached chosen', async () => {

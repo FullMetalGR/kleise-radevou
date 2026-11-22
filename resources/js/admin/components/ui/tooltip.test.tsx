@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { key, mount, type Mounted } from './harness';
+import { FORCED_EDGE } from './input';
 import { Tooltip } from './tooltip';
 
 /*
@@ -97,6 +98,14 @@ describe('the tooltip', () => {
 
         expect(surface()?.textContent).toContain('Settings');
         expect(surface()?.getAttribute('data-side')).toBe('top');
+    });
+
+    it('draws a real line round its label where the system forces its own colours, its fill and shadow dropped there', () => {
+        view.render(held(false));
+
+        focus(view.host.querySelector('.child'));
+
+        expect(surface()?.classList.contains(FORCED_EDGE)).toBe(true);
     });
 
     it('shows nothing and describes its child by nothing while it is held shut, and nothing still when it is let go over a child that kept the focus, the label coming with the next focus, the child the same element throughout', () => {

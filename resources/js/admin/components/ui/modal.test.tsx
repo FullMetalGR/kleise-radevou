@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Button } from './button';
 import { drag, key, mount, press, settle, type Mounted } from './harness';
+import { FORCED_EDGE } from './input';
 import { Modal } from './modal';
 import { keyedShell } from '@/testing/keyed';
 
@@ -634,5 +635,18 @@ describe('the shapes', () => {
         view.render(<Shaped key="again" variant="drawer" />);
         drag(backdrop(), backdrop());
         expect(dialogs()).toHaveLength(0);
+    });
+
+    it('draws a real line round the centred and filling card and the drawer in forced colours, where their shadow and the scrim are dropped, and none round the frame that fills the window', () => {
+        openSingle();
+        expect(classesOf(frame())).toContain(FORCED_EDGE);
+
+        for (const variant of ['filling', 'drawer'] as const) {
+            view.render(<Shaped key={variant} variant={variant} />);
+            expect(classesOf(frame())).toContain(FORCED_EDGE);
+        }
+
+        view.render(<Shaped key="full" variant="full" />);
+        expect(classesOf(frame()).some((name) => name.startsWith('forced-colors:'))).toBe(false);
     });
 });

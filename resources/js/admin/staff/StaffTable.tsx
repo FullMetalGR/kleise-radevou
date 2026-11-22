@@ -29,7 +29,7 @@ const SHIFTS = '/admin/shifts';
  * table reads as rows, below the wide breakpoint or on a card under 42rem (read off the screen's
  * root, a query container as wide as the card), so heading and rows share a start line.
  */
-const HEAD_ROOM = 'px-6 pt-5 pb-3.5 max-wide:px-4.5 @max-2xl:px-4.5';
+const HEAD_ROOM = 'px-6.5 pt-5 pb-3.5 max-wide:px-4.5 @max-2xl:px-4.5';
 
 type Props = {
     rows: readonly StaffMember[];

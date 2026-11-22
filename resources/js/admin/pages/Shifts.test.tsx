@@ -625,7 +625,9 @@ describe('the week\'s controls', () => {
     it('move the week through a partial reload of the week\'s props, the URL replaced, busy while it reads', () => {
         render();
 
-        expect([...(q('.admin-shifts__bar')?.children ?? [])].slice(0, 4).map((element) => element.className.split(' ').find((name) => name.startsWith('admin-shifts__')))).toEqual(['admin-shifts__this-week', 'admin-shifts__previous', 'admin-shifts__week', 'admin-shifts__next']);
+        const hooks = (holder: Element | null) => [...(holder?.children ?? [])].map((element) => element.className.split(' ').find((name) => name.startsWith('admin-shifts__')));
+        expect(hooks(q('.admin-shifts__bar')).slice(0, 2)).toEqual(['admin-shifts__this-week', 'admin-shifts__step']);
+        expect(hooks(q('.admin-shifts__step'))).toEqual(['admin-shifts__previous', 'admin-shifts__week', 'admin-shifts__next']);
         expect([q('.admin-shifts__previous')?.getAttribute('aria-label'), q('.admin-shifts__next')?.getAttribute('aria-label')]).toEqual([words.text('page.previous'), words.text('page.next')]);
         expect([q('.admin-shifts__previous svg'), q('.admin-shifts__next svg')].every((glyph) => glyph !== null)).toBe(true);
         // The bar is a dense row: its buttons take the small height, the two chevrons round with their names kept for a screen reader.
@@ -653,6 +655,35 @@ describe('the week\'s controls', () => {
 
         press(q('.admin-shifts__this-week'));
         expect(lastVisit(inertia.get).slice(0, 2)).toEqual(['/admin/shifts', {}]);
+    });
+
+    it('keeps the two chevrons either side of the week\'s range on one line, the range wrapping inside itself where the bar is narrow', () => {
+        render();
+
+        const step = q('.admin-shifts__step');
+        const week = q('.admin-shifts__week');
+
+        expect(step?.parentElement).toBe(q('.admin-shifts__bar'));
+        expect([...(step?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'items-center', 'min-w-0']));
+        expect([...(step?.classList ?? [])].filter((name) => name.includes('wrap'))).toEqual([]);
+        expect(week?.parentElement).toBe(step);
+        expect(week?.classList.contains('min-w-0')).toBe(true);
+    });
+
+    it('turns the shared spinner inline before the loading words while the week reads, kept from assistive technology', () => {
+        render();
+
+        press(q('.admin-shifts__next'));
+        start(lastVisit(inertia.get)[2]);
+
+        const loading = q('.admin-shifts__loading');
+        const spinner = loading?.querySelector('.admin-spinner');
+
+        expect(loading?.firstElementChild).toBe(spinner);
+        expect(loading?.textContent).toBe(words.text('page.loading'));
+        expect(spinner?.getAttribute('aria-hidden')).toBe('true');
+        expect(spinner?.hasAttribute('role')).toBe(false);
+        expect([...(spinner?.classList ?? [])]).toEqual(expect.arrayContaining(['size-3.5', 'inline-block']));
     });
 
     it('says so where the week did not load, the grid left standing', () => {

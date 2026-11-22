@@ -1826,6 +1826,11 @@ describe('Payments with nothing connected', () => {
         land(visit, propsWith({ payments: connected({ state: 'restricted', last_check_ok: false, requirements: { reason: 'The token [secret] was refused by Tillpoint.' } }) }));
         expect(text('.admin-payments-state__sentence')).toBe(payments.text('states.restricted', { provider: 'Tillpoint' }));
         expect(text('.admin-payments-reason')).toBe('The token [secret] was refused by Tillpoint.');
+        // The reason is a sentence: it reads in the body face at the body weight, under the
+        // notice's heavier sentence.
+        const reason = document.querySelector('.admin-payments-reason');
+        expect(reason?.classList.contains('font-normal')).toBe(true);
+        expect(reason?.classList.contains('font-mono')).toBe(false);
         expect(text('.admin-payments-checked')).toBe(payments.text('checked.failed', { when: '02/11/2026 08:00' }));
         expect(document.querySelector<HTMLButtonElement>('.admin-payments-test')?.disabled).toBe(false);
     });
@@ -1927,6 +1932,8 @@ describe('Payments cards', () => {
         expect(copy?.textContent).toBe(payments.text('webhook.copy'));
         expect(copy?.hasAttribute('aria-label')).toBe(false);
         expect(copy?.hasAttribute('aria-labelledby')).toBe(false);
+        // Copy and Change URL sit 8px apart, which keeps the two on one line on a phone.
+        expect(copy?.parentElement?.classList.contains('gap-2')).toBe(true);
 
         press(document.querySelector('.admin-payments-replace'));
         expect(isInnerCard(card?.querySelector('.admin-payments-credentials'))).toBe(true);

@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Alert, Cross } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
+import { FORCED_EDGE } from '@/components/ui/input';
 import { useShell } from '@/lib/strings';
 import type { Flash } from '../types';
 
@@ -104,7 +105,8 @@ export function useToasts(): Toasts {
  * than pushing the button out of the toast. An error toast starts with the alert mark, since a
  * red word on the ink would be too faint to read and the role alone is not seen. The button's
  * focus outline takes the message's own ink, as the theme colour it otherwise reads can be as dark
- * as the fill.
+ * as the fill. Where the system forces its own colours the fill is repainted as the page and the
+ * shadow dropped, so there a toast takes a real line round it.
  */
 function Toaster({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number) => void }) {
     const shell = useShell();
@@ -116,7 +118,7 @@ function Toaster({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number) =
                     key={toast.id}
                     role={toast.kind === 'error' ? 'alert' : 'status'}
                     data-kind={toast.kind}
-                    className="admin-toast pointer-events-auto flex items-center gap-2 rounded-inner bg-foreground py-2 pr-2 pl-4 text-body-sm font-semibold text-background shadow-float"
+                    className={`admin-toast pointer-events-auto flex items-center gap-2 rounded-inner bg-foreground py-2 pr-2 pl-4 text-body-sm font-semibold text-background shadow-float ${FORCED_EDGE}`}
                 >
                     {toast.kind === 'error' && <Alert />}
                     <p className="min-w-0 flex-1 py-2 wrap-anywhere">{toast.message}</p>

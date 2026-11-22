@@ -240,6 +240,29 @@ describe('the section tabs', () => {
         expect(heading.hasAttribute('tabindex')).toBe(false);
     });
 
+    it('keep a focused heading reachable by the script through a switch to another window, so the focus is still on it on the way back, and plain again once the focus moves on inside the page', () => {
+        render();
+        const heading = view.host.querySelector<HTMLElement>('#section-booking-rules');
+
+        if (heading === null) {
+            throw new Error('No heading.');
+        }
+
+        heading.scrollIntoView = vi.fn();
+        press(links()[2] ?? null);
+
+        // Leaving the window blurs the heading but leaves it the page's focused element.
+        act(() => {
+            heading.dispatchEvent(new FocusEvent('blur'));
+        });
+        expect(document.activeElement).toBe(heading);
+        expect(heading.getAttribute('tabindex')).toBe('-1');
+
+        act(() => links()[0]?.focus());
+        expect(document.activeElement).toBe(links()[0]);
+        expect(heading.hasAttribute('tabindex')).toBe(false);
+    });
+
     it('mark a pressed link current at once and hold it through the frame its jump scrolls, though the page ends before its card reaches the line', () => {
         render();
         const heading = view.host.querySelector('#section-booking-rules');

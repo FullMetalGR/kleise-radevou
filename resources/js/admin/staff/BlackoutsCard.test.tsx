@@ -128,6 +128,10 @@ describe('the closures card', () => {
 
         const buttons = document.querySelectorAll('.admin-blackouts__delete');
         expect(busyState(buttons[1])).toEqual({ busy: true, disabled: true, label: staff.text('closures.deleting') });
+        // The busy Delete is named by its deleting word alone, the closure's own name dropped, while
+        // the other Delete keeps naming its closure.
+        expect(buttons[1]?.hasAttribute('aria-label')).toBe(false);
+        expect(buttons[0]?.hasAttribute('aria-label')).toBe(true);
         expect(busyState(buttons[0])).toEqual({ busy: false, disabled: true, label: staff.text('closures.delete') });
         expect(busyState(document.querySelector('.admin-blackouts__add'))).toEqual({ busy: false, disabled: true, label: staff.text('closures.add') });
         expect(document.querySelector('.admin-blackouts__wait')?.textContent).toBe(staff.text('closures.wait_removing'));
@@ -227,16 +231,33 @@ describe('the closures card\'s look', () => {
         expect(rows.map((row) => row.querySelector('.admin-blackouts__reason')?.textContent ?? null)).toEqual(['Christmas Day', null]);
     });
 
-    it('gives each Delete a touch area 44 pixels tall below the wide breakpoint and leaves it bare text above it', () => {
+    it('gives each Delete a touch area 44 pixels tall under every condition the table reads as rows by, and leaves it bare text in the grid', () => {
         render(ROWS);
 
         const deletes = Array.from(document.querySelectorAll('.admin-blackouts__delete'));
         expect(deletes).toHaveLength(2);
 
+        // The conditions are read off the table itself, so the tall target cannot drift from them.
+        const conditions = classes(document.querySelector('.admin-blackouts__list'))
+            .filter((look) => look.endsWith(':block'))
+            .map((look) => look.slice(0, -':block'.length));
+        expect(conditions).toEqual(['max-wide', '@max-2xl']);
+
         for (const action of deletes) {
-            expect(classes(action)).toEqual(expect.arrayContaining(['admin-button--link', 'h-auto', 'p-0', 'items-center', 'max-wide:min-h-11']));
-            expect(classes(action).filter((look) => look.includes('min-h-'))).toEqual(['max-wide:min-h-11']);
+            expect(classes(action)).toEqual(expect.arrayContaining(['admin-button--link', 'h-auto', 'p-0', 'items-center']));
+            expect(classes(action).filter((look) => look.includes('min-h-'))).toEqual(conditions.map((condition) => `${condition}:min-h-11`));
         }
+    });
+
+    it('names each Delete for the closure on its row, the word it shows leading the name', () => {
+        const run: Blackout = { date: '2026-12-28', until: '2026-12-31', start: null, end: null, reason: null };
+        render([CHRISTMAS, DENTIST, run]);
+
+        const deletes = Array.from(document.querySelectorAll('.admin-blackouts__delete'));
+        const whens = ['25/12/2026', staff.text('closures.window', { date: '04/12/2026', time: '14:00', end: '16:00' }), staff.text('closures.run', { date: '28/12/2026', until: '31/12/2026' })];
+
+        expect(deletes.map((action) => action.getAttribute('aria-label'))).toEqual(whens.map((when) => staff.text('closures.delete_label', { when })));
+        expect(deletes.map((action) => action.textContent)).toEqual(whens.map(() => staff.text('closures.delete')));
     });
 
     it('heads the reason column Who on the list, each line naming its member or the business', () => {
@@ -246,6 +267,18 @@ describe('the closures card\'s look', () => {
         expect(texts('.admin-blackouts__list th[scope="col"]')).toEqual([staff.text('closures.date'), staff.text('closures.who'), staff.text('closures.delete')]);
         expect(texts('.admin-blackouts__row .admin-table__label')).toEqual([staff.text('closures.date'), staff.text('closures.who')]);
         expect(texts('.admin-blackouts__row .admin-blackouts__who')).toEqual([staff.text('closures.who_reason', { who: 'Elena Papadaki', reason: 'Dentist' })]);
+    });
+
+    it('starts the heading and the add form on the line the table\'s first cell starts on, and on the rows\' inset wherever the table reads as rows', () => {
+        render(ROWS);
+
+        const sides = (element: Element | null) => classes(element).filter((look) => /(^|:)px-/.test(look));
+        const heading = document.getElementById(document.querySelector('.admin-blackouts')?.getAttribute('aria-labelledby') ?? '');
+        const firstCell = classes(document.querySelector('.admin-blackouts__row > :first-child')).find((look) => look.startsWith('first:pl-'));
+        expect(firstCell).toBe('first:pl-6.5');
+        for (const element of [heading, document.querySelector('.admin-blackouts__form')]) {
+            expect(sides(element)).toEqual(['px-6.5', 'max-wide:px-4.5', '@max-2xl:px-4.5']);
+        }
     });
 
     it('lays the add form out by the card\'s width, Who and Reason across it, and draws Closed all day as a check field', () => {

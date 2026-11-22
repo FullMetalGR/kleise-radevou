@@ -41,8 +41,12 @@ function under(selector: string, condition: string): string[] {
         .sort();
 }
 
-/** The card condition under which a row turns into a block: a card narrower than 816px. */
-const BLOCK_CARD = '@max-[51rem]:';
+/**
+ * The card condition under which a row turns into a block: a card narrower than 936px, the same
+ * card in which the two visits share one column, so the shared column is drawn in the block rows
+ * alone and never squeezed into the grid.
+ */
+const BLOCK_CARD = '@max-[58.5rem]:';
 
 /** The card condition under which the two visits share one column: a card narrower than 936px. */
 const SHARED_CARD = '@max-[58.5rem]:';
@@ -423,7 +427,7 @@ describe('the customers list\'s layout', () => {
         expect(q('.admin-customers__bookings svg')).toBeNull();
     });
 
-    it('lays a row out as a block on a phone and in a card narrower than 816px, the same utilities under both conditions: the initials and the name with the booking count at its right, then the email, the phones and the visits beneath, lined up with the name', () => {
+    it('lays a row out as a block on a phone and in a card narrower than 936px, the same utilities under both conditions: the initials and the name with the booking count at its right, then the email, the phones and the visits beneath, lined up with the name', () => {
         inertia.props = propsWith([ADA, CASEY]);
         show();
 
@@ -434,10 +438,11 @@ describe('the customers list\'s layout', () => {
             expect(under(part, BLOCK_CARD)).toEqual(under(part, 'max-wide:'));
         }
 
-        // The shared visits column shows below the wide breakpoint too, in the block rows, by the
-        // condition that shows it in a narrow card.
-        expect(under('.admin-customers__visits', BLOCK_CARD).length).toBeGreaterThan(0);
-        expect(under('.admin-customers__visits', 'max-wide:')).toEqual([...under('.admin-customers__visits', BLOCK_CARD), 'table-cell'].sort());
+        // The shared visits column shows below the wide breakpoint and in a narrow card alike, in
+        // the block rows, the condition that shows it being the block rows' own.
+        expect(SHARED_CARD).toBe(BLOCK_CARD);
+        expect(under('.admin-customers__visits', BLOCK_CARD)).toContain('table-cell');
+        expect(under('.admin-customers__visits', 'max-wide:')).toEqual(under('.admin-customers__visits', BLOCK_CARD));
 
         expect(under('.admin-customers table', 'max-wide:')).toContain('block');
         expect(under('.admin-customers thead', 'max-wide:')).toContain('sr-only');
@@ -462,7 +467,7 @@ describe('the customers list\'s layout', () => {
 
         const conditions = [...view.host.querySelectorAll('.admin-customers *')].flatMap((element) => [...element.classList]).filter((name) => name.startsWith('@max-')).map((name) => name.split(':')[0]);
 
-        // The toolbar's own condition, the block rows' and the shared visits', and no other.
+        // The toolbar's own condition and the block rows', which also shares the visits, and no other.
         expect(new Set(conditions)).toEqual(new Set(['@max-2xl', BLOCK_CARD.slice(0, -1), SHARED_CARD.slice(0, -1)]));
     });
 
@@ -481,10 +486,15 @@ describe('the customers list\'s layout', () => {
         for (const selector of shared) {
             expect(q(selector)?.classList.contains('hidden')).toBe(true);
             expect(under(selector, 'max-wide:')).toContain('table-cell');
-            expect(under(selector, SHARED_CARD)).toEqual(['table-cell']);
+            expect(under(selector, SHARED_CARD)).toContain('table-cell');
         }
 
-        const narrow = [...view.host.querySelectorAll('.admin-customers *')].filter((element) => [...element.classList].some((name) => name.startsWith(SHARED_CARD)));
+        // The shared head cell carries the condition for its display alone; the visits cell also
+        // carries the block rows' utilities under it.
+        expect(under('thead th:nth-child(6)', SHARED_CARD)).toEqual(['table-cell']);
+
+        // The block rows carry the same condition, so only the parts it hides or shows count here.
+        const narrow = [...view.host.querySelectorAll('.admin-customers *')].filter((element) => ['hidden', 'table-cell'].some((display) => element.classList.contains(SHARED_CARD + display)));
 
         expect(narrow).toEqual([...view.host.querySelectorAll('thead th:nth-child(4), thead th:nth-child(5), thead th:nth-child(6), .admin-customers__first, .admin-customers__last, .admin-customers__visits')]);
         expect([...(q('thead th:nth-child(6)')?.children ?? [])].map((line) => [line.textContent, line.classList.contains('block')])).toEqual([

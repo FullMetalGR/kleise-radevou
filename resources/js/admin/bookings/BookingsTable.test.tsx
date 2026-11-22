@@ -144,6 +144,16 @@ describe('the bookings table', () => {
         expect(q('.admin-bookings__services')?.textContent).toBe('x'.repeat(40));
     });
 
+    it('starts the card\'s heading on the first cell\'s line in the grid and on the rows\' line in the block layout', () => {
+        render([booking('a')]);
+
+        const header = [...(q('.admin-bookings > header')?.classList ?? [])];
+        const firstCell = [...(q('.admin-bookings thead th')?.classList ?? [])].find((name) => name.startsWith('first:pl-'));
+        expect(firstCell).toBeDefined();
+        expect(header).toContain(`px-${firstCell?.slice('first:pl-'.length)}`);
+        expect(header).toEqual(expect.arrayContaining(['max-wide:px-[18px]', '@max-3xl:px-[18px]']));
+    });
+
     it('reads as a table with its column headers to a screen reader whatever the layout', () => {
         render([booking('a')]);
 

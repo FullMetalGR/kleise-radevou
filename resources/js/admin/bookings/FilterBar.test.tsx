@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, onPhone, press, type Mounted } from '@/components/ui/harness';
+import { FORCED_CHOSEN } from '@/components/ui/segmented';
 import { FilterBar } from './FilterBar';
 import { type Filters, NO_FILTERS, type Options } from './model';
 import { keyedBookings, WithBookings } from '@/testing/keyed';
@@ -66,6 +67,14 @@ describe('the filter bar', () => {
         render({ ...NO_FILTERS, status: 'awaiting_approval' }, vi.fn());
 
         expect([...(inbox()?.classList ?? [])].filter((name) => name.startsWith('enabled:hover:inset-ring-'))).toEqual(['enabled:hover:inset-ring-attention-ink']);
+    });
+
+    it('paints the pressed inbox in the system\'s highlight where the system forces its own colours, and nothing of it while it is not pressed', () => {
+        render({ ...NO_FILTERS, status: 'awaiting_approval' }, vi.fn());
+        expect(FORCED_CHOSEN.split(' ').every((name) => inbox()?.classList.contains(name))).toBe(true);
+
+        render(NO_FILTERS, vi.fn());
+        expect(FORCED_CHOSEN.split(' ').filter((name) => inbox()?.classList.contains(name))).toEqual([]);
     });
 
     it('clears every field', () => {

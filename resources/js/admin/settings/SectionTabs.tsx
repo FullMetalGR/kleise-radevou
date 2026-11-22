@@ -69,10 +69,20 @@ function keepInView(row: HTMLElement, link: HTMLElement): void {
 /**
  * Hand a heading the keyboard's focus where it stands, scrolling nothing. A heading is no stop of
  * the Tab key: it is made reachable for this alone and is plain again once the focus moves on.
+ * Switching to another window blurs the heading too but leaves it the page's focused element, and
+ * a heading made plain then would lose the focus the reader comes back to; so it stays reachable
+ * until the focus moves on inside the page.
  */
 function focusOn(heading: HTMLElement): void {
+    const moved = () => {
+        if (document.activeElement !== heading) {
+            heading.removeAttribute('tabindex');
+            heading.removeEventListener('blur', moved);
+        }
+    };
+
     heading.tabIndex = -1;
-    heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), { once: true });
+    heading.addEventListener('blur', moved);
     heading.focus({ preventScroll: true });
 }
 

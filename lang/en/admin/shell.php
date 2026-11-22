@@ -22,9 +22,10 @@
  * where the server worded nothing, and copy the copy controls.
  *
  * kit is the shared control set's words: the status chip's nine labels of a booking's status (a
- * catalog row's active and inactive take the word its own screen holds), counted, the compact
- * chip's line per status with :count, the figure formatted by formatCount in the reader's language
- * (1,234 or 1.234) and read as a choice by it, one form in English, the date field's, the month
+ * catalog row's active and inactive take the word its own screen holds), counted, a line per
+ * status with :count, the one awaiting approval read to a screen reader beside the home's figure
+ * of bookings waiting, the figure formatted by formatCount in the reader's language (1,234 or
+ * 1.234) and read as a choice by it, one form in English, the date field's, the month
  * grid's (the day calendar's two turning controls, and the names of its month and year dropdowns
  * where a field reaches years back), the combobox's, the confirm's, the pagination's (:page and
  * :last its numbers) and the notice's. shared holds what two later screens read: the weekly

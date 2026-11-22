@@ -90,4 +90,19 @@ describe('initials', () => {
         expect(drawn()?.classList.contains('bg-card')).toBe(true);
         expect(drawn()?.classList.contains('bg-tint-strong')).toBe(false);
     });
+
+    it('outlines a ringed circle in forced colours, where the ring drawn by its shadow is dropped, and leaves a circle with no ring alone', () => {
+        const forced = () => [...(drawn()?.classList ?? [])].filter((name) => name.startsWith('forced-colors:'));
+
+        for (const size of ['head', 'row', 'list'] as const) {
+            view.render(<Initials name="Elena Papadaki" hue="#cc79a7" size={size} />);
+            expect(forced()).toEqual(['forced-colors:outline-2', 'forced-colors:-outline-offset-2']);
+        }
+
+        view.render(<Initials name="Elena Papadaki" size="head" />);
+        expect(forced()).toEqual([]);
+
+        view.render(<Initials name="Casey Moss" hue="#cc79a7" size="person" />);
+        expect(forced()).toEqual([]);
+    });
 });

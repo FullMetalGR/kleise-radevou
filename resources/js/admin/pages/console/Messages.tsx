@@ -18,7 +18,7 @@ import type { ConsoleProps } from '@/types';
  * The console's contact messages: the messages the marketing site's contact form stored, newest
  * first, twenty-five a page by the admin's pagination, inside the console's shell, with one flag
  * and no reply. Each message is the instant it arrived as the server spelled it on the console's
- * clock, which the top bar names once for the screen, the sender's name, the address as a mailto:
+ * clock, which the shell names once for the screen, the sender's name, the address as a mailto:
  * link so the reply is written in the operator's own mail, the language it was sent in, in words,
  * and the message whole, each of its line breaks a break.
  *
@@ -41,7 +41,7 @@ type MessageView = 'open' | 'archived';
 
 export type MessageRow = {
     id: number;
-    /** The instant it arrived, spelled by the server on the console's clock, which the top bar names. */
+    /** The instant it arrived, spelled by the server on the console's clock, which the shell names. */
     received: string;
     name: string;
     email: string;

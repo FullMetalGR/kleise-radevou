@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
+import { FORCED_CHOSEN } from '@/components/ui/segmented';
 import { Select } from '@/components/ui/select';
 import { statusLabel } from '@/components/ui/status-chip';
 import type { TenantClock } from '@/lib/format';
@@ -36,8 +37,9 @@ const FIELDS_ID = 'bookings-filters';
 /**
  * The inbox while it is the status, in the colours of a booking awaiting approval. Under the
  * pointer its ring darkens to the attention ink: the bare amber is too faint against the card.
+ * Where the system forces its own colours it takes the system's highlight, as a chosen segment does.
  */
-const INBOX_ON = 'bg-attention-soft text-attention-ink inset-ring-attention-line enabled:hover:bg-attention-soft-strong enabled:hover:inset-ring-attention-ink';
+const INBOX_ON = `bg-attention-soft text-attention-ink inset-ring-attention-line enabled:hover:bg-attention-soft-strong enabled:hover:inset-ring-attention-ink ${FORCED_CHOSEN}`;
 
 type Props = {
     filters: Filters;

@@ -23,9 +23,9 @@ import { NO_PLAN, PLAN_WORDS, type PlanName, planWord, STATE_WORDS, STATUS_WORDS
  * detail at the path the server sent, a closed row's slug reading Released since the drop released
  * it, the name, the status, the plan the server derived, the subscription state, each in words from
  * the console's vocabulary maps, one per case, and the signup instant as the server spelled it on
- * the console's clock, which the top bar names. Floor and staff are the catalogue's plans and read
- * by the names the server sends from it, Solo and Team from config/billing.php, in the column and
- * the filter alike; trial, free and unlisted are the page's own words.
+ * the console's clock, which the shell names. Floor and staff are the catalogue's plans and read by
+ * the names the server sends from it, Solo and Team from config/billing.php, in the column and the
+ * filter alike; trial, free and unlisted are the page's own words.
  *
  * The filter bar holds what was asked: a search over the slug and the name, a select each for the
  * status, the subscription state and the plan, and two dates read on the console's clock, To

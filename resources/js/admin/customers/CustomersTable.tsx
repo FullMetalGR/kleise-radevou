@@ -25,17 +25,18 @@ import { type CustomersKey, useCustomers } from './words';
  * The table sits in no sideways box, so at a wide window its head row stays at the top of the
  * window while the page scrolls through the list. Its head labels, the name, the email past its
  * floor and the phones wrap rather than widen it, each phone moving whole onto a line of its own,
- * breaking at its spaces where it is wider than the line and anywhere where it has none. In a card
- * narrower than 936px the two visits share one column, each date after its head as a small label,
- * so the grid still fits the card beside the open sidebar. Below the wide breakpoint, and whenever
- * the card is narrower than 816px, each row is a block: the initials and the name with the booking
- * count at its end, then the email, the phones and the visits beneath, lined up with the name. No
- * cell is labelled there but the visits; the head row leaves the screen but not the reading order,
- * and each part keeps its role, so a screen reader still reads a table with its column headers.
- * Each condition is written out in full, the same utilities under each. Each of the two widths is
- * the first half rem at which a Greek table with a sixty-character name and email and a last visit
- * that has passed fits with at least two pixels to spare, its email and phones at their floors and
- * every other column at its narrowest: a visit column is never narrower than a date.
+ * breaking at its spaces where it is wider than the line and anywhere where it has none. Below the
+ * wide breakpoint, and whenever the card is narrower than 936px, each row is a block: the initials
+ * and the name with the booking count at its end, then the email, the phones and the visits
+ * beneath, lined up with the name, the two visits sharing one cell, each date after its head as a
+ * small label. No cell is labelled there but the visits; the head row leaves the screen but not the
+ * reading order, and each part keeps its role, so a screen reader still reads a table with its
+ * column headers. Each condition is written out in full, the same utilities under each. The width
+ * is the first half rem at which a Greek table with a sixty-character name and email and a last
+ * visit that has passed fits with at least two pixels to spare, its email and phones at their
+ * floors and every other column at its narrowest: a visit column is never narrower than a date. A
+ * narrower grid would have to share the visits in one column, where a Greek head and its date wrap
+ * onto four lines or more and run every row tall, or hold each date whole and outgrow its card.
  */
 
 const NAME_HEADING = 'table.name' satisfies CustomersKey;
@@ -58,26 +59,27 @@ const BLOCKED = 'table.blocked' satisfies CustomersKey;
 
 /**
  * What the block layout changes, part by part, each utility under both conditions. A cell needs
- * no display of its own there: a grid's child is drawn as a block whatever it says.
+ * no display of its own there: a grid's child is drawn as a block whatever it says. The card
+ * condition is the one that shares the visits, so the grid only ever draws them apart.
  */
 const BLOCK = {
-    table: 'max-wide:block @max-[51rem]:block',
-    head: 'max-wide:sr-only @max-[51rem]:sr-only',
-    body: 'max-wide:block @max-[51rem]:block',
-    row: 'max-wide:grid max-wide:grid-cols-[minmax(0,1fr)_auto] max-wide:items-center max-wide:gap-x-2.5 max-wide:gap-y-1.5 max-wide:border-t max-wide:px-4 max-wide:py-3.5 max-wide:first:border-t-0 @max-[51rem]:grid @max-[51rem]:grid-cols-[minmax(0,1fr)_auto] @max-[51rem]:items-center @max-[51rem]:gap-x-2.5 @max-[51rem]:gap-y-1.5 @max-[51rem]:border-t @max-[51rem]:px-4 @max-[51rem]:py-3.5 @max-[51rem]:first:border-t-0',
-    cell: 'max-wide:min-w-0 max-wide:border-t-0 max-wide:p-0 max-wide:first:pl-0 max-wide:last:pr-0 @max-[51rem]:min-w-0 @max-[51rem]:border-t-0 @max-[51rem]:p-0 @max-[51rem]:first:pl-0 @max-[51rem]:last:pr-0',
+    table: 'max-wide:block @max-[58.5rem]:block',
+    head: 'max-wide:sr-only @max-[58.5rem]:sr-only',
+    body: 'max-wide:block @max-[58.5rem]:block',
+    row: 'max-wide:grid max-wide:grid-cols-[minmax(0,1fr)_auto] max-wide:items-center max-wide:gap-x-2.5 max-wide:gap-y-1.5 max-wide:border-t max-wide:px-4 max-wide:py-3.5 max-wide:first:border-t-0 @max-[58.5rem]:grid @max-[58.5rem]:grid-cols-[minmax(0,1fr)_auto] @max-[58.5rem]:items-center @max-[58.5rem]:gap-x-2.5 @max-[58.5rem]:gap-y-1.5 @max-[58.5rem]:border-t @max-[58.5rem]:px-4 @max-[58.5rem]:py-3.5 @max-[58.5rem]:first:border-t-0',
+    cell: 'max-wide:min-w-0 max-wide:border-t-0 max-wide:p-0 max-wide:first:pl-0 max-wide:last:pr-0 @max-[58.5rem]:min-w-0 @max-[58.5rem]:border-t-0 @max-[58.5rem]:p-0 @max-[58.5rem]:first:pl-0 @max-[58.5rem]:last:pr-0',
     /** A line beneath the name, indented by the initials and the gap after them. */
-    beneath: 'max-wide:col-span-2 max-wide:ps-13.5 @max-[51rem]:col-span-2 @max-[51rem]:ps-13.5',
-    bookings: 'max-wide:col-start-2 max-wide:row-start-1 @max-[51rem]:col-start-2 @max-[51rem]:row-start-1',
+    beneath: 'max-wide:col-span-2 max-wide:ps-13.5 @max-[58.5rem]:col-span-2 @max-[58.5rem]:ps-13.5',
+    bookings: 'max-wide:col-start-2 max-wide:row-start-1 @max-[58.5rem]:col-start-2 @max-[58.5rem]:row-start-1',
     /** The name and the other names break anywhere, so neither runs under the booking count. */
-    anywhere: 'max-wide:wrap-anywhere @max-[51rem]:wrap-anywhere',
+    anywhere: 'max-wide:wrap-anywhere @max-[58.5rem]:wrap-anywhere',
     /** The two visits side by side in a block row, wrapping onto two lines where they must. */
-    visits: 'max-wide:flex-row max-wide:flex-wrap max-wide:gap-x-5 @max-[51rem]:flex-row @max-[51rem]:flex-wrap @max-[51rem]:gap-x-5',
+    visits: 'max-wide:flex-row max-wide:flex-wrap max-wide:gap-x-5 @max-[58.5rem]:flex-row @max-[58.5rem]:flex-wrap @max-[58.5rem]:gap-x-5',
 };
 
 /**
- * Which form the visits take: two columns of their own in a wide card, or one shared column in a
- * card narrower than 936px and in the block rows. One form shows at a time.
+ * Which form the visits take: two columns of their own in a wide card, or one shared column in the
+ * block rows, which a card narrower than 936px draws. One form shows at a time.
  */
 const VISITS = {
     apart: 'max-wide:hidden @max-[58.5rem]:hidden',

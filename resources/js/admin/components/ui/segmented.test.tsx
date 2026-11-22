@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { REACH } from './button';
 import { mount, press, type Mounted } from './harness';
-import { Segmented } from './segmented';
+import { FORCED_EDGE } from './input';
+import { CHOSEN, FORCED_CHOSEN, Segmented } from './segmented';
 
 /*
  * The segmented control: one joined control with a group role and an accessible name, the
@@ -80,6 +82,41 @@ describe('the segmented control', () => {
         for (const option of view.host.querySelectorAll('.admin-segmented__option')) {
             expect(['h-9.5', 'rounded-full', 'px-4.5', 'text-body-sm', 'font-semibold', 'focus-ring'].filter((name) => !option.classList.contains(name))).toEqual([]);
         }
+    });
+
+    it('gives each 38px segment the kit\'s 44px reach in the compact layout, its rows set far enough apart there that the reaches of two rows touch and never overlap', () => {
+        view.render(<Harness />);
+
+        const group = view.host.querySelector('.admin-segmented');
+        const options = [...view.host.querySelectorAll('.admin-segmented__option')];
+
+        expect(options.every((option) => REACH.split(' ').every((name) => option.classList.contains(name)))).toBe(true);
+        // A 38px segment reaches 3px over and under itself: two wrapped rows want 6px between them.
+        expect([...(group?.classList ?? [])].filter((name) => name.startsWith('max-wide:gap'))).toEqual(['max-wide:gap-y-1.5']);
+    });
+
+    it('paints the chosen segment in the system\'s highlight in forced colours, where its fill would be repainted as the page, under the pointer too, its keyboard outline in the system\'s colour for text', () => {
+        view.render(<Harness />);
+
+        const options = [...view.host.querySelectorAll('.admin-segmented__option')];
+
+        expect(FORCED_CHOSEN.split(' ')).toEqual([
+            'forced-colors:border-[Highlight]',
+            'forced-colors:bg-[Highlight]',
+            'forced-colors:text-[HighlightText]',
+            'forced-colors:forced-color-adjust-none',
+            'forced-colors:enabled:hover:bg-[Highlight]',
+            'forced-colors:focus-visible:outline-[CanvasText]',
+        ]);
+        expect(CHOSEN.split(' ')).toEqual(['bg-foreground', 'text-background', ...FORCED_CHOSEN.split(' ')]);
+        expect(options.map((option) => CHOSEN.split(' ').every((name) => option.classList.contains(name)))).toEqual([false, true, false]);
+        expect(options.map((option) => [...option.classList].some((name) => name.startsWith('forced-colors:')))).toEqual([false, true, false]);
+    });
+
+    it('draws a real line round the group where the system forces its own colours, its only edge being a ring', () => {
+        view.render(<Harness />);
+
+        expect(view.host.querySelector('.admin-segmented')?.classList.contains(FORCED_EDGE)).toBe(true);
     });
 
     it('wraps its segments onto a second row where one row does not fit, each segment\'s words on one line, and never scrolls inside itself', () => {

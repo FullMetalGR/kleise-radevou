@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CHECK_CARDS, CheckCard } from './check-card';
 import { mount, press, type Mounted } from './harness';
+import { FORCED_EDGE } from './input';
 
 /*
  * The check card on its own: the card is the label around the live box, so a press anywhere on
@@ -56,6 +57,25 @@ describe('the check card', () => {
         expect(classes(card())).toEqual(expect.arrayContaining(['hook__row', 'items-center', 'cursor-pointer', 'ring-[1.5px]', 'ring-border', 'has-checked:ring-2', 'has-checked:ring-primary', 'has-checked:bg-muted/60', 'has-enabled:hover:bg-muted']));
         expect(classes(box())).toEqual(expect.arrayContaining(['hook__tick', 'size-5', 'accent-primary', 'focus-ring-field']));
         expect(view.host.querySelector('label label')).toBeNull();
+    });
+
+    it('draws a real line round a card at rest where the system forces its own colours, its ring dropped there, the same line whether ticked or not so ticking moves nothing', () => {
+        render(false);
+        expect(classes(card())).toContain(FORCED_EDGE);
+
+        render(true);
+        expect(classes(card())).toContain(FORCED_EDGE);
+    });
+
+    it('marks a ticked card with a line inside its edge in the system\'s highlight where the system forces its own colours, its ring and tint dropped there', () => {
+        render(true);
+
+        expect(classes(card()).filter((name) => name.startsWith('forced-colors:'))).toEqual([
+            FORCED_EDGE,
+            'forced-colors:has-checked:outline-2',
+            'forced-colors:has-checked:-outline-offset-2',
+            'forced-colors:has-checked:outline-[Highlight]',
+        ]);
     });
 
     it('names the box by the name alone and describes it by the line under it, and points at no line where there is none', () => {

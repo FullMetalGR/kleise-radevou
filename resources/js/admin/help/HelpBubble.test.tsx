@@ -3,6 +3,7 @@ import { act, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { key, mount, type Mounted, onPhone, press, settle } from '@/components/ui/harness';
+import { FORCED_EDGE } from '@/components/ui/input';
 import { formatInstant, type TenantClock } from '@/lib/format';
 import { stringsOf } from '@/lib/strings';
 import { keyedShell, keyedTable } from '@/testing/keyed';
@@ -548,6 +549,37 @@ describe('the help panel\'s tickets', () => {
         chooseTab(words.text('tabs.answers'));
         chooseTab(words.text('tabs.tickets'));
         expect(inertia.reload).toHaveBeenCalledTimes(3);
+    });
+
+    it('turns the shared spinner inline before the words while the list of tickets reads, kept from assistive technology', () => {
+        render();
+        openPanel();
+        chooseTab(words.text('tabs.tickets'));
+
+        const loading = q('.admin-help-list [role="status"]');
+        const spinner = loading?.querySelector('.admin-spinner');
+
+        expect(loading?.firstElementChild).toBe(spinner);
+        expect(loading?.textContent).toBe(words.text('list.loading'));
+        expect(spinner?.getAttribute('aria-hidden')).toBe('true');
+        expect(spinner?.hasAttribute('role')).toBe(false);
+        expect([...(spinner?.classList ?? [])]).toEqual(expect.arrayContaining(['size-3.5', 'inline-block']));
+    });
+
+    it('turns the shared spinner inline before the words while an opened thread reads, kept from assistive technology', () => {
+        render();
+        openList();
+        press(all('.admin-help-row')[0] ?? null);
+
+        const loading = q('.admin-help-thread [role="status"]');
+        const spinner = loading?.querySelector('.admin-spinner');
+
+        expect(spinner).toBeInstanceOf(HTMLElement);
+        expect(loading?.firstElementChild).toBe(spinner);
+        expect(loading?.textContent).toBe(words.text('thread.loading'));
+        expect(spinner?.getAttribute('aria-hidden')).toBe('true');
+        expect(spinner?.hasAttribute('role')).toBe(false);
+        expect([...(spinner?.classList ?? [])]).toEqual(expect.arrayContaining(['size-3.5', 'inline-block']));
     });
 
     it('says the Tickets tab has a new reply in words where a ticket does', () => {
@@ -1461,7 +1493,13 @@ describe('the help bubble\'s and panel\'s look', () => {
         expect(wearing(dot, /^border/)).toEqual([]);
     });
 
-    it('floats the panel from the desktop width as a rounded card on the card fill, in its place and size, with no line drawn round it', async () => {
+    it('draws a real line round the bubble where the system forces its own colours, its fill and shadow dropped there', () => {
+        render();
+
+        expect(classesOf(bubble())).toContain(FORCED_EDGE);
+    });
+
+    it('floats the panel from the desktop width as a rounded card on the card fill, in its place and size, with no line drawn round it but where the system forces its own colours', async () => {
         render();
         openPanel();
         await settle();
@@ -1470,6 +1508,7 @@ describe('the help bubble\'s and panel\'s look', () => {
             expect.arrayContaining(['rounded-tile-compact', 'shadow-modal', 'bg-card', 'fixed', 'right-4', 'bottom-20', 'w-[400px]', 'max-w-[calc(100vw-2rem)]', 'h-[min(600px,calc(100vh-6rem))]']),
         );
         expect(wearing(panel(), /^border/)).toEqual([]);
+        expect(classesOf(panel())).toContain(FORCED_EDGE);
         expect(q('.admin-help-backdrop')).toBeNull();
     });
 

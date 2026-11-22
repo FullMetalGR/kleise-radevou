@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mount, type Mounted } from './harness';
+import { FORCED_EDGE } from './input';
 import { SaveBar } from './save-bar';
 
 /*
@@ -35,6 +36,16 @@ describe('the save bar', () => {
         expect(bar()?.classList.contains('rounded-full')).toBe(false);
     });
 
+    it('draws a real edge round the bar where the system forces its own colours, its only edge otherwise a shadow that is dropped there', () => {
+        view.render(
+            <SaveBar>
+                <button type="submit">Save</button>
+            </SaveBar>,
+        );
+
+        expect(bar()?.classList.contains(FORCED_EDGE)).toBe(true);
+    });
+
     it('says why Save is unavailable in a status line after what it holds', () => {
         view.render(
             <SaveBar reason="A name is needed.">
@@ -50,6 +61,21 @@ describe('the save bar', () => {
         expect([...(reason?.classList ?? [])]).toEqual(expect.arrayContaining(['min-w-0', 'wrap-break-word']));
         expect(bar()?.firstElementChild?.tagName).toBe('BUTTON');
         expect(bar()?.lastElementChild).toBe(reason);
+    });
+
+    it('puts the line on a row of its own above Save where beside it the line would have less than 14rem, and keeps it beside Save from the wide breakpoint', () => {
+        view.render(
+            <SaveBar reason="A name is needed.">
+                <button type="submit">Save</button>
+            </SaveBar>,
+        );
+
+        const reason = bar()?.querySelector('p.admin-save-bar__reason');
+
+        // The rows wrap upwards, so the line that wraps stands over Save while Save stays first.
+        expect([...(bar()?.classList ?? [])]).toEqual(expect.arrayContaining(['flex-wrap-reverse', 'gap-x-4', 'gap-y-2', 'wide:flex-nowrap']));
+        expect([...(reason?.classList ?? [])]).toEqual(expect.arrayContaining(['grow', 'basis-56', 'wide:grow-0', 'wide:basis-auto']));
+        expect(bar()?.firstElementChild?.tagName).toBe('BUTTON');
     });
 
     it('draws no line with no reason', () => {

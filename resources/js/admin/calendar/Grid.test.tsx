@@ -344,6 +344,42 @@ describe('the grid', () => {
         }
     });
 
+    it('marks a block of 22 minutes or less short, its title on the 14px line, and a longer block neither, its title on the small size\'s own line', () => {
+        const QUARTER = block({ id: 'q:0', uuid: 'q', start: '2026-11-04T09:00:00', end: '2026-11-04T09:15:00', minutes: 15, title: 'Quinn Quick, Fringe' });
+        const BRIEF = block({ id: 'f:0', uuid: 'f', start: '2026-11-05T09:00:00', end: '2026-11-05T09:05:00', minutes: 5, title: 'Fen Five, Brow' });
+        const LONGEST = block({ id: 'l:0', uuid: 'l', start: '2026-11-05T11:00:00', end: '2026-11-05T11:22:00', minutes: 22, title: 'Lia Long, Brow' });
+        const NEXT = block({ id: 'n:0', uuid: 'n', start: '2026-11-05T12:00:00', end: '2026-11-05T12:23:00', minutes: 23, title: 'Ned Next, Brow' });
+        const BRIEF_GAP = block({ id: 's:0:gap', kind: 'gap', uuid: 's', start: '2026-11-06T09:00:00', end: '2026-11-06T09:10:00', minutes: 10, title: cal.text(GAP_TITLE) });
+        const lineOf = (id: string) => [...(eventOf(id).querySelector('.admin-calendar-block__title')?.classList ?? [])].filter((name) => name.startsWith('leading-'));
+        const short = (id: string) => eventOf(id).classList.contains('admin-calendar-block--short');
+
+        render({ blocks: [ELENA, NIKOS, QUARTER, BRIEF, LONGEST, NEXT, GAP, BRIEF_GAP] });
+
+        for (const id of ['q:0', 'f:0', 'l:0', 's:0:gap']) {
+            expect(lineOf(id)).toEqual(['leading-[14px]']);
+            expect(short(id)).toBe(true);
+        }
+
+        for (const id of ['n:0', 'b1:0', 'b2:0', 'b2:0:gap']) {
+            expect(lineOf(id)).toEqual([]);
+            expect(short(id)).toBe(false);
+        }
+    });
+
+    it('dashes a short processing gap at its sides alone, so its title\'s line has the block\'s whole height, and a longer gap all round', () => {
+        const BRIEF_GAP = block({ id: 's:0:gap', kind: 'gap', uuid: 's', start: '2026-11-06T09:00:00', end: '2026-11-06T09:10:00', minutes: 10, title: cal.text(GAP_TITLE) });
+
+        render({ blocks: [ELENA, NIKOS, GAP, BRIEF_GAP] });
+
+        const brief = eventOf('s:0:gap').style;
+        const long = eventOf('b2:0:gap').style;
+
+        expect([brief.borderTopWidth, brief.borderBottomWidth]).toEqual(['0px', '0px']);
+        expect([brief.borderLeftStyle, brief.borderRightStyle]).toEqual(['dashed', 'dashed']);
+        expect([brief.borderLeftWidth, brief.borderRightWidth]).toEqual(['1px', '1px']);
+        expect([long.borderTopWidth, long.borderBottomWidth, long.borderLeftWidth, long.borderRightWidth]).toEqual(['1px', '1px', '1px', '1px']);
+    });
+
     it('strikes the title of a booking cancelled, rejected, missed or expired and fills it softer in the tertiary ink, its bar still its hue, and strikes nothing else', () => {
         const CANCELLED = block({ id: 'c:0', uuid: 'c', status: 'cancelled', title: 'Cy Cancel, Haircut' });
         const REJECTED = block({ id: 'j:0', uuid: 'j', staffId: 4, start: '2026-11-06T12:00:00', end: '2026-11-06T13:00:00', status: 'rejected', title: 'Jo Refused, Haircut' });
@@ -380,6 +416,41 @@ describe('the grid', () => {
             expect(today[0]?.className.split(' ')).toEqual(expect.arrayContaining(['bg-spark', 'text-spark-foreground', 'tabular-nums']));
             expect(today[0]?.textContent).toBe('03/11/2026');
             expect(today[0]?.closest('.fc-col-header-cell')?.textContent).toBe(`${intlWeekday('2026-11-03')} 03/11/2026`);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('sets the day\'s number under the weekday in place of the date where a head is narrower than the whole date needs, today\'s on the highlight, the number drawn from an attribute so the head\'s words stay the weekday and the date', () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-11-03T10:00:00Z'));
+
+        try {
+            render();
+
+            const heads = [...view.host.querySelectorAll<HTMLElement>('.fc-col-header-cell')];
+
+            expect(heads).toHaveLength(7);
+
+            for (const head of heads) {
+                const date = head.dataset['date'] ?? '';
+                const number = head.querySelector<HTMLElement>('.admin-calendar-grid__day');
+                const narrow = [...(number?.classList ?? [])].find((name) => name.endsWith(':inline-flex'))?.split(':')[0] ?? 'none';
+                const words = number?.parentElement;
+                const full = words?.children[1];
+
+                expect(head.querySelector('.admin-calendar-grid__head')?.classList.contains('@container')).toBe(true);
+                expect(narrow).toMatch(/^@max-\[\d+px\]$/);
+                expect(number?.dataset['day']).toBe(String(Number(date.slice(8))));
+                expect(number?.textContent).toBe('');
+                expect(number?.classList.contains('hidden')).toBe(true);
+                expect([...(number?.classList ?? [])].filter((name) => name.startsWith('after:content-'))).toHaveLength(1);
+                expect(number?.classList.contains('bg-spark')).toBe(date === '2026-11-03');
+                expect(full?.textContent).toBe(`${date.slice(8)}/11/2026`);
+                expect(full?.classList.contains(`${narrow}:hidden`)).toBe(true);
+                expect([`${narrow}:flex`, `${narrow}:flex-col`].every((name) => words?.classList.contains(name))).toBe(true);
+                expect(head.textContent).toBe(`${intlWeekday(date)} ${date.slice(8)}/11/2026`);
+            }
         } finally {
             vi.useRealTimers();
         }

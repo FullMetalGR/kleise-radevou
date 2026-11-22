@@ -135,7 +135,7 @@ export function Month({ date, weekStart, today, chips, closedDays, colouring, cl
                         {...(desktop ? drag.target(spotOf(day)) : {})}
                         className={cn(
                             'admin-calendar-month__day relative min-w-0 border-b border-l nth-[7n+1]:border-l-0 nth-last-[-n+7]:border-b-0',
-                            desktop ? 'min-h-32' : 'min-h-14',
+                            desktop && 'min-h-32',
                             day.other && 'admin-calendar-month__day--other bg-muted/40',
                             day.closed && 'admin-calendar-month__day--closed bg-(image:--admin-calendar-hatch)',
                             drag.over === day.date && TARGETED,

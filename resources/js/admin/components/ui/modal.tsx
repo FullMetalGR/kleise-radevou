@@ -2,6 +2,7 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import { createContext, useContext, useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
 import { Cross } from '../glyphs';
 import { Button } from './button';
+import { FORCED_EDGE } from './input';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
 
@@ -74,8 +75,11 @@ const BACKDROP: Record<ModalVariant, string> = {
     drawer: 'items-stretch justify-start',
 };
 
-/** The card both the centred and the filling frame are at or above the breakpoint. */
-const CARD = 'max-h-[calc(100dvh-3rem)] max-w-[780px] rounded-shell shadow-modal';
+/**
+ * The card both the centred and the filling frame are at or above the breakpoint, with a real line
+ * round it where the system forces its own colours and drops its shadow and the scrim.
+ */
+const CARD = `max-h-[calc(100dvh-3rem)] max-w-[780px] rounded-shell shadow-modal ${FORCED_EDGE}`;
 
 /** A card's rise into place as it opens. */
 const RISE = 'motion-safe:transition-[translate,scale] motion-safe:duration-400 motion-safe:ease-soft motion-safe:starting:translate-y-3.5 motion-safe:starting:scale-[0.985]';
@@ -84,7 +88,7 @@ const FRAME: Record<ModalVariant, string> = {
     centred: `admin-modal__frame--centred ${CARD} ${RISE} max-desktop:max-h-[94dvh] max-desktop:max-w-none max-desktop:self-end max-desktop:rounded-t-[1.75rem] max-desktop:rounded-b-none max-desktop:motion-safe:starting:translate-y-10`,
     filling: `admin-modal__frame--filling ${CARD} ${RISE} max-desktop:h-full max-desktop:max-h-none max-desktop:max-w-none max-desktop:rounded-none max-desktop:shadow-none`,
     full: 'admin-modal__frame--full h-full max-h-none max-w-none rounded-none',
-    drawer: 'admin-modal__frame--drawer h-dvh w-[min(88vw,340px)] rounded-r-shell shadow-drawer motion-safe:transition-[translate] motion-safe:duration-450 motion-safe:ease-soft motion-safe:starting:-translate-x-full',
+    drawer: `admin-modal__frame--drawer h-dvh w-[min(88vw,340px)] rounded-r-shell shadow-drawer motion-safe:transition-[translate] motion-safe:duration-450 motion-safe:ease-soft motion-safe:starting:-translate-x-full ${FORCED_EDGE}`,
 };
 
 /**

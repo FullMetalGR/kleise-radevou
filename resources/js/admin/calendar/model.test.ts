@@ -283,6 +283,17 @@ describe('the blocks one window answer draws', () => {
         expect(['pending', 'confirmed', 'completed', 'no_show', 'cancelled', 'rejected', 'expired'].map((status) => blocksOf([booking({ status })], null, ATHENS, CAL)[0]?.badge)).toEqual(Array(7).fill(null));
     });
 
+    it('leaves out an item with any instant that does not read, drawing its booking\'s other items and the other bookings as ever', () => {
+        const second = { ...ITEM, sort: 1, start: '2026-11-03T09:00:00+00:00', end: '2026-11-03T09:45:00+00:00', block_start_utc: null, block_end_utc: null };
+        const broken = booking({ uuid: 'broken', items: [{ ...ITEM, start: '2026-11-03 08:00:00' }, second] });
+
+        expect(blocksOf([broken, booking()], null, ATHENS, CAL).map((block) => block.id)).toEqual(['broken:1', 'b1:0']);
+
+        for (const field of ['start', 'end', 'block_start_utc', 'block_end_utc', 'processing_ends_utc'] as const) {
+            expect(blocksOf([booking({ items: [{ ...ITEM, [field]: '2026-02-30T08:00:00+00:00' }] })], null, ATHENS, CAL)).toEqual([]);
+        }
+    });
+
     it('spells a booking near midnight in Athens on the Athens day, and a daylight-saving day at its wall-clock hours on both sides', () => {
         expect(wallOf('2026-11-02T22:15:00+00:00', ATHENS)).toBe('2026-11-03T00:15:00');
         expect(wallOf('2026-10-24T23:30:00+00:00', ATHENS)).toBe('2026-10-25T02:30:00');
@@ -314,6 +325,19 @@ describe('the month chips', () => {
         expect(uuidsOn(chips)).toEqual({ '2026-11-03': ['e', 'b1', 'b2', 'c', 'chain'] });
         expect(chips.get('2026-11-03')?.at(-1)).toEqual({ uuid: 'chain', start: '2026-11-03T23:00:00', customer: 'Ada North', status: 'confirmed', staffId: 2, category: 'Hair', badge: null, noted: false, inside: false, movable: false, segments: [0, 1] });
         expect(monthChipsOf([], null, ATHENS).size).toBe(0);
+    });
+
+    it('draws a booking at its first item that reads, and leaves out one with none that reads, the other bookings drawn as ever', () => {
+        const broken = booking({
+            uuid: 'broken',
+            items: [
+                { sort: 0, service_id: 1, service_name: 'Haircut', staff_id: 2, staff_name: 'Elena', start: 'not an instant', end: '2026-11-03T21:45:00+00:00', price_minor: 1 },
+                { sort: 1, service_id: 3, service_name: 'Colour', staff_id: 4, staff_name: 'Nikos', start: '2026-11-03T22:00:00+00:00', end: '2026-11-03T23:00:00+00:00', price_minor: 1 },
+            ],
+        });
+        const lost = at('lost', 'confirmed', '2026-11-03T25:00:00+00:00');
+
+        expect(uuidsOn(monthChipsOf([broken, lost, at('c', 'confirmed', '2026-11-03T12:00:00+00:00')], null, ATHENS))).toEqual({ '2026-11-03': ['c'], '2026-11-04': ['broken'] });
     });
 
     it('places a booking across a clock change on its wall-clock day', () => {

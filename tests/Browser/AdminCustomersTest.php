@@ -27,16 +27,15 @@ use Tests\Browser\Support\PhoneScripts;
  *
  * Last the list's layout, in Greek, with a customer of a sixty-character name, a sixty-character
  * email with no break and two phones: at 1440 pixels the head row stays at the top of the window
- * while the page scrolls through a long list; beside the open sidebar, at the first window where
- * the card holds the grid with the visits shared and the first where it holds them apart, the
- * table fits its card and the email and the phones keep their floors, a short address and each
- * short phone on one line, one customer's last visit a date that has passed, the widest a Last
- * visit cell gets at its narrowest; and on a phone each customer is a block of the name with the
- * booking count at its right, then the email, the phones and the visits beneath, the email kept
- * inside its row, and a search with no match keeps the toolbar in the card. A phone of two
- * numbers, one of forty characters and one of forty with no break stay inside the card in the
- * narrowest grid and on a phone, and so does a line of other names holding one long unbroken
- * name.
+ * while the page scrolls through a long list; beside the open sidebar the card holds rows, each
+ * visit on two lines at most, up to the first window where it holds the grid with the visits
+ * apart, and there the table fits its card and the email and the phones keep their floors, a short
+ * address and each short phone on one line, one customer's last visit a date that has passed, the
+ * widest a Last visit cell gets at its narrowest; and on a phone each customer is a block of the
+ * name with the booking count at its right, then the email, the phones and the visits beneath, the
+ * email kept inside its row, and a search with no match keeps the toolbar in the card. A phone of
+ * two numbers, one of forty characters and one of forty with no break stay inside the card in the
+ * narrowest grid and on a phone, and so does a line of other names holding one long unbroken name.
  *
  * The bookings are written straight to luna's rows, every start whole days from today, because
  * the browser and the application both read the real clock here.
@@ -364,6 +363,23 @@ function customersListLongCustomer(int $days): void
 }
 
 /**
+ * A fault script's answer as the faults it names, each a sentence; anything else fails here.
+ *
+ * @return list<string>
+ */
+function customersFaults(mixed $answer): array
+{
+    assert(is_array($answer));
+    $faults = [];
+    foreach ($answer as $fault) {
+        assert(is_string($fault));
+        $faults[] = $fault;
+    }
+
+    return $faults;
+}
+
+/**
  * True when the page has scrolled the list's top out of the window and its head row rests at the
  * window's top, nothing drawn over its middle.
  */
@@ -636,7 +652,7 @@ it('keeps the list\'s head row at the top of the window at 1440 pixels in Greek 
         ->assertNoJavaScriptErrors();
 });
 
-it('keeps the list inside its card in Greek beside the open sidebar at the first window whose card draws the grid with the visits shared and the first that draws them apart, the email and the phones at their floors or wider with a short address and each phone on one line and an email of sixty characters and a phone of forty unbroken characters inside their cells, and draws the layout before each one pixel narrower', function () {
+it('keeps the list inside its card in Greek beside the open sidebar as rows at a card of 824px and at the first window whose card draws the grid, the visits apart there, the email and the phones at their floors or wider with a short address and each phone on one line and an email of sixty characters and a phone of forty unbroken characters inside their cells, and draws the rows one pixel narrower', function () {
     $el = SiteLanguage::Greek;
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $el->value]);
     customersListLongCustomer(61);
@@ -644,25 +660,18 @@ it('keeps the list inside its card in Greek beside the open sidebar at the first
     customersWalkBooking('Ada North', 'ada@example.test', athensDaysOn(63));
     customersListPhoneCustomer('Unbroken Phone', 'unbroken.phone@example.test', CUSTOMERS_LIST_UNBROKEN_PHONE, 64);
 
-    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1132, 800);
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1140, 800);
     $page->navigate(Admin::url('luna', '/customers'))
         ->waitForText(adminLine('admin/customers.table.count', ['count' => '3', 'total' => '3'], $el))
         ->assertScript(PhoneScripts::PAGE_LANGUAGE, $el->value)
-        ->assertScript("getComputedStyle(document.querySelector('.admin-customers table')).display", 'table')
-        ->assertScript(CUSTOMERS_LIST_VISITS_FORM, 'shared')
-        ->assertScript(CUSTOMERS_LIST_TABLE_FITS, [])
-        ->assertScript(CUSTOMERS_LIST_FLOORS, [])
-        ->assertScript(CUSTOMERS_LIST_LONG_EMAIL_INSIDE, true)
-        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
-    $shared = $page->script(CUSTOMERS_LIST_CARD_WIDTH);
-    assert(is_int($shared));
-    expect($shared)->toBeGreaterThanOrEqual(816)->toBeLessThan(824);
-    Look::shot($page, 'customers-1132-el');
-
-    $page->resize(1132 - ($shared - 815), 800)
         ->assertScript(CUSTOMERS_LIST_ROWS_READ, true)
+        ->assertScript(CUSTOMERS_LIST_VISITS_COMPACT, [])
         ->assertScript(CUSTOMERS_LIST_LONG_EMAIL_INSIDE, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    $rows = $page->script(CUSTOMERS_LIST_CARD_WIDTH);
+    assert(is_int($rows));
+    expect($rows)->toBeGreaterThanOrEqual(824)->toBeLessThan(832);
+    Look::shot($page, 'customers-1140-el');
 
     $page->resize(1252, 800)
         ->assertScript("getComputedStyle(document.querySelector('.admin-customers table')).display", 'table')
@@ -677,9 +686,9 @@ it('keeps the list inside its card in Greek beside the open sidebar at the first
     Look::shot($page, 'customers-1252-el');
 
     $page->resize(1252 - ($apart - 935), 800)
-        ->assertScript("getComputedStyle(document.querySelector('.admin-customers table')).display", 'table')
-        ->assertScript(CUSTOMERS_LIST_VISITS_FORM, 'shared')
-        ->assertScript(CUSTOMERS_LIST_TABLE_FITS, [])
+        ->assertScript(CUSTOMERS_LIST_ROWS_READ, true)
+        ->assertScript(CUSTOMERS_LIST_VISITS_COMPACT, [])
+        ->assertScript(CUSTOMERS_LIST_LONG_EMAIL_INSIDE, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
 });
@@ -722,7 +731,7 @@ it('keeps a phone of two numbers, one of forty characters and one of forty unbro
     customersListPhoneCustomer('Unbroken Phone', 'unbroken.phone@example.test', CUSTOMERS_LIST_UNBROKEN_PHONE, 65);
     expect([strlen(CUSTOMERS_LIST_TWO_NUMBERS), strlen(CUSTOMERS_LIST_FORTY_PHONE), strlen(CUSTOMERS_LIST_UNBROKEN_PHONE)])->toBe([29, 40, 40]);
 
-    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1132, 800);
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1252, 800);
     $page->navigate(Admin::url('luna', '/customers'))
         ->waitForText(adminLine('admin/customers.table.count', ['count' => '4', 'total' => '4'], $el))
         ->assertScript(PhoneScripts::PAGE_LANGUAGE, $el->value)
@@ -735,8 +744,8 @@ it('keeps a phone of two numbers, one of forty characters and one of forty unbro
         ->assertNoJavaScriptErrors();
     $card = $page->script(CUSTOMERS_LIST_CARD_WIDTH);
     assert(is_int($card));
-    expect($card)->toBeGreaterThanOrEqual(816)->toBeLessThan(824);
-    Look::shot($page, 'customers-1132-el-phones');
+    expect($card)->toBeGreaterThanOrEqual(936)->toBeLessThan(944);
+    Look::shot($page, 'customers-1252-el-phones');
 });
 
 it('keeps a phone of two numbers, one of forty characters, one of forty unbroken characters and a line of other names holding a long unbroken name inside each customer\'s block on a phone in Greek', function () {
@@ -761,4 +770,107 @@ it('keeps a phone of two numbers, one of forty characters, one of forty unbroken
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
     Look::shot($page, 'customers-390-el-phones');
+});
+
+/**
+ * What makes a row run tall on its shared visits, as words with the figures: a visit, its head and
+ * its date, drawn on more than two lines, or a grid row more than one line taller than its tallest
+ * other cell makes it. The visits apart are not read.
+ */
+const CUSTOMERS_LIST_VISITS_COMPACT = <<<'JS'
+    document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const table = document.querySelector('.admin-customers table');
+        const grid = table !== null && getComputedStyle(table).display === 'table';
+        const lines = (element) => {
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            const found = [];
+            while (walker.nextNode()) {
+                const range = document.createRange();
+                range.selectNodeContents(walker.currentNode);
+                for (const box of range.getClientRects()) {
+                    const middle = (box.top + box.bottom) / 2;
+                    if (box.width > 0 && !found.some((line) => middle > line.top && middle < line.bottom)) {
+                        found.push({ top: box.top, bottom: box.bottom });
+                    }
+                }
+            }
+            return found.length;
+        };
+        const natural = (cell) => {
+            const range = document.createRange();
+            range.selectNodeContents(cell);
+            const style = getComputedStyle(cell);
+            return range.getBoundingClientRect().height + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+        };
+        const wrong = new Set();
+        document.querySelectorAll('.admin-customers__row').forEach((row) => {
+            const cell = row.querySelector('.admin-customers__visits');
+            if (getComputedStyle(cell).display === 'none') {
+                return;
+            }
+            const visits = [...cell.firstElementChild.children];
+            const drawn = visits.map(lines);
+            if (drawn.some((count) => count > 2)) {
+                wrong.add(`a visit on ${Math.max(...drawn)} lines`);
+            }
+            if (grid) {
+                const line = parseFloat(getComputedStyle(visits[0].lastElementChild).lineHeight);
+                const others = [...row.children].filter((other) => other !== cell && getComputedStyle(other).display !== 'none');
+                const tallest = Math.max(...others.map(natural));
+                const height = row.getBoundingClientRect().height;
+                if (height > tallest + line + 0.5) {
+                    wrong.add(`a row of ${Math.round(height)}px for a tallest other cell of ${Math.round(tallest)}px`);
+                }
+            }
+        });
+        resolve([...wrong]);
+    }))))
+    JS;
+
+it('reads the list in Greek at every card width from 808px up to the first that draws the grid as rows that read or a grid that fits with two pixels to spare and shares the visits, each visit on two lines at most and no row taller for its visits, a sixty-character name and email, the long phones and a short address among the customers', function () {
+    $el = SiteLanguage::Greek;
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $el->value]);
+    customersListLongCustomer(61);
+    customersWalkBooking('Ada North', 'ada@example.test', athensDaysOn(-3));
+    customersWalkBooking('Ada North', 'ada@example.test', athensDaysOn(63));
+    customersListPhoneCustomer('Two Numbers', 'two.numbers@example.test', CUSTOMERS_LIST_TWO_NUMBERS, 63);
+    customersListPhoneCustomer('Forty Phone', 'forty.phone@example.test', CUSTOMERS_LIST_FORTY_PHONE, 64);
+    customersListPhoneCustomer('Unbroken Phone', 'unbroken.phone@example.test', CUSTOMERS_LIST_UNBROKEN_PHONE, 65);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1132, 800);
+    $page->navigate(Admin::url('luna', '/customers'))
+        ->waitForText(adminLine('admin/customers.table.count', ['count' => '5', 'total' => '5'], $el))
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, $el->value);
+    $card = $page->script(CUSTOMERS_LIST_CARD_WIDTH);
+    assert(is_int($card));
+    // The card grows with the window one pixel for one, beside the open sidebar.
+    $window = fn (int $width): int => 1132 + $width - $card;
+
+    // Every pixel from 808 to 832, then every seventh up to the step into the grid, which draws
+    // the visits apart.
+    $wrong = [];
+    foreach ([...range(808, 832), ...range(839, 935, 7), 935] as $width) {
+        $page->resize($window($width), 800);
+        $drawn = $page->script(CUSTOMERS_LIST_CARD_WIDTH);
+        assert(is_int($drawn) || is_float($drawn));
+        $grid = $page->script("getComputedStyle(document.querySelector('.admin-customers table')).display") === 'table';
+        $faults = $grid
+            ? [...customersFaults($page->script(CUSTOMERS_LIST_TABLE_FITS)), ...customersFaults($page->script(CUSTOMERS_LIST_INSIDE_CARD)), ...customersFaults($page->script(CUSTOMERS_LIST_FLOORS))]
+            : ($page->script(CUSTOMERS_LIST_ROWS_READ) === true ? [] : ['the rows do not read']);
+        if ($grid && $page->script(CUSTOMERS_LIST_VISITS_FORM) !== 'shared') {
+            $faults[] = 'the visits not shared';
+        }
+        $faults = [...$faults, ...customersFaults($page->script(CUSTOMERS_LIST_VISITS_COMPACT))];
+        if ($page->script(CUSTOMERS_LIST_LONG_EMAIL_INSIDE) !== true) {
+            $faults[] = 'the long email past its cell';
+        }
+        if ($drawn !== $width) {
+            $faults[] = "the card {$drawn}px";
+        }
+        if ($faults !== []) {
+            $wrong[$width] = implode('; ', $faults);
+        }
+    }
+    expect($wrong)->toBe([]);
+    $page->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)->assertNoJavaScriptErrors();
 });

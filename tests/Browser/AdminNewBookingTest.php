@@ -10,8 +10,8 @@ use Tests\Browser\Support\PhoneScripts;
 use Tests\Support\LunaFixture;
 
 /*
- * The manual booking wizard in a real browser: from the top bar, an owner books two services for
- * a customer who called, on a chosen day and time, sees the toast, finds the booking confirmed
+ * The manual booking wizard in a real browser: from the page header, an owner books two services
+ * for a customer who called, on a chosen day and time, sees the toast, finds the booking confirmed
  * in the list, opens it and sees the trail naming the operator.
  *
  * The day is the first Tuesday at least a week ahead of the machine's clock, when Elena works
@@ -45,7 +45,7 @@ function wizardTuesday(): array
     return ['date' => $day->format('Y-m-d'), 'months' => $months, 'label' => $day->format('d/m/Y'), 'nine' => $nine, 'ninePastFive' => $ninePastFive];
 }
 
-it('books two services for a customer from the top bar, sees the toast, finds the booking confirmed in the list and its trail naming the operator', function () {
+it('books two services for a customer from the page header, sees the toast, finds the booking confirmed in the list and its trail naming the operator', function () {
     ['date' => $date, 'months' => $months, 'label' => $label, 'nine' => $nine, 'ninePastFive' => $ninePastFive] = wizardTuesday();
     $colour = LunaFixture::id('services', 'Colour');
 

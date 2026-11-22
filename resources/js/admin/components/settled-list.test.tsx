@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FirstRowProvider, type FirstRow } from '@/shell/first-row';
 import { mount, type Mounted, press } from './ui/harness';
 import { CRUMB_LINK } from './ui/breadcrumb';
 import { Spinner } from './ui/spinner';
@@ -20,6 +21,11 @@ const DETAIL_ERROR = 'the-detail-error-sentence';
 const NOT_FOUND = 'the-not-found-sentence';
 
 const BACK = 'the-back-label';
+
+const TITLE = 'the-screen-name';
+
+/** What the shell hands a page's first row, stood in for by marked parts. */
+const SHELL: FirstRow = { start: <button type="button" className="shell-menu" />, controls: <div className="shell-controls" />, action: null };
 
 let view: Mounted;
 
@@ -78,20 +84,23 @@ const ROWS: Row[] = [
 
 function renderDetail(id: number | 'new', loading: boolean, error: boolean, onBack = vi.fn()) {
     view.render(
-        <ListDetail<Row>
-            rows={loading || error ? [] : ROWS}
-            state={{ loading, error }}
-            id={id}
-            loadingLabel={LOADING}
-            errorSentence={DETAIL_ERROR}
-            notFoundSentence={NOT_FOUND}
-            backLabel={BACK}
-            listHref="/admin/services"
-            onBack={onBack}
-            create={<form className="create" />}
-        >
-            {(row) => <article className="found">{row.name}</article>}
-        </ListDetail>,
+        <FirstRowProvider value={SHELL}>
+            <ListDetail<Row>
+                rows={loading || error ? [] : ROWS}
+                state={{ loading, error }}
+                id={id}
+                title={TITLE}
+                loadingLabel={LOADING}
+                errorSentence={DETAIL_ERROR}
+                notFoundSentence={NOT_FOUND}
+                backLabel={BACK}
+                listHref="/admin/services"
+                onBack={onBack}
+                create={<form className="create" />}
+            >
+                {(row) => <article className="found">{row.name}</article>}
+            </ListDetail>
+        </FirstRowProvider>,
     );
 
     return onBack;
@@ -109,10 +118,12 @@ describe('the list-detail scaffold', () => {
         expect(resolve(ROWS, state(false, false), byId(2))).toEqual({ kind: 'found', row: ROWS[1] });
     });
 
-    it('renders loading as a spinner alone', () => {
+    it('renders loading as the page header over a spinner, and nothing else', () => {
         renderDetail(1, true, false);
 
-        expect(view.host.children).toHaveLength(1);
+        expect(view.host.children).toHaveLength(2);
+        expect(view.host.firstElementChild?.classList.contains('admin-page-header')).toBe(true);
+        expect(view.host.lastElementChild?.getAttribute('aria-label')).toBe(LOADING);
         expect(view.host.querySelector('.admin-spinner[role="status"]')?.getAttribute('aria-label')).toBe(LOADING);
         expect(view.host.querySelector('.found, .create, [role="alert"]')).toBeNull();
     });
@@ -122,8 +133,50 @@ describe('the list-detail scaffold', () => {
         alone.render(<Spinner label={LOADING} />);
         renderDetail(1, true, false);
 
-        expect(view.host.innerHTML).toBe(alone.host.innerHTML);
+        expect(view.host.lastElementChild?.outerHTML).toBe(alone.host.innerHTML);
         alone.unmount();
+    });
+
+    it('opens each waiting state with the page header, whose one main heading is the screen\'s name', () => {
+        const waiting: [number, boolean, boolean][] = [
+            [1, true, false],
+            [1, false, true],
+            [3, false, false],
+        ];
+
+        for (const [id, loading, error] of waiting) {
+            renderDetail(id, loading, error);
+
+            const headings = view.host.querySelectorAll('h1');
+
+            expect(headings).toHaveLength(1);
+            expect(headings[0]?.textContent).toBe(TITLE);
+            expect(headings[0]?.closest('.admin-page-header')).toBe(view.host.firstElementChild);
+        }
+    });
+
+    it('keeps the header row in each waiting state, with the shell\'s menu button and controls in it as once loaded', () => {
+        const waiting: [number, boolean, boolean][] = [
+            [1, true, false],
+            [1, false, true],
+            [3, false, false],
+        ];
+
+        for (const [id, loading, error] of waiting) {
+            renderDetail(id, loading, error);
+
+            expect(view.host.querySelectorAll('.admin-page-header__row')).toHaveLength(1);
+            expect(view.host.querySelector('.admin-page-header__row .shell-menu')).not.toBeNull();
+            expect(view.host.querySelector('.admin-page-header__row .shell-controls')).not.toBeNull();
+        }
+    });
+
+    it('adds no header of its own to found content or to a create route, which bring their own', () => {
+        renderDetail(2, false, false);
+        expect(view.host.querySelector('.admin-page-header, h1')).toBeNull();
+
+        renderDetail('new', true, false);
+        expect(view.host.querySelector('.admin-page-header, h1')).toBeNull();
     });
 
     it('renders error as a non-dismissible error notice in the screen\'s own sentence', () => {
@@ -154,14 +207,12 @@ describe('the list-detail scaffold', () => {
         expect(onBack).toHaveBeenCalledTimes(1);
     });
 
-    it('draws the Back link in the breadcrumb\'s link look, underlined on hover and never at rest', () => {
+    it('draws the Back link in the breadcrumb\'s link look and nothing of its own beyond its place at the start', () => {
         renderDetail(3, false, false);
 
         const classes = [...(view.host.querySelector('.admin-detail-back')?.classList ?? [])];
 
-        expect(classes).toEqual(expect.arrayContaining(CRUMB_LINK.split(' ')));
-        expect(classes).toContain('hover:underline');
-        expect(classes).not.toContain('underline');
+        expect(classes).toEqual(['admin-detail-back', 'self-start', ...CRUMB_LINK.split(' ')]);
     });
 
     it('renders found as the content', () => {

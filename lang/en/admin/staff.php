@@ -191,6 +191,7 @@ return [
         'none' => 'No closures on record.',
         'window' => ':date :time-:end',
         'delete' => 'Delete',
+        'delete_label' => 'Delete the closure of :when',
         'deleting' => 'Deleting',
         'wait_removing' => 'The other closures and Add wait until this one has been removed.',
         'wait_adding' => 'Delete waits until the closure has been added.',

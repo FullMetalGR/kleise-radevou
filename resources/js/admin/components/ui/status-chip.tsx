@@ -1,6 +1,5 @@
-import type { ComponentType, ReactNode } from 'react';
-import { formatCount } from '@/lib/format';
-import { placed, type ShellKey, type ShellWords, useShell } from '@/lib/strings';
+import type { ComponentType } from 'react';
+import { type ShellKey, type ShellWords, useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
 import { ChipAlert, ChipCard, ChipClock, ChipCross, ChipHourglass, ChipTick, ChipTimer } from '../glyphs';
 
@@ -15,30 +14,30 @@ import { ChipAlert, ChipCard, ChipClock, ChipCross, ChipHourglass, ChipTick, Chi
  * base chip with the raw value as its label and no icon: the raw value reads as data where a guess
  * would read as a bug.
  *
- * A booking status's label and its line with a count are keys of the shell's section, read in the
- * page's language through the strings the chip is given: the admin's in the user's language, the
- * console's in English. A catalog row's two states keep their shapes here and take their word from
- * the caller, the screen that names the row.
+ * A booking status's label is a key of the shell's section, read in the page's language through
+ * the strings the chip is given: the admin's in the user's language, the console's in English. A
+ * catalog row's two states keep their shapes here and take their word from the caller, the screen
+ * that names the row. A chip carries no figure: a count beside a status is its screen's to spell.
  */
 
 export type ChipShape = 'live' | 'attention' | 'provisional' | 'void' | 'past';
 
-/** A booking status's chip: its shape, its icon, its word and its line with a count in the shell's kit. */
-type BookingChip = { readonly shape: ChipShape; readonly icon: ComponentType; readonly label: ShellKey; readonly counted: ShellKey };
+/** A booking status's chip: its shape, its icon and its word in the shell's kit. */
+type BookingChip = { readonly shape: ChipShape; readonly icon: ComponentType; readonly label: ShellKey };
 
 /** A catalog row's state: its shape and its icon, if it has one, the word the caller's own screen holds. */
 type CatalogChip = { readonly shape: ChipShape; readonly icon?: ComponentType };
 
 const STATUSES: Readonly<Record<string, BookingChip | CatalogChip>> = {
-    confirmed: { shape: 'live', icon: ChipTick, label: 'kit.statuses.confirmed', counted: 'kit.counted.confirmed' },
-    awaiting_approval: { shape: 'attention', icon: ChipClock, label: 'kit.statuses.awaiting_approval', counted: 'kit.counted.awaiting_approval' },
-    pending: { shape: 'provisional', icon: ChipHourglass, label: 'kit.statuses.pending', counted: 'kit.counted.pending' },
-    awaiting_payment: { shape: 'provisional', icon: ChipCard, label: 'kit.statuses.awaiting_payment', counted: 'kit.counted.awaiting_payment' },
-    cancelled: { shape: 'void', icon: ChipCross, label: 'kit.statuses.cancelled', counted: 'kit.counted.cancelled' },
-    rejected: { shape: 'void', icon: ChipCross, label: 'kit.statuses.rejected', counted: 'kit.counted.rejected' },
-    no_show: { shape: 'void', icon: ChipAlert, label: 'kit.statuses.no_show', counted: 'kit.counted.no_show' },
-    completed: { shape: 'past', icon: ChipTick, label: 'kit.statuses.completed', counted: 'kit.counted.completed' },
-    expired: { shape: 'past', icon: ChipTimer, label: 'kit.statuses.expired', counted: 'kit.counted.expired' },
+    confirmed: { shape: 'live', icon: ChipTick, label: 'kit.statuses.confirmed' },
+    awaiting_approval: { shape: 'attention', icon: ChipClock, label: 'kit.statuses.awaiting_approval' },
+    pending: { shape: 'provisional', icon: ChipHourglass, label: 'kit.statuses.pending' },
+    awaiting_payment: { shape: 'provisional', icon: ChipCard, label: 'kit.statuses.awaiting_payment' },
+    cancelled: { shape: 'void', icon: ChipCross, label: 'kit.statuses.cancelled' },
+    rejected: { shape: 'void', icon: ChipCross, label: 'kit.statuses.rejected' },
+    no_show: { shape: 'void', icon: ChipAlert, label: 'kit.statuses.no_show' },
+    completed: { shape: 'past', icon: ChipTick, label: 'kit.statuses.completed' },
+    expired: { shape: 'past', icon: ChipTimer, label: 'kit.statuses.expired' },
     // A catalog row's two states: offered, or resting and not offered, which has no mark. A
     // service and a member of the team are nouns of two genders in Greek, so the word is the
     // caller's.
@@ -57,55 +56,24 @@ export function chipShapeOf(status: string): ChipShape | null {
 
 /**
  * The chip: the status's icon, then its label in .admin-chip__label, the span a strike lands on, so
- * the icon is never struck. A count, where given, makes the compact chip Home's awaiting feed draws,
- * in the status's shape. A booking status's chip reads its whole line of the kit's counted group,
- * chosen by the count, since Greek bends the word by the number: the figure, spelled by
- * formatCount in the shell's locale, stands where the line's :count does, in its own span, and the
- * words in theirs. A status the chip does not know keeps the figure before its raw value, and a
- * catalog row's state (active, inactive) given a count does as that status does, the figure before
- * its label.
+ * the icon is never struck.
  */
-export function StatusChip({ status, count, label: given, className }: { status: string; count?: number; label?: string; className?: string }) {
+export function StatusChip({ status, label: given, className }: { status: string; label?: string; className?: string }) {
     const shell = useShell();
     const known = knownOf(status);
     const label = given ?? statusLabel(status, shell);
     const Icon = known?.icon;
 
     return (
-        <span className={cn('admin-chip', known !== undefined && `admin-chip--${known.shape}`, count !== undefined && 'admin-chip--compact', className)} data-status={status}>
+        <span className={cn('admin-chip', known !== undefined && `admin-chip--${known.shape}`, className)} data-status={status}>
             {Icon !== undefined && (
                 <span className="admin-chip__icon">
                     <Icon />
                 </span>
             )}
-            {count === undefined ? (
-                <span className="admin-chip__label">{label}</span>
-            ) : (
-                counted(count, known !== undefined && 'counted' in known ? shell.choice(known.counted, count, { count: ':count' }) : `:count ${label}`, shell.locale)
-            )}
+            <span className="admin-chip__label">{label}</span>
         </span>
     );
-}
-
-/**
- * A chip's line with its count placed: the figure in .admin-chip__count, each run of words in
- * .admin-chip__label, the spaces around a run left outside it.
- */
-function counted(count: number, line: string, locale: string): ReactNode[] {
-    const figure = <span key="count" className="admin-chip__count">{formatCount(count, locale)}</span>;
-
-    return placed(line, { count: figure }, (words) => {
-        const match = /^(\s*)(.*?)(\s*)$/s.exec(words);
-        const inner = match?.[2] ?? '';
-
-        return inner === '' ? words : (
-            <>
-                {match?.[1]}
-                <span className="admin-chip__label">{inner}</span>
-                {match?.[3]}
-            </>
-        );
-    });
 }
 
 /**

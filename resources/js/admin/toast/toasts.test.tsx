@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Flash } from '../types';
 import { KEYED_SHELL, keyedShell, WithShell } from '@/testing/keyed';
 import { AUTO_CLEAR_MS, DISMISS, FlashToast, ToastProvider, useToasts } from './toasts';
+import { FORCED_EDGE } from '@/components/ui/input';
 
 /*
  * The toasts and the flash consumed into one.
@@ -85,6 +86,12 @@ describe('toasts', () => {
         // The focus outline reads in the message's own ink, since the theme colour can be as dark as the fill.
         expect(dismiss?.classList.contains('focus-ring')).toBe(true);
         expect(dismiss?.classList.contains('focus-visible:outline-background')).toBe(true);
+    });
+
+    it('draws a real line round a toast in forced colours, where its ink fill is repainted as the page and its shadow dropped', () => {
+        renderFlash({ kind: 'success', message: 'Saved.' });
+
+        expect(host.querySelector('.admin-toast')?.classList.contains(FORCED_EDGE)).toBe(true);
     });
 
     it('lets a long unbroken value break inside the message, so the dismiss button stays in the toast', () => {

@@ -105,6 +105,17 @@ type Props = {
 
 const VIEWS: Record<GridView, string> = { week: 'timeGridWeek', day: 'timeGridDay' };
 
+/**
+ * The longest block too short for its title under the block's padding. The grid gives a minute a
+ * pixel and a block at least 15, and the library keeps the last of them clear under the block, so
+ * a block of a quarter of an hour or less is 14 pixels tall. The title starts 4 pixels down, 3 of
+ * the block's padding and 1 of the library's, and the small text's line is 16 pixels, so with two
+ * pixels to spare under it the block needs 22 pixels, a block of 23 minutes. A block of 22 minutes
+ * or less is marked short: its padding above and below goes, and its title, on the 14px line the
+ * time under a longer block takes, is centred in it, filling the block at the least height.
+ */
+const SHORT_MINUTES = 22;
+
 function pad(value: number): string {
     return String(value).padStart(2, '0');
 }
@@ -132,6 +143,7 @@ function eventOf(block: Block, colouring: Colouring, draggable: boolean): EventI
             ...(block.badge === null ? [] : [`admin-calendar-block--${block.badge}`]),
             ...(block.inside ? ['admin-calendar-block--inside'] : []),
             ...(block.kind === 'booking' && struckOf(block.status) ? ['admin-calendar-block--struck'] : []),
+            ...(block.minutes <= SHORT_MINUTES ? ['admin-calendar-block--short'] : []),
         ],
         extendedProps: { block, hue: blockHueOf(block, colouring) },
     };
@@ -173,6 +185,12 @@ function paint(arg: EventMountArg): void {
         style.backgroundColor = 'transparent';
         style.backgroundImage = `repeating-linear-gradient(135deg, color-mix(in srgb, ${hue} 40%, transparent) 0 4px, transparent 4px 8px)`;
         style.border = `1px dashed ${hue}`;
+
+        // A short gap's title takes the block's whole height, so its edge is dashed at the sides alone.
+        if (block.minutes <= SHORT_MINUTES) {
+            style.borderTopWidth = '0';
+            style.borderBottomWidth = '0';
+        }
     } else {
         style.backgroundColor = blockFillOf(hue, block.status);
         style.border = '0 solid transparent';
@@ -200,7 +218,7 @@ function bodyOf(clock: TenantClock) {
 
         return (
             <div className={`admin-calendar-block__body @container overflow-hidden ${block.kind === 'gap' ? 'text-xs leading-[14px] text-muted-foreground' : 'text-xs'}`}>
-                <div className={`admin-calendar-block__title truncate ${block.kind === 'gap' ? '' : 'font-semibold'}${struck ? ' line-through' : ''}`}>
+                <div className={`admin-calendar-block__title truncate ${block.kind === 'gap' ? '' : 'font-semibold'}${block.minutes <= SHORT_MINUTES ? ' leading-[14px]' : ''}${struck ? ' line-through' : ''}`}>
                     {block.inside && <InsideMarker beside={pills} />}
                     {block.badge !== null && <BlockBadge badge={block.badge} fitted />}
                     {block.title}
@@ -432,7 +450,17 @@ export function Grid({ view, date, blocks, colouring, granularity, weekStart, cl
         }
     }, []);
 
-    useLayoutEffect(fit, [fit, view, date, span?.min, span?.max, split]);
+    /*
+     * The day heads are this page's own markup, which the library lays into the head row only once
+     * its own drawing is done, after this effect has run; until then the row is short of a line.
+     * So the figure is taken again on the next frame, with the heads in.
+     */
+    useLayoutEffect(() => {
+        fit();
+        const again = requestAnimationFrame(fit);
+
+        return () => cancelAnimationFrame(again);
+    }, [fit, view, date, span?.min, span?.max, split]);
 
     useEffect(() => {
         calendar.current?.getApi().changeView(VIEWS[view], date);
@@ -442,17 +470,31 @@ export function Grid({ view, date, blocks, colouring, granularity, weekStart, cl
         calendar.current?.getApi().scrollToTime(scrollTime);
     }, [scrollTime, view, date]);
 
-    /** A column's head: the weekday, ICU's short name in the page's language, and the date in the tenant's format, today's on the highlight. */
+    /**
+     * A column's head: the weekday, ICU's short name in the page's language, and the date in the
+     * tenant's format, today's on the highlight. The head is a container: narrower than the whole
+     * date needs on one line, as Week's seven columns are on a phone, the date gives way to the
+     * day's number under the weekday, today's on the highlight. The widest whole head, a weekday
+     * and today's date on its highlight, takes 114px in English or Greek, so the short form starts
+     * under 116px, with 2px to spare. The number is drawn from an attribute, so the head's words
+     * stay the weekday and the date at every width.
+     */
     const header = (arg: DayHeaderContentArg) => {
         const day = utcDayOf(arg.date);
         const weekday = weekdayName(isoWeekday(day), 'short', shell.language);
+        const date = formatDate(day, clock);
 
-        return arg.isToday ? (
-            <>
-                {weekday} <span className="admin-calendar-grid__today rounded-full bg-spark px-1.5 py-0.5 text-spark-foreground tabular-nums">{formatDate(day, clock)}</span>
-            </>
-        ) : (
-            `${weekday} ${formatDate(day, clock)}`
+        return (
+            <span className="admin-calendar-grid__head @container block">
+                <span className="block @max-[116px]:flex @max-[116px]:flex-col @max-[116px]:items-center">
+                    <span>{weekday}</span>{' '}
+                    {arg.isToday ? <span className="admin-calendar-grid__today rounded-full bg-spark px-1.5 py-0.5 text-spark-foreground tabular-nums @max-[116px]:hidden">{date}</span> : <span className="@max-[116px]:hidden">{date}</span>}
+                    <span
+                        data-day={Number(day.slice(8, 10))}
+                        className={['admin-calendar-grid__day hidden size-6 items-center justify-center rounded-full font-medium tabular-nums after:content-[attr(data-day)] @max-[116px]:inline-flex', arg.isToday && 'bg-spark text-spark-foreground'].filter(Boolean).join(' ')}
+                    />
+                </span>
+            </span>
         );
     };
 

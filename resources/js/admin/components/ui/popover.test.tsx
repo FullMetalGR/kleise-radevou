@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { drag, key, mount, press, settle, type Mounted } from './harness';
 import { Modal } from './modal';
-import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { FORCED_EDGE } from './input';
+import { MENU_SURFACE, Popover, PopoverContent, PopoverTrigger } from './popover';
 
 /*
  * The popover every popover control opens, and one layer per press. Placement is the library's
@@ -120,6 +121,14 @@ describe('the popover', () => {
         for (const name of ['border', 'bg-background', 'rounded-md', 'shadow-md']) {
             expect(surface()?.classList.contains(name)).toBe(false);
         }
+    });
+
+    it('draws a real line round the menu surface in forced colours, where the shadow that stands in for its border is dropped', () => {
+        view.render(<Picker />);
+        press(trigger());
+
+        expect(MENU_SURFACE.split(' ')).toContain(FORCED_EDGE);
+        expect(surface()?.classList.contains(FORCED_EDGE)).toBe(true);
     });
 
     it('closes on Escape and hands focus back to the trigger', async () => {

@@ -154,7 +154,7 @@ final readonly class SettingsController
                 'currency' => $tenant->currency,
                 'theme' => $theme->value,
                 // The default language, the saved one else the tenant's own, and its choices as the
-                // top bar names them.
+                // shell's language control names them.
                 'language' => ($this->reader->language($tenant) ?? $tenant->locale)->value,
                 'checkout_ttl_min' => $settings->checkoutTtlMin,
                 'approval_ttl_hours' => $settings->approvalTtlHours,

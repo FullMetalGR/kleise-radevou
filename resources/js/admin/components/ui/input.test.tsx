@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mount, type Mounted } from './harness';
-import { Textarea, TextInput } from './input';
+import { FIELD, FORCED_EDGE, Textarea, TextInput } from './input';
 
 /*
  * Text and textarea: a 46px field on the card fill inside a 1.5px ring, the ring darker under the
@@ -113,5 +113,16 @@ describe('the text input and the textarea', () => {
 
         expect(view.host.querySelector('textarea')?.classList.contains('admin-input')).toBe(true);
         expect(view.host.querySelector('textarea')?.value).toBe('A note');
+    });
+
+    it('draws a real 1px line round the field in forced colours, where the ring inside its edge is dropped, and nothing more', () => {
+        expect(FORCED_EDGE).toBe('forced-colors:border');
+        expect(FIELD.split(' ')).toContain(FORCED_EDGE);
+
+        view.render(<TextInput />);
+        expect(view.host.querySelector('input')?.classList.contains(FORCED_EDGE)).toBe(true);
+
+        view.render(<Textarea />);
+        expect(view.host.querySelector('textarea')?.classList.contains(FORCED_EDGE)).toBe(true);
     });
 });

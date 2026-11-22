@@ -59,11 +59,12 @@ export function HelpLine({ id, role, className, compact = false, children }: { i
 /**
  * The error line on its own, for a refusal that belongs to a group of controls and to no one
  * field: a list of ticks, a consent box, a check. The group points at the id through
- * aria-describedby; the look is the field's, the alert icon first.
+ * aria-describedby; the look is the field's, the alert icon first. A line that can arrive while
+ * the focus is on another control is an alert where its caller asks, so it is said at once.
  */
-export function ErrorLine({ id, compact = false, children }: { id: string; compact?: boolean; children: ReactNode }) {
+export function ErrorLine({ id, role, compact = false, children }: { id: string; role?: 'alert'; compact?: boolean; children: ReactNode }) {
     return (
-        <p id={id} className={cn('admin-field__error flex items-start gap-1.5 text-destructive', compact ? 'text-xs font-semibold' : 'text-label font-semibold')}>
+        <p id={id} role={role} className={cn('admin-field__error flex items-start gap-1.5 text-destructive', compact ? 'text-xs font-semibold' : 'text-label font-semibold')}>
             <span className="flex h-lh items-center">
                 <Alert />
             </span>

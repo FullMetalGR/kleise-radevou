@@ -1,6 +1,7 @@
 import { Tick } from '@/components/glyphs';
 import { cn } from '@/lib/utils';
 import { CHECK_BOX } from './check-field';
+import { FORCED_EDGE } from './input';
 
 /*
  * A checkbox drawn as a card, for a list of things to choose among: the members who perform a
@@ -12,16 +13,18 @@ import { CHECK_BOX } from './check-field';
  *
  * The card is a notice's radius inside a line ring, which turns into a thicker ring in the theme
  * colour on the soft tint while its box is ticked. A chosen card says so three ways, never by
- * colour alone: the box's own tick, that ring, and a tick at its end. It takes the hover tint only
- * while its box can change, and a locked box makes the whole card read as locked to the pointer.
+ * colour alone: the box's own tick, that ring, and a tick at its end. Where the system forces its
+ * own colours, which drops the ring and the tint, every card takes a real line, ticked or not, so
+ * ticking moves nothing, and a ticked card a thicker line inside its edge in the system's highlight
+ * over it. It takes the hover tint only while its box can change, and a locked box makes the whole
+ * card read as locked to the pointer.
  * Each place reaches the card's parts by hooks of its own, handed in beside the card's own look.
  */
 
 /** The list the cards stand in: as many columns of at least 17.5rem as there is room for, one where there is less. */
 export const CHECK_CARDS = 'grid grid-cols-[repeat(auto-fill,minmax(min(17.5rem,100%),1fr))] gap-x-5 gap-y-3';
 
-const CARD =
-    'flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-notice px-3.5 py-3 ring-[1.5px] ring-border motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft has-enabled:hover:bg-muted has-checked:bg-muted/60 has-checked:ring-2 has-checked:ring-primary has-disabled:cursor-not-allowed';
+const CARD = `flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-notice px-3.5 py-3 ring-[1.5px] ring-border motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft has-enabled:hover:bg-muted has-checked:bg-muted/60 has-checked:ring-2 has-checked:ring-primary ${FORCED_EDGE} forced-colors:has-checked:outline-2 forced-colors:has-checked:-outline-offset-2 forced-colors:has-checked:outline-[Highlight] has-disabled:cursor-not-allowed`;
 
 type Props = {
     /** The box's id, which the name's and the line's ids are spelled from. */

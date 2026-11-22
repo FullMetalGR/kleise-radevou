@@ -346,6 +346,15 @@ describe('the detail page', () => {
         press(document.querySelector('.admin-detail-back'));
         expect(lastVisit(inertia.get)[0]).toBe('/admin/services');
     });
+
+    it('spaces a waiting state under its page header as the loaded form is spaced', () => {
+        render(propsWith({ kind: 'detail', id: 99 }, [HAIRCUT]));
+
+        const screen = document.querySelector('.admin-service-screen');
+
+        expect(screen?.firstElementChild?.classList.contains('admin-page-header')).toBe(true);
+        expect([...(screen?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'flex-col', 'gap-4']));
+    });
 });
 
 describe('the booking link', () => {
@@ -736,7 +745,7 @@ describe('the layout', () => {
 
         expect(classes('.admin-services-screen')).toContain('@container');
         expect(document.querySelector('.admin-services-screen > .admin-services')).not.toBeNull();
-        expect(classes('.admin-services > header')).toEqual(expect.arrayContaining(['px-6', 'max-wide:px-4.5', '@max-2xl:px-4.5']));
+        expect(classes('.admin-services > header')).toEqual(expect.arrayContaining(['px-6.5', 'max-wide:px-4.5', '@max-2xl:px-4.5']));
     });
 
     it('shows a service\'s status chip in the header\'s title row, its Save in the save bar, and a refused delete as a warning notice', () => {

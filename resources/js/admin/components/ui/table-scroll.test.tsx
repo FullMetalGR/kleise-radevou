@@ -9,7 +9,8 @@ import { TableScroll } from './table-scroll';
  * screen scrolls inside its card and the page never does. The date picker's month grid is a
  * control laid out in a table, not a data table, and fits by construction. A table whose screen
  * writes its own narrow layout goes without the frame, so its head row can stay in view while the
- * page scrolls; the kit's one table element is still counted against the one frame it writes.
+ * page scrolls; the kit's one table element is still counted against the one frame it writes. The
+ * frame is the table part's alone: no screen reaches for it to wrap a grid of its own.
  */
 
 let view: Mounted;
@@ -30,11 +31,17 @@ function sourcesUnder(directory: string): string[] {
             return sourcesUnder(path);
         }
 
-        return name.endsWith('.tsx') && !name.endsWith('.test.tsx') ? [path] : [];
+        return /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : [];
     });
 }
 
 const count = (text: string, pattern: RegExp) => (text.match(pattern) ?? []).length;
+
+/*
+ * A source that reaches for the frame: it imports the frame's module, names the frame, or writes
+ * the frame's hook class by hand.
+ */
+const REACHES_THE_FRAME = /\bTableScroll\b|\/table-scroll['"]|\badmin-table-scroll\b/;
 
 describe('the table scroller', () => {
     it('wraps what it is handed in a full-width box that scrolls sideways and is positioned, so it holds what a cell places out of the flow', () => {
@@ -79,5 +86,22 @@ describe('the table scroller', () => {
             .map(({ path }) => relative(ADMIN, path));
 
         expect(unframed).toEqual([]);
+    });
+
+    it('is reached by the table part alone, so no screen wraps a grid in a sideways box of its own', () => {
+        const frame = join('components', 'ui', 'table-scroll.tsx');
+        const reaching = sourcesUnder(ADMIN)
+            .filter((path) => !path.endsWith(frame) && REACHES_THE_FRAME.test(readFileSync(path, 'utf8')))
+            .map((path) => relative(ADMIN, path));
+
+        expect(reaching).toEqual([join('components', 'ui', 'table.tsx')]);
+    });
+
+    it('counts an import of the frame, its name and its hook class as a reach, and leaves the table part\'s own import alone', () => {
+        expect(REACHES_THE_FRAME.test("import { TableScroll } from '@/components/ui/table-scroll';")).toBe(true);
+        expect(REACHES_THE_FRAME.test("import * as frame from './table-scroll';")).toBe(true);
+        expect(REACHES_THE_FRAME.test('<div className="admin-table-scroll overflow-x-auto">')).toBe(true);
+        expect(REACHES_THE_FRAME.test("import { Table, Td } from '@/components/ui/table';")).toBe(false);
+        expect(REACHES_THE_FRAME.test('<div className="admin-table">')).toBe(false);
     });
 });

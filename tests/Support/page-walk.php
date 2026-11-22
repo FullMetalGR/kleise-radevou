@@ -36,8 +36,8 @@ function tenantRoutes(): array
  * admin's booking actions take a uuid alone, the set-password link's page takes 64 hex characters
  * alone, its malformed sibling the digit, and a customer's page and its erasure an address alone,
  * the page's GET otherwise falling to the 404 page's catch-all and the erasure's POST to its 405;
- * the top bar's language write one of the two languages alone, any other its 405; anything else
- * matches no route at all.
+ * the page header's language write one of the two languages alone, any other its 405; anything
+ * else matches no route at all.
  */
 function tenantRouteSample(string $parameter): string
 {

@@ -35,7 +35,7 @@ export type ThreadMessage = {
     side: Side;
     /** The writer's name as written: a business user's, or the operator's. */
     name: string;
-    /** The instant, spelled by the server on the console's clock, which the top bar names. */
+    /** The instant, spelled by the server on the console's clock, which the shell names. */
     at: string;
     /** What the writer wrote, as it was stored. */
     body: string;

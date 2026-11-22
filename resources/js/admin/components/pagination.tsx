@@ -32,7 +32,7 @@ export function Pagination({ page, total, pageSize, onPage }: Props) {
     const desktop = useDesktop();
 
     return (
-        <footer className="admin-pagination flex items-center justify-between gap-3 border-t px-6 py-3.5 text-sm">
+        <footer className="admin-pagination flex items-center justify-between gap-3 border-t px-6.5 py-3.5 text-sm">
             <Button
                 size={desktop ? 'small' : 'default'}
                 iconOnly={!desktop}

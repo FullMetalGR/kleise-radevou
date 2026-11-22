@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Pest\Browser\Api\AwaitableWebpage;
+use Pest\Browser\Api\Webpage;
 use Tests\Browser\Support\Admin;
 use Tests\Browser\Support\Look;
 use Tests\Browser\Support\PhoneScripts;
@@ -207,7 +209,9 @@ const HOME_NEXT_LAST_ROW_HOVERED = <<<'JS'
  * drawn in the theme colour, and whether its whole outer edge, rounded where the control is, lies
  * inside the card around it, rounded as the card is. The card cuts whatever is drawn past its
  * box, so an outline that is not inside it is not seen whole. The card is the nearest section
- * around the control unless it is named, as it is where a card holds sections of its own.
+ * around the control unless it is named, as it is where a card holds sections of its own. A
+ * control's rounding is read as drawn, never more than half its height or its width, so a pill
+ * written as fully round is rounded at the half of its height the browser draws.
  */
 function homeFocusOutline(string $selector, string $card = 'section'): string
 {
@@ -245,7 +249,7 @@ function homeFocusOutline(string $selector, string $card = 'section'): string
                     return (px - cx) * x <= 0 || (py - cy) * y <= 0 || Math.hypot(px - cx, py - cy) <= round + 0.5;
                 });
             const inside = corners.every(([corner, x, y]) => {
-                const own = radius(style, corner);
+                const own = Math.min(radius(style, corner), box.width / 2, box.height / 2);
                 const round = own > 0 ? Math.max(0, own + reach) : 0;
                 const [cx, cy] = at(box, reach - round, x, y);
                 return [0, 15, 30, 45, 60, 75, 90].every((degrees) => held([cx + x * round * Math.cos((degrees * Math.PI) / 180), cy + y * round * Math.sin((degrees * Math.PI) / 180)]));
@@ -560,6 +564,56 @@ it('shows the keyboard\'s outline whole on a row of Next up and of Recent activi
         ->assertScript($toMark, $ring)
         ->assertNoJavaScriptErrors();
 });
+
+it('shows the keyboard\'s outline whole on every control of To mark\'s first and last rows while its list scrolls, the list cutting whatever lies past its box, at the desktop width and on a phone', function (SiteLanguage $language) {
+    // Three days of four ended bookings each, so the list holds more than its height and scrolls.
+    foreach ([-3, -2, -1] as $day) {
+        foreach ([9, 11, 13, 15] as $hour) {
+            homeWalkBooking(sprintf('Ended Customer %d %d', -$day, $hour), athensDaysOn($day, $hour));
+        }
+    }
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    $scrolls = <<<'JS'
+        (() => {
+            const list = document.querySelector('.admin-home-to-mark__list');
+            return list != null && list.scrollHeight > list.clientHeight + 100;
+        })()
+        JS;
+    $first = fn (string $control): string => ".admin-home-to-mark__day:first-child .admin-home-to-mark__row:first-child {$control}";
+    $last = fn (string $control): string => ".admin-home-to-mark__day:last-child .admin-home-to-mark__row:last-child {$control}";
+    $ring = ['solid', '3px', '2px', true, true];
+    $tick = ['solid', '3px', '1px', true, true];
+
+    // Each control is focused after one from the list's other end, so each focus scrolls the list
+    // to bring it into view.
+    $walk = fn (AwaitableWebpage|Webpage $page) => $page
+        ->assertScript($scrolls, true)
+        ->keys($first('.admin-home-to-mark__open'), 'Shift+Tab')
+        ->assertScript(homeFocusOutline($last('.admin-home-to-mark__open'), '.admin-home-to-mark__list'), $ring)
+        ->assertScript(homeFocusOutline($first('.admin-home-to-mark__open'), '.admin-home-to-mark__list'), $ring)
+        ->assertScript(homeFocusOutline($last('.admin-home-to-mark__complete'), '.admin-home-to-mark__list'), $ring)
+        ->assertScript(homeFocusOutline($first('.admin-home-to-mark__complete'), '.admin-home-to-mark__list'), $ring)
+        ->assertScript(homeFocusOutline($last('.admin-home-to-mark__no-show'), '.admin-home-to-mark__list'), $ring)
+        ->assertScript(homeFocusOutline($first('.admin-home-to-mark__no-show'), '.admin-home-to-mark__list'), $ring)
+        ->assertScript(homeFocusOutline($last('.admin-home-to-mark__tick'), '.admin-home-to-mark__list'), $tick)
+        ->assertScript(homeFocusOutline($first('.admin-home-to-mark__tick'), '.admin-home-to-mark__list'), $tick)
+        ->assertScript(homeFocusOutline('.admin-home-to-mark__day:last-child .admin-home-to-mark__day-tick', '.admin-home-to-mark__list'), $tick)
+        ->assertScript(homeFocusOutline('.admin-home-to-mark__day:first-child .admin-home-to-mark__day-tick', '.admin-home-to-mark__list'), $tick);
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))
+        ->resize(1440, 900)
+        ->assertVisible(Admin::HOME)
+        ->assertCount('.admin-home-to-mark__row', 12)
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value);
+    $walk($page);
+
+    $page->resize(390, 844);
+    $walk($page);
+
+    $page->resize(320, 700);
+    $walk($page)->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
 
 it('fills the last row of Next up square under the pointer: above the foot of a card stretched beside a taller Awaiting approval, and at the foot on a phone, where the card cuts the fill', function () {
     // One booking ahead and one request: Next up lists two rows, and Awaiting approval, with its

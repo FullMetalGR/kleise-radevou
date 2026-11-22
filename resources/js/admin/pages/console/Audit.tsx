@@ -13,7 +13,7 @@ import type { ConsoleProps } from '@/types';
 /*
  * The Audit screen: every operator action the platform audit log holds, newest first, fifty a
  * page by the admin's pagination, inside the console's shell. Each row is the instant as the
- * server spelled it on the console's clock, which the top bar names once for the screen, the
+ * server spelled it on the console's clock, which the shell names once for the screen, the
  * operator's name, the action in words from the map below, one per case of the vocabulary, the
  * tenant's slug, and the payload's facts beside it.
  *
@@ -35,7 +35,7 @@ type AuditFact = { key: AuditKey; value: Scalar | Scalar[] };
 
 export type AuditRow = {
     id: number;
-    /** The instant, spelled by the server on the console's clock, which the top bar names. */
+    /** The instant, spelled by the server on the console's clock, which the shell names. */
     at: string;
     operator: string;
     action: AuditAction;

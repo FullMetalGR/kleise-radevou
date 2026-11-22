@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
+import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { isoWeekday } from '@/lib/day';
 import { clockOf, formatCount, formatDate, formatDayMonth, formatTimeOfDay, type TenantClock } from '@/lib/format';
@@ -24,11 +25,13 @@ import { addDays, todayIn } from '../../booking/time';
 
 /*
  * The Shifts screen: the heading and its sentence, beside them This week, the chevrons of the
- * previous and the next week around the range in bold in the tenant's date format; then the week
- * grid in one card. A row per member: the initials ringed in the member's hue, the name linking to
- * their staff page with the week's hours and the pattern's cadence beneath, and Pattern under them;
- * then seven day columns from the tenant's week start, each headed by the weekday's ICU short name
- * with the day and month on one line and the day's total beneath, today's head on the highlight.
+ * previous and the next week around the range in bold in the tenant's date format, the three kept
+ * on one line where the bar wraps, and the shared spinner before the words while a week reads;
+ * then the week grid in one card. A row per member: the initials ringed in the member's hue, the
+ * name linking to their staff page with the week's hours and the pattern's cadence beneath, and
+ * Pattern under them; then seven day columns from the tenant's week start, each headed by the
+ * weekday's ICU short name with the day and month on one line and the day's total beneath,
+ * today's head on the highlight.
  * A cell's pills are centred: each window a round-cornered pill inside a line, Not working in a
  * dashed line, a day edited alone in a line of the theme's colour with This day only beneath, and a
  * closure on the soft red linking to the Staff page's closures; every total has the closures taken
@@ -298,16 +301,23 @@ function WeekBar({ week, last, loading, words, clock, onRead }: { week: ShiftWee
             <Button size="small" className="admin-shifts__this-week" disabled={loading} onClick={() => onRead({})}>
                 {words.text('page.this_week')}
             </Button>
-            <Button iconOnly size="small" icon={<Chevron to="previous" />} className="admin-shifts__previous" disabled={loading} aria-label={words.text('page.previous')} onClick={() => onRead({ week: addDays(week.from, -7) })}>
-                {words.text('page.previous')}
-            </Button>
-            <h2 className="admin-shifts__week text-base font-semibold" aria-busy={loading ? true : undefined}>
-                {words.text('page.week', { from: formatDate(week.from, clock), to: formatDate(last, clock) })}
-            </h2>
-            <Button iconOnly size="small" icon={<Chevron to="next" />} className="admin-shifts__next" disabled={loading} aria-label={words.text('page.next')} onClick={() => onRead({ week: addDays(week.from, 7) })}>
-                {words.text('page.next')}
-            </Button>
-            {loading && <span className="admin-shifts__loading text-sm text-muted-foreground">{words.text('page.loading')}</span>}
+            <div className="admin-shifts__step flex min-w-0 items-center gap-2">
+                <Button iconOnly size="small" icon={<Chevron to="previous" />} className="admin-shifts__previous" disabled={loading} aria-label={words.text('page.previous')} onClick={() => onRead({ week: addDays(week.from, -7) })}>
+                    {words.text('page.previous')}
+                </Button>
+                <h2 className="admin-shifts__week min-w-0 text-base font-semibold" aria-busy={loading ? true : undefined}>
+                    {words.text('page.week', { from: formatDate(week.from, clock), to: formatDate(last, clock) })}
+                </h2>
+                <Button iconOnly size="small" icon={<Chevron to="next" />} className="admin-shifts__next" disabled={loading} aria-label={words.text('page.next')} onClick={() => onRead({ week: addDays(week.from, 7) })}>
+                    {words.text('page.next')}
+                </Button>
+            </div>
+            {loading && (
+                <span className="admin-shifts__loading text-sm text-muted-foreground">
+                    <Spinner size="inline" className="mr-2" />
+                    {words.text('page.loading')}
+                </span>
+            )}
         </div>
     );
 }

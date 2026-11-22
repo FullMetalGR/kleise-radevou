@@ -586,6 +586,50 @@ it('draws luna\'s week in Greek as a grid of eight columns inside its card at 14
     $page->assertNoJavaScriptErrors();
 });
 
+/**
+ * What is wrong with the week bar's step: the previous week's chevron, the week's range and the
+ * next week's chevron in that order on one line, each centred on the same height, the next
+ * chevron inside the page's width. An empty list where nothing is.
+ */
+const SHIFTS_WEEK_STEP = <<<'JS'
+    document.fonts.ready.then(() => {
+        const [previous, week, next] = ['.admin-shifts__previous', '.admin-shifts__week', '.admin-shifts__next'].map((selector) => document.querySelector(selector)?.getBoundingClientRect());
+        if (previous === undefined || week === undefined || next === undefined) {
+            return ['missing'];
+        }
+        const middle = (box) => box.top + box.height / 2;
+        const wrong = [];
+        if (Math.abs(middle(previous) - middle(week)) > 1 || Math.abs(middle(next) - middle(week)) > 1) {
+            wrong.push('not on one line');
+        }
+        if (previous.right > week.left || week.right > next.left) {
+            wrong.push('out of order');
+        }
+        if (next.right > document.documentElement.clientWidth) {
+            wrong.push('past the page');
+        }
+        return wrong;
+    })
+    JS;
+
+it('keeps the week bar\'s two chevrons either side of the week\'s range on one line on a phone, at 390 and at 320 pixels', function (SiteLanguage $language) {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+    shiftsLunaWeek();
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
+    $page->navigate(Admin::url('luna', '/shifts'))
+        ->waitForText(adminLine('admin/shifts.page.lead', [], $language))
+        ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)
+        ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
+        ->assertScript(SHIFTS_WEEK_STEP, [])
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+
+    $page->resize(320, 700)
+        ->assertScript(SHIFTS_WEEK_STEP, [])
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
 it('reads each member as a block of seven day rows on a phone, the pills running to the row\'s end, every edit control at least 44 pixels tall and both editors inside the sheet', function (SiteLanguage $language) {
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
     ['elena' => $elena, 'nikos' => $nikos, 'dates' => $dates] = shiftsLunaWeek();

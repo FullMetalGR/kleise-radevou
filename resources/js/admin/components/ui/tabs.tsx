@@ -1,13 +1,16 @@
 import { Tabs as TabsPrimitive } from 'radix-ui';
 import { type ComponentProps, createContext, type ReactNode, type Ref, useContext, useState } from 'react';
+import { REACH } from './button';
+import { CHOSEN } from './segmented';
 import { cn } from '@/lib/utils';
 
 /*
  * Tabs: a row of views over one place. The row is a pill on the soft tint, each tab a pill in it,
  * the chosen one filled in the ink with the page's colour for its words. The primitive gives the
  * roles, the name of the row, aria-selected on the chosen tab and the arrow keys between the tabs,
- * a tab reached by the keys being chosen. A panel kept mounted stays in the page while another is
- * shown, hidden and so out of the Tab order, and keeps its view and whatever was typed in it.
+ * a tab reached by the keys being chosen. Each tab is drawn 38px high and answers a touch 44px
+ * high in the compact layout. A panel kept mounted stays in the page while another is shown,
+ * hidden and so out of the Tab order, and keeps its view and whatever was typed in it.
  *
  * The root is the primitive's, its props passed through. It holds the choice itself where its
  * owner gives none and shares it with the tabs and the panels below, so each tab draws its fill
@@ -55,7 +58,8 @@ export function Tab({ value, className, children, ...rest }: TabProps) {
             value={value}
             className={cn(
                 'focus-ring inline-flex h-9.5 items-center justify-center rounded-full px-4 text-body-sm font-semibold whitespace-nowrap motion-safe:transition-colors',
-                chosen ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground',
+                REACH,
+                chosen ? CHOSEN : 'text-muted-foreground hover:text-foreground',
                 className,
             )}
         >

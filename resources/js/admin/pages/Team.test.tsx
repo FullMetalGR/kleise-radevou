@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { ADMIN_LINES_EN } from '../lines.generated';
+import { REACH } from '@/components/ui/button';
 import { mount, press, type Mounted } from '@/components/ui/harness';
 import { KEYED_TEAM, keyedShell, keyedTeam } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
@@ -396,7 +397,7 @@ describe('the Team screen\'s layout', () => {
 
         expect(conditional('.admin-team-members table')).toEqual(['max-wide:block', '@max-5xl:block']);
         expect(classesOf(row(1))).toEqual(expect.arrayContaining(['max-wide:px-[18px]', '@max-5xl:px-[18px]']));
-        expect(classesOf('.admin-team-members > header')).toEqual(expect.arrayContaining(['px-6', 'pt-5', 'pb-3.5']));
+        expect(classesOf('.admin-team-members > header')).toEqual(expect.arrayContaining(['px-6.5', 'pt-5', 'pb-3.5']));
         expect(conditional('.admin-team-members > header')).toEqual(['max-wide:px-4.5', '@max-5xl:px-4.5']);
         expect(narrowBox).toEqual([]);
     });
@@ -419,14 +420,22 @@ describe('the Team screen\'s layout', () => {
         expect(q(link)?.parentElement?.classList.contains('gap-x-3.5')).toBe(true);
     });
 
-    it('gives Send sign-in link and Remove a touch area 44 pixels tall below the wide breakpoint, each its own box in the line, and leaves them bare text above it', () => {
+    it('gives Send sign-in link and Remove a touch area 44 pixels tall under every condition the members read as rows by, each its own box in the line, and leaves them bare text in the grid', () => {
         view.render(<Page />);
+
+        // The conditions are read off the table itself, so the tall targets cannot drift from them.
+        const conditions = classesOf('.admin-team-members table')
+            .filter((utility) => utility.endsWith(':block'))
+            .map((utility) => utility.slice(0, -':block'.length));
+        expect(conditions).toEqual(['max-wide', '@max-5xl']);
+        // No layer of the place's own over the line: only the touch layer every small control shares.
+        const layered = (utility: string) => utility.includes('after:') || utility.includes('before:');
 
         for (const member of [0, 1, 3]) {
             for (const action of [`${row(member)} .admin-team-link`, `${row(member)} .admin-team-remove`]) {
-                expect(classesOf(action)).toEqual(expect.arrayContaining(['h-auto', 'p-0', 'items-center', 'max-wide:min-h-11']));
-                expect(classesOf(action).filter((utility) => utility.includes('min-h-'))).toEqual(['max-wide:min-h-11']);
-                expect(classesOf(action).filter((utility) => utility.startsWith('after:') || utility.startsWith('before:'))).toEqual([]);
+                expect(classesOf(action)).toEqual(expect.arrayContaining(['h-auto', 'p-0', 'items-center']));
+                expect(classesOf(action).filter((utility) => utility.includes('min-h-'))).toEqual(conditions.map((condition) => `${condition}:min-h-11`));
+                expect(classesOf(action).filter(layered)).toEqual(REACH.split(' ').filter(layered));
             }
         }
     });

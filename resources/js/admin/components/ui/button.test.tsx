@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Button, buttonLook, type ButtonVariant } from './button';
+import { Button, buttonLook, type ButtonVariant, REACH } from './button';
 import { mount, press, type Mounted } from './harness';
+import { FORCED_EDGE } from './input';
 
 /*
  * The button: four variants with secondary the default, a destructive flag orthogonal to them,
@@ -384,5 +385,89 @@ describe('the button', () => {
         view.render(<Button onClick={onClick}>Save</Button>);
         press(button());
         expect(onClick).toHaveBeenCalledOnce();
+    });
+
+    it('turns its busy spinner only where the person has not asked for less motion, as the kit spinner does', () => {
+        const turn = ['animate', 'spin'].join('-');
+
+        view.render(
+            <Button busy busyLabel="Saving...">
+                Save
+            </Button>,
+        );
+        const spinner = classesOf(view.host.querySelector('.admin-button__spinner'));
+
+        expect(spinner).toContain(`motion-safe:${turn}`);
+        expect(spinner.filter((name) => name.endsWith(turn))).toEqual([`motion-safe:${turn}`]);
+    });
+});
+
+describe('the reach of a control drawn under 44px', () => {
+    it('is a layer 44px high and never narrower than 44px, centred on the control, sized in the compact layout alone', () => {
+        const parts = REACH.split(' ');
+
+        expect(parts).toEqual(expect.arrayContaining(['relative', 'after:absolute', 'max-wide:after:h-11', 'max-wide:after:min-w-11', 'max-wide:after:w-full', 'max-wide:after:top-1/2', 'max-wide:after:left-1/2', 'max-wide:after:-translate-1/2']));
+        expect(parts.filter((name) => name.startsWith('after:'))).toEqual(['after:absolute']);
+        expect(parts.filter((name) => name !== 'relative' && !name.startsWith('after:')).every((name) => name.startsWith('max-wide:after:'))).toBe(true);
+    });
+
+    it('is given to the small button, icon-only or not, and to the link, and to no taller button', () => {
+        const reaches = () => REACH.split(' ').every((name) => classesOf(button()).includes(name));
+
+        view.render(<Button size="small">Edit</Button>);
+        expect(reaches()).toBe(true);
+
+        view.render(
+            <Button size="small" iconOnly icon={<svg />}>
+                Edit
+            </Button>,
+        );
+        expect(reaches()).toBe(true);
+
+        view.render(<Button variant="link">Open</Button>);
+        expect(reaches()).toBe(true);
+        expect(classesOf(Object.assign(document.createElement('a'), { className: buttonLook('link') }))).toEqual(expect.arrayContaining(REACH.split(' ')));
+
+        for (const size of ['default', 'large'] as const) {
+            view.render(<Button size={size}>Save</Button>);
+            expect(classesOf(button()).some((name) => name.startsWith('max-wide:after:'))).toBe(false);
+        }
+    });
+
+    it('gives way to a place that positions its button itself', () => {
+        view.render(
+            <Button size="small" className="absolute top-2 right-2">
+                Close
+            </Button>,
+        );
+
+        expect(classesOf(button())).toContain('absolute');
+        expect(classesOf(button())).not.toContain('relative');
+    });
+});
+
+describe('the button in forced colours', () => {
+    it('draws a real line round the primary and the secondary, whose fill and ring the system drops, and none round the tertiary or the link', () => {
+        for (const destructive of [false, true]) {
+            for (const variant of ['primary', 'secondary'] satisfies ButtonVariant[]) {
+                view.render(
+                    <Button variant={variant} destructive={destructive}>
+                        Save
+                    </Button>,
+                );
+                expect(classesOf(button())).toContain(FORCED_EDGE);
+            }
+
+            for (const variant of ['tertiary', 'link'] satisfies ButtonVariant[]) {
+                view.render(
+                    <Button variant={variant} destructive={destructive}>
+                        Save
+                    </Button>,
+                );
+                expect(classesOf(button()).some((name) => name.startsWith('forced-colors:'))).toBe(false);
+            }
+        }
+
+        expect(buttonLook('secondary').split(' ')).toContain(FORCED_EDGE);
     });
 });

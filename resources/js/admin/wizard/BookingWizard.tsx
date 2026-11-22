@@ -7,7 +7,7 @@ import { CHECK_BOX } from '@/components/ui/check-field';
 import type { WizardKey, WizardWords } from '@/customers/words';
 import { DayCalendar } from '@/components/ui/day-calendar';
 import { Field } from '@/components/ui/field';
-import { TextInput } from '@/components/ui/input';
+import { FORCED_EDGE, TextInput } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Notice } from '@/components/ui/notice';
 import { Select } from '@/components/ui/select';
@@ -205,9 +205,11 @@ const BODY = '@container pt-px';
 /*
  * A start the admin can pick: a pill as high as a touch target, its figures lining up from one
  * pill to the next, filled with the theme colour once chosen and ringed in it under the pointer.
+ * Where the system forces its own colours, which drops the ring, every pill takes a real line,
+ * the chosen one's in the highlight, so choosing one moves none; the chosen one takes the system's
+ * highlight and its keyboard outline the system's colour for text, as a chosen segment does.
  */
-const SLOT =
-    'admin-wizard-slot focus-ring h-11 rounded-field bg-card px-2 text-body font-semibold whitespace-nowrap tabular-nums inset-ring-[1.5px] inset-ring-border hover:inset-ring-2 hover:inset-ring-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:inset-ring-primary motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft';
+const SLOT = `admin-wizard-slot focus-ring h-11 rounded-field bg-card px-2 text-body font-semibold whitespace-nowrap tabular-nums inset-ring-[1.5px] inset-ring-border hover:inset-ring-2 hover:inset-ring-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:inset-ring-primary ${FORCED_EDGE} forced-colors:aria-pressed:border-[Highlight] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText] forced-colors:aria-pressed:forced-color-adjust-none forced-colors:aria-pressed:focus-visible:outline-[CanvasText] motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft`;
 
 type StripStepProps = { at: number; name: WizardKey; value: string | undefined; step: Step; day: string; words: WizardWords; onReopen: () => void };
 

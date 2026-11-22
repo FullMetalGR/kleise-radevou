@@ -23,10 +23,10 @@ use Symfony\Component\HttpFoundation\Response;
  * The screen lists one view of the contact form's messages newest first, twenty-five a page,
  * inside the console's shell: ?view= open, the default, or archived, and ?page=, a malformed value
  * of either reading as unset. Each message carries its received instant spelled on the console's
- * clock, the top bar naming the zone once for the screen, the sender's name and address, the
- * language as its value, which the page words, and the message as it was stored, line breaks and
- * all. The view is the request's own, read eager because it costs nothing, and the page a closure,
- * so a change of either is a partial reload of the list alone.
+ * clock, the shell naming the zone once for the screen, the sender's name and address, the language
+ * as its value, which the page words, and the message as it was stored, line breaks and all. The
+ * view is the request's own, read eager because it costs nothing, and the page a closure, so a
+ * change of either is a partial reload of the list alone.
  *
  * Archive takes no body; the press carries the screen's view and page in its own query string,
  * read as tolerantly as the screen reads them. What it writes is App\Platform\ContactInbox's:
