@@ -3,9 +3,10 @@ import { Initials, initialsOf } from './initials';
 import { mount, type Mounted } from './ui/harness';
 
 /*
- * A member's initials, which the Calendar's heads and Who rows and the Shifts rows ring in the
- * member's hue: the display face at 700, at three sizes, the head's ring the widest. One with no
- * hue of its own sits on the theme's strong tint in the deepened theme colour.
+ * A person's initials, which the Calendar's heads and Who rows and the Shifts rows ring in the
+ * member's hue: the display face at 700, at three sizes for a member, the head's ring the widest,
+ * and two for a customer with no ring. One with no ring, a customer's or a member's with no hue of
+ * its own, sits on the theme's strong tint in the deepened theme colour.
  */
 
 let view: Mounted;
@@ -48,6 +49,29 @@ describe('initials', () => {
             ['head', 'size-11.5', 'inset 0 0 0 3px #cc79a7'],
             ['row', 'size-8', 'inset 0 0 0 2px #cc79a7'],
             ['list', 'size-7.5', 'inset 0 0 0 2px #cc79a7'],
+        ]);
+    });
+
+    it('draws a customer at two sizes on the strong tint with no ring, a list row 40px and a page head 76px, a hue or none', () => {
+        const sizes = (['person', 'hero'] as const).flatMap((size) =>
+            [undefined, '#cc79a7'].map((hue) => {
+                view.render(<Initials name="Casey Customer" hue={hue} size={size} />);
+
+                return [
+                    size,
+                    ['size-10', 'size-19'].find((name) => drawn()?.classList.contains(name)),
+                    drawn()?.style.boxShadow,
+                    drawn()?.classList.contains('bg-tint-strong'),
+                    drawn()?.classList.contains('bg-card'),
+                ];
+            }),
+        );
+
+        expect(sizes).toEqual([
+            ['person', 'size-10', '', true, false],
+            ['person', 'size-10', '', true, false],
+            ['hero', 'size-19', '', true, false],
+            ['hero', 'size-19', '', true, false],
         ]);
     });
 

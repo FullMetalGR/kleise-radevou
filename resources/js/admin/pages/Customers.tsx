@@ -4,10 +4,9 @@ import { User } from 'lucide-react';
 import { SettledList } from '@/components/settled-list';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Field } from '@/components/ui/field';
-import { TextInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
+import { SearchField } from '@/components/ui/search-field';
 import { CustomersDownload } from '@/customers/CustomersDownload';
 import { CustomersTable } from '@/customers/CustomersTable';
 import { type Customer, type CustomerPage, type CustomerQuery, customerQuery, CUSTOMERS_TITLE } from '@/customers/model';
@@ -25,9 +24,15 @@ import type { CustomersStrings, SharedProps } from '@/types';
  * own; the search box follows each answer once it lands, kept as typed where the server read it
  * trimmed. Every change is a partial reload of the list, and nothing is optimistic: the rows on
  * screen are the server's last answer. A row opens the customer's page, a real route. Every visit
- * owns its failure. Beside the search, Download CSV takes the list under the search answered.
- * Every word is a key of the customers section, which CustomerController names beside the
- * shell's.
+ * owns its failure.
+ *
+ * The list is one card: a toolbar, then the table and its pager, or the empty panel, or the
+ * failure. The toolbar is always there, so a search that finds nothing can be changed where it was
+ * typed: the search pill first, then N of M pushed to the end and announced as it changes, empty
+ * while no row shows, then Download CSV, which takes the list under the search answered. In a card
+ * narrower than 672px the search takes the toolbar's whole width, the count and the download on
+ * the line under it. Every word is a key of the customers section, which CustomerController names
+ * beside the shell's.
  */
 
 type Props = SharedProps & {
@@ -84,12 +89,18 @@ export default function Customers() {
             <Head title={words.text(CUSTOMERS_TITLE)} />
             <div className="admin-customers-screen flex flex-col gap-4">
                 <PageHeader title={words.text(CUSTOMERS_TITLE)} />
-                <div className="admin-customers-bar flex flex-wrap items-end justify-between gap-3">
-                    <Field id="customers-search" label={words.text(SEARCH_LABEL)} className="admin-customers-search w-full max-w-sm">
-                        {(control) => (
-                            <TextInput
-                                {...control}
-                                type="search"
+                {openFailed && (
+                    <Notice kind="error" className="admin-customers-open-error">
+                        {words.text(OPEN_ERROR)}
+                    </Notice>
+                )}
+                <Card flush className="admin-card admin-customers @container [&>.admin-list-error]:m-5" aria-label={words.text(CUSTOMERS_TITLE)}>
+                    <div className="admin-customers-bar flex flex-wrap items-end gap-x-4 gap-y-3.5 border-b px-5 py-4 @max-2xl:p-3.5">
+                        <div className="min-w-0 flex-1 basis-72 @max-2xl:basis-full @max-2xl:*:max-w-none">
+                            <SearchField
+                                id="customers-search"
+                                label={words.text(SEARCH_LABEL)}
+                                className="admin-customers-search"
                                 value={search}
                                 placeholder={words.text(props.searchable.includes('customer_email') ? SEARCH_HINT_CONTACT : SEARCH_HINT_NAME)}
                                 onChange={(event) => {
@@ -97,21 +108,17 @@ export default function Customers() {
                                     load(event.target.value, 1);
                                 }}
                             />
-                        )}
-                    </Field>
-                    <CustomersDownload search={props.filters.search} />
-                </div>
-                {openFailed && (
-                    <Notice kind="error" className="admin-customers-open-error">
-                        {words.text(OPEN_ERROR)}
-                    </Notice>
-                )}
-                <SettledList
-                    count={rows.length}
-                    state={{ loading: list.loading, error: list.error }}
-                    errorSentence={words.text(LIST_ERROR)}
-                    empty={
-                        <Card flush>
+                        </div>
+                        <p className="admin-customers__count ms-auto flex min-h-11 items-center text-body-sm text-muted-foreground @max-2xl:ms-0" aria-live="polite">
+                            {rows.length > 0 ? words.text('table.count', { count: String(rows.length), total: String(props.customers.total) }) : ''}
+                        </p>
+                        <CustomersDownload search={props.filters.search} className="@max-2xl:ms-auto" />
+                    </div>
+                    <SettledList
+                        count={rows.length}
+                        state={{ loading: list.loading, error: list.error }}
+                        errorSentence={words.text(LIST_ERROR)}
+                        empty={
                             <EmptyState className="admin-customers-empty" icon={<User />}>
                                 {searched ? (
                                     words.text(NO_MATCH)
@@ -122,11 +129,11 @@ export default function Customers() {
                                     </>
                                 )}
                             </EmptyState>
-                        </Card>
-                    }
-                >
-                    <CustomersTable rows={rows} total={props.customers.total} page={props.customers.page} pageSize={props.customers.page_size} clock={clock} onSelect={open} onPage={(page) => load(search, page)} />
-                </SettledList>
+                        }
+                    >
+                        <CustomersTable rows={rows} total={props.customers.total} page={props.customers.page} pageSize={props.customers.page_size} clock={clock} onSelect={open} onPage={(page) => load(search, page)} />
+                    </SettledList>
+                </Card>
             </div>
         </CustomersProvider>
     );

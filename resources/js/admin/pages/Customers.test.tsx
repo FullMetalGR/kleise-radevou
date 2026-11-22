@@ -22,10 +22,30 @@ const words = keyedCustomers();
 /** A table's shape: every line a string, every group its own shape, nothing else. */
 type Shape<T> = { -readonly [K in keyof T]: T[K] extends string ? string : Shape<T[K]> };
 
-/** The list's column heads as the table words them, the contact's two where shown. */
+/**
+ * The list's column heads as the table words them, the contact's two where shown: the first and
+ * the last visit apart, then the one head that stands for both where they share a column, the two
+ * read one above the other.
+ */
 function heads(contact: boolean): string[] {
-    return (contact ? (['table.name', 'table.email', 'table.phone', 'table.first_visit', 'table.last_visit', 'table.bookings'] as const) : (['table.name', 'table.first_visit', 'table.last_visit', 'table.bookings'] as const)).map((key) => words.text(key));
+    const leading = (contact ? (['table.name', 'table.email', 'table.phone'] as const) : (['table.name'] as const)).map((key) => words.text(key));
+
+    return [...leading, words.text('table.first_visit'), words.text('table.last_visit'), `${words.text('table.first_visit')}${words.text('table.last_visit')}`, words.text('table.bookings')];
 }
+
+/** The utilities an element of the screen takes under one condition, the condition taken off, sorted. */
+function under(selector: string, condition: string): string[] {
+    return [...(q(selector)?.classList ?? [])]
+        .filter((name) => name.startsWith(condition))
+        .map((name) => name.slice(condition.length))
+        .sort();
+}
+
+/** The card condition under which a row turns into a block: a card narrower than 816px. */
+const BLOCK_CARD = '@max-[51rem]:';
+
+/** The card condition under which the two visits share one column: a card narrower than 936px. */
+const SHARED_CARD = '@max-[58.5rem]:';
 
 type Visit = { only?: string[]; replace?: boolean; preserveState?: boolean; onStart?: () => void; onSuccess?: () => void; onFinish?: () => void };
 
@@ -113,6 +133,19 @@ function q(selector: string): Element | null {
     return view.host.querySelector(selector);
 }
 
+/** What the list's one card holds, top to bottom, each part named by what it is. */
+function cardHolds(): string[] {
+    const parts: [string, (child: Element) => boolean][] = [
+        ['bar', (child) => child.classList.contains('admin-customers-bar')],
+        ['error', (child) => child.classList.contains('admin-list-error')],
+        ['empty', (child) => child.classList.contains('admin-customers-empty')],
+        ['table', (child) => child.tagName === 'TABLE'],
+        ['pager', (child) => child.classList.contains('admin-pagination')],
+    ];
+
+    return [...(q('.admin-customers')?.children ?? [])].map((child) => parts.find(([, is]) => is(child))?.[0] ?? child.tagName);
+}
+
 /** Types into the search as a person does, through React's own value setter. */
 function typeSearch(text: string): void {
     const input = q('#customers-search') as HTMLInputElement;
@@ -166,9 +199,11 @@ describe('the customers screen', () => {
         expect(view.host.querySelectorAll('.admin-customers__first')[1]?.textContent).toBe('03/11/2026 10:00');
         expect(view.host.querySelectorAll('.admin-customers__last')[1]?.textContent).toBe('20/11/2026 10:00');
         expect(view.host.querySelectorAll('.admin-customers__last')[0]?.textContent).toBe(words.text(NO_VISIT));
-        // The sentence in the body face, a date in mono.
-        expect(view.host.querySelectorAll('.admin-customers__last')[0]?.classList.contains('font-mono')).toBe(false);
-        expect(view.host.querySelectorAll('.admin-customers__last')[1]?.classList.contains('font-mono')).toBe(true);
+        // Dates and counts in the text face with tabular figures, the sentence quieter than a date.
+        expect(q('.admin-customers table')?.classList.contains('tabular-nums')).toBe(true);
+        expect([...view.host.querySelectorAll('.admin-customers *')].filter((element) => /mono/.test(element.getAttribute('class') ?? ''))).toEqual([]);
+        expect(view.host.querySelectorAll('.admin-customers__last')[0]?.classList.contains('text-muted-foreground')).toBe(true);
+        expect(view.host.querySelectorAll('.admin-customers__last')[1]?.classList.contains('text-muted-foreground')).toBe(false);
         expect(q('.admin-pagination__page')?.classList.contains('bg-foreground')).toBe(true);
         expect(q('.admin-pagination__page')?.classList.contains('text-background')).toBe(true);
         expect(view.host.querySelectorAll('.admin-customers__bookings')[1]?.textContent).toBe('3');
@@ -291,13 +326,17 @@ describe('the customers screen', () => {
         show();
 
         expect(q('.admin-customers-empty')?.textContent).toBe(words.text(NO_MATCH));
+        expect(cardHolds()).toEqual(['bar', 'empty']);
+        expect(q('.admin-customers-empty')?.closest('section')).toBe(q('.admin-customers'));
+        expect(q('.admin-customers__count')?.getAttribute('aria-live')).toBe('polite');
+        expect(q('.admin-customers__count')?.textContent).toBe('');
 
         typeSearch('zzz');
         const searching = lastVisit();
 
         act(() => searching.onStart?.());
         expect(q('.admin-customers-empty')).toBeNull();
-        expect(q('.admin-customers')).toBeNull();
+        expect(cardHolds()).toEqual(['bar']);
         expect(q('.admin-list-error')).toBeNull();
 
         expect(fail()).toBe(true);
@@ -305,6 +344,8 @@ describe('the customers screen', () => {
         expect(q('.admin-list-error')?.textContent).toBe(words.text(LIST_ERROR));
         expect(q('.admin-list-error')?.getAttribute('role')).toBe('alert');
         expect(q('.admin-customers-empty')).toBeNull();
+        // The search stays on screen above the error, so it can be changed to try again.
+        expect(cardHolds()).toEqual(['bar', 'error']);
 
         typeSearch('');
         const settling = lastVisit();
@@ -319,7 +360,187 @@ describe('the customers screen', () => {
 
         expect(q('.admin-list-error')).toBeNull();
         expect(q('.admin-customers-empty')?.textContent).toBe(`${words.text(NO_CUSTOMERS)}${words.text(NO_CUSTOMERS_SENTENCE)}`);
-        expect(q('.admin-customers')).toBeNull();
+        expect(cardHolds()).toEqual(['bar', 'empty']);
+    });
+});
+
+describe('the customers list\'s layout', () => {
+    it('holds the toolbar, the table and the pager in one flush card that is a query container, the head row held at the top of the window, the count after the search announced as it changes', () => {
+        inertia.props = propsWith([ADA, CASEY], { total: 30 });
+        show();
+
+        const card = q('.admin-customers');
+
+        expect(card?.tagName).toBe('SECTION');
+        expect([...(card?.classList ?? [])]).toEqual(expect.arrayContaining(['admin-card', '@container', 'overflow-clip']));
+        expect(card?.className).not.toMatch(/overflow-hidden/);
+        expect(cardHolds()).toEqual(['bar', 'table', 'pager']);
+        expect(view.host.querySelector('h2')).toBeNull();
+        expect(q('.admin-customers .admin-table-scroll')).toBeNull();
+        expect([...(q('.admin-customers thead')?.classList ?? [])]).toEqual(expect.arrayContaining(['sticky', 'top-0']));
+
+        const [search, count, download] = [...(q('.admin-customers-bar')?.children ?? [])];
+
+        expect(q('.admin-customers-bar')?.children).toHaveLength(3);
+        expect(search?.querySelector('.admin-search-field input.admin-customers-search')).toBe(q('#customers-search'));
+        expect(q('#customers-search')?.getAttribute('type')).toBe('search');
+        expect(count?.classList.contains('admin-customers__count')).toBe(true);
+        expect(count?.getAttribute('aria-live')).toBe('polite');
+        expect(count?.textContent).toBe(words.text('table.count', { count: '2', total: '30' }));
+        expect(count?.classList.contains('ms-auto')).toBe(true);
+        expect(download?.classList.contains('admin-customers-download')).toBe(true);
+        // In a narrow card the search takes the toolbar's whole width, the count and the download under it.
+        expect(under('.admin-customers-bar > :first-child', '@max-2xl:')).toContain('basis-full');
+        expect(under('.admin-customers__count', '@max-2xl:')).toContain('ms-0');
+        expect(under('.admin-customers-download', '@max-2xl:')).toContain('ms-auto');
+
+        inertia.props = propsWith([CASEY], { total: 1, search: 'casey' });
+        show();
+
+        expect(q('.admin-customers__count')).toBe(count);
+        expect(count?.textContent).toBe(words.text('table.count', { count: '1', total: '1' }));
+    });
+
+    it('draws each customer\'s initials at the person size before the name, with no ring and hidden from assistive technology, and the booking count as a small soft chip with no chevron', () => {
+        inertia.props = propsWith([ADA, CASEY]);
+        show();
+
+        const avatars = [...view.host.querySelectorAll('.admin-customers__row')].map((row) => row.querySelector('td')?.querySelector<HTMLElement>('[aria-hidden="true"]'));
+
+        expect(avatars.map((avatar) => avatar?.textContent)).toEqual(['AN', 'CC']);
+
+        for (const avatar of avatars) {
+            expect(avatar?.classList.contains('size-10')).toBe(true);
+            expect(avatar?.className).not.toMatch(/ring/);
+            expect(avatar?.style.boxShadow).toBe('');
+            expect(avatar?.nextElementSibling?.firstElementChild?.classList.contains('admin-customers__name')).toBe(true);
+        }
+
+        const chip = view.host.querySelectorAll('.admin-customers__bookings')[1]?.firstElementChild;
+
+        expect(chip?.textContent).toBe('3');
+        expect([...(chip?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-full', 'bg-muted', 'text-primary-deep', 'font-bold']));
+        expect(q('.admin-customers__bookings svg')).toBeNull();
+    });
+
+    it('lays a row out as a block on a phone and in a card narrower than 816px, the same utilities under both conditions: the initials and the name with the booking count at its right, then the email, the phones and the visits beneath, lined up with the name', () => {
+        inertia.props = propsWith([ADA, CASEY]);
+        show();
+
+        const parts = ['.admin-customers table', '.admin-customers thead', '.admin-customers tbody', '.admin-customers__row', '.admin-customers__row > :first-child', '.admin-customers__name', '.admin-customers__also', '.admin-customers__email', '.admin-customers__phones', '.admin-customers__bookings'];
+
+        for (const part of parts) {
+            expect(under(part, 'max-wide:').length).toBeGreaterThan(0);
+            expect(under(part, BLOCK_CARD)).toEqual(under(part, 'max-wide:'));
+        }
+
+        // The shared visits column shows below the wide breakpoint too, in the block rows, by the
+        // condition that shows it in a narrow card.
+        expect(under('.admin-customers__visits', BLOCK_CARD).length).toBeGreaterThan(0);
+        expect(under('.admin-customers__visits', 'max-wide:')).toEqual([...under('.admin-customers__visits', BLOCK_CARD), 'table-cell'].sort());
+
+        expect(under('.admin-customers table', 'max-wide:')).toContain('block');
+        expect(under('.admin-customers thead', 'max-wide:')).toContain('sr-only');
+        expect(under('.admin-customers tbody', 'max-wide:')).toContain('block');
+        expect(under('.admin-customers__row', 'max-wide:')).toEqual(expect.arrayContaining(['grid', 'grid-cols-[minmax(0,1fr)_auto]']));
+        expect(under('.admin-customers__bookings', 'max-wide:')).toEqual(expect.arrayContaining(['col-start-2', 'row-start-1']));
+
+        for (const beneath of ['.admin-customers__email', '.admin-customers__phones', '.admin-customers__visits']) {
+            expect(under(beneath, 'max-wide:')).toEqual(expect.arrayContaining(['col-span-2', 'ps-13.5']));
+        }
+
+        expect([...view.host.querySelectorAll('.admin-customers__row:first-child > *')].map((cell) => cell.className.match(/admin-customers__\w+/)?.[0] ?? 'name')).toEqual([
+            'name',
+            'admin-customers__email',
+            'admin-customers__phones',
+            'admin-customers__first',
+            'admin-customers__last',
+            'admin-customers__visits',
+            'admin-customers__bookings',
+        ]);
+        expect(q('.admin-table__label')).toBeNull();
+
+        const conditions = [...view.host.querySelectorAll('.admin-customers *')].flatMap((element) => [...element.classList]).filter((name) => name.startsWith('@max-')).map((name) => name.split(':')[0]);
+
+        // The toolbar's own condition, the block rows' and the shared visits', and no other.
+        expect(new Set(conditions)).toEqual(new Set(['@max-2xl', BLOCK_CARD.slice(0, -1), SHARED_CARD.slice(0, -1)]));
+    });
+
+    it('draws the first and the last visit apart in a wide card and in one shared column in a card narrower than 936px and in the block rows, each date after its head as a small label, one form at a time', () => {
+        inertia.props = propsWith([ADA, CASEY]);
+        show();
+
+        const apart = ['thead th:nth-child(4)', 'thead th:nth-child(5)', '.admin-customers__first', '.admin-customers__last'];
+        const shared = ['thead th:nth-child(6)', '.admin-customers__visits'];
+
+        for (const selector of apart) {
+            expect(under(selector, 'max-wide:')).toEqual(['hidden']);
+            expect(under(selector, SHARED_CARD)).toEqual(['hidden']);
+        }
+
+        for (const selector of shared) {
+            expect(q(selector)?.classList.contains('hidden')).toBe(true);
+            expect(under(selector, 'max-wide:')).toContain('table-cell');
+            expect(under(selector, SHARED_CARD)).toEqual(['table-cell']);
+        }
+
+        const narrow = [...view.host.querySelectorAll('.admin-customers *')].filter((element) => [...element.classList].some((name) => name.startsWith(SHARED_CARD)));
+
+        expect(narrow).toEqual([...view.host.querySelectorAll('thead th:nth-child(4), thead th:nth-child(5), thead th:nth-child(6), .admin-customers__first, .admin-customers__last, .admin-customers__visits')]);
+        expect([...(q('thead th:nth-child(6)')?.children ?? [])].map((line) => [line.textContent, line.classList.contains('block')])).toEqual([
+            [words.text('table.first_visit'), true],
+            [words.text('table.last_visit'), true],
+        ]);
+
+        const visits = (row: number) => [...(view.host.querySelectorAll('.admin-customers__visits')[row]?.firstElementChild?.children ?? [])].map((line) => [...line.children].map((part) => part.textContent));
+
+        expect(visits(0)).toEqual([
+            [words.text('table.first_visit'), '01/12/2026 10:00'],
+            [words.text('table.last_visit'), words.text(NO_VISIT)],
+        ]);
+        expect(visits(1)).toEqual([
+            [words.text('table.first_visit'), '03/11/2026 10:00'],
+            [words.text('table.last_visit'), '20/11/2026 10:00'],
+        ]);
+        expect([...(q('.admin-customers__visits > * > * > :first-child')?.classList ?? [])]).toEqual(expect.arrayContaining(['text-small', 'text-muted-foreground']));
+    });
+
+    it('reads as a table with its column headers to a screen reader whatever the layout', () => {
+        inertia.props = propsWith([ADA, CASEY]);
+        show();
+
+        expect(q('.admin-customers table')?.getAttribute('role')).toBe('table');
+        expect([...view.host.querySelectorAll('.admin-customers thead, .admin-customers tbody')].map((group) => group.getAttribute('role'))).toEqual(['rowgroup', 'rowgroup']);
+        expect([...view.host.querySelectorAll('thead th')].map((th) => [th.getAttribute('role'), th.getAttribute('scope')])).toEqual(Array.from({ length: 7 }, () => ['columnheader', 'col']));
+        expect([...view.host.querySelectorAll('.admin-customers__row')].map((row) => row.getAttribute('role'))).toEqual(['row', 'row']);
+        expect([...view.host.querySelectorAll('.admin-customers__row:first-child > *')].map((cell) => cell.getAttribute('role'))).toEqual(Array.from({ length: 7 }, () => 'cell'));
+    });
+
+    it('wraps the head labels, the names, the email and the phones rather than widening the table: the email anywhere past a floor of its own in the grid and never cut, the name between its words in the grid and anywhere in the block rows with the other names, each phone moved whole onto a line of its own, the column holding a floor in the grid, broken at its spaces where wider than the line and anywhere where it has none', () => {
+        inertia.props = propsWith([{ ...CASEY, email: `${'a'.repeat(47)}@luna.example` }]);
+        show();
+
+        for (const head of view.host.querySelectorAll('thead th')) {
+            expect(head.classList.contains('whitespace-normal')).toBe(true);
+        }
+
+        const classes = (element: Element | null | undefined, pattern: RegExp) => [...(element?.classList ?? [])].filter((name) => pattern.test(name)).sort();
+        const wraps = (selector: string) => classes(q(selector), /(^|:)(wrap-|truncate|text-ellipsis|whitespace-)/);
+        const anywhereInBlocks = [`${BLOCK_CARD}wrap-anywhere`, 'max-wide:wrap-anywhere'];
+
+        expect(wraps('.admin-customers__email')).toEqual(['wrap-anywhere']);
+        expect(q('.admin-customers__email')?.textContent).toHaveLength(60);
+        // The floor holds in the grid alone; a block row lets the email take the line it has.
+        expect(classes(q('.admin-customers__email'), /(^|:)min-w-/)).toEqual([`${BLOCK_CARD}min-w-0`, 'max-wide:min-w-0', 'min-w-52']);
+        expect(wraps('.admin-customers__name')).toEqual([...anywhereInBlocks, 'whitespace-normal', 'wrap-break-word']);
+        expect(q('.admin-customers__also')?.textContent).toBe(words.text('table.also_booked_as', { names: 'Casey C.' }));
+        expect(wraps('.admin-customers__also')).toEqual(anywhereInBlocks);
+        expect(wraps('.admin-customers__phones')).toEqual(['wrap-anywhere']);
+        expect(classes(q('.admin-customers__phones'), /(^|:)min-w-/)).toEqual([`${BLOCK_CARD}min-w-0`, 'max-wide:min-w-0', 'min-w-42']);
+        expect([...view.host.querySelectorAll('.admin-customers__phones > *')].map((phone) => [phone.textContent, classes(phone, /(^|:)(inline|block|wrap-|truncate|text-ellipsis|whitespace-)/)])).toEqual([
+            ['+30 210 2222222', ['inline-block']],
+            ['+30 210 1111111', ['inline-block']],
+        ]);
     });
 });
 
@@ -350,14 +571,19 @@ describe('the list\'s Download CSV', () => {
         vi.unstubAllGlobals();
     });
 
-    it('sits beside the search as a secondary button and fetches nothing until pressed', () => {
+    it('sits last in the toolbar after the search and the count, a secondary button with its icon before the words, and fetches nothing until pressed', () => {
         inertia.props = propsWith([ADA, CASEY]);
         show();
 
         const button = q('.admin-customers-bar .admin-customers-download');
 
         expect(button?.textContent).toBe(words.text('csv.download'));
-        expect(button?.previousElementSibling?.classList.contains('admin-customers-search')).toBe(true);
+        expect(button?.classList.contains('admin-button--secondary')).toBe(true);
+        expect(button?.firstElementChild?.classList.contains('admin-button__icon')).toBe(true);
+        expect(button?.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
+        expect(button?.firstElementChild?.querySelector('svg')).not.toBeNull();
+        expect(button?.previousElementSibling?.classList.contains('admin-customers__count')).toBe(true);
+        expect(button?.previousElementSibling?.previousElementSibling?.querySelector('.admin-customers-search')).toBe(q('#customers-search'));
         expect(fetched).not.toHaveBeenCalled();
     });
 
