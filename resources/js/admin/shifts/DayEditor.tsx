@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { FIELD_HEIGHT } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
@@ -17,7 +18,8 @@ import { hoursLine, MOST_WINDOWS, type ShiftWords } from './words';
  * The Shifts day editor: one member's one date, titled "<name>, <weekday> <date>", the weekday
  * ICU's long name. The day's windows as Start and End time fields stepped at the tenant's
  * granularity, each with Remove as a destructive text action, and Add a window, outlined, up to
- * two; the line of the hours they cover and of what the pattern gives that date. The foot holds Not
+ * two, all in one inner card under the help line, the dialog keeping its own width; below the card
+ * the line of the hours they cover and of what the pattern gives that date. The foot holds Not
  * working this day as a destructive text action at its start, then Back to the pattern, Cancel and
  * Save. Save puts the windows as that date's override, Not working this day puts an empty one, and
  * Back to the pattern, shown where the day is an override, deletes it (replace-all for the date).
@@ -110,26 +112,28 @@ export function DayEditor({ member, date, windows, source, patternWindows, clock
         <Modal open title={words.text('editor.title', { name: member.name, weekday: weekdayName(isoWeekday(date), 'long', shell.language), date: formatDate(date, clock) })} onClose={busy ? nothing : onClose} busy={busy} footer={footer} className="admin-shift-day max-w-lg">
             <div className="flex flex-col gap-3 text-sm">
                 <p className="admin-shift-day__help text-xs text-muted-foreground">{words.text('editor.help')}</p>
-                {edited.map((window, at) => (
-                    <div key={at} className="admin-shift-day__window grid grid-cols-[1fr_1fr_auto] items-end gap-3" data-window={at}>
-                        <Field id={`shift-day-start-${at}`} label={words.text('editor.start')}>
-                            {(control) => <TimeField {...control} className="admin-shift-day__start" value={window.start} onChange={(value) => change(at, 'start', value)} clock={clock} granularity={granularity} disabled={busy} />}
-                        </Field>
-                        <Field id={`shift-day-end-${at}`} label={words.text('editor.end')}>
-                            {(control) => <TimeField {...control} className="admin-shift-day__end" value={window.end} onChange={(value) => change(at, 'end', value)} clock={clock} granularity={granularity} disabled={busy} />}
-                        </Field>
-                        <Button variant="link" destructive className={`admin-shift-day__remove ${FIELD_HEIGHT}`} disabled={busy} onClick={() => remove(at)}>
-                            {words.text('editor.remove')}
-                        </Button>
-                    </div>
-                ))}
-                {edited.length < MOST_WINDOWS && (
-                    <div>
-                        <Button className="admin-shift-day__add" disabled={busy} onClick={add}>
-                            {words.text(edited.length === 0 ? 'editor.add_first' : 'editor.add_second')}
-                        </Button>
-                    </div>
-                )}
+                <Card variant="inner" className="admin-shift-day__windows flex flex-col gap-3">
+                    {edited.map((window, at) => (
+                        <div key={at} className="admin-shift-day__window grid grid-cols-[1fr_1fr_auto] items-end gap-3" data-window={at}>
+                            <Field id={`shift-day-start-${at}`} label={words.text('editor.start')}>
+                                {(control) => <TimeField {...control} className="admin-shift-day__start" value={window.start} onChange={(value) => change(at, 'start', value)} clock={clock} granularity={granularity} disabled={busy} />}
+                            </Field>
+                            <Field id={`shift-day-end-${at}`} label={words.text('editor.end')}>
+                                {(control) => <TimeField {...control} className="admin-shift-day__end" value={window.end} onChange={(value) => change(at, 'end', value)} clock={clock} granularity={granularity} disabled={busy} />}
+                            </Field>
+                            <Button variant="link" destructive className={`admin-shift-day__remove ${FIELD_HEIGHT}`} disabled={busy} onClick={() => remove(at)}>
+                                {words.text('editor.remove')}
+                            </Button>
+                        </div>
+                    ))}
+                    {edited.length < MOST_WINDOWS && (
+                        <div>
+                            <Button className="admin-shift-day__add" disabled={busy} onClick={add}>
+                                {words.text(edited.length === 0 ? 'editor.add_first' : 'editor.add_second')}
+                            </Button>
+                        </div>
+                    )}
+                </Card>
                 <p className="admin-shift-day__summary">
                     <span className="admin-shift-day__hours">{hoursLine(windowMinutes(edited), words, 'editor')}</span> <span className="admin-shift-day__pattern">{patternLine(patternWindows, words, clock)}</span>
                 </p>

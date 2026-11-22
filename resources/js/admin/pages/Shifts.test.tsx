@@ -168,6 +168,22 @@ function edit(staffId: number, date: string): void {
     press(cell(staffId, date)?.querySelector('.admin-shifts__edit') ?? null);
 }
 
+/**
+ * What a part of the grid changes in its narrow layout: its utilities under the wide breakpoint and
+ * its utilities under a card narrower than 896px, each without its condition, sorted, so the two
+ * lists are equal where every utility is written under both.
+ */
+function narrowOf(element: Element | null | undefined): [string[], string[]] {
+    const names = [...(element?.classList ?? [])];
+    const under = (condition: string) =>
+        names
+            .filter((name) => name.startsWith(condition))
+            .map((name) => name.slice(condition.length))
+            .sort();
+
+    return [under('max-wide:'), under('@max-4xl:')];
+}
+
 function lastVisit(method: ReturnType<typeof vi.fn>): [string, unknown, Visit] {
     const call = method.mock.lastCall;
 
@@ -317,7 +333,7 @@ describe('the week grid', () => {
         ]);
         expect(['admin-shifts__pill--alone', 'admin-shifts__pill--off', 'admin-shifts__pill--closure'].map((name, at) => document.querySelectorAll('.admin-shifts__legend-sample')[at]?.classList.contains(name))).toEqual([true, true, true]);
         expect(q('.admin-shifts .admin-shifts__legend .admin-shifts__footnote')?.textContent).toBe(words.text('page.footnote'));
-        expect(q('.admin-shifts .admin-table-scroll table')).not.toBeNull();
+        expect(q('.admin-shifts > table')).not.toBeNull();
         expect(q('.admin-shifts-readonly')).toBeNull();
     });
 
@@ -333,14 +349,14 @@ describe('the week grid', () => {
     it('rings a member who picked a colour on the Staff screen in it, the others in the spread', () => {
         render(propsWith({ colours: [{ id: 3, colour: 'purple' }] }));
 
-        expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([`inset 0 0 0 2px ${hueOf(2, [])}`, 'inset 0 0 0 2px #cc79a7']);
+        expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([`inset 0 0 0 3px ${hueOf(2, [])}`, 'inset 0 0 0 3px #cc79a7']);
     });
 
     it('heads each row with the initials, the name linking to the staff page and the week\'s hours with the cadence', () => {
         render(propsWith({ members: [...(propsWith().members as object[]), { id: 4, name: 'Maria', is_implicit: false }] }));
 
         expect(texts('.admin-shifts__initials')).toEqual(['EP', 'NG', 'M']);
-        expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([2, 3, 4].map((id) => `inset 0 0 0 2px ${hueOf(id, [])}`));
+        expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([2, 3, 4].map((id) => `inset 0 0 0 3px ${hueOf(id, [])}`));
         expect(q('.admin-shifts__row[data-staff="2"] .admin-shifts__member > div')?.lastElementChild?.classList.contains('admin-shifts__pattern')).toBe(true);
         expect(q('.admin-shifts__row[data-staff="2"] .admin-shifts__pattern')?.classList.contains('admin-button--small')).toBe(true);
         expect([...document.querySelectorAll('.admin-shifts__name')].map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
@@ -449,6 +465,147 @@ describe('the week grid', () => {
         expect(q('.admin-shifts__empty')?.textContent).toBe(words.text('page.empty'));
         expect(q('.admin-shifts')).toBeNull();
     });
+
+    it('sits in its card as a table of its own, in no sideways box, its head held at the top with a line under it that each head cell draws on a table of separate borders, and read with its member and day headers', () => {
+        render();
+        const card = q('.admin-shifts');
+        const table = card?.querySelector(':scope > table');
+
+        expect(card?.classList.contains('@container')).toBe(true);
+        expect(card?.querySelector('.admin-table-scroll')).toBeNull();
+        expect(table?.getAttribute('role')).toBe('table');
+        expect(table?.querySelector('thead')?.classList.contains('sticky')).toBe(true);
+        // A border on a held head stays behind with the table's grid; a line each head cell draws just below it travels with the row.
+        expect([...(table?.querySelectorAll('thead [role="columnheader"]') ?? [])].map((head) => head.classList.contains('shadow-[0_1px_0_var(--border)]'))).toEqual([true, ...DATES.map(() => true)]);
+        // A collapsed table paints no shadow of a held head's cells, so the table keeps its cells' borders separate, with no space between them.
+        expect([...(table?.classList ?? [])]).toEqual(expect.arrayContaining(['border-separate', 'border-spacing-0']));
+        expect([...(table?.querySelectorAll('thead [role="columnheader"]') ?? [])].map((head) => head.className.split(' ').find((name) => name.startsWith('admin-shifts__')))).toEqual(['admin-shifts__member-head', ...DATES.map(() => 'admin-shifts__head')]);
+        expect([...document.querySelectorAll('.admin-shifts__row')].map((row) => [row.getAttribute('role'), row.firstElementChild?.getAttribute('role'), row.firstElementChild?.classList.contains('admin-shifts__member')])).toEqual([
+            ['row', 'rowheader', true],
+            ['row', 'rowheader', true],
+        ]);
+        expect([...document.querySelectorAll('.admin-shifts__cell')].map((day) => day.getAttribute('role'))).toEqual([...DATES, ...DATES].map(() => 'cell'));
+        // The old fixed widths are gone: the grid fits its card at every width it is drawn at.
+        expect(card?.innerHTML).not.toMatch(/min-w-\[54|w-\[220/);
+    });
+
+    it('gives the member column 230px, 200px in a card under 1024px, and each day column an 8px gap before it, 6px in that card', () => {
+        render();
+
+        expect([...(q('.admin-shifts__member-head')?.classList ?? [])]).toEqual(expect.arrayContaining(['w-[14.375rem]', '@max-5xl:w-[12.5rem]']));
+        expect([...document.querySelectorAll('.admin-shifts__head, .admin-shifts__cell')].every((part) => part.classList.contains('pl-2') && part.classList.contains('@max-5xl:pl-1.5'))).toBe(true);
+    });
+
+    it('folds each member into a block of seven day rows below the wide breakpoint and in a card under 896px, every utility written under both conditions', () => {
+        render();
+        const parts: [string, Element | null | undefined, string][] = [
+            ['table', q('.admin-shifts > table'), 'block'],
+            ['head', q('.admin-shifts thead'), 'sr-only'],
+            ['body', q('.admin-shifts tbody'), 'block'],
+            ['row', q('.admin-shifts__row[data-staff="2"]'), 'block'],
+            ['member', q('.admin-shifts__row[data-staff="2"] .admin-shifts__member'), 'block'],
+            ['cell', cell(2, '2026-11-30'), 'flex'],
+            ['day', cell(2, '2026-11-30')?.querySelector('.admin-shifts__cell-day'), 'block'],
+            ['edit', cell(2, '2026-11-30')?.querySelector('.admin-shifts__edit'), 'min-h-11'],
+        ];
+
+        for (const [part, element, layout] of parts) {
+            const [wide, box] = narrowOf(element);
+
+            expect(wide, part).toEqual(box);
+            expect(wide, part).toContain(layout);
+        }
+
+        expect([...document.querySelectorAll('.admin-shifts__row')].every((row) => narrowOf(row)[0].includes('block'))).toBe(true);
+        expect([...document.querySelectorAll('.admin-shifts__cell')].every((day) => narrowOf(day)[0].includes('flex') && narrowOf(day)[1].includes('flex'))).toBe(true);
+        expect([...document.querySelectorAll('.admin-shifts__edit')].every((button) => narrowOf(button)[0].includes('min-h-11') && narrowOf(button)[1].includes('min-h-11'))).toBe(true);
+    });
+
+    it('labels each day row of the narrow layout with the head\'s words, shown there alone, hidden from a screen reader and outside the edit control', () => {
+        render();
+
+        for (const staffId of [2, 3]) {
+            expect(DATES.map((date) => cell(staffId, date)?.firstElementChild?.classList.contains('admin-shifts__cell-day'))).toEqual(DATES.map(() => true));
+            expect(DATES.map((date) => cell(staffId, date)?.querySelector('.admin-shifts__cell-day')?.textContent)).toEqual(texts('.admin-shifts__day-name'));
+        }
+
+        const labels = [...document.querySelectorAll('.admin-shifts__cell-day')];
+
+        expect(labels.every((label) => label.getAttribute('aria-hidden') === 'true' && label.classList.contains('hidden') && label.closest('.admin-shifts__edit, .admin-shifts__day') === null)).toBe(true);
+        expect(document.querySelectorAll('.admin-shifts__cell .admin-shifts__day-name')).toHaveLength(0);
+    });
+
+    it('draws a window as a round-cornered pill in tabular figures inside a line, a day changed alone in a 2px line of the theme colour, a day off in a dashed line with its words and a closure on the soft red with its words, every pill breaking inside its own width', () => {
+        render();
+        const window = cell(2, '2026-11-30')?.querySelector('.admin-shifts__window');
+        const alone = cell(3, '2026-12-02')?.querySelector('.admin-shifts__window');
+        const off = cell(2, '2026-12-06')?.querySelector('.admin-shifts__off');
+        const closure = cell(3, '2026-12-04')?.querySelector('.admin-shifts__closure');
+
+        expect([...(window?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-event', 'inset-ring-[1.5px]', 'inset-ring-border', 'tabular-nums', 'font-semibold', 'wrap-anywhere']));
+        expect([...(window?.classList ?? [])]).not.toContain('inset-ring-primary');
+        expect([...(alone?.classList ?? [])]).toEqual(expect.arrayContaining(['admin-shifts__pill--alone', 'inset-ring-2', 'inset-ring-primary']));
+        expect(alone?.parentElement?.querySelector('.admin-shifts__alone')?.textContent).toBe(words.text('page.this_day_only'));
+        expect([...(off?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-event', 'border-[1.5px]', 'border-dashed', 'wrap-anywhere']));
+        expect(off?.textContent).toBe(words.text('page.not_working'));
+        // A closure's reason is the admin's own words, of any length: a word wider than the pill breaks inside it.
+        expect([...(closure?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-event', 'bg-destructive-soft', 'text-destructive', 'inset-ring-destructive/40', 'wrap-anywhere']));
+        expect(closure?.textContent).toBe(words.text('page.closed_reason', { start: '14:00', end: '16:00', reason: 'Dentist' }));
+
+        const samples = [...document.querySelectorAll('.admin-shifts__legend-sample')];
+
+        expect(['inset-ring-primary', 'border-dashed', 'bg-destructive-soft'].map((look, at) => samples[at]?.classList.contains(look))).toEqual([true, true, true]);
+    });
+
+    it('draws a day emptied alone in a dashed 2px line of the theme colour, its padding giving back the line\'s width so the pill keeps its height', () => {
+        render();
+        const names = [...(cell(3, '2026-12-01')?.querySelector('.admin-shifts__off')?.classList ?? [])];
+
+        expect(names).toEqual(expect.arrayContaining(['admin-shifts__pill--alone', 'border-2', 'border-primary', 'border-dashed', 'px-[0.125rem]', 'py-[0.375rem]']));
+        expect(names.filter((name) => /^(border-(\[|ink)|p[xy]-)/.test(name)).sort()).toEqual(['px-[0.125rem]', 'py-[0.375rem]']);
+    });
+
+    it('sizes the legend\'s three samples alike, the day off\'s dashed line taken off its padding as the others draw theirs inside', () => {
+        render();
+        const room = [...document.querySelectorAll('.admin-shifts__legend-sample')].map((sample) => [...sample.classList].filter((name) => /^(border-\[|p[xy]-)/.test(name)).sort());
+
+        expect(room).toEqual([['px-1.5', 'py-0.5'], ['border-[1.5px]', 'px-[0.28125rem]', 'py-[0.03125rem]'], ['px-1.5', 'py-0.5']]);
+    });
+
+    it('heads a row with the initials at the column head\'s size, the name breaking anywhere, and Pattern under the name in the grid, at the line\'s end in the narrow layout', () => {
+        render();
+        const member = q('.admin-shifts__row[data-staff="2"] .admin-shifts__member');
+        const pattern = member?.querySelector('.admin-shifts__pattern');
+
+        expect(member?.querySelector('.admin-shifts__initials')?.classList.contains('size-11.5')).toBe(true);
+        expect(member?.querySelector('.admin-shifts__name')?.classList.contains('wrap-anywhere')).toBe(true);
+        expect(pattern?.classList.contains('col-start-2')).toBe(true);
+        expect(narrowOf(pattern)).toEqual([expect.arrayContaining(['col-start-3', 'row-start-1']), expect.arrayContaining(['col-start-3', 'row-start-1'])]);
+    });
+
+    it('sets today\'s column head on the highlight in the tenant\'s zone, the date named current, and no head in a week that does not hold today', () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+
+        try {
+            // Half past eleven at night in UTC on the first of December is already the second in Athens.
+            vi.setSystemTime(new Date('2026-12-01T23:30:00Z'));
+            render();
+            const current = [...document.querySelectorAll('.admin-shifts__head')].filter((head) => head.getAttribute('aria-current') === 'date');
+
+            expect(current.map((head) => head.getAttribute('data-date'))).toEqual(['2026-12-02']);
+            expect([...(current[0]?.querySelector('.admin-shifts__day-name')?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-full', 'bg-spark', 'text-spark-foreground']));
+            expect(current[0]?.classList.contains('shadow-[0_1px_0_var(--border)]')).toBe(true);
+            expect(document.querySelectorAll('.admin-shifts [class*="bg-spark"]')).toHaveLength(1);
+
+            vi.setSystemTime(new Date('2026-12-07T10:00:00Z'));
+            render(propsWith());
+
+            expect(document.querySelectorAll('.admin-shifts [aria-current]')).toHaveLength(0);
+            expect(document.querySelectorAll('.admin-shifts [class*="bg-spark"]')).toHaveLength(0);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 });
 
 describe('the week\'s controls', () => {
@@ -545,6 +702,17 @@ describe('the day editor', () => {
 
         expect(buttons).toEqual(['admin-shift-day__off', 'admin-shift-day__back', 'admin-shift-day__cancel', 'admin-shift-day__save']);
         expect(q('.admin-shift-day__summary')?.textContent).toBe(`${words.text('editor.hours', { hours: unitFigure(8, 'hour', 'en') })} ${words.text('editor.pattern_gives', { windows: '10:00-19:00' })}`);
+    });
+
+    it('keeps its width and groups the windows with Add a window in one inner card, the help above it and the hours line below', () => {
+        render();
+        edit(3, '2026-12-02');
+        const rows = q('.admin-shift-day__window')?.closest('section');
+
+        expect(q('.admin-shift-day')?.classList.contains('max-w-lg')).toBe(true);
+        expect([...(rows?.classList ?? [])]).toEqual(expect.arrayContaining(['rounded-inner', 'ring-[1.5px]']));
+        expect(rows?.contains(q('.admin-shift-day__add'))).toBe(true);
+        expect([rows?.contains(q('.admin-shift-day__help')), rows?.contains(q('.admin-shift-day__summary'))]).toEqual([false, false]);
     });
 
     it('spells the day\'s hours as the grid\'s figure, a whole-hour day an hour figure and never a spelled count', () => {
@@ -759,6 +927,21 @@ describe('the pattern editor', () => {
         expect(inDay(2, '.admin-shift-pattern__add .sr-only')?.textContent).toBe(words.text('pattern.add_second'));
         expect(inDay(2, '.admin-shift-pattern__remove')?.classList.contains('text-destructive')).toBe(true);
         expect(q('.admin-shift-pattern__summary')?.textContent).toBe(words.text('pattern.hours', { hours: unitFigure(45, 'hour', 'en') }));
+    });
+
+    it('keeps its width and groups Repeats, Starts on and Ends with the cadence line in one inner card and the weekdays in another, each time field at the field\'s full height', () => {
+        render();
+        openPatternEditor(3);
+        const fields = q('.admin-shift-pattern__repeats')?.closest('section');
+        const days = q('.admin-shift-pattern__day')?.closest('section');
+
+        expect(q('.admin-shift-pattern')?.classList.contains('max-w-2xl')).toBe(true);
+        expect([fields?.classList.contains('rounded-inner'), days?.classList.contains('rounded-inner')]).toEqual([true, true]);
+        expect(fields).not.toBe(days);
+        expect([fields?.contains(q('.admin-shift-pattern__ends')), fields?.contains(q('.admin-shift-pattern__help'))]).toEqual([true, true]);
+        expect(days?.querySelectorAll('.admin-shift-pattern__day')).toHaveLength(7);
+        expect([fields?.contains(q('.admin-shift-pattern__note')), days?.contains(q('.admin-shift-pattern__summary'))]).toEqual([false, false]);
+        expect([...document.querySelectorAll('.admin-shift-pattern__start, .admin-shift-pattern__end')].every((field) => field.classList.contains('h-11.5') && !field.classList.contains('h-9'))).toBe(true);
     });
 
     it('orders the weekdays from the tenant\'s week start, as the grid\'s columns run', () => {

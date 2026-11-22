@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { Plus } from '@/components/glyphs';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { CHECK_BOX } from '@/components/ui/check-field';
 import { DateField } from '@/components/ui/date-field';
 import { Field } from '@/components/ui/field';
@@ -17,12 +18,13 @@ import { hoursLine, hoursOf, MOST_WINDOWS, type ShiftWords } from './words';
 
 /*
  * The Shifts pattern editor: one member's repeating week, titled "<name>, repeating pattern",
- * opened from the row head's Pattern button. The note on what a save reaches; Repeats (every week,
- * every 2, 3 or 4 weeks), Starts on, shown above a cadence of one, and Ends, never or on a date, in
- * one row; the line on the cadence; per weekday, in the tenant's week order, a row of a checkbox,
- * the weekday with its hours beneath, and zero, one or two windows, each one whole line around its
- * Start and End time fields (pattern.window), a plus adding the second and Remove as a destructive
- * text action, or Not working; the line of the week's hours; Cancel and Save pattern, PUT
+ * opened from the row head's Pattern button, the dialog keeping its own width. The note on what a
+ * save reaches; then one inner card with Repeats (every week, every 2, 3 or 4 weeks), Starts on,
+ * shown above a cadence of one, and Ends, never or on a date, in one row, the line on the cadence
+ * beneath; then a second inner card holding per weekday, in the tenant's week order, a row of a
+ * checkbox, the weekday with its hours beneath, and zero, one or two windows, each one whole line
+ * around its Start and End time fields (pattern.window), a plus adding the second and Remove as a
+ * destructive text action, or Not working; the line of the week's hours; Cancel and Save pattern, PUT
  * /admin/shifts/{id}/pattern, the week replace-all.
  *
  * A weekly pattern starts on the week holding 2000-01-01, which the server writes whatever the body
@@ -85,9 +87,19 @@ type DayProps = {
 
 /**
  * A weekday's row of the grid: the checkbox, the weekday, the window's line across three
- * columns, the plus and Remove.
+ * columns, the plus and Remove. On a phone the sheet is too narrow for both time fields beside the
+ * weekday, so the row folds onto two lines: the checkbox and the weekday on the first, the window's
+ * line from the card's start edge with the plus and Remove at its end on the second.
  */
-const ROW = 'grid grid-cols-[1.5rem_7.5rem_minmax(0,1fr)_auto_minmax(0,1fr)_2.25rem_auto] items-center gap-2';
+const ROW = 'grid grid-cols-[1.5rem_7.5rem_minmax(0,1fr)_auto_minmax(0,1fr)_2.25rem_auto] items-center gap-2 max-desktop:grid-cols-[1.5rem_minmax(0,1fr)_2.25rem_auto]';
+
+/** Where each part of the row sits once it folds on a phone. */
+const FOLDED = {
+    weekday: 'max-desktop:col-span-3',
+    window: 'max-desktop:col-span-2 max-desktop:col-start-1',
+    off: 'max-desktop:col-span-3 max-desktop:col-start-2',
+    gap: 'max-desktop:hidden',
+} as const;
 
 /** The window line's words between and around its two fields. */
 function windowWords(words: string): ReactNode {
@@ -106,7 +118,7 @@ function PatternDay({ weekday, windows, busy, clock, granularity, words, onTick,
     const head = (
         <>
             <input type="checkbox" id={tickId} className={`admin-shift-pattern__tick ${CHECK_BOX}`} checked={first !== undefined} disabled={busy} onChange={(event) => onTick(event.target.checked)} />
-            <span className="flex flex-col">
+            <span className={`flex flex-col ${FOLDED.weekday}`}>
                 <label htmlFor={tickId} className="font-medium">
                     {weekdayName(weekday, 'long', shell.language)}
                 </label>
@@ -120,13 +132,13 @@ function PatternDay({ weekday, windows, busy, clock, granularity, words, onTick,
             {first === undefined ? (
                 <div className={ROW}>
                     {head}
-                    <span className="admin-shift-pattern__off col-span-5 text-muted-foreground">{words.text('pattern.not_working')}</span>
+                    <span className={`admin-shift-pattern__off col-span-5 text-muted-foreground ${FOLDED.off}`}>{words.text('pattern.not_working')}</span>
                 </div>
             ) : (
                 windows.map((window, position) => (
                     <div key={position} className={`admin-shift-pattern__window ${ROW}`}>
-                        {position === 0 ? head : <span className="col-span-2" />}
-                        <span className="admin-shift-pattern__span col-span-3 flex min-w-0 items-center gap-2">
+                        {position === 0 ? head : <span className={`col-span-2 ${FOLDED.gap}`} />}
+                        <span className={`admin-shift-pattern__span col-span-3 flex min-w-0 items-center gap-2 ${FOLDED.window}`}>
                             {placed(
                                 words.text('pattern.window'),
                                 {
@@ -134,7 +146,7 @@ function PatternDay({ weekday, windows, busy, clock, granularity, words, onTick,
                                         <TimeField
                                             id={`shift-pattern-${weekday}-${position}-start`}
                                             aria-label={words.text('pattern.start')}
-                                            className="admin-shift-pattern__start h-9 min-w-0 flex-1"
+                                            className="admin-shift-pattern__start min-w-0 flex-1"
                                             value={window.start}
                                             onChange={(value) => onChange(window, 'start', value)}
                                             clock={clock}
@@ -146,7 +158,7 @@ function PatternDay({ weekday, windows, busy, clock, granularity, words, onTick,
                                         <TimeField
                                             id={`shift-pattern-${weekday}-${position}-end`}
                                             aria-label={words.text('pattern.end')}
-                                            className="admin-shift-pattern__end h-9 min-w-0 flex-1"
+                                            className="admin-shift-pattern__end min-w-0 flex-1"
                                             value={window.end}
                                             onChange={(value) => onChange(window, 'end', value)}
                                             clock={clock}
@@ -218,47 +230,49 @@ export function PatternEditor({ member, pattern, weekdays, weekFrom, clock, week
         <Modal open title={words.text('pattern.title', { name: member.name })} onClose={busy ? nothing : onClose} busy={busy} footer={footer} className="admin-shift-pattern max-w-2xl">
             <div className="flex flex-col gap-3 text-sm">
                 <p className="admin-shift-pattern__note text-xs text-muted-foreground">{words.text('pattern.note')}</p>
-                <div className="grid gap-3 desktop:grid-cols-3">
-                    <Field id="shift-pattern-repeats" label={words.text('pattern.repeats')}>
-                        {(control) => (
-                            <Select
-                                {...control}
-                                className="admin-shift-pattern__repeats w-full"
-                                disabled={busy}
-                                value={String(cadence)}
-                                onChange={(value) => setCadence(Number(value))}
-                                options={CADENCES.map((weeks) => ({ value: String(weeks), label: weeks === 1 ? words.text('pattern.every_week') : words.text('pattern.every_weeks', { weeks: formatCount(weeks, words.locale) }) }))}
-                            />
-                        )}
-                    </Field>
-                    {cadence > 1 && (
-                        <Field id="shift-pattern-starts" label={words.text('pattern.starts_on')}>
-                            {(control) => <DateField {...control} className="admin-shift-pattern__starts" value={startsOn} onChange={setStartsOn} clock={clock} weekStart={weekStart} disabled={busy} />}
+                <Card variant="inner" className="admin-shift-pattern__fields flex flex-col gap-3">
+                    <div className="grid gap-3 desktop:grid-cols-3">
+                        <Field id="shift-pattern-repeats" label={words.text('pattern.repeats')}>
+                            {(control) => (
+                                <Select
+                                    {...control}
+                                    className="admin-shift-pattern__repeats w-full"
+                                    disabled={busy}
+                                    value={String(cadence)}
+                                    onChange={(value) => setCadence(Number(value))}
+                                    options={CADENCES.map((weeks) => ({ value: String(weeks), label: weeks === 1 ? words.text('pattern.every_week') : words.text('pattern.every_weeks', { weeks: formatCount(weeks, words.locale) }) }))}
+                                />
+                            )}
                         </Field>
-                    )}
-                    <Field id="shift-pattern-ends" label={words.text('pattern.ends')}>
-                        {(control) => (
-                            <Select
-                                {...control}
-                                className="admin-shift-pattern__ends w-full"
-                                disabled={busy}
-                                value={ends}
-                                onChange={(value) => setEnds(value === 'on' ? 'on' : 'never')}
-                                options={[
-                                    { value: 'never', label: words.text('pattern.never') },
-                                    { value: 'on', label: words.text('pattern.on_date') },
-                                ]}
-                            />
+                        {cadence > 1 && (
+                            <Field id="shift-pattern-starts" label={words.text('pattern.starts_on')}>
+                                {(control) => <DateField {...control} className="admin-shift-pattern__starts" value={startsOn} onChange={setStartsOn} clock={clock} weekStart={weekStart} disabled={busy} />}
+                            </Field>
                         )}
-                    </Field>
-                    {ends === 'on' && (
-                        <Field id="shift-pattern-ends-on" label={words.text('pattern.ends_on')}>
-                            {(control) => <DateField {...control} className="admin-shift-pattern__ends-on" value={endsOn} onChange={setEndsOn} clock={clock} weekStart={weekStart} disabled={busy} />}
+                        <Field id="shift-pattern-ends" label={words.text('pattern.ends')}>
+                            {(control) => (
+                                <Select
+                                    {...control}
+                                    className="admin-shift-pattern__ends w-full"
+                                    disabled={busy}
+                                    value={ends}
+                                    onChange={(value) => setEnds(value === 'on' ? 'on' : 'never')}
+                                    options={[
+                                        { value: 'never', label: words.text('pattern.never') },
+                                        { value: 'on', label: words.text('pattern.on_date') },
+                                    ]}
+                                />
+                            )}
                         </Field>
-                    )}
-                </div>
-                <p className="admin-shift-pattern__help text-xs text-muted-foreground">{cadence === 1 ? words.text('pattern.help_weekly') : words.text('pattern.help_cadence', { weeks: formatCount(cadence, words.locale) })}</p>
-                <div className="flex flex-col divide-y">
+                        {ends === 'on' && (
+                            <Field id="shift-pattern-ends-on" label={words.text('pattern.ends_on')}>
+                                {(control) => <DateField {...control} className="admin-shift-pattern__ends-on" value={endsOn} onChange={setEndsOn} clock={clock} weekStart={weekStart} disabled={busy} />}
+                            </Field>
+                        )}
+                    </div>
+                    <p className="admin-shift-pattern__help text-xs text-muted-foreground">{cadence === 1 ? words.text('pattern.help_weekly') : words.text('pattern.help_cadence', { weeks: formatCount(cadence, words.locale) })}</p>
+                </Card>
+                <Card variant="inner" className="admin-shift-pattern__days flex flex-col divide-y py-1.5">
                     {weekdays.map((weekday) => (
                         <PatternDay
                             key={weekday}
@@ -274,7 +288,7 @@ export function PatternEditor({ member, pattern, weekdays, weekFrom, clock, week
                             onRemove={remove}
                         />
                     ))}
-                </div>
+                </Card>
                 <p className="admin-shift-pattern__summary">{hoursLine(windowMinutes(windows), words, 'pattern')}</p>
             </div>
         </Modal>
