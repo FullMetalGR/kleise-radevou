@@ -8,7 +8,8 @@ import { useShell } from '@/lib/strings';
  * displayed and the rest of the dashboard still works, then the thrown error's name, message and
  * component stack, because its audience is a developer or an operator filing a bug. It re-reports
  * to the console and never swallows. The two sentences are the shell's, in the page's language;
- * the error itself is the developer's text and stays as thrown.
+ * the error itself is the developer's text and stays as thrown, keeping its own lines and breaking
+ * a long unbroken one, such as an address, so it never runs past the page.
  */
 
 /** The notice, a key of the shell's section. */
@@ -25,7 +26,7 @@ function Fallen({ error, componentStack }: { error: Error; componentStack: strin
         <section className="admin-boundary flex flex-col gap-3" role="alert">
             <PageHeader title={shell.text(BOUNDARY_NOTICE)} />
             <p>{shell.text(BOUNDARY_REST)}</p>
-            <pre className="admin-boundary-error overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">{`${error.name}: ${error.message}${componentStack}`}</pre>
+            <pre className="admin-boundary-error overflow-auto rounded-notice bg-muted p-3 text-small whitespace-pre-wrap wrap-anywhere">{`${error.name}: ${error.message}${componentStack}`}</pre>
         </section>
     );
 }

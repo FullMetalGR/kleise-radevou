@@ -26,4 +26,12 @@ describe('the console\'s 404 page', () => {
         expect(mounted.host.querySelector('h1')?.textContent).toBe('Page not found');
         expect(mounted.host.textContent).toContain('There is nothing at this address on the console.');
     });
+
+    it('says it as the page header\'s lead and holds no control, the menu beside it being the way on', () => {
+        mounted.render(<NotFound />);
+
+        expect(mounted.host.querySelector('.admin-page-header .admin-page-header__lead')?.textContent).toBe('There is nothing at this address on the console.');
+        expect(mounted.host.querySelectorAll('p')).toHaveLength(1);
+        expect(mounted.host.querySelector('a, button, input, select, textarea, [role="button"], [tabindex]')).toBeNull();
+    });
 });

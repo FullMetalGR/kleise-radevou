@@ -4,6 +4,7 @@ import { Field, useFocusFirstFailing } from '@/components/ui/field';
 import { TextInput } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { useShell } from '@/lib/strings';
+import { cn } from '@/lib/utils';
 
 /*
  * The door's form, as it renders: an email and a password, the server's sentence when it
@@ -17,7 +18,8 @@ import { useShell } from '@/lib/strings';
  * the button, leaving focus where it was.
  *
  * The console's door renders the same form on its own host, with a button class of its own so a
- * walk never reads one door's control for the other's. Its words are the shell's login group,
+ * walk never reads one door's control for the other's, and its button at the default size; a
+ * business's door asks for the large one across the form. Its words are the shell's login group,
  * from the strings the form is given: the admin's in the page's language, the console's in
  * English from the console's adapter.
  */
@@ -32,9 +34,11 @@ type Props = {
     onPassword: (value: string) => void;
     onSubmit: () => void;
     submitClassName?: string;
+    /** Draws the button large and across the form's width, as the door's card does. */
+    large?: boolean;
 };
 
-export function LoginForm({ email, password, refusal, errors, processing, onEmail, onPassword, onSubmit, submitClassName = 'admin-login-submit' }: Props) {
+export function LoginForm({ email, password, refusal, errors, processing, onEmail, onPassword, onSubmit, submitClassName = 'admin-login-submit', large = false }: Props) {
     const shell = useShell();
     const form = useFocusFirstFailing(errors);
     const submit = (event: FormEvent) => {
@@ -55,7 +59,7 @@ export function LoginForm({ email, password, refusal, errors, processing, onEmai
                     {refusal}
                 </Notice>
             )}
-            <Button type="submit" variant="primary" className={submitClassName} busy={processing} busyLabel={shell.text('login.submitting')}>
+            <Button type="submit" variant="primary" size={large ? 'large' : 'default'} className={cn(submitClassName, large && 'w-full')} busy={processing} busyLabel={shell.text('login.submitting')}>
                 {shell.text('login.submit')}
             </Button>
         </form>

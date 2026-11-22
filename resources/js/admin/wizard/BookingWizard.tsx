@@ -11,6 +11,7 @@ import { TextInput } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Notice } from '@/components/ui/notice';
 import { Select } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { formatDate, type TenantClock } from '@/lib/format';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
@@ -156,7 +157,7 @@ export function BookingWizard({ prefill, catalog, clock, granularity, weekStart,
                             <p className="admin-wizard-zone text-small text-muted-foreground">{words.text('zone', { zone: clock.timezone })}</p>
                             {times.kind === 'loading' && (
                                 <p className="admin-wizard-loading text-sm text-muted-foreground" role="status">
-                                    <span className="admin-wizard-spinner mr-2 inline-block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+                                    <Spinner size="inline" className="mr-2" />
                                     {words.text('loading')}
                                 </p>
                             )}

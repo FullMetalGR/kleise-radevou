@@ -166,6 +166,50 @@ describe('the set-password page', () => {
         expect(inertia.reset).toHaveBeenCalledWith('password');
     });
 
+    it('is the door: the platform\'s mark by the brand\'s name above one form card holding the business\'s name, the one heading at the dialog title\'s size and the form', () => {
+        inertia.props = { ...inertia.props, brand: { name: 'example.gr' } };
+        renderPage();
+
+        const main = view.host.querySelector('main.admin-set-password');
+        const card = main?.querySelector('.admin-door .admin-door__card');
+        const business = card?.querySelector('.admin-set-password__business');
+        const heading = card?.querySelector('h1');
+
+        expect(main?.classList.contains('min-h-screen')).toBe(true);
+        expect(main?.querySelector('.admin-door__mark .admin-mark__name')?.textContent).toBe('example.gr');
+        expect(view.host.querySelectorAll('h1')).toHaveLength(1);
+        expect(heading?.classList.contains('text-dialog-title')).toBe(true);
+        expect(business?.textContent).toBe('Luna Hair Studio');
+        expect(business !== null && business !== undefined && heading !== null && heading !== undefined && (business.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(true);
+        expect(card?.querySelector('form .admin-set-password-submit')).not.toBeNull();
+    });
+
+    it('lets a business\'s name written as one long unbroken word break anywhere, so the line wraps inside the card', () => {
+        const name = 'Studio'.repeat(10);
+
+        inertia.props = { ...inertia.props, tenant: { name, slug: 'luna', timezone: 'Europe/Athens', currency: 'EUR' } };
+        renderPage();
+
+        const business = view.host.querySelector('.admin-door__card .admin-set-password__business');
+
+        expect(business?.textContent).toBe(name);
+        expect(business?.classList.contains('wrap-anywhere')).toBe(true);
+    });
+
+    it('draws the main button large across the card\'s full width, keeping its hook', () => {
+        renderPage();
+
+        expect([...(button()?.classList ?? [])]).toEqual(expect.arrayContaining(['admin-button--primary', 'admin-button--large', 'w-full']));
+    });
+
+    it('leaves nothing in the mark\'s place where the props carry no brand', () => {
+        renderPage();
+
+        expect(view.host.querySelector('.admin-door__mark')).toBeNull();
+        expect(view.host.querySelector('.admin-mark')).toBeNull();
+        expect(view.host.querySelector('.admin-door__card h1')?.textContent).toBe(shell.text(SET_PASSWORD_HEADING));
+    });
+
     it('shows the refusal the server put in the errors bag on the field', () => {
         inertia.errors = { password: 'refusal-token' };
         renderPage();

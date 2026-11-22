@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { Notice } from '@/components/ui/notice';
+import { Spinner } from '@/components/ui/spinner';
 import { StatusChip, statusLabel } from '@/components/ui/status-chip';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
 import { isoWeekday } from '@/lib/day';
@@ -533,7 +534,7 @@ export function BookingDialog({ state, staffShown, clock, weekStart = 1, onClose
             className="admin-booking-dialog"
         >
             {said !== null && <Notice kind="error">{said}</Notice>}
-            {state.kind === 'loading' && <span className="admin-spinner" role="status" aria-label={words.text('dialog.loading')} />}
+            {state.kind === 'loading' && <Spinner label={words.text('dialog.loading')} />}
             {state.kind === 'error' && <Notice kind="error">{words.text('dialog.load_error')}</Notice>}
             {state.kind === 'detail' && state.detail.state === 'missing' && (
                 <div className="flex flex-col gap-3">

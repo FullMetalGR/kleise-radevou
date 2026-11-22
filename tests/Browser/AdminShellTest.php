@@ -2,12 +2,17 @@
 
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Middleware\RequiresActiveSubscription;
+use App\Models\User;
+use App\Platform\PasswordLinks;
 use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Pest\Browser\Api\AwaitableWebpage;
+use Pest\Browser\Api\Webpage;
 use Tests\Browser\Support\Admin;
 use Tests\Browser\Support\FlowScripts;
+use Tests\Browser\Support\Look;
 use Tests\Browser\Support\PhoneScripts;
 
 /*
@@ -47,6 +52,33 @@ const SHELL_NEW_BOOKING_INSIDE = "document.fonts.ready.then(() => { const box = 
  * scrolls nothing sideways.
  */
 const SHELL_ROUND_BUTTONS_INSIDE = "document.fonts.ready.then(() => { const width = document.documentElement.clientWidth; const boxes = ['.admin-topbar .admin-menu', '.admin-topbar .admin-new-booking'].map((selector) => document.querySelector(selector)?.getBoundingClientRect()); return boxes.every((box) => box !== undefined && box.left >= 0 && box.right <= width + 1 && box.top >= 0 && Math.round(box.width) === Math.round(box.height)) && document.documentElement.scrollWidth <= width + 1; })";
+
+/**
+ * The door at the window's width: how many main headings the page holds, the column's width,
+ * whether its card stands whole inside the window, whether the main button runs the full width of
+ * the card's form, and whether the page scrolls nothing sideways.
+ */
+const SHELL_DOOR = "document.fonts.ready.then(() => { const width = document.documentElement.clientWidth; const column = document.querySelector('.admin-door')?.getBoundingClientRect(); const card = document.querySelector('.admin-door__card')?.getBoundingClientRect(); const form = document.querySelector('.admin-door__card form')?.getBoundingClientRect(); const button = document.querySelector('.admin-door__card form button[type=submit]')?.getBoundingClientRect(); return [document.querySelectorAll('h1').length, Math.round(column?.width ?? 0), card !== undefined && card.left >= 0 && card.right <= width + 1 && card.top >= 0 && card.bottom <= window.innerHeight + 1, form !== undefined && button !== undefined && Math.round(button.width) === Math.round(form.width), document.documentElement.scrollWidth <= width + 1]; })";
+
+/**
+ * The business's line on the door, in pixels: how far the page scrolls sideways, and how far the
+ * line's words run past their card on either side. Both are 0 where the name wraps inside the card.
+ * The words are measured and not the line's box, which stays as wide as the card lets it whatever
+ * it holds.
+ */
+const SHELL_DOOR_BUSINESS = "document.fonts.ready.then(() => { const card = document.querySelector('.admin-door__card')?.getBoundingClientRect(); const line = document.querySelector('.admin-door__card %s'); if (card === undefined || line === null) { return null; } const words = document.createRange(); words.selectNodeContents(line); const text = words.getBoundingClientRect(); return [document.documentElement.scrollWidth - document.documentElement.clientWidth, Math.max(0, Math.round(text.right - card.right), Math.round(card.left - text.left))]; })";
+
+/**
+ * A sign-in attempt with a wrong pair, posted from the page with its own token: the status it was
+ * answered with. One call is not one request. The sign-in holds every refused attempt for a full
+ * second, and the browser driver gives a call one second to answer and sends it again each time it
+ * has not, for five seconds, then once more with five seconds to answer in. So the first call
+ * posts the wrong pair six times and returns the status of the last, a refused pair's, and every
+ * post counts against the address's budget of ten a minute. The second call posts four more, and
+ * its fifth post is the eleventh: the limit turns it away at once, so that call returns the
+ * limit's status. A caller loops until it does.
+ */
+const SHELL_WRONG_SIGN_IN = "(async () => { const token = decodeURIComponent(document.cookie.split('; ').find((cookie) => cookie.startsWith('XSRF-TOKEN='))?.slice(11) ?? ''); const answer = await fetch('/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': token }, body: JSON.stringify({ email: 'nobody@luna.example', password: 'not the password' }) }); return answer.status; })()";
 
 /** The Services table's rows: as blocks with their column names, or as the grid's rows. */
 const SHELL_SERVICES_ROWS = "document.fonts.ready.then(() => { const box = document.querySelector('.admin-services-screen .admin-table-scroll'); const rows = [...document.querySelectorAll('.admin-services__row')]; return box !== null && rows.length > 0 && box.scrollWidth <= box.clientWidth + 1 ? [...new Set(rows.map((row) => getComputedStyle(row).display))].join() : 'none'; })";
@@ -318,4 +350,100 @@ it('opens the menu as the drawer from the first row\'s Menu button below the wid
         ->assertNotPresent('.admin-bottom-bar')
         ->assertPresent('.admin-topbar .admin-controls')
         ->assertNoJavaScriptErrors();
+});
+
+/**
+ * Reads the door at a phone's width and a desktop's: one main heading, the column 32px narrower
+ * than the window up to 420px, the card whole inside the window, the main button across the card
+ * and nothing scrolling sideways. A screenshot run saves each in the light and the dark mode.
+ */
+function shellReadDoor(AwaitableWebpage|Webpage $page, string $name, SiteLanguage $language): void
+{
+    foreach ([390 => 844, 1440 => 900] as $width => $height) {
+        $page->resize($width, $height)
+            ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
+            ->assertScript(SHELL_DOOR, [1, min(420, $width - 32), true, true, true]);
+
+        if (! Look::shooting()) {
+            continue;
+        }
+
+        foreach (['light' => false, 'dark' => true] as $mode => $dark) {
+            $page->assertScript(Look::wear('neutral', $dark), 'neutral');
+            Look::shot($page, sprintf('door-%s-%d-%s-%s', $name, $width, $mode, $language->value));
+        }
+
+        $page->assertScript(Look::wear('neutral', false), 'neutral');
+    }
+}
+
+it('draws the sign-in page as the door, the mark over one card with the business, the heading and the form, and past the sign-in limit the notice inside the card', function (SiteLanguage $language) {
+    DB::table('tenants')->where('slug', 'luna')->update(['locale' => $language->value]);
+    DB::table('tenant_luna.settings')->where('id', 1)->update(['language' => null]);
+
+    $page = $this->visit(Admin::url('luna', '/login'))
+        ->assertVisible('.admin-login-submit')
+        ->assertPresent('.admin-door__mark .admin-mark')
+        ->assertSeeIn('.admin-door__card .admin-login__business', 'Luna Hair Studio')
+        ->assertSeeIn('.admin-door__card h1', adminLine('admin/shell.login.heading', [], $language))
+        ->assertNotPresent('.admin-login-problem');
+
+    shellReadDoor($page, 'login', $language);
+
+    $answers = [];
+    do {
+        $answers[] = $page->script(SHELL_WRONG_SIGN_IN);
+    } while (end($answers) !== 429 && count($answers) < 11);
+    expect($answers)->not->toContain(419)
+        ->and(end($answers))->toBe(429);
+
+    $page->fill('email', Admin::owner('luna'))
+        ->fill('password', Admin::DEMO_PASSWORD)
+        ->click('.admin-login-submit')
+        ->waitForText(adminLine(LoginController::TOO_MANY, [], $language))
+        ->assertPathIs('/admin/login')
+        ->assertSeeIn('.admin-door__card .admin-login-problem', adminLine(LoginController::TOO_MANY, [], $language))
+        ->assertNotPresent('.admin-door__mark')
+        ->assertNotPresent('.admin-login__business');
+
+    shellReadDoor($page, 'login-refused', $language);
+
+    $page->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('draws the set-password page as the door, the mark over one card with the business, the heading and the form', function (SiteLanguage $language) {
+    DB::table('tenants')->where('slug', 'luna')->update(['locale' => $language->value]);
+    DB::table('tenant_luna.settings')->where('id', 1)->update(['language' => null]);
+    $token = app(PasswordLinks::class)->mint(User::query()->where('email', Admin::owner('luna'))->sole());
+
+    $page = $this->visit(Admin::url('luna', '/set-password/'.$token))
+        ->waitForText('Luna Hair Studio')
+        ->assertVisible('.admin-set-password-submit')
+        ->assertPresent('.admin-door__mark .admin-mark')
+        ->assertSeeIn('.admin-door__card .admin-set-password__business', 'Luna Hair Studio')
+        ->assertSeeIn('.admin-door__card h1', adminLine('admin/shell.set_password.title', [], $language));
+
+    shellReadDoor($page, 'set-password', $language);
+
+    $page->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('wraps a business\'s name written as one long unbroken word inside the door\'s card, on the sign-in page and the set-password page, and scrolls nothing sideways', function () {
+    $name = str_repeat('Studio', 10);
+    DB::table('tenants')->where('slug', 'luna')->update(['name' => $name]);
+    $token = app(PasswordLinks::class)->mint(User::query()->where('email', Admin::owner('luna'))->sole());
+
+    $read = [];
+    foreach (['sign-in' => ['/login', '.admin-login__business'], 'set-password' => ['/set-password/'.$token, '.admin-set-password__business']] as $door => [$path, $line]) {
+        $page = $this->visit(Admin::url('luna', $path))
+            ->assertSeeIn('.admin-door__card '.$line, $name);
+
+        foreach ([390 => 844, 1440 => 900] as $width => $height) {
+            $read[$door.' at '.$width] = $page->resize($width, $height)->script(sprintf(SHELL_DOOR_BUSINESS, $line));
+        }
+
+        $page->assertNoJavaScriptErrors();
+    }
+
+    expect($read)->toBe(array_fill_keys(['sign-in at 390', 'sign-in at 1440', 'set-password at 390', 'set-password at 1440'], [0, 0]));
 });

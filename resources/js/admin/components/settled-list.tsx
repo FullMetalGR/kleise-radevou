@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
+import { CRUMB_LINK } from '@/components/ui/breadcrumb';
 import { Notice } from '@/components/ui/notice';
+import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 
 /*
  * The settledness of a list, decided in this one place for every list of the admin and for the
@@ -14,7 +17,7 @@ import { Notice } from '@/components/ui/notice';
  * has settled and holds no row with the id, then found. A create route branches before the
  * ladder and never reaches it. The three waiting states render one house way: loading a spinner
  * alone, error a non-dismissible error notice in the screen's own sentence, notFound a Back to
- * the list link over a non-dismissible warning notice.
+ * the list link, in the breadcrumb's link look, over a non-dismissible warning notice.
  */
 
 export type ListState = { readonly loading: boolean; readonly error: boolean };
@@ -72,10 +75,6 @@ export function SettledList({ count, state, errorSentence, empty, children }: Pr
     );
 }
 
-function Spinner({ label }: { label: string }) {
-    return <span className="admin-spinner block size-6 animate-spin rounded-full border-2 border-current border-t-transparent" role="status" aria-label={label} />;
-}
-
 type DetailProps<T> = {
     rows: readonly T[];
     state: ListState;
@@ -113,7 +112,7 @@ export function ListDetail<T extends { readonly id: number }>({ rows, state, id,
                 <div className="admin-detail-missing flex flex-col gap-3">
                     <a
                         href={listHref}
-                        className="admin-detail-back self-start underline"
+                        className={cn('admin-detail-back self-start', CRUMB_LINK)}
                         onClick={(event) => {
                             event.preventDefault();
                             onBack();

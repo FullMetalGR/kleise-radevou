@@ -34,4 +34,16 @@ describe('the admin\'s 404 page', () => {
         expect(mounted.host.querySelector('h1')?.textContent).toBe(shell.text(NOT_FOUND_HEADING));
         expect(mounted.host.querySelector('p')?.textContent).toBe(shell.text('not_found.sentence'));
     });
+
+    it('says it as the page header\'s lead and holds no control, the menu beside it being the way on', () => {
+        mounted.render(
+            <WithShell>
+                <NotFound />
+            </WithShell>,
+        );
+
+        expect(mounted.host.querySelector('.admin-page-header .admin-page-header__lead')?.textContent).toBe(shell.text('not_found.sentence'));
+        expect(mounted.host.querySelectorAll('p')).toHaveLength(1);
+        expect(mounted.host.querySelector('a, button, input, select, textarea, [role="button"], [tabindex]')).toBeNull();
+    });
 });

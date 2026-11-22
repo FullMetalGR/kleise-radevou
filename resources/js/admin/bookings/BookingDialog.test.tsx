@@ -270,6 +270,8 @@ describe('the booking dialog', () => {
 
         show(<BookingDialog state={{ kind: 'loading' }} staffShown clock={CLOCK} onClose={() => {}} />);
         expect(inDialog('.admin-spinner')?.getAttribute('aria-label')).toBe(words.text('dialog.loading'));
+        expect(inDialog('.admin-spinner')?.getAttribute('role')).toBe('status');
+        expect([...(inDialog('.admin-spinner')?.classList ?? [])]).toEqual(expect.arrayContaining(['size-6', 'rounded-full', 'border-2']));
     });
 
     it('names the two rows a customer\'s page writes, the erasure and the export, in words', () => {

@@ -8,6 +8,9 @@ import { Fragment } from 'react';
  * a link. The slashes between the steps are drawn for the eye and hidden from a reader.
  */
 
+/** The look of a link back up the trail, which a page's other way back to its list shares. */
+export const CRUMB_LINK = 'focus-ring rounded-sm font-semibold text-primary-deep underline-offset-4 hover:underline';
+
 type Crumb = {
     label: string;
     href?: string;
@@ -33,7 +36,7 @@ function Step({ crumb, last }: { crumb: Crumb; last: boolean }) {
     return (
         <a
             href={crumb.href}
-            className="admin-breadcrumb__list focus-ring rounded-sm font-semibold text-primary-deep underline-offset-4 hover:underline"
+            className={`admin-breadcrumb__list ${CRUMB_LINK}`}
             onClick={
                 onClick === undefined
                     ? undefined

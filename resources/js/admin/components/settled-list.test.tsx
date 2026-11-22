@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type Mounted, press } from './ui/harness';
+import { CRUMB_LINK } from './ui/breadcrumb';
+import { Spinner } from './ui/spinner';
 import { ListDetail, listGate, resolve, SettledList } from './settled-list';
 
 /*
@@ -115,6 +117,15 @@ describe('the list-detail scaffold', () => {
         expect(view.host.querySelector('.found, .create, [role="alert"]')).toBeNull();
     });
 
+    it('renders loading as the shared spinner at its own size, named by the loading label', () => {
+        const alone = mount();
+        alone.render(<Spinner label={LOADING} />);
+        renderDetail(1, true, false);
+
+        expect(view.host.innerHTML).toBe(alone.host.innerHTML);
+        alone.unmount();
+    });
+
     it('renders error as a non-dismissible error notice in the screen\'s own sentence', () => {
         renderDetail(1, false, true);
 
@@ -141,6 +152,16 @@ describe('the list-detail scaffold', () => {
 
         press(back);
         expect(onBack).toHaveBeenCalledTimes(1);
+    });
+
+    it('draws the Back link in the breadcrumb\'s link look, underlined on hover and never at rest', () => {
+        renderDetail(3, false, false);
+
+        const classes = [...(view.host.querySelector('.admin-detail-back')?.classList ?? [])];
+
+        expect(classes).toEqual(expect.arrayContaining(CRUMB_LINK.split(' ')));
+        expect(classes).toContain('hover:underline');
+        expect(classes).not.toContain('underline');
     });
 
     it('renders found as the content', () => {

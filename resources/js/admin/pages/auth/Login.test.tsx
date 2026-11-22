@@ -9,20 +9,29 @@ import { LoginForm } from './LoginForm';
  * The door's form as it renders: two fields, one button, and the server's sentence when there is
  * one. The round trip itself is the browser suite's. The form renders inside the shell's keyed
  * table and its words are read through it; the server's sentences it shows are handed in as the
- * keyed table spells them.
+ * keyed table spells them. The page around the form is the door: the platform's mark where the
+ * host shares its brand, then one card with the business's name where the host shares it, the
+ * heading and the form. The page answered past the sign-in limit carries neither.
  */
 
 const shell = keyedShell();
 
+const inertia = vi.hoisted(() => ({ props: {} as Record<string, unknown> }));
+
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
+    usePage: () => ({ props: inertia.props }),
     useForm: (data: Record<string, string>) => ({ data, errors: {}, processing: false, setData: () => {}, post: () => {}, reset: () => {} }),
 }));
+
+/** What a business's host shares with its door: the business and the platform's brand. */
+const SHARED = { tenant: { name: 'Luna Hair Studio', slug: 'luna', timezone: 'Europe/Athens', currency: 'EUR' }, brand: { name: 'example.gr' } };
 
 let host: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
+    inertia.props = SHARED;
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -54,6 +63,16 @@ function render(answer: Answer | null, processing: boolean, onSubmit = () => {})
     );
 }
 
+function renderPage(refusal: string | null): void {
+    act(() =>
+        root.render(
+            <WithShell>
+                <Login refusal={refusal} />
+            </WithShell>,
+        ),
+    );
+}
+
 const REFUSED = KEYED_SHELL.refusals.sign_in;
 const TOO_MANY = KEYED_SHELL.refusals.too_many;
 const input = (name: string) => host.querySelector<HTMLInputElement>(`input[name="${name}"]`);
@@ -73,6 +92,66 @@ describe('the sign-in page', () => {
         expect(host.querySelector('h1')?.textContent).toBe(shell.text('login.heading'));
         expect(host.querySelector('.admin-login-submit')?.textContent).toBe(shell.text('login.submit'));
     });
+
+    it('is the door: the platform\'s mark by the brand\'s name above one form card holding the business\'s name, the one heading at the dialog title\'s size and the form', () => {
+        renderPage(null);
+
+        const main = host.querySelector('main.admin-login');
+        const card = main?.querySelector('.admin-door .admin-door__card');
+        const business = card?.querySelector('.admin-login__business');
+        const heading = card?.querySelector('h1');
+
+        expect(main?.classList.contains('min-h-screen')).toBe(true);
+        expect(main?.querySelector('.admin-door__mark .admin-mark__name')?.textContent).toBe('example.gr');
+        expect(main?.querySelector('.admin-door__mark .admin-mark__name')?.classList.contains('sr-only')).toBe(false);
+        expect(host.querySelectorAll('h1')).toHaveLength(1);
+        expect(heading?.classList.contains('text-dialog-title')).toBe(true);
+        expect(business?.textContent).toBe('Luna Hair Studio');
+        expect(business !== null && business !== undefined && heading !== null && heading !== undefined && (business.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(true);
+        expect(card?.querySelector('form .admin-login-submit')).not.toBeNull();
+    });
+
+    it('lets a business\'s name written as one long unbroken word break anywhere, so the line wraps inside the card', () => {
+        const name = 'Studio'.repeat(10);
+
+        inertia.props = { ...SHARED, tenant: { ...SHARED.tenant, name } };
+        renderPage(null);
+
+        const business = host.querySelector('.admin-door__card .admin-login__business');
+
+        expect(business?.textContent).toBe(name);
+        expect(business?.classList.contains('wrap-anywhere')).toBe(true);
+    });
+
+    it('draws the main button large across the card\'s full width, keeping its hook', () => {
+        renderPage(null);
+
+        const button = host.querySelector('.admin-door__card .admin-login-submit');
+
+        expect([...(button?.classList ?? [])]).toEqual(expect.arrayContaining(['admin-button--primary', 'admin-button--large', 'w-full']));
+    });
+
+    it('shows the sign-in limit\'s notice inside the card, above the button', () => {
+        renderPage(TOO_MANY);
+
+        const notice = host.querySelector('.admin-door__card .admin-login-problem');
+        const button = host.querySelector('.admin-login-submit');
+
+        expect(notice?.classList.contains('admin-notice')).toBe(true);
+        expect(notice?.textContent).toBe(TOO_MANY);
+        expect(notice !== null && button !== null && (notice.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(true);
+    });
+
+    it('leaves out the mark and the business\'s name on the page the sign-in limit answers, which carries neither', () => {
+        inertia.props = {};
+        renderPage(TOO_MANY);
+
+        expect(host.querySelector('.admin-door__mark')).toBeNull();
+        expect(host.querySelector('.admin-mark')).toBeNull();
+        expect(host.querySelector('.admin-login__business')).toBeNull();
+        expect(host.querySelector('.admin-door__card h1')?.textContent).toBe(shell.text('login.heading'));
+        expect(host.querySelector('.admin-door__card .admin-login-problem')?.textContent).toBe(TOO_MANY);
+    });
 });
 
 describe('the sign-in form', () => {
@@ -85,6 +164,16 @@ describe('the sign-in form', () => {
         expect(host.querySelector('.admin-login-submit')?.textContent).toBe(shell.text('login.submit'));
         expect(host.querySelector('[role="alert"]')).toBeNull();
         expect(host.querySelectorAll('input')).toHaveLength(2);
+    });
+
+    it('keeps the button at its own height and width where the page asks for nothing more, as the console\'s door does', () => {
+        render(null, false);
+
+        const classes = [...(host.querySelector('.admin-login-submit')?.classList ?? [])];
+
+        expect(classes).toContain('admin-button--primary');
+        expect(classes).not.toContain('admin-button--large');
+        expect(classes).not.toContain('w-full');
     });
 
     it('points each label at its input by id and wraps nothing in it', () => {

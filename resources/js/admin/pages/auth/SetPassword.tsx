@@ -1,6 +1,8 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { type ShellKey, useShell } from '@/lib/strings';
+import { Mark } from '@/shell/Mark';
 import type { GuestProps } from '@/types';
+import { Door } from './Door';
 import { SetPasswordForm } from './SetPasswordForm';
 
 /*
@@ -10,7 +12,9 @@ import { SetPasswordForm } from './SetPasswordForm';
  * refused password comes back on the field; a set, and a link that has died since the page opened,
  * land on the sign-in page with the server's flash. Nothing is optimistic. Its words are the
  * shell's set_password group, in the page's language; floor is PasswordRule's floor, which the
- * help line names.
+ * help line names. It is the door, as the sign-in page is: the platform's mark by the brand's
+ * name, then one card with the business's name over the heading and the form. The name's line
+ * breaks anywhere, as it does there, so one long unbroken word wraps inside the card.
  */
 
 /** The page's title, also its heading: a key of the shell's section. */
@@ -22,20 +26,22 @@ export default function SetPassword() {
     const shell = useShell();
 
     return (
-        <main className="admin-set-password mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
+        <>
             <Head title={shell.text(SET_PASSWORD_HEADING)} />
-            <div className="flex flex-col gap-1">
-                {page.props.tenant !== undefined && <p className="admin-set-password__business text-sm text-muted-foreground">{page.props.tenant.name}</p>}
-                <h1 className="text-2xl font-semibold">{shell.text(SET_PASSWORD_HEADING)}</h1>
-            </div>
-            <SetPasswordForm
-                password={form.data.password}
-                floor={page.props.floor}
-                error={form.errors.password}
-                processing={form.processing}
-                onPassword={(value) => form.setData('password', value)}
-                onSubmit={() => form.post(page.url, { onFinish: () => form.reset('password') })}
-            />
-        </main>
+            <Door className="admin-set-password" mark={page.props.brand === undefined ? undefined : <Mark name={page.props.brand.name} />}>
+                <div className="flex flex-col gap-1">
+                    {page.props.tenant !== undefined && <p className="admin-set-password__business text-body-sm text-muted-foreground wrap-anywhere">{page.props.tenant.name}</p>}
+                    <h1 className="text-dialog-title">{shell.text(SET_PASSWORD_HEADING)}</h1>
+                </div>
+                <SetPasswordForm
+                    password={form.data.password}
+                    floor={page.props.floor}
+                    error={form.errors.password}
+                    processing={form.processing}
+                    onPassword={(value) => form.setData('password', value)}
+                    onSubmit={() => form.post(page.url, { onFinish: () => form.reset('password') })}
+                />
+            </Door>
+        </>
     );
 }

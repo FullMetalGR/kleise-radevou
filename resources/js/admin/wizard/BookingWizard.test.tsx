@@ -441,6 +441,23 @@ describe('step 1, 4.3', () => {
         expect(dialog().querySelector('.admin-notice--error')?.textContent).toBe(RANGE_DETAIL);
     });
 
+    it('says the day\'s times are loading in a status line, the shared spinner inline before the words and hidden from assistive technology', async () => {
+        fetched.mockImplementation(() => new Promise<Response>(() => {}));
+        render();
+        await toWhen();
+
+        const loading = dialog().querySelector('p.admin-wizard-loading');
+        const spinner = loading?.querySelector('.admin-spinner');
+
+        expect(loading?.getAttribute('role')).toBe('status');
+        expect(loading?.textContent).toBe(wiz.text('loading'));
+        expect(loading?.firstElementChild).toBe(spinner);
+        expect(spinner?.getAttribute('aria-hidden')).toBe('true');
+        expect(spinner?.hasAttribute('role')).toBe(false);
+        expect([...(spinner?.classList ?? [])]).toEqual(expect.arrayContaining(['size-3.5', 'inline-block']));
+        expect(dialog().querySelector('[class*="admin-wizard-spin"]')).toBeNull();
+    });
+
     it('shows a lapsed session as the 401 envelope\'s sentence, never as a day with no times', async () => {
         fetched.mockImplementation(async () => new Response(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated', data: { status: 401, detail: SIGN_IN_DETAIL } }), { status: 401 }));
         render();

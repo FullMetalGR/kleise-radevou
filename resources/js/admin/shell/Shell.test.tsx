@@ -152,6 +152,20 @@ describe('the shell', () => {
         expect(toggle).toHaveBeenCalledOnce();
     });
 
+    it('announces the boundary as an alert and sets the error in the small type on the muted tint at the notice\'s radius, breaking a long unbroken line to wrap', () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        render('/admin', <Broken />);
+
+        const boundary = host.querySelector('main section.admin-boundary');
+        const detail = boundary?.querySelector('pre.admin-boundary-error');
+        const classes = [...(detail?.classList ?? [])];
+
+        expect(boundary?.getAttribute('role')).toBe('alert');
+        expect(classes).toEqual(expect.arrayContaining(['rounded-notice', 'bg-muted', 'text-small', 'whitespace-pre-wrap', 'wrap-anywhere']));
+        expect(classes.filter((name) => /^(text-xs|rounded-md)$/.test(name))).toEqual([]);
+    });
+
     it('mounts a fresh boundary on another route', () => {
         vi.spyOn(console, 'error').mockImplementation(() => {});
 
