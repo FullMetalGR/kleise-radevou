@@ -11,7 +11,8 @@ use LogicException;
 /**
  * What the manual booking wizard chooses from, read for the shared props: the active services
  * in catalog order, each with the duration and the processing tail the summary's end is
- * computed from and the active members who perform it; the active named members the Staff
+ * computed from, the price and currency the summary totals, and the active members who perform
+ * it; the active named members the Staff
  * select offers, the implicit row left out because it is never rendered; and how many staff
  * rows the tenant has, the rows half of the one-value rule, counted as the bookings screen
  * counts them.
@@ -23,7 +24,7 @@ final readonly class WizardCatalog
     public function __construct(private DatabaseManager $db) {}
 
     /**
-     * @return array{services: list<array{id: int, name: string, duration_min: int, processing_min: int, staff: list<int>}>, staff: list<array{id: int, name: string}>, members: int}
+     * @return array{services: list<array{id: int, name: string, duration_min: int, processing_min: int, price_minor: int, currency: string, staff: list<int>}>, staff: list<array{id: int, name: string}>, members: int}
      */
     public function read(Tenant $tenant): array
     {
@@ -47,12 +48,12 @@ final readonly class WizardCatalog
         $services = [];
 
         foreach ($connection->table($schema.'.services')->where('status', 'active')->orderBy('sort')->orderBy('id')
-            ->get(['id', 'name', 'duration_min', 'processing_gap_min'])->all() as $row) {
-            if (! is_int($row->id) || ! is_string($row->name) || ! is_int($row->duration_min) || ! is_int($row->processing_gap_min)) {
+            ->get(['id', 'name', 'duration_min', 'processing_gap_min', 'price_minor', 'currency'])->all() as $row) {
+            if (! is_int($row->id) || ! is_string($row->name) || ! is_int($row->duration_min) || ! is_int($row->processing_gap_min) || ! is_int($row->price_minor) || ! is_string($row->currency)) {
                 throw new LogicException('A service row is not shaped as the schema declares.');
             }
 
-            $services[] = ['id' => $row->id, 'name' => $row->name, 'duration_min' => $row->duration_min, 'processing_min' => $row->processing_gap_min, 'staff' => $performers[$row->id] ?? []];
+            $services[] = ['id' => $row->id, 'name' => $row->name, 'duration_min' => $row->duration_min, 'processing_min' => $row->processing_gap_min, 'price_minor' => $row->price_minor, 'currency' => $row->currency, 'staff' => $performers[$row->id] ?? []];
         }
 
         $staff = [];

@@ -3,7 +3,8 @@ import type { TenantClock } from '@/lib/format';
 import { ADMIN_LINES_EN } from '../lines.generated';
 import { choose } from '../../booking/choose';
 import { keyedWizard } from '@/testing/keyed';
-import { ANY_STAFF, addSegment, advance, availabilityQuery, bodyOf, type Catalog, chooseDay, chooseService, chooseSlot, chooseStaff, courtesy, customerAnswered, editCustomer, endOf, gateOpen, groupsOf, initial, itemsOf, NO_ANSWER, performersOf, periodKey, removeSegment, reopen, serviceLines, staffChoiceReal, stripValues, toggleSameStaff } from './model';
+import { formatAmount } from '@/lib/format';
+import { addSegment, advance, availabilityQuery, bodyOf, type Catalog, chooseDay, chooseService, chooseSlot, chooseStaff, courtesy, customerAnswered, editCustomer, gateOpen, groupsOf, initial, itemsOf, lengthLabel, NO_ANSWER, performersOf, periodKey, removeSegment, reopen, serviceHint, spanMinutes, staffChoiceReal, stripValues, summaryLines, toggleSameStaff, totalOf, weekOf } from './model';
 
 /*
  * The wizard's transitions and rules, over luna's catalog: Haircut 45 minutes on both
@@ -16,9 +17,9 @@ const words = keyedWizard();
 
 const CATALOG: Catalog = {
     services: [
-        { id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, staff: [2, 3] },
-        { id: 2, name: 'Beard trim', duration_min: 20, processing_min: 0, staff: [3] },
-        { id: 3, name: 'Colour', duration_min: 60, processing_min: 30, staff: [2, 3] },
+        { id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, price_minor: 3500, currency: 'EUR', staff: [2, 3] },
+        { id: 2, name: 'Beard trim', duration_min: 20, processing_min: 0, price_minor: 1500, currency: 'EUR', staff: [3] },
+        { id: 3, name: 'Colour', duration_min: 60, processing_min: 30, price_minor: 8000, currency: 'EUR', staff: [2, 3] },
     ],
     staff: [
         { id: 2, name: 'Elena Papadaki' },
@@ -106,7 +107,7 @@ describe('the courtesy and the segments', () => {
     });
 });
 
-describe('staleness, 4.3', () => {
+describe('staleness', () => {
     it('kills the slot on a different day, keeps it on the same day, on any change to the chain\'s shape, and on the preference alone', () => {
         const state = answered();
 
@@ -194,23 +195,104 @@ describe('the wire', () => {
     it('computes the end from the geometry on the grid with the last tail excluded, and sends the start verbatim', () => {
         const state = answered();
 
-        expect(endOf(TEN, state, CATALOG, 5)).toBe('2026-11-03T09:45:00.000Z');
+        const endOf = (chain: typeof state, granularity: number) => summaryLines(chain, CATALOG, granularity).at(-1)?.end;
+
+        expect(endOf(state, 5)).toBe('2026-11-03T09:45:00.000Z');
         const reversed = { ...state, segments: [{ service: 3, staff: null }, { service: 1, staff: null }] };
-        expect(endOf(TEN, reversed, CATALOG, 5)).toBe('2026-11-03T10:15:00.000Z');
-        expect(endOf(TEN, reversed, CATALOG, 15)).toBe('2026-11-03T10:15:00.000Z');
+        expect(endOf(reversed, 5)).toBe('2026-11-03T10:15:00.000Z');
+        expect(endOf(reversed, 15)).toBe('2026-11-03T10:15:00.000Z');
         const beard = { ...state, segments: [{ service: 2, staff: null }] };
-        expect(endOf(TEN, beard, CATALOG, 15)).toBe('2026-11-03T08:30:00.000Z');
-        expect(endOf(TEN, beard, CATALOG, 0)).toBe('2026-11-03T08:20:00.000Z');
+        expect(endOf(beard, 15)).toBe('2026-11-03T08:30:00.000Z');
+        expect(endOf(beard, 0)).toBe('2026-11-03T08:20:00.000Z');
 
         const body = bodyOf(editCustomer(editCustomer(state, 'name', 'Ada'), 'email', 'ada@example.test'));
 
         expect(body).toEqual({ customer_name: 'Ada', customer_email: 'ada@example.test', customer_phone: '', items: [{ service_id: 1, staff_id: null }, { service_id: 3, staff_id: null }], start: TEN, same_staff: false });
     });
+});
 
-    it('names the member on each Service line where the choice was real, Any staff for no pick, and the service alone where it never was', () => {
-        const state = chooseStaff(answered(), 0, 2);
+describe('the booking summary', () => {
+    it('gives one line per segment holding a service, in order, with the chosen member, and no times before a slot is chosen', () => {
+        let state = chooseService(courtesy(initial(TODAY), CATALOG), 0, 1, CATALOG);
+        state = chooseStaff(addSegment(state), 0, 2);
 
-        expect(serviceLines(state, CATALOG, true, words)).toEqual([words.text('summary.service_staff', { service: 'Haircut', staff: 'Elena Papadaki' }), words.text('summary.service_staff', { service: 'Colour', staff: words.text(ANY_STAFF) })]);
-        expect(serviceLines(state, CATALOG, false, words)).toEqual(['Haircut', 'Colour']);
+        expect(summaryLines(state, CATALOG, 5).map((line) => [line.service.name, line.staff, line.start, line.end])).toEqual([['Haircut', 2, null, null]]);
+
+        state = chooseService(state, 1, 3, CATALOG);
+
+        expect(summaryLines(state, CATALOG, 5).map((line) => [line.service.name, line.staff, line.start, line.end])).toEqual([
+            ['Haircut', 2, null, null],
+            ['Colour', null, null, null],
+        ]);
+        expect(summaryLines(initial(TODAY), CATALOG, 5)).toEqual([]);
+    });
+
+    it('times each segment from the chosen start: its own length on the grid, the next one starting after the processing tail', () => {
+        const state = answered();
+
+        expect(summaryLines(state, CATALOG, 5).map((line) => [line.start, line.end])).toEqual([
+            ['2026-11-03T08:00:00.000Z', '2026-11-03T08:45:00.000Z'],
+            ['2026-11-03T08:45:00.000Z', '2026-11-03T09:45:00.000Z'],
+        ]);
+
+        const reversed = { ...state, segments: [{ service: 3, staff: null }, { service: 1, staff: null }] };
+
+        expect(summaryLines(reversed, CATALOG, 5).map((line) => [line.start, line.end])).toEqual([
+            ['2026-11-03T08:00:00.000Z', '2026-11-03T09:00:00.000Z'],
+            ['2026-11-03T09:30:00.000Z', '2026-11-03T10:15:00.000Z'],
+        ]);
+
+        const beard = { ...state, segments: [{ service: 2, staff: null }] };
+
+        expect(summaryLines(beard, CATALOG, 15).map((line) => [line.start, line.end])).toEqual([['2026-11-03T08:00:00.000Z', '2026-11-03T08:30:00.000Z']]);
+    });
+
+    it('measures the duration as the chain the end is computed from, and writes it in hours and minutes', () => {
+        const state = answered();
+
+        expect(spanMinutes(state, CATALOG, 5)).toBe(105);
+        expect(spanMinutes({ ...state, segments: [{ service: 3, staff: null }, { service: 1, staff: null }] }, CATALOG, 5)).toBe(135);
+        expect(spanMinutes({ ...state, segments: [{ service: 1, staff: null }] }, CATALOG, 5)).toBe(45);
+        expect(spanMinutes(initial(TODAY), CATALOG, 5)).toBe(0);
+
+        expect(lengthLabel(105, words)).toBe(words.choice('length.hours_minutes', 1, { minutes: '45' }));
+        expect(lengthLabel(135, words)).toBe(words.choice('length.hours_minutes', 2, { minutes: '15' }));
+        expect(lengthLabel(45, words)).toBe(words.choice('length.minutes', 45));
+        expect(lengthLabel(120, words)).toBe(words.choice('length.hours', 2));
+        expect(lengthLabel(60, words)).toBe(words.choice('length.hours', 1));
+    });
+
+    it('totals the chosen prices for one and for two segments, and has no total when nothing is chosen or the currencies differ', () => {
+        const one = chooseService(courtesy(initial(TODAY), CATALOG), 0, 1, CATALOG);
+
+        expect(totalOf(one, CATALOG)).toEqual({ minor: 3500, currency: 'EUR' });
+        expect(totalOf(answered(), CATALOG)).toEqual({ minor: 11500, currency: 'EUR' });
+        expect(totalOf(initial(TODAY), CATALOG)).toBeNull();
+        expect(totalOf(addSegment(one), CATALOG)).toEqual({ minor: 3500, currency: 'EUR' });
+
+        const mixed: Catalog = { ...CATALOG, services: CATALOG.services.map((service) => (service.id === 3 ? { ...service, currency: 'USD' } : service)) };
+
+        expect(totalOf(answered(), mixed)).toBeNull();
+    });
+
+    it('hints a chosen service with its length and its price joined as the language joins two parts', () => {
+        const haircut = CATALOG.services[0];
+        const colour = CATALOG.services[2];
+
+        if (haircut === undefined || colour === undefined) {
+            throw new Error('The catalog lost a service.');
+        }
+
+        expect(serviceHint(haircut, words)).toBe(words.text('joined', { first: words.choice('length.minutes', 45), second: formatAmount(3500, 'EUR', words.locale) }));
+        expect(serviceHint(colour, words)).toBe(words.text('joined', { first: words.choice('length.hours', 1), second: formatAmount(8000, 'EUR', words.locale) }));
+    });
+
+    it('gives the seven days of the week holding a day, starting on the week start', () => {
+        expect(weekOf('2026-11-03', 1)).toEqual(['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08']);
+        expect(weekOf('2026-11-02', 1)[0]).toBe('2026-11-02');
+        expect(weekOf('2026-11-08', 1)[0]).toBe('2026-11-02');
+        expect(weekOf('2026-11-03', 7)).toEqual(['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07']);
+        expect(weekOf('2026-11-07', 6)[0]).toBe('2026-11-07');
+        expect(weekOf('2026-12-30', 1)).toEqual(['2026-12-28', '2026-12-29', '2026-12-30', '2026-12-31', '2027-01-01', '2027-01-02', '2027-01-03']);
     });
 });

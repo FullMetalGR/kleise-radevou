@@ -680,7 +680,14 @@ export type WizardStrings = {
     no_times: string;
     unreadable: string;
     periods: { morning: string; afternoon: string; evening: string };
-    summary: { date: string; time: string; service: string; span: string; service_staff: string };
+    summary: { title: string; span: string; duration: string; total: string };
+    length: { minutes: string; hours: string; hours_minutes: string };
+    week: { previous: string; next: string };
+    date_field: string;
+    available: string;
+    time_hint: string;
+    source_note: string;
+    joined: string;
     fields: { name: string; email: string; phone: string };
     create_failed: string;
     refused_segment: string;
@@ -1669,7 +1676,7 @@ export type CentralProps = {
 
 /** What the manual booking wizard chooses from, for a user who may book by hand; null for every other user. */
 export type WizardCatalog = {
-    services: { id: number; name: string; duration_min: number; processing_min: number; staff: number[] }[];
+    services: { id: number; name: string; duration_min: number; processing_min: number; price_minor: number; currency: string; staff: number[] }[];
     staff: { id: number; name: string }[];
     members: number;
 };

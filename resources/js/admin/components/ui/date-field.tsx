@@ -11,7 +11,8 @@ import { MENU_SURFACE, Popover, PopoverContent, PopoverTrigger } from './popover
 /*
  * The date field. The value in and out is a machine date, YYYY-MM-DD, and the empty string is a
  * legal value meaning no date: the Bookings filters' From and To start empty and empty means
- * unbounded, so the empty value has to be reachable again, which is what Clear is for.
+ * unbounded, so the empty value has to be reachable again, which is what Clear is for. A field
+ * that must always hold a day is made not clearable, and then offers no Clear.
  *
  * The trigger spells the value in the tenant's date format, never the browser locale, and carries
  * the raw machine value as its DOM value. A value it cannot parse renders verbatim, and the field
@@ -19,12 +20,12 @@ import { MENU_SURFACE, Popover, PopoverContent, PopoverTrigger } from './popover
  * a day or pressing Clear.
  *
  * The popover holds the day calendar over the date library, weeks starting on the tenant's week
- * start, single-select and required, with Clear beside it. The calendar takes focus on its one
- * tab stop as it opens, the chosen day or else today; Escape, a pick or Clear closes it and focus
- * goes back to the trigger. Escape reaches the popover alone as the top layer, so inside a modal
- * one press peels the popover and leaves the modal open. The popover's name and Clear are the
- * kit's words, from the strings the field is given. The trigger wears the field's look, its
- * figures in fixed-width numerals, and the popover the menu's.
+ * start, single-select and required, with Clear beside it unless the field is not clearable. The
+ * calendar takes focus on its one tab stop as it opens, the chosen day or else today; Escape, a
+ * pick or Clear closes it and focus goes back to the trigger. Escape reaches the popover alone as
+ * the top layer, so inside a modal one press peels the popover and leaves the modal open. The
+ * popover's name and Clear are the kit's words, from the strings the field is given. The trigger
+ * wears the field's look, its figures in fixed-width numerals, and the popover the menu's.
  */
 
 type Props = Omit<ComponentProps<'button'>, 'value' | 'onChange' | 'children' | 'type'> & {
@@ -37,9 +38,11 @@ type Props = Omit<ComponentProps<'button'>, 'value' | 'onChange' | 'children' | 
      * The earliest day the calendar reaches by its month and year dropdowns, for a date years back.
      */
     earliest?: string;
+    /** Whether Clear is offered beside the calendar, to empty the field; true unless said otherwise. */
+    clearable?: boolean;
 };
 
-export function DateField({ value, onChange, clock, weekStart, today, earliest, className, disabled, ...rest }: Props) {
+export function DateField({ value, onChange, clock, weekStart, today, earliest, clearable = true, className, disabled, ...rest }: Props) {
     const shell = useShell();
     const [open, setOpen] = useState(false);
 
@@ -76,11 +79,13 @@ export function DateField({ value, onChange, clock, weekStart, today, earliest, 
                 }}
             >
                 <DayCalendar className="p-1.5" selected={value} weekStart={weekStart} today={today ?? todayIn(clock.timezone, Date.now())} earliest={earliest} onChange={answer} />
-                <div className="flex justify-end border-t pt-1.5">
-                    <Button variant="tertiary" size="small" className="admin-date-field__clear" onClick={() => answer('')}>
-                        {shell.text('kit.date_field.clear')}
-                    </Button>
-                </div>
+                {clearable && (
+                    <div className="flex justify-end border-t pt-1.5">
+                        <Button variant="tertiary" size="small" className="admin-date-field__clear" onClick={() => answer('')}>
+                            {shell.text('kit.date_field.clear')}
+                        </Button>
+                    </div>
+                )}
             </PopoverContent>
         </Popover>
     );

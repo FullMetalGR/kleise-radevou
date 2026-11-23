@@ -1,25 +1,26 @@
 import { addDays, wallClockOf } from '../../booking/time';
 import type { WizardKey, WizardWords } from '@/customers/words';
-import { formatDate, formatTimeOfDay, type TenantClock } from '@/lib/format';
+import { isoWeekday } from '@/lib/day';
+import { formatAmount, formatDate, formatTimeOfDay, type TenantClock } from '@/lib/format';
 
 /*
  * The manual booking wizard's state and its transitions, as pure functions over one value: the
  * step, the ordered segments, the same-staff preference, the day, the chosen slot as the exact
- * string the availability answer carried, and the customer. The staleness rules of 4.3 are
+ * string the availability answer carried, and the customer. The staleness rules are
  * transitions of this one state and never effect wiring: a change to the chain's shape or the
  * preference kills the chosen slot, a different day kills it, the same day again changes nothing,
  * and removing the only segment is refused with the state unchanged.
  *
  * The catalog is the shared prop the server hands a user who may book by hand: the active
- * services with the durations and processing tails the summary's end is computed from and the
- * active members who perform each, the active named members, and the roster count the one-value
- * rule reads, 6.1.
+ * services with the durations and processing tails the summary's times are computed from, the
+ * prices and currencies it totals, and the active members who perform each; the active named
+ * members, and the roster count the one-value rule reads.
  *
  * No sentence is spelled here: a constant that held one holds its key of the wizard group of
  * lang/{locale}/admin/customers.php, and a function that words a value takes the wizard's words.
  */
 
-export type CatalogService = { id: number; name: string; duration_min: number; processing_min: number; staff: number[] };
+export type CatalogService = { id: number; name: string; duration_min: number; processing_min: number; price_minor: number; currency: string; staff: number[] };
 
 export type CatalogStaff = { id: number; name: string };
 
@@ -47,7 +48,7 @@ export type State = {
  */
 export type Prefill = { date?: string; staffId?: number | null; customer?: Customer };
 
-/** The strip's value line when a step has no answer yet, so its height never jumps, 4.1. */
+/** The strip's value line when a step has no answer yet, so its height never jumps. */
 export const NO_ANSWER = '\u00a0';
 
 /** The three steps' names, in order, each a key. */
@@ -68,7 +69,7 @@ export function initial(today: string, prefill: Prefill = {}): State {
     };
 }
 
-/** The courtesy of 4.2: the first segment takes the first active service while it is unanswered, and is left alone once answered. */
+/** The courtesy: the first segment takes the first active service while it is unanswered, and is left alone once answered. */
 export function courtesy(state: State, catalog: Catalog): State {
     const first = state.segments[0];
     const service = catalog.services[0];
@@ -140,12 +141,12 @@ function servicesAnswered(state: State): boolean {
     return state.segments.every((segment) => segment.service !== null);
 }
 
-/** Whether the customer step holds its answer, 4.4: a name and an email, each non-blank after trimming. */
+/** Whether the customer step holds its answer: a name and an email, each non-blank after trimming. */
 export function customerAnswered(state: State): boolean {
     return state.customer.name.trim() !== '' && state.customer.email.trim() !== '';
 }
 
-/** Whether the current step's gate is open, 4.2 to 4.4: Continue on the first two, Create on the last. */
+/** Whether the current step's gate is open: Continue on the first two, Create on the last. */
 export function gateOpen(state: State): boolean {
     return state.step === 0 ? servicesAnswered(state) : state.step === 1 ? state.slot !== null : customerAnswered(state);
 }
@@ -160,7 +161,7 @@ export function reopen(state: State, step: Step): State {
     return step < state.step ? { ...state, step } : state;
 }
 
-/** The strip's running answers, 4.1, and the machine date for the date button's DOM value. */
+/** The strip's running answers, and the machine date for the date button's DOM value. */
 export function stripValues(state: State, catalog: Catalog, clock: TenantClock, words: WizardWords): [string, string, string] {
     const first = catalog.services.find((service) => service.id === state.segments[0]?.service);
     const more = state.segments.length - 1;
@@ -174,7 +175,7 @@ export function stripValues(state: State, catalog: Catalog, clock: TenantClock, 
     ];
 }
 
-/** Whether the staff choice is real, 6.1: the feature entitled, or more than one staff row, or a pin already held. */
+/** Whether the staff choice is real: the feature entitled, or more than one staff row, or a pin already held. */
 export function staffChoiceReal(entitlements: readonly string[], catalog: Catalog, state: State): boolean {
     return entitlements.includes('staff') || catalog.members > 1 || state.segments.some((segment) => segment.staff !== null);
 }
@@ -245,23 +246,33 @@ function onGrid(minutes: number, granularity: number): number {
 }
 
 /**
- * The chain's customer-facing length in minutes, 4.4: each value rounded up to the granularity
+ * The chain's customer-facing length in minutes: each value rounded up to the granularity
  * grid, each segment advancing by its duration plus its processing tail, the last segment's tail
  * excluded because the customer leaves before the chair frees up.
  */
-function spanMinutes(state: State, catalog: Catalog, granularity: number): number {
-    const services = state.segments.flatMap((segment) => catalog.services.filter((service) => service.id === segment.service));
+export function spanMinutes(state: State, catalog: Catalog, granularity: number): number {
+    const services = chosenServices(state, catalog);
 
     return services.reduce((sum, service, index) => sum + onGrid(service.duration_min, granularity) + (index < services.length - 1 ? onGrid(service.processing_min, granularity) : 0), 0);
 }
 
-/** The end of the appointment as a wire instant, the start plus the span. */
-export function endOf(start: string, state: State, catalog: Catalog, granularity: number): string {
-    return new Date(Date.parse(start) + spanMinutes(state, catalog, granularity) * 60_000).toISOString();
+/** The services the segments hold, in order, a segment with none skipped. */
+function chosenServices(state: State, catalog: Catalog): CatalogService[] {
+    return state.segments.flatMap((segment) => catalog.services.filter((service) => service.id === segment.service));
 }
 
-/** One Service line per segment, naming the member where the choice was real and the service alone where it never was. */
-export function serviceLines(state: State, catalog: Catalog, staffReal: boolean, words: WizardWords): string[] {
+/** A summary line: a segment's service, its member pin, and its own start and end once a slot is chosen. */
+export type SummaryLine = { service: CatalogService; staff: number | null; start: string | null; end: string | null };
+
+/**
+ * One summary line per segment holding a service. Once a slot is chosen each line is timed on the
+ * same grid as the end: a segment lasts its own duration, and the next starts after that duration
+ * and the processing tail between them.
+ */
+export function summaryLines(state: State, catalog: Catalog, granularity: number): SummaryLine[] {
+    const origin = state.slot === null ? null : Date.parse(state.slot);
+    let offset = 0;
+
     return state.segments.flatMap((segment) => {
         const service = catalog.services.find((each) => each.id === segment.service);
 
@@ -269,10 +280,56 @@ export function serviceLines(state: State, catalog: Catalog, staffReal: boolean,
             return [];
         }
 
-        const member = catalog.staff.find((each) => each.id === segment.staff);
+        const length = onGrid(service.duration_min, granularity);
+        const from = offset;
+        offset += length + onGrid(service.processing_min, granularity);
 
-        return [staffReal ? words.text('summary.service_staff', { service: service.name, staff: member?.name ?? words.text(ANY_STAFF) }) : service.name];
+        return [
+            {
+                service,
+                staff: segment.staff,
+                start: origin === null ? null : new Date(origin + from * 60_000).toISOString(),
+                end: origin === null ? null : new Date(origin + (from + length) * 60_000).toISOString(),
+            },
+        ];
     });
+}
+
+/** The sum of the chosen services' prices; null when none is chosen or they do not share one currency. */
+export function totalOf(state: State, catalog: Catalog): { minor: number; currency: string } | null {
+    const services = chosenServices(state, catalog);
+    const currency = services[0]?.currency;
+
+    if (currency === undefined || services.some((service) => service.currency !== currency)) {
+        return null;
+    }
+
+    return { minor: services.reduce((sum, service) => sum + service.price_minor, 0), currency };
+}
+
+/** A length in minutes worded in hours and minutes, the hours left out under one and the minutes left out on the hour. */
+export function lengthLabel(minutes: number, words: WizardWords): string {
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+
+    if (hours === 0) {
+        return words.choice('length.minutes', rest);
+    }
+
+    return rest === 0 ? words.choice('length.hours', hours) : words.choice('length.hours_minutes', hours, { minutes: String(rest) });
+}
+
+/** A chosen service's hint: its length and its price, joined as the language joins two parts. */
+export function serviceHint(service: CatalogService, words: WizardWords): string {
+    return words.text('joined', { first: lengthLabel(service.duration_min, words), second: formatAmount(service.price_minor, service.currency, words.locale) });
+}
+
+/** The seven machine dates of the week holding a day, from the ISO week start, Monday for one unread. */
+export function weekOf(day: string, weekStart: number): string[] {
+    const start = Number.isInteger(weekStart) && weekStart >= 1 && weekStart <= 7 ? weekStart : 1;
+    const first = addDays(day, -((isoWeekday(day) - start + 7) % 7));
+
+    return Array.from({ length: 7 }, (_, index) => addDays(first, index));
 }
 
 export type Item = { service_id: number; staff_id: number | null };

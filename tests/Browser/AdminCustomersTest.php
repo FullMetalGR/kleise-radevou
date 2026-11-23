@@ -209,13 +209,15 @@ it('reads the customer\'s tiles, books them from Book now with their fields fill
         ->assertPresent('.admin-wizard')
         ->assertSeeIn('.admin-wizard-strip li:nth-child(3)', 'Casey Customer')
         ->click('.admin-wizard-continue')
-        ->waitForText(adminLine('admin/customers.wizard.zone', ['zone' => 'Europe/Athens']));
+        ->waitForText(adminLine('admin/customers.wizard.zone', ['zone' => 'Europe/Athens']))
+        ->click('.admin-wizard-date');
 
     for ($month = 0; $month < $months; $month++) {
-        $page->click(sprintf('.admin-day-calendar button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next')));
+        $page->click(sprintf('.admin-date-field__popover .admin-day-calendar button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next')));
     }
 
-    $page->click('button[data-date="'.$day->format('Y-m-d').'"]')
+    $page->click('.admin-date-field__popover button[data-date="'.$day->format('Y-m-d').'"]')
+        ->assertScript(Admin::focusIsOn('.admin-wizard-date'), true)
         ->waitForText(adminLine('admin/customers.wizard.periods.morning'))
         ->click('.admin-wizard-slot[value="'.$nine.'"]')
         ->click('.admin-wizard-continue')

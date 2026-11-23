@@ -60,7 +60,7 @@ const PROPS: SharedProps = {
     free: false,
     settings: { granularity: 5, week_start: 1, date_format: 'd/m/Y', time_format: 'H:i', colour_by: 'staff', messages: [] },
     nav: [{ key: 'settings', label: KEYED_SHELL.nav.settings, url: '/admin/settings', group: KEYED_SHELL.nav.groups.business, pending: null, current: true }],
-    catalog: { services: [{ id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, staff: [2] }], staff: [{ id: 2, name: 'Elena Papadaki' }], members: 2 },
+    catalog: { services: [{ id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, price_minor: 3500, currency: 'EUR', staff: [2] }], staff: [{ id: 2, name: 'Elena Papadaki' }], members: 2 },
     wizard: KEYED_WIZARD,
 };
 

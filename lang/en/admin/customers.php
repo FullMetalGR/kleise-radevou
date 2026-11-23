@@ -201,7 +201,7 @@ return [
         'same_staff' => 'Prefer the same staff member for the whole chain',
         'zone' => 'Times in :zone',
         'loading' => 'Loading times...',
-        'no_times' => 'No open times on this day, pick another on the calendar',
+        'no_times' => 'No open times on this day, pick another day',
         'unreadable' => 'The open times could not be read. Reload the page and try again.',
         'periods' => [
             'morning' => 'Morning',
@@ -209,12 +209,25 @@ return [
             'evening' => 'Evening',
         ],
         'summary' => [
-            'date' => 'Date',
-            'time' => 'Time',
-            'service' => 'Service',
+            'title' => 'Booking summary',
             'span' => ':time - :end',
-            'service_staff' => ':service, :staff',
+            'duration' => 'Duration',
+            'total' => 'Total',
         ],
+        'length' => [
+            'minutes' => ':count min',
+            'hours' => ':count h',
+            'hours_minutes' => ':count h :minutes min',
+        ],
+        'week' => [
+            'previous' => 'Previous week',
+            'next' => 'Next week',
+        ],
+        'date_field' => 'Date',
+        'available' => 'Available times',
+        'time_hint' => 'Choose a time to continue.',
+        'source_note' => 'The source is recorded as ":source".',
+        'joined' => ':first, :second',
         'fields' => [
             'name' => 'Customer name',
             'email' => 'Email',

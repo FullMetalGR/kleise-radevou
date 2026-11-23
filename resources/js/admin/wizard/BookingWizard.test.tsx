@@ -3,13 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { key, mount, type Mounted, press } from '@/components/ui/harness';
 import { FORCED_EDGE } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
-import type { TenantClock } from '@/lib/format';
+import { formatAmount, type TenantClock } from '@/lib/format';
+import { dayTitle } from '@/lib/names';
 import { KEYED_BOOKINGS, KEYED_CUSTOMERS, KEYED_SHELL, KEYED_WIZARD, keyedShell, keyedWizard } from '@/testing/keyed';
 import { ToastProvider } from '@/toast/toasts';
 import type { SharedProps } from '@/types';
 import { BookingWizard, CREATE_URL } from './BookingWizard';
 import { AVAILABILITY_URL, UNREADABLE } from './availability';
-import { ANY_STAFF, type Catalog, NO_ANSWER, NO_TIMES } from './model';
+import { ANY_STAFF, type Catalog, lengthLabel, NO_ANSWER, NO_TIMES, serviceHint } from './model';
 import { NewBookingProvider, useNewBooking } from './NewBooking';
 
 /*
@@ -44,8 +45,8 @@ vi.mock('@inertiajs/react', () => ({
 
 const CATALOG: Catalog = {
     services: [
-        { id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, staff: [2, 3] },
-        { id: 3, name: 'Colour', duration_min: 60, processing_min: 30, staff: [2, 3] },
+        { id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, price_minor: 3500, currency: 'EUR', staff: [2, 3] },
+        { id: 3, name: 'Colour', duration_min: 60, processing_min: 30, price_minor: 8000, currency: 'EUR', staff: [2, 3] },
     ],
     staff: [
         { id: 2, name: 'Elena Papadaki' },
@@ -164,7 +165,7 @@ async function toCustomer(slot = STARTS[1] ?? ''): Promise<void> {
     press(dialog().querySelector('.admin-wizard-continue'));
 }
 
-describe('the strip, 4.1', () => {
+describe('the strip', () => {
     it('shows the running answers with a non-breaking space where none, disables the current and unreached steps, marks the current one, and reopens a finished step from its button with the machine date on the date button', async () => {
         render();
 
@@ -259,7 +260,7 @@ function mono(element: Element | null): boolean {
     return [...(element?.classList ?? [])].includes(['font', 'mono'].join('-'));
 }
 
-describe('a customer\'s Book now, 4', () => {
+describe('a customer\'s Book now', () => {
     it('opens with the customer in the strip and the fields, the step answered and still editable, Create live once a slot is chosen', async () => {
         render({ prefill: { customer: { name: 'Casey Customer', email: 'casey@example.com', phone: '+30 210 1111111' } } });
 
@@ -285,7 +286,7 @@ describe('a customer\'s Book now, 4', () => {
     });
 });
 
-describe('step 0, 4.2', () => {
+describe('step 0', () => {
     it('fills the first segment with the first active service, leaves it alone once chosen, and shows no Staff select with the empty entitlements and one member', () => {
         render({ entitlements: [], catalog: { ...CATALOG, members: 1 } });
 
@@ -301,7 +302,7 @@ describe('step 0, 4.2', () => {
     });
 
     it('lists Any staff then the segment\'s active performers, shows Remove and the same-staff checkbox only past one segment, and follows every segment naming a service', () => {
-        render({ catalog: { ...CATALOG, services: [{ id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, staff: [2] }, ...CATALOG.services.slice(1)] } });
+        render({ catalog: { ...CATALOG, services: [{ id: 1, name: 'Haircut', duration_min: 45, processing_min: 0, price_minor: 3500, currency: 'EUR', staff: [2] }, ...CATALOG.services.slice(1)] } });
 
         expect([...(dialog().querySelector<HTMLSelectElement>('.admin-wizard-staff')?.options ?? [])].map((option) => option.textContent)).toEqual([wiz.text(ANY_STAFF), 'Elena Papadaki']);
         expect(dialog().querySelector<HTMLButtonElement>('.admin-wizard-continue')?.disabled).toBe(false);
@@ -335,6 +336,30 @@ describe('step 0, 4.2', () => {
         expect([...dialog().classList].filter((name) => name.startsWith('max-w-'))).toEqual(['max-w-[62.5rem]']);
         expect(dialog().querySelector('.admin-wizard-strip')?.closest('.\\@container')).not.toBeNull();
     });
+
+    it('shows the segment legend on a single segment in the display font, hints a chosen service with its length and price, and puts the plus icon on Add segment', () => {
+        render();
+
+        const legend = dialog().querySelector('.admin-wizard-segment__caption');
+        expect(legend?.textContent).toBe(wiz.text('segment', { n: '1' }));
+        expect(['font-display', 'text-body', 'font-semibold'].filter((name) => !legend?.classList.contains(name))).toEqual([]);
+
+        const haircut = CATALOG.services[0];
+
+        if (haircut === undefined) {
+            throw new Error('The catalog lost Haircut.');
+        }
+
+        const select = dialog().querySelector('#wizard-service-0');
+        expect(dialog().querySelector('#wizard-service-0-help')?.textContent).toBe(serviceHint(haircut, wiz));
+        expect(select?.getAttribute('aria-describedby')).toContain('wizard-service-0-help');
+
+        choose('.admin-wizard-service', '');
+
+        expect(dialog().querySelector('#wizard-service-0-help')).toBeNull();
+        expect(dialog().querySelector('.admin-wizard-add svg')).not.toBeNull();
+        expect(dialog().querySelector('.admin-wizard-add svg')?.getAttribute('aria-hidden')).toBe('true');
+    });
 });
 
 /** True when the element is an inner card: the smaller radius inside a line ring. */
@@ -342,7 +367,7 @@ function innerCard(element: Element | null): boolean {
     return element?.tagName === 'SECTION' && ['rounded-inner', 'ring-border'].every((name) => element.classList.contains(name));
 }
 
-describe('step 1, 4.3', () => {
+describe('step 1', () => {
     it('asks the one endpoint only while every segment names a service, the default day prefetched at open, with the chain in the create shape', async () => {
         render();
         await settle();
@@ -371,7 +396,7 @@ describe('step 1, 4.3', () => {
 
         const zone = dialog().querySelector('.admin-wizard-zone');
         expect(zone?.textContent).toBe(wiz.text('zone', { zone: 'Europe/Athens' }));
-        expect([...dialog().querySelectorAll<HTMLButtonElement>('button[data-date]')].some((day) => day.disabled)).toBe(false);
+        expect([...dialog().querySelectorAll<HTMLButtonElement>('.admin-wizard-day')].some((day) => day.disabled)).toBe(false);
         expect([...dialog().querySelectorAll('.admin-wizard-group__title')].map((title) => title.textContent)).toEqual([`${wiz.text('periods.morning')} (2)`, `${wiz.text('periods.afternoon')} (1)`, `${wiz.text('periods.evening')} (1)`]);
         expect([...dialog().querySelectorAll('.admin-wizard-slot')].map((slot) => slot.textContent)).toEqual(['09:00', '10:00', '14:00', '17:30']);
         expect(dialog().querySelector<HTMLButtonElement>('.admin-wizard-continue')?.disabled).toBe(true);
@@ -382,7 +407,7 @@ describe('step 1, 4.3', () => {
         expect(dialog().querySelector<HTMLButtonElement>('.admin-wizard-continue')?.disabled).toBe(false);
         expect(values()[1]).toBe(TEN);
 
-        press(dialog().querySelector('button[data-date="2026-11-02"]'));
+        press(dialog().querySelector('.admin-wizard-day[value="2026-11-02"]'));
         await settle();
 
         expect(dialog().querySelector('.admin-notice--info')?.textContent).toBe(wiz.text(NO_TIMES));
@@ -416,7 +441,7 @@ describe('step 1, 4.3', () => {
         render();
         await toWhen();
         press(dialog().querySelector('.admin-wizard-slot[value="2026-11-03T08:00:00+00:00"]'));
-        press(dialog().querySelector('button[data-date="2026-11-03"]'));
+        press(dialog().querySelector('.admin-wizard-day[value="2026-11-03"]'));
 
         expect(dialog().querySelector('.admin-wizard-slot[aria-pressed="true"]')).not.toBeNull();
 
@@ -438,7 +463,7 @@ describe('step 1, 4.3', () => {
         expect(fetched.mock.calls.length).toBeGreaterThan(1);
     });
 
-    it('sets each slot as a 44 pixel pill of lining figures, pressed once chosen, three to a line under the day calendar and beside it from a roomy dialog', async () => {
+    it('sets each slot as a 44 pixel pill of lining figures, pressed once chosen, three to a line at phone width and filling the column from a roomy dialog', async () => {
         render();
         await toWhen();
         press(dialog().querySelector(`.admin-wizard-slot[value="${STARTS[1]}"]`));
@@ -448,10 +473,136 @@ describe('step 1, 4.3', () => {
         expect(slots.map((slot) => ['h-11', 'rounded-field', 'tabular-nums'].filter((name) => !slot.classList.contains(name)))).toEqual([[], [], [], []]);
         expect(slots.filter(mono)).toEqual([]);
         expect(slots.map((slot) => slot.parentElement?.classList.contains('grid-cols-3'))).toEqual([true, true, true, true]);
+        expect(['gap-2', '@max-sm:gap-1.5', '@xl:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))]'].filter((name) => !slots[0]?.parentElement?.classList.contains(name))).toEqual([]);
+        expect([...(slots[0]?.parentElement?.classList ?? [])].filter((name) => name.startsWith('desktop:'))).toEqual([]);
+    });
 
-        const when = dialog().querySelector('.admin-wizard-when');
-        expect(when?.classList.contains('@xl:grid-cols-2')).toBe(true);
-        expect([...(when?.classList ?? [])].filter((name) => name.startsWith('desktop:'))).toEqual([]);
+    it('shows the seven days of the chosen day\'s week from the week start, the chosen one pressed and today marked, each named in full', async () => {
+        render({ weekStart: 7 });
+        await toWhen();
+
+        const days = [...dialog().querySelectorAll<HTMLButtonElement>('.admin-wizard-day')];
+        expect(days.map((day) => day.value)).toEqual(['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07']);
+        expect(days.map((day) => day.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true', 'false', 'false', 'false', 'false']);
+        expect(days.map((day) => day.getAttribute('aria-current'))).toEqual([null, null, 'date', null, null, null, null]);
+        expect(days[2]?.getAttribute('aria-label')).toBe(dayTitle(2026, 11, 3, 'en'));
+        expect([days[2]?.querySelector('.admin-wizard-day__weekday')?.textContent, days[2]?.querySelector('.admin-wizard-day__number')?.textContent]).toEqual(['Tue', '3']);
+        expect(['@min-[35.75rem]/week:w-15', 'rounded-[1.125rem]', 'aria-pressed:bg-primary', 'aria-[current=date]:inset-ring-primary'].filter((name) => !days[2]?.classList.contains(name))).toEqual([]);
+        expect(['font-display', 'font-semibold'].filter((name) => !days[2]?.querySelector('.admin-wizard-day__number')?.classList.contains(name))).toEqual([]);
+    });
+
+    it('sizes the chips by the week row\'s own width, the row spanning the step\'s column beside the summary, never by the dialog\'s body', async () => {
+        render();
+        await toWhen();
+
+        const week = dialog().querySelector('.admin-wizard-week');
+        const days = [...dialog().querySelectorAll<HTMLButtonElement>('.admin-wizard-day')];
+        expect(week?.classList.contains('@container/week')).toBe(true);
+        expect(week?.parentElement?.classList.contains('admin-wizard-when')).toBe(true);
+        expect(days.map((day) => [day.classList.contains('@min-[35.75rem]/week:w-15'), day.parentElement?.classList.contains('@min-[35.75rem]/week:flex-none')])).toEqual(days.map(() => [true, true]));
+        expect(days[0]?.closest('ul')?.classList.contains('@min-[35.75rem]/week:flex-none')).toBe(true);
+
+        const queries = [week, ...(week?.querySelectorAll('*') ?? [])].flatMap((part) => [...(part?.classList ?? [])]).filter((name) => /^(@|(sm|md|lg|xl|2xl):)/.test(name));
+        expect(queries.filter((name) => name !== '@container/week' && !name.includes('/week:'))).toEqual([]);
+    });
+
+    it('marks today with a dot under its number besides the ring, drawn in the chip\'s own ink so it shows on a plain chip and on the chosen one alike', async () => {
+        render();
+        await toWhen();
+
+        const today = dialog().querySelector<HTMLButtonElement>('.admin-wizard-day[aria-current="date"]');
+        expect(today?.getAttribute('aria-pressed')).toBe('true');
+        expect(
+            ['relative', 'aria-[current=date]:after:absolute', 'aria-[current=date]:after:bottom-1.5', 'aria-[current=date]:after:left-1/2', 'aria-[current=date]:after:-translate-x-1/2', 'aria-[current=date]:after:size-1', 'aria-[current=date]:after:rounded-full', 'aria-[current=date]:after:border-2', 'aria-[current=date]:after:border-current'].filter((name) => !today?.classList.contains(name)),
+        ).toEqual([]);
+        expect([...(today?.classList ?? [])].filter((name) => name.startsWith('after:'))).toEqual([]);
+    });
+
+    it('loads a chip\'s day, and moves a week either way from the named round buttons onto the same weekday, loading its times', async () => {
+        render();
+        await toWhen();
+
+        press(dialog().querySelector('.admin-wizard-day[value="2026-11-05"]'));
+        await settle();
+
+        expect(steps()[1]?.value).toBe('2026-11-05');
+        expect(new URLSearchParams(String(fetched.mock.calls.at(-1)?.[0]).split('?')[1]).get('from')).toBe('2026-11-05');
+
+        const next = dialog().querySelector('.admin-wizard-week-next');
+        expect(next?.textContent).toBe(wiz.text('week.next'));
+        expect(next?.classList.contains('rounded-full')).toBe(true);
+        press(next);
+        await settle();
+
+        expect(steps()[1]?.value).toBe('2026-11-12');
+        expect(new URLSearchParams(String(fetched.mock.calls.at(-1)?.[0]).split('?')[1]).get('from')).toBe('2026-11-12');
+        expect([...dialog().querySelectorAll<HTMLButtonElement>('.admin-wizard-day')].map((day) => day.value)[0]).toBe('2026-11-09');
+        expect(dialog().querySelector('.admin-wizard-day[aria-current]')).toBeNull();
+
+        const previous = dialog().querySelector('.admin-wizard-week-previous');
+        expect(previous?.textContent).toBe(wiz.text('week.previous'));
+        press(previous);
+        press(dialog().querySelector('.admin-wizard-week-previous'));
+        await settle();
+
+        expect(steps()[1]?.value).toBe('2026-10-29');
+        expect(dialog().querySelector('.admin-wizard-day[aria-pressed="true"]')?.getAttribute('value')).toBe('2026-10-29');
+    });
+
+    it('reaches a day two months ahead and a past day through the date field under the chips, set to the right and full width at phone width', async () => {
+        const shell = keyedShell();
+        render();
+        await toWhen();
+
+        const field = dialog().querySelector<HTMLButtonElement>('.admin-wizard-date');
+        expect(field?.value).toBe(TODAY);
+        expect(field?.getAttribute('aria-label')).toBe(wiz.text('date_field'));
+        expect(['w-full', '@xl:w-42'].filter((name) => !field?.classList.contains(name))).toEqual([]);
+        expect(field?.parentElement?.classList.contains('justify-end')).toBe(true);
+
+        press(field);
+        press(document.body.querySelector(`.admin-date-field__popover button[aria-label="${shell.text('kit.month_grid.next')}"]`));
+        press(document.body.querySelector(`.admin-date-field__popover button[aria-label="${shell.text('kit.month_grid.next')}"]`));
+        press(document.body.querySelector('.admin-date-field__popover button[data-date="2027-01-05"]'));
+        await settle();
+
+        expect(steps()[1]?.value).toBe('2027-01-05');
+        expect(new URLSearchParams(String(fetched.mock.calls.at(-1)?.[0]).split('?')[1]).get('from')).toBe('2027-01-05');
+        expect(dialog().querySelector('.admin-wizard-day[aria-pressed="true"]')?.getAttribute('value')).toBe('2027-01-05');
+
+        press(dialog().querySelector('.admin-wizard-date'));
+        for (let step = 0; step < 3; step++) {
+            press(document.body.querySelector(`.admin-date-field__popover button[aria-label="${shell.text('kit.month_grid.previous')}"]`));
+        }
+        press(document.body.querySelector('.admin-date-field__popover button[data-date="2026-10-20"]'));
+        await settle();
+
+        expect(steps()[1]?.value).toBe('2026-10-20');
+    });
+
+    it('offers no Clear in the date field, since the booking always has a day', async () => {
+        render();
+        await toWhen();
+
+        press(dialog().querySelector('.admin-wizard-date'));
+
+        expect(document.body.querySelector('.admin-date-field__popover')).not.toBeNull();
+        expect(document.body.querySelector('.admin-date-field__clear')).toBeNull();
+    });
+
+    it('captions the times with the chosen day over the zone line, and hints a time is needed until one is chosen', async () => {
+        render();
+        await toWhen();
+
+        const caption = dialog().querySelector('.admin-wizard-caption');
+        expect(caption?.firstChild?.textContent).toBe(wiz.text('available'));
+        expect(caption?.querySelector('.admin-wizard-caption__day')?.textContent).toBe('Tue 03/11/2026');
+        expect(caption?.nextElementSibling?.classList.contains('admin-wizard-zone')).toBe(true);
+        expect(dialog().querySelector('.admin-wizard-hint')?.textContent).toBe(wiz.text('time_hint'));
+
+        press(dialog().querySelector(`.admin-wizard-slot[value="${STARTS[1]}"]`));
+
+        expect(dialog().querySelector('.admin-wizard-hint')).toBeNull();
     });
 
     it('shows the error notice with the server\'s sentence when the read fails', async () => {
@@ -500,17 +651,22 @@ describe('step 1, 4.3', () => {
     });
 });
 
-describe('step 2 and the submission, 4.4', () => {
-    it('shows the date, the span with the end from the geometry less the last tail, and a Service line per segment, and follows name and email', async () => {
+describe('step 2 and the submission', () => {
+    it('summarises the chain on the customer step, each line with its price, its own times and its member, the day on a chip, and follows name and email', async () => {
         render();
         press(dialog().querySelector('.admin-wizard-add'));
         choose('#wizard-service-1', '3');
         choose('#wizard-staff-0', '2');
         await toCustomer();
 
-        expect(dialog().querySelector('.admin-wizard-summary__date')?.textContent).toBe('03/11/2026');
-        expect(dialog().querySelector('.admin-wizard-summary__time')?.textContent).toBe(wiz.text('summary.span', { time: '10:00', end: '11:45' }));
-        expect([...dialog().querySelectorAll('.admin-wizard-summary__service')].map((line) => line.textContent)).toEqual([wiz.text('summary.service_staff', { service: 'Haircut', staff: 'Elena Papadaki' }), wiz.text('summary.service_staff', { service: 'Colour', staff: wiz.text(ANY_STAFF) })]);
+        expect([...dialog().querySelectorAll('.admin-wizard-summary__service')].map((line) => line.textContent)).toEqual(['Haircut', 'Colour']);
+        expect([...dialog().querySelectorAll('.admin-wizard-summary__span')].map((line) => line.textContent)).toEqual([
+            wiz.text('joined', { first: wiz.text('summary.span', { time: '10:00', end: '10:45' }), second: 'Elena Papadaki' }),
+            wiz.text('joined', { first: wiz.text('summary.span', { time: '10:45', end: '11:45' }), second: wiz.text(ANY_STAFF) }),
+        ]);
+        expect(dialog().querySelector('.admin-wizard-summary__when')?.textContent).toBe(wiz.text('joined', { first: 'Tue 03/11/2026', second: '10:00' }));
+        expect(dialog().querySelector('.admin-wizard-summary__duration')?.textContent).toBe(lengthLabel(105, wiz));
+        expect(dialog().querySelector('.admin-wizard-summary__total')?.textContent).toBe(formatAmount(11500, 'EUR', wiz.locale));
         expect(dialog().querySelector<HTMLButtonElement>('.admin-wizard-create')?.disabled).toBe(true);
 
         type('.admin-wizard-name', ' Ada North ');
@@ -520,31 +676,45 @@ describe('step 2 and the submission, 4.4', () => {
         expect(values()[2]).toBe('Ada North');
     });
 
-    it('names the service alone where the choice was never real', async () => {
+    it('gives the times alone on a line where the member choice was never real', async () => {
         render({ entitlements: [], catalog: { ...CATALOG, members: 1 } });
         await toCustomer();
 
-        expect([...dialog().querySelectorAll('.admin-wizard-summary__service')].map((line) => line.textContent)).toEqual(['Haircut']);
+        expect([...dialog().querySelectorAll('.admin-wizard-summary__span')].map((line) => line.textContent)).toEqual([wiz.text('summary.span', { time: '10:00', end: '10:45' })]);
     });
 
-    it('sets the summary as a description list inside an inner card, placed beside the fields from a roomy dialog without moving it in the reading order, its span in lining figures', async () => {
+    it('draws the summary on every step after the step\'s content, in a sticky 290 pixel column beside it once the body is 48rem wide', async () => {
+        render();
+
+        for (const step of [0, 1, 2]) {
+            if (step === 1) {
+                await toWhen();
+            }
+
+            if (step === 2) {
+                press(dialog().querySelector(`.admin-wizard-slot[value="${STARTS[1]}"]`));
+                press(dialog().querySelector('.admin-wizard-continue'));
+            }
+
+            const summary = dialog().querySelector('.admin-wizard-summary');
+            const layout = summary?.parentElement;
+            expect(summary?.querySelector('h3')?.textContent).toBe(wiz.text('summary.title'));
+            expect(['@3xl:sticky', '@3xl:top-0'].filter((name) => !summary?.classList.contains(name))).toEqual([]);
+            expect(['grid-cols-1', '@3xl:grid-cols-[minmax(0,1fr)_18.125rem]', '@3xl:items-start'].filter((name) => !layout?.classList.contains(name))).toEqual([]);
+            expect([...(summary?.classList ?? []), ...(layout?.classList ?? [])].filter((name) => name.startsWith('@xl:'))).toEqual([]);
+            expect(layout?.lastElementChild).toBe(summary);
+            expect(layout?.closest('.\\@container')).not.toBeNull();
+        }
+    });
+
+    it('holds the customer fields at 480 pixels at most, with a note naming the source the booking is recorded under', async () => {
         render();
         await toCustomer();
 
-        const summary = dialog().querySelector('.admin-wizard-summary');
-        const card = summary?.parentElement ?? null;
-        expect(summary?.tagName).toBe('DL');
-        expect(innerCard(card)).toBe(true);
-        expect(['@xl:col-start-2', '@xl:row-start-1'].filter((name) => !card?.classList.contains(name))).toEqual([]);
-        expect(card?.nextElementSibling?.querySelector('#wizard-customer-name')).not.toBeNull();
-
         const customer = dialog().querySelector('.admin-wizard-customer');
-        expect(customer?.classList.contains('@xl:grid-cols-[minmax(0,1fr)_18.125rem]')).toBe(true);
-        expect([...(customer?.classList ?? [])].filter((name) => name.startsWith('desktop:'))).toEqual([]);
-
-        const span = dialog().querySelector('.admin-wizard-summary__time');
-        expect(span?.classList.contains('tabular-nums')).toBe(true);
-        expect(mono(span)).toBe(false);
+        expect(customer?.classList.contains('max-w-[30rem]')).toBe(true);
+        expect(customer?.querySelector('#wizard-customer-name')).not.toBeNull();
+        expect(customer?.querySelector('.admin-wizard-source')?.textContent).toBe(wiz.text('source_note', { source: keyedShell().text('shared.sources.admin') }));
     });
 
     it('sends the customer, the ordered segments and the exact start the answer carried, shows busy with Cancel and the close control disabled, and closes on success', async () => {
@@ -629,7 +799,7 @@ function NewBookingButton() {
     );
 }
 
-describe('the opening, 1.5', () => {
+describe('the opening', () => {
     const PROPS: SharedProps = {
         tenant: { name: 'Luna', slug: 'luna', timezone: 'Europe/Athens', currency: 'EUR' },
         auth: { user: { id: 1, name: 'Alex Owner', role: 'owner' } },

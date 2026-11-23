@@ -4,6 +4,8 @@ use App\Http\Controllers\Admin\NewBookingController;
 use App\Site\SiteLanguage;
 use Database\Seeders\DemoTenantsSeeder;
 use Illuminate\Support\Facades\DB;
+use Pest\Browser\Api\AwaitableWebpage;
+use Pest\Browser\Api\Webpage;
 use Tests\Browser\Support\Admin;
 use Tests\Browser\Support\Look;
 use Tests\Browser\Support\PhoneScripts;
@@ -16,8 +18,8 @@ use Tests\Support\LunaFixture;
  *
  * The day is the first Tuesday at least a week ahead of the machine's clock, when Elena works
  * 09:00 to 13:00 and 14:00 to 18:00 on luna, so the first slot the morning group offers is 09:00
- * whatever day the suite runs on; the day calendar opens on the tenant's today and is walked
- * forward a month at a time until that Tuesday is on it. 09:05 is offered beside it at luna's
+ * whatever day the suite runs on; the date field under the week's chips opens its calendar on the
+ * tenant's today, which is walked forward a month at a time until that Tuesday is on it. 09:05 is offered beside it at luna's
  * default start interval of fifteen minutes, since the wizard's read offers every start.
  */
 
@@ -45,6 +47,23 @@ function wizardTuesday(): array
     return ['date' => $day->format('Y-m-d'), 'months' => $months, 'label' => $day->format('d/m/Y'), 'nine' => $nine, 'ninePastFive' => $ninePastFive];
 }
 
+/**
+ * Chooses a day through the date field under the week's chips: its calendar is opened, walked
+ * forward the months given and the day pressed, and the walk waits for the focus to come back
+ * to the field once the calendar has closed.
+ */
+function wizardDayFromField(AwaitableWebpage|Webpage $page, string $date, int $months, SiteLanguage $language = SiteLanguage::English): void
+{
+    $page->click('.admin-wizard-date');
+
+    for ($month = 0; $month < $months; $month++) {
+        $page->click(sprintf('.admin-date-field__popover .admin-day-calendar button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next', [], $language)));
+    }
+
+    $page->click('.admin-date-field__popover button[data-date="'.$date.'"]')
+        ->assertScript(Admin::focusIsOn('.admin-wizard-date'), true);
+}
+
 it('books two services for a customer from the page header, sees the toast, finds the booking confirmed in the list and its trail naming the operator', function () {
     ['date' => $date, 'months' => $months, 'label' => $label, 'nine' => $nine, 'ninePastFive' => $ninePastFive] = wizardTuesday();
     $colour = LunaFixture::id('services', 'Colour');
@@ -63,11 +82,8 @@ it('books two services for a customer from the page header, sees the toast, find
         ->waitForText(adminLine('admin/customers.wizard.zone', ['zone' => 'Europe/Athens']));
     Look::shot($page, 'booking-wizard-1728');
 
-    for ($month = 0; $month < $months; $month++) {
-        $page->click(sprintf('.admin-day-calendar button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next')));
-    }
-
-    $page->click('button[data-date="'.$date.'"]')
+    wizardDayFromField($page, $date, $months);
+    $page
         ->waitForText(adminLine('admin/customers.wizard.periods.morning'))
         ->assertSeeIn('.admin-wizard-strip', $label)
         ->assertCount('.admin-wizard-slot[value="'.$ninePastFive.'"]', 1)
@@ -75,9 +91,11 @@ it('books two services for a customer from the page header, sees the toast, find
         ->assertSeeIn('.admin-wizard-strip', adminLine('admin/customers.wizard.when', ['date' => $label, 'time' => '09:00']))
         ->click('.admin-wizard-continue')
         ->waitForText(adminLine('admin/customers.wizard.fields.name'))
-        ->assertSeeIn('.admin-wizard-summary', adminLine('admin/customers.wizard.summary.span', ['time' => '09:00', 'end' => '10:45']))
-        ->assertSeeIn('.admin-wizard-summary', adminLine('admin/customers.wizard.summary.service_staff', ['service' => 'Haircut', 'staff' => adminLine('admin/customers.wizard.any_staff')]))
-        ->assertSeeIn('.admin-wizard-summary', adminLine('admin/customers.wizard.summary.service_staff', ['service' => 'Colour', 'staff' => adminLine('admin/customers.wizard.any_staff')]))
+        ->assertSeeIn('.admin-wizard-summary', 'Haircut')
+        ->assertSeeIn('.admin-wizard-summary', 'Colour')
+        ->assertSeeIn('.admin-wizard-summary', adminLine('admin/customers.wizard.joined', ['first' => adminLine('admin/customers.wizard.summary.span', ['time' => '09:00', 'end' => '09:45']), 'second' => adminLine('admin/customers.wizard.any_staff')]))
+        ->assertSeeIn('.admin-wizard-summary', adminLine('admin/customers.wizard.joined', ['first' => adminLine('admin/customers.wizard.summary.span', ['time' => '09:45', 'end' => '10:45']), 'second' => adminLine('admin/customers.wizard.any_staff')]))
+        ->assertSeeIn('.admin-wizard-summary__duration', adminChoice('admin/customers.wizard.length.hours_minutes', 1, ['minutes' => '45']))
         ->type('#wizard-customer-name', 'Wanda Walkin')
         ->type('#wizard-customer-email', 'wanda@example.test')
         ->click('.admin-wizard-create')
@@ -128,11 +146,11 @@ const NEW_BOOKING_STRIP_IN_THIRDS = <<<'JS'
 
 /**
  * True when the first group's slots are 44 pixels high and three to a line, the fourth starting
- * the next line, all under the day calendar.
+ * the next line, all under the date field.
  */
 const NEW_BOOKING_SLOTS_ON_PHONE = <<<'JS'
     document.fonts.ready.then(() => {
-        const grid = document.querySelector('.admin-wizard-grid');
+        const grid = document.querySelector('.admin-wizard-date');
         const group = document.querySelector('.admin-wizard-group');
         const boxes = group === null ? [] : Array.from(group.querySelectorAll('.admin-wizard-slot')).map((slot) => slot.getBoundingClientRect());
         if (grid === null || boxes.length < 4) {
@@ -146,32 +164,94 @@ const NEW_BOOKING_SLOTS_ON_PHONE = <<<'JS'
     })
     JS;
 
-/** True when the day calendar stands to the left of the day's times, on the same rows. */
-const NEW_BOOKING_DAY_BESIDE_TIMES = <<<'JS'
+/**
+ * True when the week's row holds its seven chips on one line between the two round buttons,
+ * every chip at least as wide as its weekday and its number, the row starting inside the dialog's
+ * body and ending, at the Next week button, before the summary where the summary stands beside it
+ * on the same rows, or inside the body where the summary comes after the step.
+ */
+const NEW_BOOKING_WEEK_ROW_FITS = <<<'JS'
     document.fonts.ready.then(() => {
-        const grid = document.querySelector('.admin-wizard-grid')?.getBoundingClientRect();
-        const times = document.querySelector('.admin-wizard-times')?.getBoundingClientRect();
-        return grid !== undefined && times !== undefined && times.left >= grid.right && times.top < grid.bottom && grid.top < times.bottom;
+        const body = document.querySelector('.admin-modal__body')?.getBoundingClientRect();
+        const summary = document.querySelector('.admin-wizard-summary')?.getBoundingClientRect();
+        const previous = document.querySelector('.admin-wizard-week-previous')?.getBoundingClientRect();
+        const next = document.querySelector('.admin-wizard-week-next')?.getBoundingClientRect();
+        const chips = Array.from(document.querySelectorAll('.admin-wizard-day'));
+        if (body === undefined || summary === undefined || previous === undefined || next === undefined || chips.length !== 7) {
+            return false;
+        }
+        const beside = summary.top < next.bottom && next.top < summary.bottom;
+        const boxes = chips.map((chip) => chip.getBoundingClientRect());
+        return boxes.every((box) => Math.abs(box.top - boxes[0].top) <= 1 && box.left >= previous.right && box.right <= next.left)
+            && chips.every((chip) => chip.scrollWidth <= chip.clientWidth + 1)
+            && previous.left >= body.left && next.right <= (beside ? summary.left : body.right);
     })
     JS;
 
 /**
- * Where the summary stands against the customer fields: "beside" when it is to their right on
- * the same rows, "over" when it stands above them.
+ * True when the week's Next week button stands whole inside the dialog's body and a press lands
+ * on it at its middle and at each of its four sides, so nothing drawn over the row hides any of it.
  */
-const NEW_BOOKING_SUMMARY_PLACE = <<<'JS'
+const NEW_BOOKING_NEXT_WEEK_PRESSABLE = <<<'JS'
     document.fonts.ready.then(() => {
-        const summary = document.querySelector('.admin-wizard-summary')?.getBoundingClientRect();
-        const name = document.querySelector('#wizard-customer-name')?.getBoundingClientRect();
-        if (summary === undefined || name === undefined) {
-            return 'missing';
+        const button = document.querySelector('.admin-wizard-week-next');
+        const body = document.querySelector('.admin-modal__body')?.getBoundingClientRect();
+        if (button === null || body === undefined) {
+            return false;
         }
-        if (summary.left >= name.right && summary.top < name.bottom && name.top < summary.bottom) {
-            return 'beside';
-        }
-        return name.top >= summary.bottom ? 'over' : 'elsewhere';
+        const box = button.getBoundingClientRect();
+        const middle = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+        const points = [[middle.x, middle.y], [box.left + 3, middle.y], [box.right - 3, middle.y], [middle.x, box.top + 3], [middle.x, box.bottom - 3]];
+        return box.left >= body.left && box.right <= body.right && box.top >= body.top && box.bottom <= body.bottom
+            && points.every(([x, y]) => button.contains(document.elementFromPoint(x, y)));
     })
     JS;
+
+/**
+ * True when each of the week's seven chips holds its weekday whole: the weekday's words neither
+ * overflow their own box nor reach past either side of the chip.
+ */
+const NEW_BOOKING_WEEKDAYS_FIT = <<<'JS'
+    document.fonts.ready.then(() => {
+        const chips = Array.from(document.querySelectorAll('.admin-wizard-day'));
+        return chips.length === 7 && chips.every((chip) => {
+            const weekday = chip.querySelector('.admin-wizard-day__weekday');
+            if (weekday === null) {
+                return false;
+            }
+            const box = chip.getBoundingClientRect();
+            const words = weekday.getBoundingClientRect();
+            return weekday.scrollWidth <= weekday.clientWidth + 1 && words.left >= box.left - 0.5 && words.right <= box.right + 0.5;
+        });
+    })
+    JS;
+
+/**
+ * Where the summary stands against a step's content: "beside" when it is a sticky column about
+ * 290 pixels wide to the content's right on the same rows, "under" when it follows the content
+ * with its lines and its chip hidden, so only the heading, Duration and Total show.
+ */
+function summaryPlace(string $content): string
+{
+    $content = json_encode($content, JSON_THROW_ON_ERROR);
+
+    return <<<JS
+        document.fonts.ready.then(() => {
+            const card = document.querySelector('.admin-wizard-summary');
+            const step = document.querySelector({$content});
+            if (card === null || step === null) {
+                return 'missing';
+            }
+            const summary = card.getBoundingClientRect();
+            const content = step.getBoundingClientRect();
+            const hidden = Array.from(card.querySelectorAll('.admin-wizard-summary__lines, .admin-wizard-summary__when')).every((part) => getComputedStyle(part).display === 'none');
+            if (summary.left >= content.right && summary.top < content.bottom && content.top < summary.bottom) {
+                return Math.abs(summary.width - 290) <= 1 && getComputedStyle(card).position === 'sticky' ? 'beside' : 'beside, unsized';
+            }
+            return summary.top >= content.bottom && hidden ? 'under' : 'elsewhere';
+        })
+        JS;
+}
 
 /** The wizard's frame's width in whole pixels. */
 const NEW_BOOKING_FRAME_WIDTH = "Math.round(document.querySelector('.admin-wizard').getBoundingClientRect().width)";
@@ -224,12 +304,13 @@ const NEW_BOOKING_FOCUS_OUTLINE = <<<'JS'
 /** True when no line of the summary is wider than the summary, so every word stays inside its card. */
 const NEW_BOOKING_SUMMARY_HOLDS_ITS_WORDS = <<<'JS'
     document.fonts.ready.then(() => {
-        const lines = Array.from(document.querySelectorAll('.admin-wizard-summary dd'));
-        return lines.length === 3 && lines.every((line) => line.scrollWidth <= line.clientWidth + 1);
+        const card = document.querySelector('.admin-wizard-summary')?.getBoundingClientRect();
+        const lines = Array.from(document.querySelectorAll('.admin-wizard-summary__service, .admin-wizard-summary__span, .admin-wizard-summary dd'));
+        return card !== undefined && lines.length === 4 && lines.every((line) => line.scrollWidth <= line.clientWidth + 1 && line.getBoundingClientRect().right <= card.right + 0.5);
     })
     JS;
 
-it('fits each step to a phone, the strip on one line with the current step\'s words alone, the slots three to a line under the day calendar and the summary over the fields, nothing scrolling sideways', function (SiteLanguage $language) {
+it('fits each step to a phone, the strip on one line with the current step\'s words alone, the week\'s chips on one line, the slots three to a line under the date field and the summary after each step, nothing scrolling sideways', function (SiteLanguage $language) {
     ['date' => $date, 'months' => $months, 'nine' => $nine] = wizardTuesday();
     // The language is the owner's before the sign-in, so the whole walk reads it.
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
@@ -240,6 +321,7 @@ it('fits each step to a phone, the strip on one line with the current step\'s wo
         ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
         ->assertScript(NEW_BOOKING_STRIP_ON_PHONE, true)
         ->assertScript(NEW_BOOKING_NUMBER_CIRCLES, true)
+        ->assertScript(summaryPlace('.admin-wizard-services'), 'under')
         ->assertScript(PhoneScripts::DIALOG_NO_SIDEWAYS, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     Look::shot($page, 'new-booking-1-390-'.$language->value);
@@ -259,15 +341,14 @@ it('fits each step to a phone, the strip on one line with the current step\'s wo
     $page->click('.admin-wizard-continue')
         ->waitForText(adminLine('admin/customers.wizard.zone', ['zone' => 'Europe/Athens'], $language));
 
-    for ($month = 0; $month < $months; $month++) {
-        $page->click(sprintf('.admin-day-calendar button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next', [], $language)));
-    }
-
-    $page->click('button[data-date="'.$date.'"]')
+    wizardDayFromField($page, $date, $months, $language);
+    $page
         ->waitForText(adminLine('admin/customers.wizard.periods.morning', [], $language))
         ->assertScript(NEW_BOOKING_STRIP_ON_PHONE, true)
         ->assertScript(PhoneScripts::WIZARD_DAY_OVER_TIMES, true)
+        ->assertScript(NEW_BOOKING_WEEK_ROW_FITS, true)
         ->assertScript(NEW_BOOKING_SLOTS_ON_PHONE, true)
+        ->assertScript(summaryPlace('.admin-wizard-when'), 'under')
         ->assertScript(PhoneScripts::DIALOG_NO_SIDEWAYS, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     Look::shot($page, 'new-booking-2-390-'.$language->value);
@@ -277,7 +358,7 @@ it('fits each step to a phone, the strip on one line with the current step\'s wo
         ->waitForText(adminLine('admin/customers.wizard.fields.name', [], $language))
         ->assertScript(NEW_BOOKING_STRIP_ON_PHONE, true)
         ->assertScript(NEW_BOOKING_NUMBER_CIRCLES, true)
-        ->assertScript(NEW_BOOKING_SUMMARY_PLACE, 'over')
+        ->assertScript(summaryPlace('.admin-wizard-customer'), 'under')
         ->assertScript(PhoneScripts::DIALOG_NO_SIDEWAYS, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     Look::shot($page, 'new-booking-3-390-'.$language->value);
@@ -287,7 +368,7 @@ it('fits each step to a phone, the strip on one line with the current step\'s wo
         ->assertNoJavaScriptErrors();
 })->with([SiteLanguage::English, SiteLanguage::Greek]);
 
-it('lays each step out on a wide screen, the dialog 1000 pixels wide with the strip in thirds, the day calendar beside the slots and the summary beside the customer fields', function () {
+it('lays each step out on a wide screen, the dialog 1000 pixels wide with the strip in thirds, the week\'s chips on one line and the summary in its column beside every step', function () {
     ['date' => $date, 'months' => $months, 'nine' => $nine] = wizardTuesday();
 
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1440, 900);
@@ -295,20 +376,19 @@ it('lays each step out on a wide screen, the dialog 1000 pixels wide with the st
         ->waitForText(adminLine('admin/customers.wizard.add_segment'))
         ->assertScript(NEW_BOOKING_FRAME_WIDTH, 1000)
         ->assertScript(NEW_BOOKING_STRIP_IN_THIRDS, true)
+        ->assertScript(summaryPlace('.admin-wizard-services'), 'beside')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     Look::shot($page, 'new-booking-1-1440');
 
     $page->click('.admin-wizard-continue')
         ->waitForText(adminLine('admin/customers.wizard.zone', ['zone' => 'Europe/Athens']));
 
-    for ($month = 0; $month < $months; $month++) {
-        $page->click(sprintf('.admin-day-calendar button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next')));
-    }
-
-    $page->click('button[data-date="'.$date.'"]')
+    wizardDayFromField($page, $date, $months);
+    $page
         ->waitForText(adminLine('admin/customers.wizard.periods.morning'))
         ->assertScript(NEW_BOOKING_STRIP_IN_THIRDS, true)
-        ->assertScript(NEW_BOOKING_DAY_BESIDE_TIMES, true)
+        ->assertScript(NEW_BOOKING_WEEK_ROW_FITS, true)
+        ->assertScript(summaryPlace('.admin-wizard-when'), 'beside')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     Look::shot($page, 'new-booking-2-1440');
 
@@ -323,9 +403,47 @@ it('lays each step out on a wide screen, the dialog 1000 pixels wide with the st
     $page->click('.admin-wizard-slot[value="'.$nine.'"]')
         ->click('.admin-wizard-continue')
         ->waitForText(adminLine('admin/customers.wizard.fields.name'))
-        ->assertScript(NEW_BOOKING_SUMMARY_PLACE, 'beside')
+        ->assertScript(summaryPlace('.admin-wizard-customer'), 'beside')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     Look::shot($page, 'new-booking-3-1440');
+
+    $page->click('.admin-wizard-cancel')
+        ->assertNotPresent('.admin-wizard')
+        ->assertNoJavaScriptErrors();
+});
+
+it('keeps the week\'s row clear of the summary beside it at 900 pixels wide and puts the summary under the step at 768 and at 640, every chip holding its weekday and Next week whole and pressable', function () {
+    $week = fn (int $days): string => athensToday()->modify('+'.$days.' days')->format('Y-m-d');
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(900, 900);
+    $page->click('.admin-new-booking')
+        ->waitForText(adminLine('admin/customers.wizard.add_segment'))
+        ->click('.admin-wizard-continue')
+        ->waitForText(adminLine('admin/customers.wizard.zone', ['zone' => 'Europe/Athens']))
+        ->assertScript(summaryPlace('.admin-wizard-when'), 'beside')
+        ->assertScript(NEW_BOOKING_WEEK_ROW_FITS, true)
+        ->assertScript(NEW_BOOKING_WEEKDAYS_FIT, true)
+        ->assertScript(NEW_BOOKING_NEXT_WEEK_PRESSABLE, true)
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+    Look::shot($page, 'new-booking-2-900');
+
+    $page->click('.admin-wizard-week-next')
+        ->assertPresent('.admin-wizard-day[aria-pressed="true"][value="'.$week(7).'"]');
+
+    // Below a 48rem body the step takes the whole width and the summary follows it, so the
+    // week's chips are not squeezed into the room left of a 290 pixel column.
+    foreach ([768 => 14, 640 => 21] as $width => $days) {
+        $page->resize($width, 900);
+        $page->assertScript(summaryPlace('.admin-wizard-when'), 'under')
+            ->assertScript(NEW_BOOKING_WEEK_ROW_FITS, true)
+            ->assertScript(NEW_BOOKING_WEEKDAYS_FIT, true)
+            ->assertScript(NEW_BOOKING_NEXT_WEEK_PRESSABLE, true)
+            ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
+        Look::shot($page, 'new-booking-2-'.$width);
+
+        $page->click('.admin-wizard-week-next')
+            ->assertPresent('.admin-wizard-day[aria-pressed="true"][value="'.$week($days).'"]');
+    }
 
     $page->click('.admin-wizard-cancel')
         ->assertNotPresent('.admin-wizard')
@@ -345,16 +463,13 @@ it('breaks a service name with no space in it inside the summary card on a wide 
         ->click('.admin-wizard-continue')
         ->waitForText(adminLine('admin/customers.wizard.zone', ['zone' => 'Europe/Athens']));
 
-    for ($month = 0; $month < $months; $month++) {
-        $page->click(sprintf('.admin-day-calendar button[aria-label="%s"]', adminLine('admin/shell.kit.month_grid.next')));
-    }
-
-    $page->click('button[data-date="'.$date.'"]')
+    wizardDayFromField($page, $date, $months);
+    $page
         ->waitForText(adminLine('admin/customers.wizard.periods.morning'))
         ->click('.admin-wizard-slot[value="'.$nine.'"]')
         ->click('.admin-wizard-continue')
         ->waitForText(adminLine('admin/customers.wizard.fields.name'))
-        ->assertScript(NEW_BOOKING_SUMMARY_PLACE, 'beside');
+        ->assertScript(summaryPlace('.admin-wizard-customer'), 'beside');
     Look::shot($page, 'new-booking-3-long-1440');
 
     $page->assertScript(NEW_BOOKING_SUMMARY_HOLDS_ITS_WORDS, true)

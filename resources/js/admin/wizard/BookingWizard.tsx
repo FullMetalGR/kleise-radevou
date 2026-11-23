@@ -1,24 +1,28 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tick } from '@/components/glyphs';
+import { Chevron, Plus, Tick } from '@/components/glyphs';
 import { Card } from '@/components/ui/card';
 import { CHECK_BOX } from '@/components/ui/check-field';
 import type { WizardKey, WizardWords } from '@/customers/words';
-import { DayCalendar } from '@/components/ui/day-calendar';
-import { Field } from '@/components/ui/field';
+import { DateField } from '@/components/ui/date-field';
+import { Field, HelpLine } from '@/components/ui/field';
 import { FORCED_EDGE, TextInput } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Notice } from '@/components/ui/notice';
 import { Select } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { isoWeekday } from '@/lib/day';
 import { formatDate, type TenantClock } from '@/lib/format';
+import { dayTitle, weekdayName } from '@/lib/names';
 import { useShell } from '@/lib/strings';
 import { cn } from '@/lib/utils';
 import { type Failure, owningFailure } from '@/lib/visits';
 import { useToasts } from '@/toast/toasts';
 import { useAvailability } from './availability';
-import { addSegment, advance, ANY_STAFF, availabilityQuery, bodyOf, type Catalog, chooseDay, chooseService, chooseSlot, chooseStaff, courtesy, editCustomer, endOf, gateOpen, groupsOf, initial, NO_TIMES, performersOf, periodKey, type Prefill, removeSegment, reopen, serviceLines, staffChoiceReal, type State, type Step, STEPS, stripValues, timeLabel, toggleSameStaff } from './model';
+import { addDays, parseDay } from '../../booking/time';
+import { addSegment, advance, ANY_STAFF, availabilityQuery, bodyOf, type Catalog, chooseDay, chooseService, chooseSlot, chooseStaff, courtesy, editCustomer, gateOpen, groupsOf, initial, NO_TIMES, performersOf, periodKey, type Prefill, removeSegment, reopen, serviceHint, staffChoiceReal, type State, type Step, STEPS, stripValues, toggleSameStaff, weekOf } from './model';
+import { Summary } from './Summary';
 
 /*
  * The manual booking wizard: a wide modal titled New booking, three steps long, opened over
@@ -30,12 +34,13 @@ import { addSegment, advance, ANY_STAFF, availabilityQuery, bodyOf, type Catalog
  * its flash, on which the wizard closes and the page's props arrive re-read, so the list, the
  * detail and the calendar invalidate through the reload. A refusal is the envelope answered as
  * itself: its sentence becomes an error toast that stays until dismissed, a conflict naming the
- * segment, and the wizard stays open with every answer intact, the chosen slot included, 4.4
- * and 9.3.
+ * segment, and the wizard stays open with every answer intact, the chosen slot included.
  *
  * Below the admin's breakpoint the modal fills the viewport, the footer pinned and the body the
- * one scroller. The two-column panels of the second and third steps go by the body's own width,
- * not the window's: one column until the body is 36rem wide, two from there.
+ * one scroller. Every step stands beside the booking summary, and the two columns go by the
+ * body's own width, not the window's: one column until the body is 48rem wide, the summary
+ * after the step's content, and from there the summary in its own column, held at the top of the
+ * scroller while the step scrolls.
  *
  * Its words are the wizard group of lang/{locale}/admin/customers.php, which the shared props
  * hand beside the catalog and the opening passes down; the times' periods stay identifiers,
@@ -149,46 +154,68 @@ export function BookingWizard({ prefill, catalog, clock, granularity, weekStart,
                         </li>
                     ))}
                 </ol>
-                {state.step === 0 && <Services state={state} catalog={catalog} staffReal={staffReal} onChange={setState} words={words} />}
-                {state.step === 1 && (
-                    <div className="admin-wizard-when grid grid-cols-1 gap-6 @xl:grid-cols-2">
-                        <DayCalendar className="admin-wizard-grid" selected={state.day} weekStart={weekStart} today={today} onChange={(day) => setState(chooseDay(state, day))} />
-                        <div className="admin-wizard-times flex min-w-0 flex-col gap-3">
-                            <p className="admin-wizard-zone text-small text-muted-foreground">{words.text('zone', { zone: clock.timezone })}</p>
-                            {times.kind === 'loading' && (
-                                <p className="admin-wizard-loading text-sm text-muted-foreground" role="status">
-                                    <Spinner size="inline" className="mr-2" />
-                                    {words.text('loading')}
-                                </p>
-                            )}
-                            {times.kind === 'error' && <Notice kind="error">{times.sentence}</Notice>}
-                            {times.kind === 'ready' && times.starts.length === 0 && <Notice kind="info">{words.text(NO_TIMES)}</Notice>}
-                            {times.kind === 'ready' &&
-                                groupsOf(times.starts, clock).map((group) => (
-                                    <section key={group.name} className="admin-wizard-group">
-                                        <h3 className="admin-wizard-group__title mb-2 text-label">
-                                            {words.text(periodKey(group.name))} ({group.slots.length})
-                                        </h3>
-                                        <div className="grid grid-cols-3 gap-2 @xl:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))]">
-                                            {group.slots.map((slot) => (
-                                                <button
-                                                    key={slot.wire}
-                                                    type="button"
-                                                    className={SLOT}
-                                                    value={slot.wire}
-                                                    aria-pressed={state.slot === slot.wire}
-                                                    onClick={() => setState(chooseSlot(state, slot.wire))}
-                                                >
-                                                    {slot.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </section>
-                                ))}
-                        </div>
+                <div className="admin-wizard-layout grid grid-cols-1 gap-6 @3xl:grid-cols-[minmax(0,1fr)_18.125rem] @3xl:items-start">
+                    <div className="min-w-0">
+                        {state.step === 0 && <Services state={state} catalog={catalog} staffReal={staffReal} onChange={setState} words={words} />}
+                        {state.step === 1 && (
+                            <div className="admin-wizard-when flex min-w-0 flex-col gap-4">
+                                <Week state={state} weekStart={weekStart} today={today} onChange={setState} words={words} />
+                                <div className="flex justify-end">
+                                    <DateField
+                                        className="admin-wizard-date w-full @xl:w-42"
+                                        aria-label={words.text('date_field')}
+                                        value={state.day}
+                                        clock={clock}
+                                        weekStart={weekStart}
+                                        today={today}
+                                        clearable={false}
+                                        onChange={(day) => day !== '' && setState(chooseDay(state, day))}
+                                    />
+                                </div>
+                                <div className="admin-wizard-times flex min-w-0 flex-col gap-3">
+                                    <h3 className="admin-wizard-caption flex flex-wrap items-baseline gap-x-2 font-display text-body font-semibold">
+                                        <span>{words.text('available')}</span>
+                                        <span className="admin-wizard-caption__day font-sans text-label font-medium text-muted-foreground">{`${weekdayName(isoWeekday(state.day), 'short', words.language)} ${formatDate(state.day, clock)}`}</span>
+                                    </h3>
+                                    <p className="admin-wizard-zone text-small text-muted-foreground">{words.text('zone', { zone: clock.timezone })}</p>
+                                    {times.kind === 'loading' && (
+                                        <p className="admin-wizard-loading text-sm text-muted-foreground" role="status">
+                                            <Spinner size="inline" className="mr-2" />
+                                            {words.text('loading')}
+                                        </p>
+                                    )}
+                                    {times.kind === 'error' && <Notice kind="error">{times.sentence}</Notice>}
+                                    {times.kind === 'ready' && times.starts.length === 0 && <Notice kind="info">{words.text(NO_TIMES)}</Notice>}
+                                    {times.kind === 'ready' &&
+                                        groupsOf(times.starts, clock).map((group) => (
+                                            <section key={group.name} className="admin-wizard-group">
+                                                <h3 className="admin-wizard-group__title mb-2 text-label">
+                                                    {words.text(periodKey(group.name))} ({group.slots.length})
+                                                </h3>
+                                                <div className="grid grid-cols-3 gap-2 @max-sm:gap-1.5 @xl:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))]">
+                                                    {group.slots.map((slot) => (
+                                                        <button
+                                                            key={slot.wire}
+                                                            type="button"
+                                                            className={SLOT}
+                                                            value={slot.wire}
+                                                            aria-pressed={state.slot === slot.wire}
+                                                            onClick={() => setState(chooseSlot(state, slot.wire))}
+                                                        >
+                                                            {slot.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </section>
+                                        ))}
+                                    {times.kind === 'ready' && times.starts.length > 0 && state.slot === null && <HelpLine className="admin-wizard-hint">{words.text('time_hint')}</HelpLine>}
+                                </div>
+                            </div>
+                        )}
+                        {state.step === 2 && <CustomerStep state={state} onChange={setState} words={words} />}
                     </div>
-                )}
-                {state.step === 2 && <CustomerStep state={state} catalog={catalog} clock={clock} granularity={granularity} staffReal={staffReal} onChange={setState} words={words} />}
+                    <Summary className="@3xl:sticky @3xl:top-0" state={state} catalog={catalog} clock={clock} granularity={granularity} staffReal={staffReal} words={words} />
+                </div>
             </div>
         </Modal>
     );
@@ -210,6 +237,70 @@ const BODY = '@container pt-px';
  * highlight and its keyboard outline the system's colour for text, as a chosen segment does.
  */
 const SLOT = `admin-wizard-slot focus-ring h-11 rounded-field bg-card px-2 text-body font-semibold whitespace-nowrap tabular-nums inset-ring-[1.5px] inset-ring-border hover:inset-ring-2 hover:inset-ring-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:inset-ring-primary ${FORCED_EDGE} forced-colors:aria-pressed:border-[Highlight] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText] forced-colors:aria-pressed:forced-color-adjust-none forced-colors:aria-pressed:focus-visible:outline-[CanvasText] motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft`;
+
+/*
+ * A day of the week row: a chip filled with the theme colour once chosen, today ringed in it the
+ * way the day calendar rings today, and a chosen today given a second ring inside the first so it
+ * still reads as today. Today also carries a dot under its number, so it is told apart by more
+ * than colour; the dot is drawn in the chip's own ink, which stands out on the plain chip and on
+ * the filled one in every theme. The chips go by the width of the week row, which spans the
+ * step's column: until the row has room for seven 60 pixel chips, its buttons and its gaps, the
+ * seven share it; from there each is 60 pixels wide. Where the system forces its own colours the
+ * chips take the slots' real line.
+ */
+const DAY = `admin-wizard-day focus-ring relative flex h-full w-full min-w-0 flex-col items-center gap-0.5 rounded-[1.125rem] bg-card px-0 py-2.5 whitespace-nowrap tabular-nums inset-ring-[1.5px] inset-ring-border hover:inset-ring-2 hover:inset-ring-primary aria-[current=date]:inset-ring-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:inset-ring-primary aria-[current=date]:aria-pressed:shadow-[inset_0_0_0_2px_var(--primary),inset_0_0_0_3.5px_var(--primary-foreground)] aria-[current=date]:after:absolute aria-[current=date]:after:bottom-1.5 aria-[current=date]:after:left-1/2 aria-[current=date]:after:size-1 aria-[current=date]:after:-translate-x-1/2 aria-[current=date]:after:rounded-full aria-[current=date]:after:border-2 aria-[current=date]:after:border-current @min-[35.75rem]/week:w-15 ${FORCED_EDGE} forced-colors:aria-pressed:border-[Highlight] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText] forced-colors:aria-pressed:forced-color-adjust-none forced-colors:aria-pressed:focus-visible:outline-[CanvasText] motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft`;
+
+type WeekProps = { state: State; weekStart: number; today: string; onChange: (state: State) => void; words: WizardWords };
+
+/*
+ * The week holding the chosen day, from the tenant's week start, with a round button either side
+ * that moves a week and chooses the same weekday there, which loads its times as a chip does. The
+ * row is a container of its own, as wide as the step's column, and its chips, gaps and figures go
+ * by that width rather than the dialog body's, since beside the summary the column is the body
+ * less the summary's column.
+ */
+function Week({ state, weekStart, today, onChange, words }: WeekProps) {
+    const move = (days: number) => onChange(chooseDay(state, addDays(state.day, days)));
+
+    return (
+        <div className="admin-wizard-week @container/week min-w-0">
+            <div className="flex min-w-0 items-center gap-2 @max-sm/week:gap-1">
+                <Button iconOnly icon={<Chevron to="previous" />} className="admin-wizard-week-previous shrink-0" onClick={() => move(-7)}>
+                    {words.text('week.previous')}
+                </Button>
+                <ul className="flex min-w-0 flex-1 gap-2 @max-sm/week:gap-1 @min-[35.75rem]/week:flex-none">
+                    {weekOf(state.day, weekStart).map((day) => {
+                        const { year, month, day: date } = parseDay(day);
+
+                        return (
+                            <li key={day} className="flex min-w-0 flex-1 @min-[35.75rem]/week:flex-none">
+                                <button
+                                    type="button"
+                                    className={DAY}
+                                    value={day}
+                                    aria-pressed={day === state.day}
+                                    aria-current={day === today ? 'date' : undefined}
+                                    aria-label={dayTitle(year, month, date, words.language)}
+                                    onClick={() => onChange(chooseDay(state, day))}
+                                >
+                                    <span aria-hidden="true" className="admin-wizard-day__weekday text-small">
+                                        {weekdayName(isoWeekday(day), 'short', words.language)}
+                                    </span>
+                                    <span aria-hidden="true" className="admin-wizard-day__number font-display text-[1.1875rem] leading-tight font-semibold @max-sm/week:text-[1.0625rem]">
+                                        {date}
+                                    </span>
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
+                <Button iconOnly icon={<Chevron to="next" />} className="admin-wizard-week-next shrink-0" onClick={() => move(7)}>
+                    {words.text('week.next')}
+                </Button>
+            </div>
+        </div>
+    );
+}
 
 type StripStepProps = { at: number; name: WizardKey; value: string | undefined; step: Step; day: string; words: WizardWords; onReopen: () => void };
 
@@ -261,14 +352,19 @@ type StepProps = { state: State; catalog: Catalog; staffReal: boolean; onChange:
 
 function Services({ state, catalog, staffReal, onChange, words }: StepProps) {
     const many = state.segments.length > 1;
+    const hintOf = (id: number | null): string | undefined => {
+        const service = catalog.services.find((each) => each.id === id);
+
+        return service === undefined ? undefined : serviceHint(service, words);
+    };
 
     return (
         <div className="admin-wizard-services flex flex-col gap-4">
             {state.segments.map((segment, at) => (
                 <Card key={at} variant="inner">
                     <fieldset className="admin-wizard-segment flex min-w-0 flex-col gap-3">
-                        {many && <legend className="admin-wizard-segment__caption mb-3 font-display text-body font-semibold">{words.text('segment', { n: String(at + 1) })}</legend>}
-                        <Field id={`wizard-service-${at}`} label={words.text('service')}>
+                        <legend className="admin-wizard-segment__caption mb-3 font-display text-body font-semibold">{words.text('segment', { n: String(at + 1) })}</legend>
+                        <Field id={`wizard-service-${at}`} label={words.text('service')} help={hintOf(segment.service)}>
                             {(control) => (
                                 <Select
                                     {...control}
@@ -301,7 +397,7 @@ function Services({ state, catalog, staffReal, onChange, words }: StepProps) {
                 </Card>
             ))}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                <Button className="admin-wizard-add" onClick={() => onChange(addSegment(state))}>
+                <Button className="admin-wizard-add" icon={<Plus />} onClick={() => onChange(addSegment(state))}>
                     {words.text('add_segment')}
                 </Button>
                 {many && (
@@ -316,13 +412,11 @@ function Services({ state, catalog, staffReal, onChange, words }: StepProps) {
 }
 
 /*
- * The last step: the customer's fields, and the booking summed up in an inner card that stands
- * beside them once the body has the room. The summary breaks a word longer than its line, since a
- * service's name is the tenant's own text and may hold no space to break at.
+ * The last step: the customer's fields, held to a readable width, and a note naming the source
+ * the booking is recorded under, in the shell's own word for it.
  */
-function CustomerStep({ state, catalog, clock, granularity, staffReal, onChange, words }: StepProps & { clock: TenantClock; granularity: number }) {
-    const start = state.slot ?? '';
-    const span = start === '' ? '' : words.text('summary.span', { time: timeLabel(start, clock), end: timeLabel(endOf(start, state, catalog, granularity), clock) });
+function CustomerStep({ state, onChange, words }: Pick<StepProps, 'state' | 'onChange' | 'words'>) {
+    const shell = useShell();
     const fields: [keyof State['customer'], WizardKey, string][] = [
         ['name', 'fields.name', 'text'],
         ['email', 'fields.email', 'email'],
@@ -330,32 +424,13 @@ function CustomerStep({ state, catalog, clock, granularity, staffReal, onChange,
     ];
 
     return (
-        <div className="admin-wizard-customer grid grid-cols-1 gap-6 @xl:grid-cols-[minmax(0,1fr)_18.125rem]">
-            <Card variant="inner" className="@xl:col-start-2 @xl:row-start-1">
-                <dl className="admin-wizard-summary flex flex-col gap-3 wrap-anywhere">
-                    <div>
-                        <dt className="text-small text-muted-foreground">{words.text('summary.date')}</dt>
-                        <dd className="admin-wizard-summary__date font-semibold">{formatDate(state.day, clock)}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-small text-muted-foreground">{words.text('summary.time')}</dt>
-                        <dd className="admin-wizard-summary__time font-semibold tabular-nums">{span}</dd>
-                    </div>
-                    {serviceLines(state, catalog, staffReal, words).map((line, at) => (
-                        <div key={at}>
-                            <dt className="text-small text-muted-foreground">{words.text('summary.service')}</dt>
-                            <dd className="admin-wizard-summary__service font-semibold">{line}</dd>
-                        </div>
-                    ))}
-                </dl>
-            </Card>
-            <div className="flex min-w-0 flex-col gap-3 @xl:col-start-1 @xl:row-start-1">
-                {fields.map(([field, label, type]) => (
-                    <Field key={field} id={`wizard-customer-${field}`} label={words.text(label)}>
-                        {(control) => <TextInput {...control} type={type} className={`admin-wizard-${field}`} value={state.customer[field]} onChange={(event) => onChange(editCustomer(state, field, event.target.value))} />}
-                    </Field>
-                ))}
-            </div>
+        <div className="admin-wizard-customer flex max-w-[30rem] min-w-0 flex-col gap-3">
+            {fields.map(([field, label, type]) => (
+                <Field key={field} id={`wizard-customer-${field}`} label={words.text(label)}>
+                    {(control) => <TextInput {...control} type={type} className={`admin-wizard-${field}`} value={state.customer[field]} onChange={(event) => onChange(editCustomer(state, field, event.target.value))} />}
+                </Field>
+            ))}
+            <HelpLine className="admin-wizard-source">{words.text('source_note', { source: shell.text('shared.sources.admin') })}</HelpLine>
         </div>
     );
 }

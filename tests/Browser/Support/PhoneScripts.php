@@ -185,12 +185,15 @@ final class PhoneScripts
         })
         JS;
 
-    /** True when the wizard's day calendar stands over the day's times rather than beside them. */
+    /** True when the wizard's week of chips stands over its date field, and both over the day's times rather than beside them. */
     public const string WIZARD_DAY_OVER_TIMES = <<<'JS'
         document.fonts.ready.then(() => {
-            const grid = document.querySelector('.admin-wizard-grid');
+            const week = document.querySelector('.admin-wizard-week');
+            const field = document.querySelector('.admin-wizard-date');
             const times = document.querySelector('.admin-wizard-times');
-            return grid !== null && times !== null && times.getBoundingClientRect().top >= grid.getBoundingClientRect().bottom;
+            return week !== null && field !== null && times !== null
+                && field.getBoundingClientRect().top >= week.getBoundingClientRect().bottom
+                && times.getBoundingClientRect().top >= field.getBoundingClientRect().bottom;
         })
         JS;
 

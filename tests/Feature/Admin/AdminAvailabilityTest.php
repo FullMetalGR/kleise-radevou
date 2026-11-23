@@ -215,6 +215,20 @@ it('carries no catalog and runs none of the catalog\'s statements, while a page 
     expect(array_values(array_intersect($statements, $own)))->toBe([]);
 });
 
+it('carries each service\'s price in minor units and its own currency, so the wizard can total a chain and leave the total out when currencies differ', function () {
+    $luna = Tenant::query()->where('slug', 'luna')->sole();
+    $services = collect(app(WizardCatalog::class)->read($luna)['services'])->keyBy('name');
+
+    expect($services['Haircut'])->toMatchArray(['price_minor' => 3500, 'currency' => 'EUR'])
+        ->and($services['Colour'])->toMatchArray(['price_minor' => 8000, 'currency' => 'EUR']);
+
+    DB::table('tenant_luna.services')->where('id', LunaFixture::id('services', 'Colour'))->update(['currency' => 'USD']);
+    $services = collect(app(WizardCatalog::class)->read($luna)['services'])->keyBy('name');
+
+    expect($services['Colour'])->toMatchArray(['price_minor' => 8000, 'currency' => 'USD'])
+        ->and($services['Haircut'])->toMatchArray(['currency' => 'EUR']);
+});
+
 it('runs no statement for the entitlements, the settings or the pending count on the availability read, an action\'s redirect or a partial reload naming none of them, while a page render runs each once', function () {
     $luna = Tenant::query()->where('slug', 'luna')->sole();
     $resolves = 0;

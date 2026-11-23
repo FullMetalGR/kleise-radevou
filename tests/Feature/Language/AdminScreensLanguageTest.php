@@ -268,9 +268,9 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
     // counted lines among them; bookings.php's 181 on ten (the two Home rows, the Bookings list, a
     // booking opened by its address, a customer's page, the Calendar and the four Staff rows, whose
     // closures card lists bookings and opens the Move form); home.php's 181 on the two Home rows;
-    // setup.php's on Home with setup open, counted below by its parts; customers.php's 146 on
+    // setup.php's on Home with setup open, counted below by its parts; customers.php's 155 on
     // two; services.php's 116 on four (the list, a service's form, the new service's form and
-    // Home with setup open, for its Services step); the wizard's group's 38 over the Calendar;
+    // Home with setup open, for its Services step); the wizard's group's 47 over the Calendar;
     // staff.php's 170 on five (the Staff list with the staff feature and without it, a new
     // member's form, a member's page and Home with setup open, for its Team step); settings.php's
     // 144 and payments.php's 97 on two each (Settings, and Home with setup open for its Business
@@ -286,7 +286,7 @@ it('reads every prop of every route in Greek for a user at el under lang el, and
         + 8 // Opening hours
         + 2 // Online payments
         + 5; // Booking link
-    expect($walked)->toBe(['rows' => 19, 'props' => 56, 'leaves' => 19 * 145 + 10 * 181 + 2 * 181 + $setup + 2 * 146 + 4 * 116 + 38 + 5 * 170 + 2 * 144 + 2 * 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
+    expect($walked)->toBe(['rows' => 19, 'props' => 56, 'leaves' => 19 * 145 + 10 * 181 + 2 * 181 + $setup + 2 * 155 + 4 * 116 + 47 + 5 * 170 + 2 * 144 + 2 * 97 + 45 + 85 + 2 * 79 + 2 * 88 + 21 + 118]);
 });
 
 it('reads the Calendar in Greek for a user at el under view=day, view=week and view=month, and for a Greek viewer who holds viewOwnCalendar without viewBookings, pinned to her own row', function () {

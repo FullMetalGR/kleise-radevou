@@ -31,7 +31,7 @@ beforeEach(() => {
 
 afterEach(() => view.unmount());
 
-function From({ initial, weekStart = 1, onChange }: { initial: string; weekStart?: number; onChange?: (value: string) => void }) {
+function From({ initial, weekStart = 1, clearable, onChange }: { initial: string; weekStart?: number; clearable?: boolean; onChange?: (value: string) => void }) {
     const [value, setValue] = useState(initial);
 
     return (
@@ -42,6 +42,7 @@ function From({ initial, weekStart = 1, onChange }: { initial: string; weekStart
             clock={CLOCK}
             weekStart={weekStart}
             today="2026-09-24"
+            {...(clearable === undefined ? {} : { clearable })}
             onChange={(next) => {
                 onChange?.(next);
                 setValue(next);
@@ -95,6 +96,23 @@ describe('the date field', () => {
             expect(popover()?.classList.contains(look)).toBe(true);
         }
         expect(document.querySelector('.admin-date-field__clear')?.classList.contains('admin-button--small')).toBe(true);
+    });
+
+    it('draws Clear beside the calendar by default', () => {
+        view.render(<From initial="2026-11-03" />);
+
+        open();
+
+        expect(document.querySelector('.admin-date-field__clear')).not.toBeNull();
+    });
+
+    it('leaves Clear out of a field that is not clearable, the calendar still there', () => {
+        view.render(<From initial="2026-11-03" clearable={false} />);
+
+        open();
+
+        expect(popover()?.querySelector('[role="grid"]')).not.toBeNull();
+        expect(document.querySelector('.admin-date-field__clear')).toBeNull();
     });
 
     it('renders an empty trigger for the empty value', () => {
