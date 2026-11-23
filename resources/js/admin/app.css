@@ -849,20 +849,21 @@
 
 /*
  * A day header fills its column's width, so the head inside it, a container, is measured against
- * the column and turns to its short form where the column is narrower than the whole date.
+ * the column, 4px short of it either side, and draws its weekday and day's number smaller where
+ * the column is narrow; 12px stand above and below the two lines.
  */
 .admin-calendar-grid .fc .fc-col-header-cell-cushion {
     display: block;
-    padding: 8px 4px;
+    padding: 12px 4px;
 }
 
 /*
- * A day header in a column a phone's width shares seven ways: its words break where they must,
- * within the column, rather than run under the next one.
+ * A day header in a column a phone's width shares seven ways keeps 2px either side, and its words
+ * break where they must, within the column, rather than run under the next one.
  */
 .admin-calendar-grid .fc .fc-col-header-cell-cushion {
     @variant max-desktop {
-        padding: 6px 2px;
+        padding: 12px 2px;
         white-space: normal;
         overflow-wrap: anywhere;
         line-height: 16px;

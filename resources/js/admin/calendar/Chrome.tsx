@@ -52,7 +52,10 @@ const VIEW_LABELS: Record<View, CalendarKey> = { week: 'toolbar.views.week', day
  * keeps it at the far side on either. Below the admin's breakpoint the view switch spans the row,
  * the moves and Add share the next, Add at its far end, and the title comes last on a line of its
  * own, sharing it with the filters' toggle where the screen hands one in, the title taking the
- * room the toggle leaves.
+ * room the toggle leaves. A date never breaks: the title is never narrower than its longest word,
+ * one whole date, so it breaks only between Week's two dates, and where even one date and the
+ * toggle cannot share the line, the toggle wraps under the title rather than the page running
+ * sideways.
  */
 export function Toolbar({ views, calendar, title, titleId, add, filters }: ToolbarProps) {
     const words = useCalendarWords();
@@ -85,8 +88,8 @@ export function Toolbar({ views, calendar, title, titleId, add, filters }: Toolb
             {filters === undefined ? (
                 heading('basis-80 max-desktop:order-last max-desktop:basis-full max-desktop:text-xl')
             ) : (
-                <div className="admin-calendar-toolbar__line flex min-w-0 basis-full items-center gap-3 max-desktop:order-last">
-                    {heading('basis-0 max-desktop:text-xl')}
+                <div className="admin-calendar-toolbar__line flex min-w-0 basis-full flex-wrap items-center gap-3 max-desktop:order-last">
+                    {heading('basis-0 min-w-min max-desktop:text-xl')}
                     {filters}
                 </div>
             )}

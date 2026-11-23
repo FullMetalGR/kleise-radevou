@@ -5,7 +5,7 @@ import { key, mount, type Mounted, onPhone, press, settle } from '@/components/u
 import { keyedCalendar, keyedShell, keyedShifts, WithCalendar } from '@/testing/keyed';
 import { Legend } from './Chrome';
 import { CLOSURE_HERE, type ColumnActions, ColumnHead, EDIT_THIS_DAYS_HOURS, NEW_BOOKING_HERE, OPEN_STAFF_PAGE } from './ColumnHead';
-import { Grid } from './Grid';
+import { Grid, heldEdgeOf, type HeldEdge } from './Grid';
 import { type Block, blockFillOf, categoryHueOf, type Closure, type DayHours, type HoursWindow, type Colouring, type DayColumn, fillOf, GAP_TITLE, NO_CATEGORY, NEXT_WORKING_THIS_DAY, NO_HOURS_AHEAD, NOT_WORKING_THIS_DAY, OTHER_BOOKINGS, statusHueOf, swatchesOf } from './model';
 import { hueOf, NEUTRAL } from '@/lib/hue';
 
@@ -402,7 +402,7 @@ describe('the grid', () => {
         }
     });
 
-    it('sets today\'s date in Week\'s day header on the highlight, and no other day\'s', () => {
+    it('sets today\'s day number in Week\'s day head on the highlight, and no other day\'s', () => {
         vi.useFakeTimers({ toFake: ['Date'] });
         vi.setSystemTime(new Date('2026-11-03T10:00:00Z'));
 
@@ -413,15 +413,16 @@ describe('the grid', () => {
 
             expect(today).toHaveLength(1);
             expect(today[0]?.closest<HTMLElement>('.fc-col-header-cell')?.dataset['date']).toBe('2026-11-03');
-            expect(today[0]?.className.split(' ')).toEqual(expect.arrayContaining(['bg-spark', 'text-spark-foreground', 'tabular-nums']));
-            expect(today[0]?.textContent).toBe('03/11/2026');
+            expect(today[0]?.classList.contains('admin-calendar-grid__day')).toBe(true);
+            expect(today[0]?.className.split(' ')).toEqual(expect.arrayContaining(['bg-spark', 'text-spark-foreground']));
+            expect(today[0]?.dataset['day']).toBe('3');
             expect(today[0]?.closest('.fc-col-header-cell')?.textContent).toBe(`${intlWeekday('2026-11-03')} 03/11/2026`);
         } finally {
             vi.useRealTimers();
         }
     });
 
-    it('sets the day\'s number under the weekday in place of the date where a head is narrower than the whole date needs, today\'s on the highlight, the number drawn from an attribute so the head\'s words stay the weekday and the date', () => {
+    it('sets each day head as the weekday over a large day number at every width, smaller where the head is narrow, the number drawn from an attribute and kept from readers so the head reads as the weekday and the whole date', () => {
         vi.useFakeTimers({ toFake: ['Date'] });
         vi.setSystemTime(new Date('2026-11-03T10:00:00Z'));
 
@@ -434,22 +435,31 @@ describe('the grid', () => {
 
             for (const head of heads) {
                 const date = head.dataset['date'] ?? '';
-                const number = head.querySelector<HTMLElement>('.admin-calendar-grid__day');
-                const narrow = [...(number?.classList ?? [])].find((name) => name.endsWith(':inline-flex'))?.split(':')[0] ?? 'none';
-                const words = number?.parentElement;
-                const full = words?.children[1];
+                const words = head.querySelector<HTMLElement>('.admin-calendar-grid__head > span');
+                const [weekday, full, number] = [...(words?.children ?? [])] as HTMLElement[];
+                const own = number?.className.split(' ') ?? [];
 
                 expect(head.querySelector('.admin-calendar-grid__head')?.classList.contains('@container')).toBe(true);
-                expect(narrow).toMatch(/^@max-\[\d+px\]$/);
+                expect(['flex', 'flex-col', 'items-center'].every((name) => words?.classList.contains(name))).toBe(true);
+                expect(words?.className.split(' ').filter((name) => name.startsWith('@'))).toEqual([]);
+                expect(weekday?.textContent).toBe(intlWeekday(date));
+                expect(weekday?.classList.contains('text-label')).toBe(true);
+                expect(full?.textContent).toBe(`${date.slice(8)}/11/2026`);
+                expect(full?.classList.contains('sr-only')).toBe(true);
+                expect(number?.classList.contains('admin-calendar-grid__day')).toBe(true);
+                expect(number?.getAttribute('aria-hidden')).toBe('true');
                 expect(number?.dataset['day']).toBe(String(Number(date.slice(8))));
                 expect(number?.textContent).toBe('');
-                expect(number?.classList.contains('hidden')).toBe(true);
-                expect([...(number?.classList ?? [])].filter((name) => name.startsWith('after:content-'))).toHaveLength(1);
+                expect(own.filter((name) => name.startsWith('after:content-'))).toHaveLength(1);
+                expect(own).toEqual(expect.arrayContaining(['font-display', 'text-tile-title', 'tabular-nums', 'rounded-full', 'px-2.5', 'py-px']));
+                // Never narrower than tall, its line and its one pixel above and below, the digits
+                // centred, so a day of one digit stands on a round pill at either size.
+                expect(own).toEqual(expect.arrayContaining(['min-w-[calc(1lh+2px)]', 'text-center']));
+                expect(own.filter((name) => /^@max-\[116px\]:text-/.test(name))).toHaveLength(1);
+                expect(weekday?.className.split(' ').filter((name) => /^@max-\[116px\]:text-/.test(name))).toHaveLength(1);
                 expect(number?.classList.contains('bg-spark')).toBe(date === '2026-11-03');
-                expect(full?.textContent).toBe(`${date.slice(8)}/11/2026`);
-                expect(full?.classList.contains(`${narrow}:hidden`)).toBe(true);
-                expect([`${narrow}:flex`, `${narrow}:flex-col`].every((name) => words?.classList.contains(name))).toBe(true);
                 expect(head.textContent).toBe(`${intlWeekday(date)} ${date.slice(8)}/11/2026`);
+                expect(heard(head)).toBe(`${intlWeekday(date)} ${date.slice(8)}/11/2026`);
             }
         } finally {
             vi.useRealTimers();
@@ -722,6 +732,47 @@ describe('Day as member columns', () => {
         expect(row?.className.split(' ').filter((name) => /scroll-p/.test(name))).toEqual([]);
         // The heads are 100px tall, the height a block's scroll margin clears with eight pixels over.
         expect(view.host.querySelector('.admin-calendar-column__head')?.classList.contains('h-25')).toBe(true);
+    });
+
+    it('takes the scroller name off the columns\' row while a block is pressed, so the library\'s drag of the block leaves the row to its own scroll, and gives it back when the press ends or is cancelled, a press on an empty slot or a closure leaving it on', () => {
+        day();
+
+        const row = view.host.querySelector<HTMLElement>('.admin-calendar-columns__row');
+        const named = () => row?.classList.contains('fc-scroller');
+        const send = (target: EventTarget | null | undefined, kind: string) => target?.dispatchEvent(new Event(kind, { bubbles: true, cancelable: true }));
+
+        send(eventOf('e:0'), 'pointerdown');
+        expect(named()).toBe(false);
+        send(document, 'pointerup');
+        expect(named()).toBe(true);
+
+        send(eventOf('e:0').querySelector('.fc-event-main') ?? eventOf('e:0'), 'pointerdown');
+        expect(named()).toBe(false);
+        send(document, 'pointercancel');
+        expect(named()).toBe(true);
+
+        send(row?.querySelector('.fc-timegrid-slot-lane[data-time="09:00:00"]'), 'pointerdown');
+        expect(named()).toBe(true);
+        send(row?.querySelector('.fc-bg-event.admin-calendar-closure'), 'pointerdown');
+        expect(named()).toBe(true);
+        send(document, 'pointerup');
+        expect(named()).toBe(true);
+    });
+
+    it('scrolls the row under a held block only where its edge is nearer than every window edge that can scroll, the window winning a tie as the library\'s own pick does', () => {
+        const edge = (owner: HeldEdge['owner'], distance: number, can = true): HeldEdge => ({ owner, depth: 50, distance, can, axis: 'top', sign: 1 });
+
+        // The row's foot ten pixels off and the window's forty: the row scrolls.
+        expect(heldEdgeOf([edge('window', 40), edge('row', 10)])?.owner).toBe('row');
+        // The window's foot nearer, or as near: the window, which the library scrolls, and the row is left still.
+        expect(heldEdgeOf([edge('window', 10), edge('row', 30)])?.owner).toBe('window');
+        expect(heldEdgeOf([edge('window', 20), edge('row', 20)])?.owner).toBe('window');
+        // A window edge that cannot scroll, or the pointer outside its band, does not count.
+        expect(heldEdgeOf([edge('window', 10, false), edge('row', 30)])?.owner).toBe('row');
+        expect(heldEdgeOf([edge('window', 60), edge('row', 30)])?.owner).toBe('row');
+        // A band deeper than the library's, the heads' along the row's top, counts its whole depth.
+        expect(heldEdgeOf([{ ...edge('row', 80), depth: 100 }])?.owner).toBe('row');
+        expect(heldEdgeOf([edge('window', 60), edge('row', -1)])).toBeUndefined();
     });
 
     it('spans at least 08:00 to 20:00 where the hours and the blocks sit inside them', () => {

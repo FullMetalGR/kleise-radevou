@@ -1,9 +1,9 @@
 import type { DateSelectArg, DayHeaderContentArg, EventClickArg, EventContentArg, EventDropArg, EventInput, EventMountArg, NowIndicatorContentArg, SlotLabelContentArg } from '@fullcalendar/core';
-import type { EventLeaveArg, EventReceiveArg } from '@fullcalendar/interaction';
+import type { EventDragStartArg, EventLeaveArg, EventReceiveArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { type CSSProperties, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { isoWeekday, utcDayOf } from '@/lib/day';
 import { formatDate, formatTimeOfDay, type TenantClock } from '@/lib/format';
 import { weekdayName } from '@/lib/names';
@@ -39,7 +39,7 @@ import { useCalendarWords, useClosureWords } from './words';
  * window, and by the grid's own height, its slots' and what stands round them, so a short span
  * leaves no empty band under its last hour however the grid came to be drawn, and the slots scroll
  * inside it under the day header, which stays at its top; the box opens at that scroll. Today's
- * date in the day header sits on the highlight.
+ * day number in the day header sits on the highlight.
  *
  * Day as member columns, where the screen hands the columns: one time-grid instance per column side
  * by side in a row that scrolls sideways past a minimum column width, every instance on the same
@@ -48,7 +48,9 @@ import { useCalendarWords, useClosureWords } from './words';
  * first instance alone. At every width the row is bounded by the window and scrolls both ways,
  * opening at the scroll time, each column's head pinned at its top over the blocks. The row is
  * named a scroller as the library names its own, which is how the library finds what to scroll
- * under a block held at an edge, so a drag reaches the hours past the row's fold. A block there
+ * under a selection dragged to an edge; a held block's drag is the row's own (useHeldScroll), the
+ * name taken off the row while a block is pressed, since the library's band along the row's top
+ * would lie under the heads. Either way a drag reaches the hours past the row's fold. A block there
  * keeps a scroll margin of the heads' height and eight pixels above it, the stylesheet's rule, so
  * one the keyboard reaches is brought out from under the heads with room for its focus ring; the
  * margin is the block's and not a padding of the row's scroll, which a head's own button could
@@ -301,6 +303,221 @@ function colouringKey(colouring: Colouring): string {
     return `${colouring.by}:${String(colouring.palette)}:${colouring.categories.join('|')}`;
 }
 
+/** The place, among a grid's slot lanes in time order, of the last at or before the time given; -1 where every lane is later. */
+function scrollLaneOf(lanes: readonly HTMLElement[], time: string): number {
+    const later = lanes.findIndex((lane) => (lane.dataset['time'] ?? '') > time);
+
+    return (later === -1 ? lanes.length : later) - 1;
+}
+
+/**
+ * How far the first hour's label among the slot lanes given, the first lane's row on, stands above
+ * a line: an hour's label is centred on its slot's top line, half of it above the slot, so the
+ * first label at or below a slot brought to the line stands that much behind whatever lies over
+ * the line. Nothing where it stands clear or no row given carries a label.
+ */
+function labelRiseOf(lanes: readonly HTMLElement[], line: number): number {
+    const label = lanes.map((lane) => lane.parentElement?.querySelector<HTMLElement>('.fc-timegrid-slot-label-cushion')).find((cushion) => cushion !== null && cushion !== undefined && cushion.textContent !== '');
+
+    return label === undefined || label === null ? 0 : Math.max(0, line - label.getBoundingClientRect().top);
+}
+
+/** The library's own drag scroll: the band along a scroller's edge, in pixels, and the pace at the very edge, in pixels a second. */
+const HELD_EDGE = 50;
+const HELD_PACE = 300;
+
+/** A block the pointer presses: a booking's or a gap's, not a closure's fill, which a press selects through. */
+const PRESSED_BLOCK = '.fc-event:not(.fc-bg-event)';
+
+/**
+ * One edge a held block may scroll, the window's or the row's: how deep its band is, how far the
+ * pointer lies inside it, whether its scroller can and may scroll that way, and which way.
+ */
+export type HeldEdge = { owner: 'window' | 'row'; depth: number; distance: number; can: boolean; axis: 'top' | 'left'; sign: 1 | -1 };
+
+/**
+ * The one edge a held block scrolls, as the library picks among its scrollers: the nearest edge
+ * whose band holds the pointer and whose scroller can scroll that way, the first listed winning a
+ * tie. The window's edges are listed first, so where the window's edge is as near as the row's,
+ * the window wins and the row is left still.
+ */
+export function heldEdgeOf(edges: readonly HeldEdge[]): HeldEdge | undefined {
+    return edges.reduce<HeldEdge | undefined>((best, edge) => (edge.can && edge.distance >= 0 && edge.distance <= edge.depth && (best === undefined || edge.distance < best.distance) ? edge : best), undefined);
+}
+
+/** Which ways the pointer has moved since a drag began. */
+type Moved = { up: boolean; down: boolean; left: boolean; right: boolean };
+
+/**
+ * The four edges of one scroller seen in the window, the top's band as deep as given and the
+ * other three as deep as the second figure, each able to scroll once the pointer has moved
+ * toward it and while the scroller has room left that way.
+ */
+function edgesOf(
+    owner: HeldEdge['owner'],
+    scroller: Element,
+    box: { top: number; left: number; height: number; width: number },
+    [head, rest]: readonly [number, number],
+    moved: Moved,
+    x: number,
+    y: number,
+): HeldEdge[] {
+    return [
+        { owner, depth: head, distance: y - box.top, can: moved.up && scroller.scrollTop > 0, axis: 'top', sign: -1 },
+        { owner, depth: rest, distance: box.top + box.height - y, can: moved.down && scroller.scrollTop < scroller.scrollHeight - scroller.clientHeight, axis: 'top', sign: 1 },
+        { owner, depth: rest, distance: x - box.left, can: moved.left && scroller.scrollLeft > 0, axis: 'left', sign: -1 },
+        { owner, depth: rest, distance: box.left + box.width - x, can: moved.right && scroller.scrollLeft < scroller.scrollWidth - scroller.clientWidth, axis: 'left', sign: 1 },
+    ];
+}
+
+/**
+ * The row of Day's columns scrolls itself under a held block, the library's own drag scroll kept
+ * off it: the library scrolls an element only in a band 50px deep along each edge, and along the
+ * row's top that band lies under the heads, so a block held over the heads' lower half, nearest
+ * the slots, scrolled nothing. Here the band along the top is the heads' whole height, and the
+ * foot and the sides keep the library's 50px. The pace is the library's: at most 300px a second
+ * at the very edge, falling with the square of the distance to nothing at the band's inner side,
+ * so the top's band, twice as deep, ramps over twice the distance. As the library does, an edge
+ * scrolls only once the pointer has moved toward it since the drag began and while its scroller
+ * can still scroll that way, the nearest such edge winning; the window's edges, which the library
+ * still scrolls, are weighed too, and where one of them wins the row is left still. The scroll is
+ * written whole pixels at a time onto the row's live offset, the fraction carried to the next
+ * frame, so a slow pace still moves and a scroll from elsewhere is never undone. It starts with a
+ * drag and stops, as the library's does, the moment the pointer is let go or the touch is lost,
+ * before a block let go in no slot glides back.
+ *
+ * The library takes the scrollers it drives when a drag starts, after the press, a block's drag
+ * once the pointer has moved or the touch been held. So a press on a block takes the row's
+ * scroller name away first, leaving the row out of that drag, and the name is given back when the
+ * press ends, is cancelled, or the drag stops. A press anywhere else in the row, which selects
+ * slots, leaves the row the library's to scroll.
+ */
+function useHeldScroll(row: RefObject<HTMLDivElement | null>): { start: (arg: EventDragStartArg) => void; stop: () => void } {
+    const halt = useRef<(() => void) | null>(null);
+
+    const start = useCallback(
+        (arg: EventDragStartArg) => {
+            halt.current?.();
+            const scroller = row.current;
+
+            if (scroller === null) {
+                return;
+            }
+
+            const first = 'touches' in arg.jsEvent ? (arg.jsEvent as unknown as TouchEvent).touches[0] : arg.jsEvent;
+            let x = first?.clientX ?? 0;
+            let y = first?.clientY ?? 0;
+            const moved: Moved = { up: false, down: false, left: false, right: false };
+            let carried = { top: 0, left: 0 };
+            let last = performance.now();
+            let frame = 0;
+
+            const track = (left: number, top: number) => {
+                moved.up ||= top < y;
+                moved.down ||= top > y;
+                moved.left ||= left < x;
+                moved.right ||= left > x;
+                x = left;
+                y = top;
+            };
+            const mouse = (event: MouseEvent) => track(event.clientX, event.clientY);
+            const touch = (event: TouchEvent) => {
+                const point = event.touches[0];
+
+                if (point !== undefined) {
+                    track(point.clientX, point.clientY);
+                }
+            };
+            const step = (now: number) => {
+                const seconds = (now - last) / 1000;
+                last = now;
+                const box = scroller.getBoundingClientRect();
+                const left = box.left + scroller.clientLeft;
+                const top = box.top + scroller.clientTop;
+                const band = scroller.querySelector<HTMLElement>('.admin-calendar-column__head')?.offsetHeight ?? HELD_EDGE;
+                const own = edgesOf('row', scroller, { top, left, height: scroller.clientHeight, width: scroller.clientWidth }, [band, HELD_EDGE], moved, x, y);
+                // The pointer must lie inside the row for any of its edges to count, as the library asks of each scroller.
+                const inside = own.every((edge) => edge.distance >= 0);
+                const view = document.documentElement;
+                const edge = heldEdgeOf([
+                    ...edgesOf('window', document.scrollingElement ?? view, { top: 0, left: 0, height: view.clientHeight, width: view.clientWidth }, [HELD_EDGE, HELD_EDGE], moved, x, y),
+                    ...own.map((each) => ({ ...each, can: inside && each.can })),
+                ]);
+
+                if (edge === undefined || edge.owner === 'window') {
+                    carried = { top: 0, left: 0 };
+                } else {
+                    const ease = (edge.depth - edge.distance) / edge.depth;
+                    const due = carried[edge.axis] + edge.sign * ease * ease * HELD_PACE * seconds;
+                    const whole = Math.trunc(due);
+                    carried = { top: 0, left: 0, [edge.axis]: due - whole };
+
+                    if (edge.axis === 'top') {
+                        scroller.scrollTop += whole;
+                    } else {
+                        scroller.scrollLeft += whole;
+                    }
+                }
+
+                frame = requestAnimationFrame(step);
+            };
+
+            const end = () => halt.current?.();
+
+            document.addEventListener('mousemove', mouse);
+            document.addEventListener('touchmove', touch, { passive: true });
+            document.addEventListener('mouseup', end);
+            document.addEventListener('touchend', end);
+            document.addEventListener('touchcancel', end);
+            frame = requestAnimationFrame(step);
+            halt.current = () => {
+                cancelAnimationFrame(frame);
+                document.removeEventListener('mousemove', mouse);
+                document.removeEventListener('touchmove', touch);
+                document.removeEventListener('mouseup', end);
+                document.removeEventListener('touchend', end);
+                document.removeEventListener('touchcancel', end);
+                halt.current = null;
+            };
+        },
+        [row],
+    );
+
+    const stop = useCallback(() => {
+        halt.current?.();
+        row.current?.classList.add('fc-scroller');
+    }, [row]);
+
+    useEffect(() => {
+        const scroller = row.current;
+
+        if (scroller === null) {
+            return undefined;
+        }
+
+        const named = () => scroller.classList.add('fc-scroller');
+        const press = (event: PointerEvent) => {
+            if (event.target instanceof Element && event.target.closest(PRESSED_BLOCK) !== null) {
+                scroller.classList.remove('fc-scroller');
+            }
+        };
+
+        scroller.addEventListener('pointerdown', press, true);
+        document.addEventListener('pointerup', named);
+        document.addEventListener('pointercancel', named);
+
+        return () => {
+            halt.current?.();
+            scroller.removeEventListener('pointerdown', press, true);
+            document.removeEventListener('pointerup', named);
+            document.removeEventListener('pointercancel', named);
+            named();
+        };
+    }, [row]);
+
+    return { start, stop };
+}
+
 type DayColumnsProps = {
     onDrop?: (drop: Drop) => void;
     columns: readonly DayColumn[];
@@ -327,20 +544,29 @@ function DayColumns({ columns, date, colouring, clock, shared, scrollTime, scale
     // leaves it, so the undo runs once the other instance has received it.
     const leaving = useRef<(() => void) | null>(null);
     const row = useRef<HTMLDivElement>(null);
+    const held = useHeldScroll(row);
 
     // The row opens at the scroll time: the last slot of the first column at or before it is
     // brought up under the heads, or the row stays at the axis's start where the time is earlier.
+    // The first hour's label at or below that slot rises above its own slot by half its height;
+    // the row stops short by as much of it as would stand behind the heads, so the first label in
+    // sight stands whole under them, and the slot, a little lower, stays in sight.
     useEffect(() => {
         const scroller = row.current;
         const lanes = [...(scroller?.querySelector('.admin-calendar-column')?.querySelectorAll<HTMLElement>('.fc-timegrid-slot-lane[data-time]') ?? [])];
-        const lane = lanes.filter((slot) => (slot.dataset['time'] ?? '') <= scrollTime).at(-1);
+        const at = scrollLaneOf(lanes, scrollTime);
+        const lane = lanes[at];
 
         if (scroller === null || lane === undefined) {
             return;
         }
 
-        const head = scroller.querySelector<HTMLElement>('.admin-calendar-column__head')?.offsetHeight ?? 0;
-        scroller.scrollTop += lane.getBoundingClientRect().top - scroller.getBoundingClientRect().top - head;
+        const line = scroller.getBoundingClientRect().top + (scroller.querySelector<HTMLElement>('.admin-calendar-column__head')?.offsetHeight ?? 0);
+        scroller.scrollTop += lane.getBoundingClientRect().top - line;
+        // The label's rise is read once the row has scrolled and taken off rounded up to a whole
+        // pixel: the row keeps its offset in whole pixels, so a fraction would be dropped and leave
+        // the label's top under the heads.
+        scroller.scrollTop -= Math.ceil(labelRiseOf(lanes.slice(at), line));
     }, [scrollTime, date]);
 
     /** A drop onto another member's column: put back in both instances, then handed with the member. */
@@ -396,6 +622,8 @@ function DayColumns({ columns, date, colouring, clock, shared, scrollTime, scale
                                         leaving.current = arg.revert;
                                     }}
                                     eventReceive={received(member)}
+                                    eventDragStart={held.start}
+                                    eventDragStop={held.stop}
                                     selectable={onSlot !== undefined && member !== null}
                                     select={(arg: DateSelectArg) => {
                                         if (member !== null) {
@@ -462,37 +690,77 @@ export function Grid({ view, date, blocks, colouring, granularity, weekStart, cl
         return () => cancelAnimationFrame(again);
     }, [fit, view, date, span?.min, span?.max, split]);
 
+    /*
+     * The library tells of a window's resize before it has laid the heads out again, and a head
+     * whose column crosses its narrow width changes height as it turns to its smaller size, so the
+     * figure is taken again on the next frame as well, with the heads at their new height.
+     */
+    const refit = useCallback(() => {
+        fit();
+        requestAnimationFrame(fit);
+    }, [fit]);
+
     useEffect(() => {
         calendar.current?.getApi().changeView(VIEWS[view], date);
     }, [view, date]);
 
+    /*
+     * The library brings the slot of the scroll time to its scroller's top, a pixel past the slot's
+     * top line, where an hour's label, centred on that line, stands half behind the day header.
+     * Once the library has scrolled, the scroller is brought up by as much of the first hour's
+     * label at or below that slot as stands above its top, so the label stands whole and the slot,
+     * a little lower, stays in sight. It runs on the frame after the library sets its dates, by
+     * when its scroll on opening or on a step to other dates is done, and straight after this grid
+     * asks it for the scroll time. Only a scroll the library has just made is moved, the slot
+     * standing at the scroller's top where the library leaves it, so a scroll of the admin's own
+     * is kept and a second run moves nothing.
+     */
+    const lift = useCallback(() => {
+        const scroller = [...(box.current?.querySelectorAll<HTMLElement>('.fc-scroller') ?? [])].find((each) => each.querySelector('.fc-timegrid-body') !== null);
+        const lanes = [...(scroller?.querySelectorAll<HTMLElement>('.fc-timegrid-slot-lane[data-time]') ?? [])];
+        const at = scrollLaneOf(lanes, scrollTime);
+        const lane = lanes[at];
+
+        if (scroller === undefined || lane === undefined) {
+            return;
+        }
+
+        const line = scroller.getBoundingClientRect().top + scroller.clientTop;
+
+        if (Math.abs(lane.getBoundingClientRect().top - line) <= 2.5) {
+            scroller.scrollTop -= Math.ceil(labelRiseOf(lanes.slice(at), line));
+        }
+    }, [scrollTime]);
+
     useEffect(() => {
         calendar.current?.getApi().scrollToTime(scrollTime);
-    }, [scrollTime, view, date]);
+        lift();
+    }, [scrollTime, view, date, lift]);
 
     /**
-     * A column's head: the weekday, ICU's short name in the page's language, and the date in the
-     * tenant's format, today's on the highlight. The head is a container: narrower than the whole
-     * date needs on one line, as Week's seven columns are on a phone, the date gives way to the
-     * day's number under the weekday, today's on the highlight. The widest whole head, a weekday
-     * and today's date on its highlight, takes 114px in English or Greek, so the short form starts
-     * under 116px, with 2px to spare. The number is drawn from an attribute, so the head's words
-     * stay the weekday and the date at every width.
+     * A column's head: the weekday, ICU's short name in the page's language, over the day of the
+     * month, large in the display face on a full pill, today's on the highlight. The head is a
+     * container: narrower than 116px, as Week's seven columns are on a phone, the same two lines
+     * stand at a smaller size. The pill is never narrower than it is tall, its line and its padding
+     * above and below, so a day of one digit stands on a round pill. The number is drawn from an
+     * attribute and kept from readers, and the date in the tenant's format stands after the weekday
+     * for readers alone, so the head reads as the weekday and the whole date at every width.
      */
     const header = (arg: DayHeaderContentArg) => {
         const day = utcDayOf(arg.date);
         const weekday = weekdayName(isoWeekday(day), 'short', shell.language);
         const date = formatDate(day, clock);
+        const number = [
+            'admin-calendar-grid__day min-w-[calc(1lh+2px)] rounded-full px-2.5 py-px text-center font-display text-tile-title tabular-nums after:content-[attr(data-day)] @max-[116px]:px-1 @max-[116px]:text-base',
+            arg.isToday ? 'admin-calendar-grid__today bg-spark text-spark-foreground' : 'text-foreground',
+        ].join(' ');
 
         return (
             <span className="admin-calendar-grid__head @container block">
-                <span className="block @max-[116px]:flex @max-[116px]:flex-col @max-[116px]:items-center">
-                    <span>{weekday}</span>{' '}
-                    {arg.isToday ? <span className="admin-calendar-grid__today rounded-full bg-spark px-1.5 py-0.5 text-spark-foreground tabular-nums @max-[116px]:hidden">{date}</span> : <span className="@max-[116px]:hidden">{date}</span>}
-                    <span
-                        data-day={Number(day.slice(8, 10))}
-                        className={['admin-calendar-grid__day hidden size-6 items-center justify-center rounded-full font-medium tabular-nums after:content-[attr(data-day)] @max-[116px]:inline-flex', arg.isToday && 'bg-spark text-spark-foreground'].filter(Boolean).join(' ')}
-                    />
+                <span className="flex flex-col items-center gap-0.5">
+                    <span className="admin-calendar-grid__weekday text-label @max-[116px]:text-xs">{weekday}</span>{' '}
+                    <span className="sr-only">{date}</span>
+                    <span aria-hidden="true" data-day={Number(day.slice(8, 10))} className={number} />
                 </span>
             </span>
         );
@@ -514,7 +782,8 @@ export function Grid({ view, date, blocks, colouring, granularity, weekStart, cl
                 // The wrapper's height bounds the grid at every width, so the library scrolls its
                 // slots inside it under the day header and the page never carries the hours.
                 height="100%"
-                windowResize={fit}
+                windowResize={refit}
+                datesSet={() => requestAnimationFrame(lift)}
                 initialView={VIEWS[view]}
                 initialDate={date}
                 slotMinTime={view === 'week' && span !== undefined ? span.min : '00:00:00'}

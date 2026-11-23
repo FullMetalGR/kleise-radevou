@@ -931,10 +931,12 @@ const CALENDAR_ONE_GRID_COLUMNS = <<<'JS'
 
 /**
  * A script answering, of the one time grid's day heads once the fonts are in, how each is drawn,
- * each different answer once, a comma between: "full" where the weekday and the whole date stand
- * on one line, "short" where the date is not drawn and the day's number stands under the weekday,
- * drawn from the attribute holding the number of that head's date, "spilt" where the head's words
- * run out of its column or the weekday breaks, and "neither" otherwise.
+ * each different answer once, a comma between: "large" where the weekday stands on one line over
+ * the day's number, both centred in the head, the number drawn from the attribute holding the
+ * number of that head's date at 21 pixels on a pill no narrower than it is tall, and the whole
+ * date kept for readers but not drawn; "small" the same with the number smaller; "spilt" where the
+ * head's words run out of its column or the weekday's text takes more than one line; and
+ * "neither" otherwise.
  */
 const CALENDAR_HEAD_FORMS = <<<'JS'
     document.fonts.ready.then(() => {
@@ -943,9 +945,15 @@ const CALENDAR_HEAD_FORMS = <<<'JS'
             return 'not on the page';
         }
         const box = (part) => part.getBoundingClientRect();
-        const drawn = (part) => part.getClientRects().length > 0;
-        const lines = (part) => part.getClientRects().length;
-        const middle = (part) => box(part).top + box(part).height / 2;
+        const seen = (part) => box(part).width > 1.5 && box(part).height > 1.5;
+        // The lines a part's text takes, told by the distinct tops of its text's line boxes: the
+        // part's own box is one rectangle however many lines its text wraps to.
+        const lines = (part) => {
+            const range = document.createRange();
+            range.selectNodeContents(part);
+            return new Set([...range.getClientRects()].filter((rect) => rect.width > 0.5).map((rect) => Math.round(rect.top))).size;
+        };
+        const centre = (part) => box(part).left + box(part).width / 2;
         const form = (cell) => {
             const cushion = cell.querySelector('.fc-col-header-cell-cushion');
             const words = cell.querySelector('.admin-calendar-grid__head > span');
@@ -958,13 +966,11 @@ const CALENDAR_HEAD_FORMS = <<<'JS'
             if (cushion.scrollWidth > cushion.clientWidth + 0.5 || box(cushion).right > box(cell).right + 0.5 || lines(weekday) !== 1) {
                 return 'spilt';
             }
-            if (drawn(date) && !drawn(number) && lines(date) === 1 && Math.abs(middle(date) - middle(weekday)) < 2) {
-                return 'full';
+            const centred = Math.abs(centre(weekday) - centre(number)) < 1 && Math.abs(centre(number) - centre(cell)) < 1.5;
+            if (seen(date) || !seen(number) || !figure || !centred || box(number).top < box(weekday).bottom - 0.5 || box(number).width < box(number).height - 0.5) {
+                return 'neither';
             }
-            if (!drawn(date) && drawn(number) && box(number).top >= box(weekday).bottom - 0.5 && figure) {
-                return 'short';
-            }
-            return 'neither';
+            return parseFloat(getComputedStyle(number).fontSize) >= 20.5 ? 'large' : 'small';
         };
         return [...new Set(cells.map(form))].join(', ');
     })
@@ -1088,7 +1094,7 @@ it('draws Week on a phone as its grid of people inside the screen, a member\'s h
         ->assertScript(calendarDrawn('.fc-timeGridWeek-view .fc-col-header-cell'), true)
         ->assertNotPresent('.admin-calendar-week')
         ->assertScript(CALENDAR_ONE_GRID_COLUMNS, '48 7 true true true')
-        ->assertScript(CALENDAR_HEAD_FORMS, 'short')
+        ->assertScript(CALENDAR_HEAD_FORMS, 'small')
         // A day column is a seventh of what the axis leaves of the grid: the grid 356 pixels
         // wide, the window less two 16 pixel gutters and the card's two 1 pixel edges, and the
         // axis 49, its 48 pixel labels and their 1 pixel rule.
@@ -1230,15 +1236,15 @@ it('draws the legend on a phone under Day and Week of one member alone, never un
         ->assertNotPresent('.admin-calendar-week')
         ->assertPresent('.admin-calendar-legend');
 
-    // A seventh of a phone is narrower than a head's whole date in Greek, so each of Week's heads
-    // is the weekday over the day's number, on the phone and on the narrowest one.
+    // A seventh of a phone is narrower than a head's 116 pixels, so each of Week's heads is the
+    // weekday over the smaller day's number, on the phone and on the narrowest one.
     $size = calendarPlaywright($page)->viewportSize();
     $page->assertScript(CALENDAR_SETTLED, true)
-        ->assertScript(CALENDAR_HEAD_FORMS, 'short');
+        ->assertScript(CALENDAR_HEAD_FORMS, 'small');
     Look::shot($page, 'calendar-greek-390-week');
     $page->resize(320, $size['height'])
         ->assertScript(CALENDAR_SETTLED, true)
-        ->assertScript(CALENDAR_HEAD_FORMS, 'short');
+        ->assertScript(CALENDAR_HEAD_FORMS, 'small');
     Look::shot($page, 'calendar-greek-320-week');
     $page->resize($size['width'], $size['height'])
         ->assertScript(CALENDAR_SETTLED, true);
@@ -1731,9 +1737,11 @@ const CALENDAR_HEAD_STAYS = <<<'JS'
 
 /**
  * A script answering an empty string where the grid opened at its scroll time, looking for two
- * seconds: the box scrolled down to the slot of that time, the slot at the top of the slots seen,
- * under Day's column heads or at the one grid's scroller's top. Otherwise the time, how far the
- * box is scrolled and how far the slot lies from that top.
+ * seconds: the box scrolled down to the slot of that time, at the top of the slots seen, under
+ * Day's column heads or at the one grid's scroller's top. That top is the slot's own or, where the
+ * first hour's label at or below the slot rises above it, the label's, so the label stands whole
+ * there. Otherwise the time, how far the box is scrolled and how far that top lies from the heads'
+ * foot or the scroller's top.
  */
 const CALENDAR_AT_SCROLL_TIME = <<<'JS'
     new Promise((resolve) => {
@@ -1748,7 +1756,10 @@ const CALENDAR_AT_SCROLL_TIME = <<<'JS'
                 return 'no slot at ' + time;
             }
             const top = row === null ? scroller.getBoundingClientRect().top : row.querySelector('.admin-calendar-column__head').getBoundingClientRect().bottom;
-            const off = lane.getBoundingClientRect().top - top;
+            const lanes = [...(row?.querySelector('.admin-calendar-column') ?? scroller).querySelectorAll('.fc-timegrid-slot-lane[data-time]')];
+            const label = lanes.slice(lanes.indexOf(lane)).map((each) => each.parentElement.querySelector('.fc-timegrid-slot-label-cushion')).find((cushion) => cushion !== null && cushion.textContent.trim() !== '') ?? null;
+            const highest = label === null || label.textContent.trim() === '' ? lane.getBoundingClientRect().top : Math.min(lane.getBoundingClientRect().top, label.getBoundingClientRect().top);
+            const off = highest - top;
             return scroller.scrollTop > 0 && Math.abs(off) <= 1.5 ? '' : time + ' scrolled ' + scroller.scrollTop + ' of ' + (scroller.scrollHeight - scroller.clientHeight) + ', the slot ' + off.toFixed(1) + 'px from the top';
         };
         const check = () => {
@@ -1759,6 +1770,69 @@ const CALENDAR_AT_SCROLL_TIME = <<<'JS'
             }
         };
         check();
+    })
+    JS;
+
+/**
+ * A script answering, once the fonts are in, an empty string where the first hour label in sight
+ * stands whole under Day's column heads, or under the top of the one grid's scroller, and the slot
+ * of the scroll time lies no higher than that line, so a block starting then is not under the
+ * heads; otherwise the label cut and by how much, or how far the slot lies above the line.
+ */
+const CALENDAR_FIRST_HOUR_WHOLE = <<<'JS'
+    document.fonts.ready.then(() => {
+        const grid = document.querySelector('.admin-calendar-grid[data-scroll-time]');
+        const row = grid?.querySelector('.admin-calendar-columns__row') ?? null;
+        const scroller = row ?? [...(grid?.querySelectorAll('.fc-scroller') ?? [])].find((candidate) => candidate.querySelector('.fc-timegrid-body') !== null);
+        const lane = grid?.querySelector('.fc-timegrid-slot-lane[data-time="' + grid?.dataset.scrollTime + '"]');
+        if (scroller === undefined || lane === null || lane === undefined) {
+            return 'no slot at the scroll time';
+        }
+        const line = row === null ? scroller.getBoundingClientRect().top : row.querySelector('.admin-calendar-column__head').getBoundingClientRect().bottom;
+        const labels = [...(row?.querySelector('.admin-calendar-column') ?? scroller).querySelectorAll('.fc-timegrid-slot-label-cushion')].filter((label) => label.textContent.trim() !== '');
+        const first = labels.find((label) => label.getBoundingClientRect().bottom > line + 0.5);
+        if (first === undefined) {
+            return 'no hour label in sight';
+        }
+        const cut = line - first.getBoundingClientRect().top;
+        const above = line - lane.getBoundingClientRect().top;
+        return [cut > 0.1 ? first.textContent.trim() + ' cut by ' + cut.toFixed(1) + 'px' : '', above > 0.5 ? 'the slot ' + above.toFixed(1) + 'px above the line' : ''].filter(Boolean).join(', ');
+    })
+    JS;
+
+/**
+ * A script answering an empty string where each date in the date title stands whole on one line,
+ * so any break falls between two dates, two dates being found, and the page does not scroll
+ * sideways; otherwise each date broken and the lines it takes, with the width read.
+ */
+const CALENDAR_TITLE_DATES_WHOLE = <<<'JS'
+    document.fonts.ready.then(() => {
+        const title = document.querySelector('.admin-calendar-title');
+        if (title === null) {
+            return 'not on the page';
+        }
+        const found = [];
+        let dates = 0;
+        const walker = document.createTreeWalker(title, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+            for (const match of node.textContent.matchAll(/\d+[\/.\-]\d+[\/.\-]\d+/g)) {
+                const range = document.createRange();
+                range.setStart(node, match.index);
+                range.setEnd(node, match.index + match[0].length);
+                const lines = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
+                dates++;
+                if (lines !== 1) {
+                    found.push(match[0] + ' on ' + lines + ' lines');
+                }
+            }
+        }
+        if (dates !== 2) {
+            found.push(dates + ' dates');
+        }
+        if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) {
+            found.push('the page ' + document.documentElement.scrollWidth + 'px wide');
+        }
+        return found.length === 0 ? '' : 'at ' + document.documentElement.clientWidth + 'px: ' + found.join(', ');
     })
     JS;
 
@@ -1985,9 +2059,9 @@ it('bounds the time grid\'s box by the window from the desktop width, opening at
 
     // The one grid's box is the window less a rem above and below where its eleven hours and its
     // header run taller, and its own height where they do not, no band left under the last hour;
-    // a head is the whole date where its column has the room. Each shot waits for the library to
+    // a head's number is the large one where its column has the room. Each shot waits for the library to
     // lay the grid out again after the resize.
-    foreach ([[1280, 620, '588 true', 'full'], [1440, 900, '694 true', 'full'], [800, 900, '694 true', 'short']] as [$width, $height, $box, $heads]) {
+    foreach ([[1280, 620, '588 true', 'large'], [1440, 900, '734 true', 'large'], [800, 900, '730 true', 'small']] as [$width, $height, $box, $heads]) {
         $page->resize($width, $height)
             ->assertScript(CALENDAR_SETTLED, true)
             ->assertScript(CALENDAR_BOX, $box)
@@ -2000,7 +2074,7 @@ it('bounds the time grid\'s box by the window from the desktop width, opening at
         ->assertNoJavaScriptErrors();
 });
 
-it('draws each head of Week narrowed to one member as the whole date in Greek, whose dates run longer, at a laptop\'s 1280 pixels and in a desktop window', function () {
+it('draws each head of Week narrowed to one member as the weekday over the large day\'s number in Greek, whose weekdays run longer, at a laptop\'s 1280 pixels and in a desktop window', function () {
     $days = calendarElenaWorkday();
     $workday = calendarDay($days);
     calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '10:00', days: $days);
@@ -2021,12 +2095,126 @@ it('draws each head of Week narrowed to one member as the whole date in Greek, w
     foreach ([[1280, 620], [1440, 900]] as [$width, $height]) {
         $page->resize($width, $height)
             ->assertScript(CALENDAR_SETTLED, true)
-            ->assertScript(CALENDAR_HEAD_FORMS, 'full');
+            ->assertScript(CALENDAR_HEAD_FORMS, 'large');
     }
 
     $page->resize($size['width'], $size['height'])
         ->assertNoJavaScriptErrors();
 });
+
+it('opens Day\'s columns with the first hour label in sight whole under the heads and the scroll time\'s slot clear of them, in a desktop window and on a phone', function (SiteLanguage $language) {
+    $days = calendarElenaWorkday();
+    $day = Admin::url('luna', Admin::CALENDAR.'?view=day&date='.calendarDay($days));
+    calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '10:00', days: $days);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    // The first booking at 10:00 puts the scroll time an hour before it, at 09:00, whose label is
+    // the first in sight once the row has scrolled there; each window is shorter than the row's
+    // twelve hours, so the row scrolls.
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+    $size = calendarPlaywright($page)->viewportSize();
+
+    foreach ([[1440, 760], [375, 812]] as [$width, $height]) {
+        $page->resize($width, $height)
+            ->navigate($day)
+            ->waitForText(adminLine('admin/calendar.grid.block', ['customer' => 'Cora Cut', 'service' => 'Haircut'], $language))
+            ->assertAttribute('.admin-calendar-columns', 'data-scroll-time', '09:00:00')
+            ->assertScript(CALENDAR_AT_SCROLL_TIME, '')
+            ->assertScript(CALENDAR_FIRST_HOUR_WHOLE, '');
+        Look::shot($page, 'calendar-day-first-hour-'.$language->value.'-'.$width);
+    }
+
+    $page->resize($size['width'], $size['height'])
+        ->assertNoJavaScriptErrors();
+})->with(['in English' => [SiteLanguage::English], 'in Greek' => [SiteLanguage::Greek]]);
+
+it('opens Day\'s columns with the 09:00 label whole under the heads where the slots step five minutes and the scroll time falls at 08:55, on a row with no label of its own', function () {
+    $days = calendarElenaWorkday();
+    DB::table('tenant_luna.settings')->update(['granularity_min' => 5]);
+    calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '09:55', days: $days);
+
+    // The first booking at 09:55 puts the scroll time at 08:55, a slot with no label, the 09:00
+    // label on the next row down rising above its own slot into that one.
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+    $size = calendarPlaywright($page)->viewportSize();
+    $page->resize(1440, 760)
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day&date='.calendarDay($days)))
+        ->waitForText(calendarBlock('Cora Cut', 'Haircut'))
+        ->assertAttribute('.admin-calendar-columns', 'data-scroll-time', '08:55:00')
+        ->assertScript(CALENDAR_AT_SCROLL_TIME, '')
+        ->assertScript(CALENDAR_FIRST_HOUR_WHOLE, '');
+
+    $page->resize($size['width'], $size['height'])
+        ->assertNoJavaScriptErrors();
+});
+
+it('opens Week narrowed to one member with the first hour label in sight whole under the scroller\'s top and the scroll time\'s slot in sight, at a laptop\'s 1280 pixels, on a direct load and after a step to the next week and back', function (SiteLanguage $language) {
+    $days = calendarElenaWorkday();
+    $workday = calendarDay($days);
+    calendarBooking('Cora Cut', 'confirmed', 'Elena Papadaki', '10:00', days: $days);
+    calendarBooking('Bo South', 'confirmed', 'Nikos Georgiou', '13:00', 'Beard trim', days: $days);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+    $block = adminLine('admin/calendar.grid.block', ['customer' => 'Cora Cut', 'service' => 'Haircut'], $language);
+
+    // The first booking at 10:00 puts the scroll time at 09:00, whose label the library's own
+    // scroll would leave half under the scroller's top.
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+    $size = calendarPlaywright($page)->viewportSize();
+    $page->resize(1280, 620)
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=week&date='.$workday))
+        ->waitForText('Cora Cut')
+        ->click('#calendar-who')
+        ->click('.admin-calendar-who__member[data-staff-id="'.LunaFixture::id('staff', 'Nikos Georgiou').'"] input')
+        ->click('#calendar-who')
+        ->waitForText($block)
+        ->assertNotPresent('.admin-calendar-columns')
+        ->assertAttribute('.admin-calendar-grid[data-scroll-time]', 'data-scroll-time', '09:00:00')
+        ->assertScript(CALENDAR_SETTLED, true)
+        ->assertScript(CALENDAR_AT_SCROLL_TIME, '')
+        ->assertScript(CALENDAR_FIRST_HOUR_WHOLE, '');
+    Look::shot($page, 'calendar-week-one-member-first-hour-'.$language->value);
+
+    // The address loaded again, the one grid drawn from the start.
+    $page->navigate(Admin::url('luna', Admin::CALENDAR.'?view=week&date='.$workday))
+        ->waitForText($block)
+        ->assertNotPresent('.admin-calendar-columns')
+        ->assertScript(CALENDAR_SETTLED, true)
+        ->assertScript(CALENDAR_AT_SCROLL_TIME, '')
+        ->assertScript(CALENDAR_FIRST_HOUR_WHOLE, '');
+
+    // The week after, which holds no booking, and back, at the booking's hour again.
+    $page->click('.admin-calendar-next')->assertDontSee('Cora Cut');
+    $page->click('.admin-calendar-previous')->waitForText($block)
+        ->assertScript(CALENDAR_SETTLED, true)
+        ->assertScript(CALENDAR_AT_SCROLL_TIME, '')
+        ->assertScript(CALENDAR_FIRST_HOUR_WHOLE, '');
+
+    $page->resize($size['width'], $size['height'])
+        ->assertNoJavaScriptErrors();
+})->with(['in English' => [SiteLanguage::English], 'in Greek' => [SiteLanguage::Greek]]);
+
+it('keeps each date of Week\'s title whole on the narrowest phone, the title breaking only between the two dates, with no filter set and with one counted on the filters\' button, and the page never scrolling sideways', function (SiteLanguage $language) {
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'));
+    $size = calendarPlaywright($page)->viewportSize();
+    $page->resize(320, $size['height'])
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=week&date='.calendarDay(calendarElenaWorkday())))
+        ->assertScript(calendarDrawn('.admin-calendar-title'), true)
+        ->assertScript(CALENDAR_TITLE_DATES_WHOLE, '');
+    Look::shot($page, 'calendar-week-title-'.$language->value.'-320');
+
+    // A status set, the filters' button counts it and takes more of the title's line.
+    $page->click('.admin-filters-toggle')
+        ->select('.admin-calendar-status', 'confirmed')
+        ->click('.admin-filters-toggle')
+        ->assertSeeIn('.admin-filters-toggle__count', '1')
+        ->assertScript(CALENDAR_TITLE_DATES_WHOLE, '');
+    Look::shot($page, 'calendar-week-title-counted-'.$language->value.'-320');
+
+    $page->resize($size['width'], $size['height'])
+        ->assertNoJavaScriptErrors();
+})->with(['in English' => [SiteLanguage::English], 'in Greek' => [SiteLanguage::Greek]]);
 
 it('fits the one grid\'s box to its own hours in a window taller than them, no band under the last hour, on a direct load and after the week, the view, the colours and the member change', function () {
     $days = calendarElenaWorkday();
@@ -2055,17 +2243,17 @@ it('fits the one grid\'s box to its own hours in a window taller than them, no b
         ->click($member($nikos))
         ->click('#calendar-who')
         ->waitForText(calendarBlock('Cora Cut', 'Haircut'));
-    $fits('694 true');
+    $fits('734 true');
 
     // The same address loaded again, the one grid drawn from the start.
     $page->navigate($week)->waitForText(calendarBlock('Cora Cut', 'Haircut'));
-    $fits('694 true');
+    $fits('734 true');
 
     // The week after, which holds no booking, and back.
     $page->click('.admin-calendar-next')->assertDontSee('Cora Cut');
-    $fits('694 true');
+    $fits('734 true');
     $page->click('.admin-calendar-previous')->waitForText(calendarBlock('Cora Cut', 'Haircut'));
-    $fits('694 true');
+    $fits('734 true');
 
     // Day and back, Month and back.
     foreach (['day', 'month'] as $view) {
@@ -2074,14 +2262,14 @@ it('fits the one grid\'s box to its own hours in a window taller than them, no b
             ->assertNotPresent('.admin-calendar-grid .fc-timeGridWeek-view')
             ->click(adminLine('admin/calendar.toolbar.views.week'))
             ->waitForText(calendarBlock('Cora Cut', 'Haircut'));
-        $fits('694 true');
+        $fits('734 true');
     }
 
     // Coloured by status in place of by member.
     $page->select('.admin-calendar-colour-by', 'status')
         ->waitForText(adminLine(SettingsController::COLOUR_BY_SAVED))
         ->assertPresent('.admin-calendar-legend[data-colour-by="status"]');
-    $fits('694 true');
+    $fits('734 true');
 
     // Nikos in her place: six hours on the axis, an hour either side of his four.
     $page->click('#calendar-who')
@@ -2090,7 +2278,7 @@ it('fits the one grid\'s box to its own hours in a window taller than them, no b
         ->click('#calendar-who')
         ->assertDontSee('Cora Cut')
         ->assertPresent('.admin-calendar-grid .fc-timeGridWeek-view');
-    $fits('394 true');
+    $fits('434 true');
 
     $page->resize($size['width'], $size['height'])
         ->assertNoJavaScriptErrors();
@@ -2114,7 +2302,8 @@ function calendarPoint(string $across, int $x, string $down, int $y): string
  * A script sending the page the mouse events the grid's library listens for, since the walk's own
  * mouse cannot keep its button down between two steps: "press" puts the button down on whatever
  * lies under the point given, "carry" moves the held pointer to the point in eight steps from the
- * point it left, and "drop" lets the button go at the point.
+ * point it left, and "drop" lets the button go at the point. A press and a drop are each sent as a
+ * real mouse sends them, the pointer's event first and then the mouse's.
  */
 function calendarHeld(string $step, string $point, string $from = '[0, 0]'): string
 {
@@ -2123,13 +2312,16 @@ function calendarHeld(string $step, string $point, string $from = '[0, 0]'): str
             const [x, y] = {$point};
             const [fromX, fromY] = {$from};
             const send = (target, kind, left, top) => target.dispatchEvent(new MouseEvent(kind, { bubbles: true, cancelable: true, view: window, button: 0, buttons: kind === 'mouseup' ? 0 : 1, clientX: left, clientY: top }));
+            const point = (target, kind, left, top) => target.dispatchEvent(new PointerEvent(kind, { bubbles: true, cancelable: true, composed: true, view: window, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: kind === 'pointerup' ? 0 : 1, clientX: left, clientY: top }));
             if ('{$step}' === 'press') {
+                point(document.elementFromPoint(x, y), 'pointerdown', x, y);
                 send(document.elementFromPoint(x, y), 'mousedown', x, y);
             } else if ('{$step}' === 'carry') {
                 for (let step = 1; step <= 8; step++) {
                     send(document, 'mousemove', fromX + ((x - fromX) * step) / 8, fromY + ((y - fromY) * step) / 8);
                 }
             } else {
+                point(document.elementFromPoint(x, y) ?? document, 'pointerup', x, y);
                 send(document, 'mouseup', x, y);
             }
             return '{$step}';
@@ -2169,6 +2361,15 @@ function calendarRowReaches(AwaitableWebpage|Webpage $page, string $edge): float
     }
 
     return $left;
+}
+
+/** The number a script on the page answers, read as a float. */
+function calendarFigure(AwaitableWebpage|Webpage $page, string $script): float
+{
+    $read = $page->script($script);
+    assert(is_int($read) || is_float($read));
+
+    return (float) $read;
 }
 
 it('scrolls Day\'s row of columns under a block held at its foot or at its top, one drag carrying a booking to an hour out of sight, and lands the drop on the hour under the pointer, in its own column and in another member\'s', function () {
@@ -2231,6 +2432,103 @@ it('scrolls Day\'s row of columns under a block held at its foot or at its top, 
         ->click('.admin-move-confirm__keep')
         ->assertDontSee(adminLine('admin/bookings.move.confirm.title'))
         ->resize($size['width'], $size['height'])
+        ->assertNoJavaScriptErrors();
+});
+
+it('scrolls Day\'s row of columns up under a block held over the lower half of the heads, below the band the library keeps along the row\'s top, and stops once the block leaves the heads or is let go', function () {
+    $days = calendarNextWednesday();
+    $day = calendarDay($days);
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    $late = '.fc-event[data-block-id="'.calendarBooking('Lena Late', 'confirmed', 'Elena Papadaki', '18:00', days: $days).':0"]';
+    $grid = calendarColumn($elena).' .fc-timegrid-col[data-date="'.$day.'"]';
+    $head = calendarColumn($elena).' .admin-calendar-column__head';
+    $scrolled = "document.querySelector('.admin-calendar-columns__row').scrollTop";
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+    $size = calendarPlaywright($page)->viewportSize();
+    $page->resize(1280, 620)
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day&date='.$day))
+        ->waitForText(calendarBlock('Lena Late', 'Haircut'))
+        ->assertScript(calendarRowAt('top', 2000), '70');
+
+    // Waits up to five seconds for the row to scroll up by the pixels given from where it stood.
+    $rises = function (float $by) use ($page, $scrolled): void {
+        $from = calendarFigure($page, $scrolled);
+
+        for ($tries = 0; $tries < 20 && $from - calendarFigure($page, $scrolled) < $by; $tries++) {
+            $page->wait(0.25);
+        }
+
+        expect($from - calendarFigure($page, $scrolled))->toBeGreaterThanOrEqual($by);
+    };
+
+    // The row's scroll read twice, half a second apart, after a frame for a step already taken.
+    $holds = function () use ($page, $scrolled): void {
+        $page->wait(0.1);
+        $from = calendarFigure($page, $scrolled);
+        $page->wait(0.5);
+
+        expect(abs(calendarFigure($page, $scrolled) - $from))->toBeLessThan(0.5);
+    };
+
+    // The heads are 100 pixels tall; 75 pixels down them lies past the library's own 50 pixel
+    // band, and the row still scrolls up while the block is held there.
+    $press = calendarPoint($late, 12, $late, 4);
+    $over = calendarPoint($grid, 24, $head, 75);
+    $under = calendarPoint($grid, 24, $head, 140);
+    $page->script(calendarHeld('press', $press));
+    $page->script(calendarHeld('carry', $over, $press));
+    $rises(12.0);
+
+    // Carried out under the heads, the row stops; back over them, it scrolls on.
+    $page->script(calendarHeld('carry', $under, $over));
+    $holds();
+    $page->script(calendarHeld('carry', $over, $under));
+    $rises(12.0);
+
+    // Let go over the heads, the row stops.
+    $page->script(calendarHeld('drop', $over));
+    $holds();
+
+    $page->resize($size['width'], $size['height'])
+        ->assertNoJavaScriptErrors();
+});
+
+it('scrolls Day\'s row of columns down under a selection of empty slots dragged to near the row\'s foot, the selection growing as the row scrolls', function () {
+    $days = calendarNextWednesday();
+    $day = calendarDay($days);
+    $elena = LunaFixture::id('staff', 'Elena Papadaki');
+    calendarBooking('Lena Late', 'confirmed', 'Elena Papadaki', '18:00', days: $days);
+    $grid = calendarColumn($elena).' .fc-timegrid-col[data-date="'.$day.'"]';
+    $scrolled = "document.querySelector('.admin-calendar-columns__row').scrollTop";
+    $selected = '(() => { const lit = document.querySelector(\'.admin-calendar-column[data-column="member-'.$elena.'"] .fc-highlight\'); return lit === null ? 0 : lit.getBoundingClientRect().height; })()';
+
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'));
+    $size = calendarPlaywright($page)->viewportSize();
+    $page->resize(1280, 620)
+        ->navigate(Admin::url('luna', Admin::CALENDAR.'?view=day&date='.$day))
+        ->waitForText(calendarBlock('Lena Late', 'Haircut'))
+        ->assertScript(calendarRowAt('foot', 0), '70');
+
+    // An empty slot pressed at 10:00 and the pointer carried to ten pixels above the row's foot,
+    // past the page's own band along the window's foot.
+    $press = calendarPoint($grid, 24, calendarColumn($elena).' .fc-timegrid-slot-lane[data-time="10:00:00"]', 4);
+    $foot = calendarPoint($grid, 24, '.admin-calendar-columns__row', -10);
+    $page->script(calendarHeld('press', $press));
+    $page->script(calendarHeld('carry', $foot, $press));
+    $from = calendarFigure($page, $scrolled);
+    $reach = calendarFigure($page, $selected);
+    expect($reach)->toBeGreaterThan(0.0);
+
+    for ($tries = 0; $tries < 20 && calendarFigure($page, $scrolled) - $from < 40; $tries++) {
+        $page->wait(0.25);
+    }
+
+    expect(calendarFigure($page, $scrolled) - $from)->toBeGreaterThanOrEqual(40.0);
+    expect(calendarFigure($page, $selected))->toBeGreaterThanOrEqual($reach + 20);
+
+    $page->script(calendarHeld('drop', $foot));
+    $page->resize($size['width'], $size['height'])
         ->assertNoJavaScriptErrors();
 });
 
