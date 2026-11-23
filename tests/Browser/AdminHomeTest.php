@@ -39,7 +39,7 @@ use Tests\Support\LunaFixture;
  *
  * Then the layout as the browser draws it, the first two in English and in Greek: at the desktop
  * width Awaiting approval and Next up share a row at five and seven twelfths and the days and the
- * two Top tables the next at five, four and three, each Top table inside its card; on a phone
+ * two Top lists the next at five, four and three, each Top list inside its card; on a phone
  * every block in one column, the four ranges two by two with each label inside its button, and
  * nothing scrolling sideways; and the setup banner as a slim strip with its count and Continue, at
  * both widths, Continue taking the focus back when the wizard it opened closes.
@@ -47,15 +47,15 @@ use Tests\Support\LunaFixture;
  * Then three things only the browser can say. The six tiles each take a line of their own below
  * the desktop width, Bookings standing beside New customers again only from the width at which
  * half a line holds the longest Greek comparison on three lines. The keyboard's outline is seen
- * whole on a row of Next up and of Recent activity, whose cards cut at their rounded edges, with
- * the house ring on All bookings and around a row's text in To mark. And the pointer's fill on
- * the last row of Next up is square, above the foot of a card stretched beside a taller Awaiting
- * approval and at the foot, where the card cuts it.
+ * whole on a row of Recent activity, whose card cuts at its rounded edges, and the house ring
+ * whole on a row of Next up inside its day card, on All bookings and around a row's text in To
+ * mark. And the pointer's fill on a row of Next up is the panel fill, rounded, inside its day
+ * card.
  */
 
 /**
  * The two rows at the desktop width: whether Awaiting approval and Next up sit side by side on one
- * line, their widths in twelfths of the pair, then the same for the days and the two Top tables.
+ * line, their widths in twelfths of the pair, then the same for the days and the two Top lists.
  */
 const HOME_ROWS = <<<'JS'
     document.fonts.ready.then(() => {
@@ -74,11 +74,19 @@ const HOME_ROWS = <<<'JS'
     })
     JS;
 
-/** True when each Top table, read as a grid or as rows, is no wider than its card's box. */
-const HOME_TOP_TABLES_INSIDE = <<<'JS'
+/**
+ * True when each Top list stands inside its card's box with nothing scrolling inside it, and each
+ * of its rows, a ranked service or a member's card, inside the list.
+ */
+const HOME_TOP_LISTS_INSIDE = <<<'JS'
     document.fonts.ready.then(() => {
-        const boxes = [...document.querySelectorAll('.admin-home-top .admin-table-scroll')];
-        return boxes.length === 2 && boxes.every((box) => box.scrollWidth <= box.clientWidth + 1);
+        const lists = [...document.querySelectorAll('.admin-home-top ol')];
+        const within = (inner, outer) => inner.left >= outer.left - 0.5 && inner.right <= outer.right + 0.5;
+        return lists.length === 2 && lists.every((list) => {
+            const own = list.getBoundingClientRect();
+            return list.scrollWidth <= list.clientWidth + 1 && within(own, list.closest('.admin-home-top').getBoundingClientRect()) &&
+                [...list.children].every((row) => row.scrollWidth <= row.clientWidth + 1 && within(row.getBoundingClientRect(), own));
+        });
     })
     JS;
 
@@ -97,6 +105,26 @@ const HOME_ONE_COLUMN = <<<'JS'
         }
         const column = (boxes) => boxes.every((box, index) => Math.abs(box.left - boxes[0].left) <= 1 && Math.abs(box.width - boxes[0].width) <= 1 && (index === 0 || box.top >= boxes[index - 1].bottom - 1));
         return column(parts) && column(tiles) && Math.abs(tiles[0].width - parts[0].width) <= 1;
+    })
+    JS;
+
+/**
+ * Top staff's cards and Next up's service lines on a phone: how many member cards there are,
+ * whether every term and figure on them stands whole on one line inside its card, and whether
+ * every service line stands inside its row.
+ */
+const HOME_PHONE_LINES = <<<'JS'
+    document.fonts.ready.then(() => {
+        const lines = (element) => {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            return new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
+        };
+        const within = (inner, outer) => inner.left >= outer.left - 0.5 && inner.right <= outer.right + 0.5;
+        const cards = [...document.querySelectorAll('.admin-home-top--staff .admin-home-top__row')];
+        const whole = cards.every((card) => [...card.querySelectorAll('dt, dd')].every((part) => lines(part) === 1 && part.scrollWidth <= part.clientWidth + 1 && within(part.getBoundingClientRect(), card.getBoundingClientRect())));
+        const services = [...document.querySelectorAll('.admin-home-next__what')];
+        return [cards.length, whole, services.length > 0 && services.every((line) => line.scrollWidth <= line.clientWidth + 1 && within(line.getBoundingClientRect(), line.closest('.admin-home-next__row-open').getBoundingClientRect()))];
     })
     JS;
 
@@ -179,26 +207,29 @@ const HOME_ACTIVITY_COLUMNS = <<<'JS'
     JS;
 
 /**
- * The last row of Next up with the pointer on it: whether the pointer is on its button, whether
- * the row stands above the foot of its card, the lower corners of the row and of its button, left
- * then right, and whether the card cuts what is drawn past its box.
+ * The first row of Next up with the pointer on it: whether the pointer is on its button, whether
+ * the button's fill is the panel fill, its four corners from the top left round, and whether it
+ * stands inside its day card with room left at the card's foot.
  */
-const HOME_NEXT_LAST_ROW_HOVERED = <<<'JS'
+const HOME_NEXT_ROW_HOVERED = <<<'JS'
     (() => {
-        const row = document.querySelector('.admin-home-next__row:last-child');
-        const open = row?.querySelector('.admin-home-next__row-open');
-        const card = row?.closest('section');
-        if (row == null || open == null || card == null) {
-            return 'no such row in a card';
+        const open = document.querySelector('.admin-home-next__day:first-child .admin-home-next__row-open');
+        const day = open?.closest('.admin-home-next__day');
+        if (open == null || day == null) {
+            return 'no such row in a day card';
         }
-        const lower = (of) => [getComputedStyle(of).borderBottomLeftRadius, getComputedStyle(of).borderBottomRightRadius];
-        const cut = getComputedStyle(card);
+        const ink = document.body.appendChild(document.createElement('span'));
+        ink.style.backgroundColor = 'var(--muted)';
+        const panel = getComputedStyle(ink).backgroundColor;
+        ink.remove();
+        const style = getComputedStyle(open);
+        const box = open.getBoundingClientRect();
+        const around = day.getBoundingClientRect();
         return [
             open.matches(':hover'),
-            card.getBoundingClientRect().bottom - row.getBoundingClientRect().bottom > 8,
-            lower(row),
-            lower(open),
-            cut.overflowX === 'clip' && cut.overflowY === 'clip',
+            style.backgroundColor === panel,
+            [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius],
+            box.left >= around.left && box.right <= around.right && box.top >= around.top && around.bottom - box.bottom >= 4,
         ];
     })()
     JS;
@@ -270,10 +301,11 @@ afterEach(function () {
 });
 
 /**
- * A Haircut on Elena at the Athens start given, written straight to the rows, confirmed or a
- * request awaiting approval on a hold two days long. Answers its id.
+ * A Haircut on Elena at the Athens start given, or the service and the member named, written
+ * straight to the rows, confirmed or a request awaiting approval on a hold two days long. Answers
+ * its id.
  */
-function homeWalkBooking(string $customer, DateTimeImmutable $start, string $status = 'confirmed'): int
+function homeWalkBooking(string $customer, DateTimeImmutable $start, string $status = 'confirmed', string $service = 'Haircut', string $staff = 'Elena Papadaki'): int
 {
     $utc = fn (DateTimeImmutable $at): string => $at->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:sP');
     $end = $start->add(new DateInterval('PT45M'));
@@ -286,7 +318,7 @@ function homeWalkBooking(string $customer, DateTimeImmutable $start, string $sta
     ]);
     DB::table('tenant_luna.booking_items')->insert([
         'booking_id' => $id, 'sort' => 0,
-        'service_id' => LunaFixture::id('services', 'Haircut'), 'staff_id' => LunaFixture::id('staff', 'Elena Papadaki'),
+        'service_id' => LunaFixture::id('services', $service), 'staff_id' => LunaFixture::id('staff', $staff),
         'start_utc' => $utc($start), 'end_utc' => $utc($end), 'block_start_utc' => $utc($start), 'block_end_utc' => $utc($end),
         'price_minor' => 3500, 'blocks' => true,
     ]);
@@ -467,7 +499,7 @@ it('marks a day in bulk from To mark: the day selected by its checkbox, marked c
     expect($statuses)->toBe(['completed', 'completed', 'confirmed']);
 });
 
-it('lays Home out at the desktop width: Awaiting approval and Next up in one row at five and seven twelfths, the days and the two Top tables in the next at five, four and three, nothing scrolling sideways', function (SiteLanguage $language) {
+it('lays Home out at the desktop width: Awaiting approval and Next up in one row at five and seven twelfths, the days and the two Top lists in the next at five, four and three, nothing scrolling sideways', function (SiteLanguage $language) {
     homeWalkBooking('Rhea Request', athensDaysOn(2, 11), 'awaiting_approval');
     homeWalkBooking('Cora Cut', athensDaysOn(0, 0, 30));
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
@@ -476,10 +508,10 @@ it('lays Home out at the desktop width: Awaiting approval and Next up in one row
         ->resize(1440, 900)
         ->assertVisible(Admin::HOME)
         ->assertVisible('.admin-home-awaiting__row')
-        ->assertCount('.admin-home-top table', 2)
+        ->assertCount('.admin-home-top ol', 2)
         ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
         ->assertScript(HOME_ROWS, [true, [5, 7], true, [5, 4, 3]])
-        ->assertScript(HOME_TOP_TABLES_INSIDE, true)
+        ->assertScript(HOME_TOP_LISTS_INSIDE, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
     Look::shot($page, 'home-1440-'.$language->value);
@@ -487,7 +519,7 @@ it('lays Home out at the desktop width: Awaiting approval and Next up in one row
 
 it('stacks Home in one column on a phone, the four ranges two by two with each label inside its button, nothing scrolling sideways', function (SiteLanguage $language) {
     // A request, a booking early today and one yesterday, so Awaiting approval draws its count,
-    // the Top tables their rows and To mark both ended bookings. The language is the owner's
+    // the Top lists their rows and To mark both ended bookings. The language is the owner's
     // before the sign-in.
     homeWalkBooking('Rhea Request', athensDaysOn(2, 11), 'awaiting_approval');
     homeWalkBooking('Cora Cut', athensDaysOn(0, 0, 30));
@@ -502,14 +534,34 @@ it('stacks Home in one column on a phone, the four ranges two by two with each l
     Look::shot($page, 'home-390-'.$language->value);
     $page->assertScript(HOME_ONE_COLUMN, true)
         ->assertScript(HOME_RANGES, [[2, 2], true])
-        ->assertScript(HOME_TOP_TABLES_INSIDE, true)
+        ->assertScript(HOME_TOP_LISTS_INSIDE, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
 })->with([SiteLanguage::English, SiteLanguage::Greek]);
 
-it('shows the keyboard\'s outline whole on a row of Next up and of Recent activity, inside the card that cuts at its rounded edge, the rows in two columns and in one, and the house ring whole on All bookings and around a row\'s text in To mark', function () {
-    // Two bookings ahead for Next up, and a request whose trail gives Recent activity four rows,
-    // each opening it: in two columns the third and the fourth stand at the card's foot.
+it('keeps every figure on Top staff\'s cards whole on one line and a long unbroken service name inside its row of Next up on a phone, nothing scrolling sideways', function (SiteLanguage $language) {
+    // A booking today on each member, so Top staff draws two cards side by side, and one tomorrow
+    // of a service renamed to sixty letters with no break, so Next up has a line to wrap.
+    $long = str_repeat('Colourwash', 6);
+    DB::table('tenant_luna.services')->where('name', 'Colour')->update(['name' => $long]);
+    homeWalkBooking('Cora Cut', athensDaysOn(0, 12));
+    homeWalkBooking('Nora Trim', athensDaysOn(0, 13), staff: 'Nikos Georgiou');
+    homeWalkBooking('Lena Long', athensDaysOn(1, 10), service: $long);
+    DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
+
+    Admin::signedIn($this, 'luna', Admin::owner('luna'))
+        ->resize(390, 844)
+        ->assertVisible(Admin::HOME)
+        ->assertSeeIn('.admin-home-next', $long)
+        ->assertScript(HOME_PHONE_LINES, [2, true, true])
+        ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
+        ->assertNoJavaScriptErrors();
+})->with([SiteLanguage::English, SiteLanguage::Greek]);
+
+it('shows the keyboard\'s outline whole on a row of Recent activity, inside the card that cuts at its rounded edge, the rows in two columns and in one, and the house ring whole on a row of Next up inside its day card, on All bookings and around a row\'s text in To mark', function () {
+    // Two bookings ahead on one day for Next up, so its first day card holds both, the request a
+    // card of its own the day after, and a trail that gives Recent activity four rows, each
+    // opening the request: in two columns the third and the fourth stand at the card's foot.
     DB::table('tenant_luna.audit_log')->delete();
     homeWalkBooking('Cora Cut', athensDaysOn(1, 10));
     homeWalkBooking('Dora Dye', athensDaysOn(1, 12));
@@ -525,7 +577,7 @@ it('shows the keyboard\'s outline whole on a row of Next up and of Recent activi
     // inside a card that holds a section for each day, so the card is named.
     homeWalkBooking('Ada Ended', athensDaysOn(-1, 10));
 
-    $next = fn (string $which): string => sprintf('.admin-home-next__row:%s-child .admin-home-next__row-open', $which);
+    $next = fn (string $which): string => sprintf('.admin-home-next__day:first-child .admin-home-next__row:%s-child .admin-home-next__row-open', $which);
     $activity = fn (int $nth): string => sprintf('.admin-home-activity__row:nth-child(%d) .admin-home-activity__row-open', $nth);
     $toMark = homeFocusOutline('.admin-home-to-mark__open', '.admin-home-to-mark');
     $inside = ['solid', '3px', '-3px', true, true];
@@ -539,8 +591,8 @@ it('shows the keyboard\'s outline whole on a row of Next up and of Recent activi
         ->assertCount('.admin-home-activity__row', 4)
         ->assertScript(HOME_ACTIVITY_COLUMNS, 2)
         ->keys($next('first'), 'Shift+Tab')
-        ->assertScript(homeFocusOutline($next('first')), $inside)
-        ->assertScript(homeFocusOutline($next('last')), $inside)
+        ->assertScript(homeFocusOutline($next('first')), $ring)
+        ->assertScript(homeFocusOutline($next('last')), $ring)
         ->assertScript(homeFocusOutline($activity(1)), $inside)
         ->assertScript(homeFocusOutline($activity(3)), $inside)
         ->assertScript(homeFocusOutline('.admin-home-activity__all'), $ring)
@@ -560,7 +612,7 @@ it('shows the keyboard\'s outline whole on a row of Next up and of Recent activi
     $page->resize(390, 844)
         ->assertScript(HOME_ACTIVITY_COLUMNS, 1)
         ->assertScript(homeFocusOutline($activity(5)), $inside)
-        ->assertScript(homeFocusOutline($next('last')), $inside)
+        ->assertScript(homeFocusOutline($next('last')), $ring)
         ->assertScript($toMark, $ring)
         ->assertNoJavaScriptErrors();
 });
@@ -615,23 +667,23 @@ it('shows the keyboard\'s outline whole on every control of To mark\'s first and
     $walk($page)->assertNoJavaScriptErrors();
 })->with([SiteLanguage::English, SiteLanguage::Greek]);
 
-it('fills the last row of Next up square under the pointer: above the foot of a card stretched beside a taller Awaiting approval, and at the foot on a phone, where the card cuts the fill', function () {
-    // One booking ahead and one request: Next up lists two rows, and Awaiting approval, with its
-    // count, its ticket and its link, stands taller, so the row they share stretches Next up.
+it('fills a row of Next up with the panel fill under the pointer, rounded, inside its day card, at the desktop width and on a phone', function () {
+    // One booking ahead and one request on the day after: Next up lists two rows in two day cards.
     homeWalkBooking('Cora Cut', athensDaysOn(1, 10));
     homeWalkBooking('Rhea Request', athensDaysOn(2, 11), 'awaiting_approval');
-    $last = '.admin-home-next__row:last-child .admin-home-next__row-open';
-    $square = ['0px', '0px'];
+    $first = '.admin-home-next__day:first-child .admin-home-next__row-open';
+    $rounded = ['14px', '14px', '14px', '14px'];
 
     Admin::signedIn($this, 'luna', Admin::owner('luna'))
         ->resize(1440, 900)
         ->assertVisible(Admin::HOME)
         ->assertCount('.admin-home-next__row', 2)
-        ->hover($last)
-        ->assertScript(HOME_NEXT_LAST_ROW_HOVERED, [true, true, $square, $square, true])
+        ->assertCount('.admin-home-next__day', 2)
+        ->hover($first)
+        ->assertScript(HOME_NEXT_ROW_HOVERED, [true, true, $rounded, true])
         ->resize(390, 844)
-        ->hover($last)
-        ->assertScript(HOME_NEXT_LAST_ROW_HOVERED, [true, false, $square, $square, true])
+        ->hover($first)
+        ->assertScript(HOME_NEXT_ROW_HOVERED, [true, true, $rounded, true])
         ->assertNoJavaScriptErrors();
 });
 

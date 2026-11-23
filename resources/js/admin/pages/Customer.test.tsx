@@ -220,6 +220,11 @@ describe('a customer\'s page', () => {
         expect(hero?.querySelector('.admin-customer-head__chips')).not.toBeNull();
         expect(hero?.textContent).not.toContain('Casey Customer');
         expect(hero?.querySelector('h1, h2, h3')).toBeNull();
+        // Behind it all, the arcs in the hero's top corner, in the theme colour at 17%.
+        const arcs = hero?.lastElementChild;
+        const ring = arcs?.querySelector<SVGElement>(':scope > svg');
+        expect([hero?.classList.contains('relative'), hero?.classList.contains('isolate'), arcs?.classList.contains('admin-arcs'), arcs?.getAttribute('aria-hidden')]).toEqual([true, true, true, 'true']);
+        expect([ring?.classList.contains('text-primary'), ring?.style.opacity, ring?.style.right, ring?.style.top, ring?.style.width]).toEqual([true, '0.17', '-50px', '-100px', '320px']);
         // On the hero's fill each chip stands on the card's surface, and every chip, a tag with no
         // space in it or the list of other names, wraps inside the card rather than running past it.
         expect(q('.admin-customer-head__chips')?.classList.contains('*:bg-card')).toBe(true);
@@ -276,6 +281,29 @@ describe('a customer\'s page', () => {
 
         expect(figures()[4]).toEqual([own.text('tiles.last_visit'), own.text(NO_VISIT)]);
         expect(q('.admin-customer-glance__spent')?.textContent).toBe(`${own.text('tiles.spent_none')} ${own.text('tiles.book_now_help')}`);
+    });
+
+    it('marks the last visit\'s panel with soft rings at its corner only while the customer has no visit, decoration behind the words that takes no press', () => {
+        inertia.props = propsWith(null, { customer: { ...CASEY, last_visit: null }, spent: [] });
+        render();
+
+        const panel = q('.admin-customer-glance__figure--last-visit');
+        const mark = panel?.querySelector('.admin-customer-glance__mark');
+
+        expect([...(panel?.classList ?? [])]).toEqual(expect.arrayContaining(['relative', 'isolate', 'overflow-hidden']));
+        expect(mark?.getAttribute('aria-hidden')).toBe('true');
+        expect(mark?.textContent).toBe('');
+        expect(panel?.lastElementChild).toBe(mark);
+        expect([...(mark?.classList ?? [])]).toEqual(expect.arrayContaining(['pointer-events-none', 'absolute', '-z-10', 'size-30', '-right-8.5', '-bottom-11', 'rounded-full']));
+        // Two bands about the circle, the inner narrower and the stronger, both in the theme colour.
+        expect(mark?.className).toContain('shadow-[0_0_0_12px_color-mix(in_oklab,var(--primary)_8%,transparent),0_0_0_26px_color-mix(in_oklab,var(--primary)_5%,transparent)]');
+
+        view.unmount();
+        view = mount();
+        inertia.props = propsWith(null, { customer: { ...CASEY, last_visit: '2026-11-19T22:30:00+00:00' } });
+        render();
+        expect(q('.admin-customer-glance__figure--last-visit')).not.toBeNull();
+        expect(view.host.querySelector('.admin-customer-glance__mark')).toBeNull();
     });
 
     it('spells At a glance\'s counts and amounts in the user\'s language, grouped as the language groups them, the amounts listed as it lists them', () => {
@@ -343,13 +371,13 @@ describe('a customer\'s page', () => {
         expect(q('.admin-customer-head h1')?.textContent).toBe('Casey Customer');
         expect(q('.admin-customer-head__email')).toBeNull();
 
-        // With neither the address nor a chip, the hero holds the initials alone.
+        // With neither the address nor a chip, the hero holds the initials alone beside its arcs.
         view.unmount();
         view = mount();
         inertia.props = propsWith(null, { customer: { ...withheld, names: ['Casey Customer'] } });
         render();
 
-        expect([...(q('.admin-customer-hero')?.children ?? [])].map((part) => part.textContent)).toEqual(['CC']);
+        expect([...(q('.admin-customer-hero')?.children ?? [])].filter((part) => !part.classList.contains('admin-arcs')).map((part) => part.textContent)).toEqual(['CC']);
     });
 
     it('opens the dialog by a partial reload of the detail alone with the URL preserved, loading until the detail answers, and closes it with no visit', () => {

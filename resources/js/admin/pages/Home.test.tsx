@@ -6,7 +6,7 @@ import { type ActivitySentence, APPROVAL_INBOX, type HomeActivityRow, type HomeB
 import type { RangeFigures } from '@/home/figures';
 import type { ToMarkList } from '@/home/ToMark';
 import { formatAmount, formatCount, formatPercent } from '@/lib/format';
-import { listOf, unitFigure } from '@/lib/names';
+import { listOf, unitFigure, weekdayName } from '@/lib/names';
 import { ShellProvider } from '@/lib/strings';
 import { NOT_DONE } from '@/lib/visits';
 import type { Setup } from '@/setup/model';
@@ -17,13 +17,14 @@ import Home, { dayLink, type HomeDay } from './Home';
 /*
  * Home's wiring: the title, the range card choosing today, yesterday, this week or this month by
  * a visit that reads the range's figures alone, the six tiles each compared with the period before in one sentence per
- * kind of range, their sizes, fills, gauge and chip tones, the footnote, the two Top tables, and the
- * seven days as bars each linking to the Calendar's Day on its date, the confirmed part in the theme
- * colour and the awaiting share stacked in the attention colour, summed in the header strip. Rendered
+ * kind of range, their sizes, fills, gauge and chip tones, the footnote, the two Top lists, and the
+ * seven days as tracks each linking to the Calendar's Day on its date, the confirmed part in the
+ * theme colour and the awaiting share stacked in the attention colour, summed in the header strip. Rendered
  * with the keyed home section, so every expectation is read through the same table and no sentence
  * is spelled here.
  *
- * The three feeds: Next up's and Awaiting approval's rows, Recent activity's whole sentences with
+ * The three feeds: Next up's rows in cards of the tenant's days and Awaiting approval's rows, the
+ * arcs behind the cards that carry them, Recent activity's whole sentences with
  * their names filled, the empty states, and a row opening the booking dialog on Home by a partial
  * reload of the detail alone, an approval posting as every screen's does and the redirect's page
  * followed by one more read of the detail for the booking still open. The framework is stood in for
@@ -155,9 +156,9 @@ function signed(percent: number): string {
     return formatPercent(percent, home.locale, true);
 }
 
-/** A Top table's rows as name, bookings and revenue. */
+/** A Top list's rows as name, bookings and revenue, each as the row spells it. */
 function topRows(id: string): string[][] {
-    return [...view.host.querySelectorAll(`.admin-home-top--${id} tbody tr`)].map((row) => [...row.querySelectorAll('.admin-table__value')].map((cell) => cell.textContent ?? ''));
+    return [...view.host.querySelectorAll(`.admin-home-top--${id} .admin-home-top__row`)].map((row) => ['name', 'bookings', 'revenue'].map((part) => row.querySelector(`.admin-home-top__${part}`)?.textContent ?? ''));
 }
 
 let view: Mounted;
@@ -176,7 +177,7 @@ afterEach(() => {
 });
 
 describe('Home', () => {
-    it('is titled Home under the setup banner, then Awaiting approval, Next up, To mark, the range, the tiles, the footnote, the days, the Top tables and the activity in that order', () => {
+    it('is titled Home under the setup banner, then Awaiting approval, Next up, To mark, the range, the tiles, the footnote, the days, the Top lists and the activity in that order', () => {
         inertia.props = propsWith({ setup: setupOf() });
         renderHome();
 
@@ -353,39 +354,100 @@ describe('Home', () => {
         ]);
     });
 
-    it('lists Top services and Top staff by name, bookings and revenue, the business\'s own row by the name it is given, and says so in place of a table where nothing was counted', () => {
+    it('ranks Top services and Top staff in lists of name, bookings and revenue read as text, the business\'s own row by the name it is given, and says so in place of a list where nothing was counted', () => {
         renderHome();
 
         expect(view.host.querySelector('#home-top-services-title')?.textContent).toBe(home.text('top.services'));
         expect(view.host.querySelector('#home-top-staff-title')?.textContent).toBe(home.text('top.staff'));
-        expect([...view.host.querySelectorAll('.admin-home-top--services thead th')].map((el) => el.textContent)).toEqual([home.text('top.name'), home.text('top.bookings'), home.text('top.revenue')]);
         expect(topRows('services')).toEqual([
-            ['Haircut', '14', formatAmount(49000, 'EUR', home.locale)],
-            ['Colour', '5', formatAmount(40000, 'EUR', home.locale)],
+            ['Haircut', home.text('top.bookings_line', { count: formatCount(14, home.locale) }), formatAmount(49000, 'EUR', home.locale)],
+            ['Colour', home.text('top.bookings_line', { count: formatCount(5, home.locale) }), formatAmount(40000, 'EUR', home.locale)],
         ]);
         expect(topRows('staff')).toEqual([
             ['Elena Papadaki', '13', formatAmount(73500, 'EUR', home.locale)],
             ['Luna Hair Studio', '10', formatAmount(41000, 'EUR', home.locale)],
         ]);
-        expect(view.host.querySelectorAll('.admin-home-top .admin-table-scroll')).toHaveLength(2);
+
+        // Lists, not tables: each row an item of an ordered list, the rank its place in it.
+        for (const id of ['services', 'staff']) {
+            expect([...view.host.querySelectorAll(`.admin-home-top--${id} .admin-home-top__row`)].map((row) => [row.tagName, row.parentElement?.tagName])).toEqual([
+                ['LI', 'OL'],
+                ['LI', 'OL'],
+            ]);
+        }
+        expect(view.host.querySelectorAll('.admin-home-top table, .admin-home-top .admin-table-scroll')).toHaveLength(0);
+
+        // A member's two figures are terms and their values.
+        expect([...view.host.querySelectorAll('.admin-home-top--staff .admin-home-top__row')].map((row) => [...row.querySelectorAll('dt, dd')].map((el) => [el.tagName, el.textContent]))).toEqual([
+            [['DT', home.text('top.bookings')], ['DD', '13'], ['DT', home.text('top.revenue')], ['DD', formatAmount(73500, 'EUR', home.locale)]],
+            [['DT', home.text('top.bookings')], ['DD', '10'], ['DT', home.text('top.revenue')], ['DD', formatAmount(41000, 'EUR', home.locale)]],
+        ]);
 
         inertia.props = propsWith({ range_figures: { ...FIGURES, top_services: [], top_staff: [] } });
         renderHome();
-        expect(view.host.querySelectorAll('.admin-home-top table')).toHaveLength(0);
+        expect(view.host.querySelectorAll('.admin-home-top ol')).toHaveLength(0);
         expect(texts('.admin-home-top__empty')).toEqual([home.text('top.empty'), home.text('top.empty')]);
     });
 
-    it('turns each Top table to rows below the wide breakpoint and wherever its own box is narrow, since a column of four or three twelfths is too narrow for its grid', () => {
+    it('draws each Top service by the icon Services carries in the navigation, hidden from assistive technology, with a bar of its share of the first row\'s revenue as decoration alone', () => {
         renderHome();
 
-        const tables = [...view.host.querySelectorAll('.admin-home-top table')];
+        const rows = [...view.host.querySelectorAll('.admin-home-top--services .admin-home-top__row')];
+        const fills = () => [...view.host.querySelectorAll<HTMLElement>('.admin-home-top--services .admin-home-top__bar > span')].map((fill) => fill.style.width);
 
-        expect(tables).toHaveLength(2);
+        expect(rows.map((row) => [row.querySelector('.admin-home-top__icon')?.getAttribute('aria-hidden'), row.querySelector('.admin-home-top__icon svg')?.classList.contains('lucide-scissors')])).toEqual([
+            ['true', true],
+            ['true', true],
+        ]);
+        expect(rows.map((row) => row.querySelector('.admin-home-top__bar')?.getAttribute('aria-hidden'))).toEqual(['true', 'true']);
 
-        for (const table of tables) {
-            expect([...table.classList]).toEqual(expect.arrayContaining(['max-wide:block', '@max-2xl:block']));
-            expect([...table.classList].filter((name) => name.startsWith('@max-5xl'))).toEqual([]);
-        }
+        // The server ranks by revenue, so the first row is the longest bar and the rest its share:
+        // 400.00 of 490.00.
+        expect(fills()).toEqual(['100%', '81.6%']);
+
+        // Where the first row earned nothing, all that ranked them was their bookings.
+        inertia.props = propsWith({
+            range_figures: {
+                ...FIGURES,
+                top_services: [
+                    { id: 1, name: 'Consultation', bookings: 4, revenue: { currency: 'EUR', minor: 0 } },
+                    { id: 2, name: 'Patch test', bookings: 1, revenue: { currency: 'EUR', minor: 0 } },
+                ],
+            },
+        });
+        renderHome();
+        expect(fills()).toEqual(['100%', '25%']);
+    });
+
+    it('sets a Top service\'s name in the display face over its bar and its bookings, and a member as a card on the panel fill with an avatar, the cards in a row below the desktop breakpoint', () => {
+        renderHome();
+
+        const classesOf = (element: Element | null | undefined): string[] => [...(element?.classList ?? [])];
+        const service = view.host.querySelector('.admin-home-top--services .admin-home-top__row');
+
+        expect(classesOf(service?.querySelector('.admin-home-top__icon'))).toEqual(expect.arrayContaining(['size-11.5', 'rounded-full', 'bg-muted']));
+        expect(classesOf(service?.querySelector('.admin-home-top__name'))).toEqual(expect.arrayContaining(['font-display', 'text-base', 'font-semibold']));
+        expect(classesOf(service?.querySelector('.admin-home-top__revenue'))).toEqual(expect.arrayContaining(['font-bold', 'tabular-nums']));
+        expect(classesOf(service?.querySelector('.admin-home-top__bar'))).toEqual(expect.arrayContaining(['h-2', 'rounded-full', 'bg-muted']));
+        expect(classesOf(service?.querySelector('.admin-home-top__bar > span'))).toEqual(expect.arrayContaining(['bg-primary', 'rounded-full']));
+        expect(classesOf(service?.querySelector('.admin-home-top__bookings'))).toEqual(expect.arrayContaining(['text-[0.84375rem]', 'text-muted-foreground']));
+        expect(classesOf(view.host.querySelector('.admin-home-top--services ol'))).toEqual(expect.arrayContaining(['flex', 'flex-col', 'gap-4.5']));
+
+        const people = view.host.querySelector('.admin-home-top--staff ol');
+        const person = people?.querySelector('.admin-home-top__row');
+
+        expect(classesOf(people)).toEqual(expect.arrayContaining(['flex', 'flex-col', 'max-desktop:flex-row']));
+        expect(classesOf(person)).toEqual(expect.arrayContaining(['rounded-inner', 'bg-muted', 'p-4']));
+        expect(classesOf(person?.querySelector('.admin-home-top__avatar'))).toEqual(expect.arrayContaining(['size-13']));
+        expect(person?.querySelector('.admin-home-top__avatar')?.getAttribute('aria-hidden')).toBe('true');
+        expect(classesOf(person?.querySelector('dt'))).toEqual(expect.arrayContaining(['text-small', 'text-muted-foreground']));
+        expect(classesOf(person?.querySelector('dd'))).toEqual(expect.arrayContaining(['font-display', 'text-lg', 'font-semibold', 'tabular-nums']));
+
+        // The two pairs wrap whole, side by side where the card holds both and one under the other
+        // where it does not, so a figure never breaks inside itself.
+        expect(classesOf(person?.querySelector('dl'))).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'gap-x-4.5', 'gap-y-2']));
+        expect(classesOf(person?.querySelector('dl'))).not.toEqual(expect.arrayContaining(['grid']));
+        expect([...(person?.querySelectorAll('dd') ?? [])].filter((figure) => figure.classList.contains('wrap-anywhere'))).toEqual([]);
     });
 
     it('sets revenue as the hero figure on the strong fill, bookings and occupancy large with the ring gauge beside occupancy\'s figure, the other three regular, and cancelled on the attention fill', () => {
@@ -397,6 +459,9 @@ describe('Home', () => {
         expect([...(figure('revenue')?.classList ?? [])]).toContain('text-[length:min(4.25rem,18cqi)]');
         expect([...(tileOf('revenue')?.classList ?? [])]).toEqual(expect.arrayContaining(['bg-tint-strong', '@container']));
         expect([...(tileOf('revenue')?.classList ?? [])]).not.toContain('bg-card');
+        // In dark mode the quiet ink comes too close to the strong fill to keep its contrast where
+        // a ring runs under the title or a line, so they take the full ink there.
+        expect([...(tileOf('revenue')?.classList ?? [])]).toEqual(expect.arrayContaining(['text-muted-foreground', 'dark:text-foreground']));
 
         for (const id of ['bookings', 'occupancy']) {
             expect([...(figure(id)?.classList ?? [])]).toContain('text-[3.25rem]');
@@ -471,7 +536,7 @@ describe('Home', () => {
         expect(view.host.querySelectorAll('.admin-figure-tile')).toHaveLength(6);
     });
 
-    it('draws a bar per day, each linking to the Calendar Day on its date, named by the short weekday and the day of the month with its count above', () => {
+    it('draws a track per day, each linking to the Calendar Day on its date, named by the short weekday and the day of the month with its count above', () => {
         renderHome();
 
         const days = [...view.host.querySelectorAll<HTMLElement>('.admin-home-day')];
@@ -481,16 +546,52 @@ describe('Home', () => {
         expect(texts('.admin-home-day__count')).toEqual(['2', '0', '1', '0', '4', '1', '0']);
 
         const monday = home.text('days.day', { weekday: weekday(2026, 11, 2), day: '2' });
-        expect(days[0]?.querySelector('.admin-home-day__name')?.textContent).toBe(monday);
         expect(days[0]?.querySelector('a')?.getAttribute('aria-label')).toBe(home.choice('days.link', 2, { day: monday, count: formatCount(2, home.locale) }));
         expect(days[1]?.querySelector('a')?.getAttribute('aria-label')).toContain('[days.link');
+
+        // The link's name says it all, so what it draws is hidden: the count, the track, then the
+        // short weekday over the day of the month.
+        expect([...(days[0]?.querySelector('a')?.children ?? [])].map((child) => [child.classList[0], child.getAttribute('aria-hidden')])).toEqual([
+            ['admin-home-day__count', 'true'],
+            ['admin-home-day__track', 'true'],
+            ['admin-home-day__name', 'true'],
+        ]);
+        expect([...(days[0]?.querySelector('.admin-home-day__name')?.children ?? [])].map((child) => [child.classList[0], child.textContent])).toEqual([
+            ['admin-home-day__weekday', weekday(2026, 11, 2)],
+            ['admin-home-day__date', '2'],
+        ]);
     });
 
-    it('stacks the awaiting share in the attention colour on the confirmed part in the theme colour, the tallest day the full bar, an empty day a line at nought', () => {
+    it('sets the count in the display face above the track, the weekday small and muted over the date, and today\'s date, the first, on the highlight', () => {
+        renderHome();
+
+        const classesOf = (element: Element | null | undefined): string[] => [...(element?.classList ?? [])];
+        const dates = [...view.host.querySelectorAll('.admin-home-day__date')];
+
+        expect(classesOf(view.host.querySelector('.admin-home-day__count'))).toEqual(expect.arrayContaining(['font-display', 'text-base', 'font-semibold', 'tabular-nums']));
+        expect(classesOf(view.host.querySelector('.admin-home-day__weekday'))).toEqual(expect.arrayContaining(['text-[0.78125rem]', 'text-muted-foreground']));
+        expect(classesOf(dates[1])).toEqual(expect.arrayContaining(['font-display', 'text-body', 'font-semibold']));
+        expect(dates.map((date) => date.classList.contains('bg-spark'))).toEqual([true, false, false, false, false, false, false]);
+        expect(classesOf(dates[0])).toEqual(expect.arrayContaining(['bg-spark', 'text-spark-foreground', 'rounded-full']));
+    });
+
+    it('stacks the awaiting share in the attention colour on the confirmed part in the theme colour inside a pill track, the tallest day the full track, an empty day an empty track', () => {
         renderHome();
 
         const days = [...view.host.querySelectorAll<HTMLElement>('.admin-home-day')];
         const part = (index: number, which: 'confirmed' | 'awaiting') => days[index]?.querySelector<HTMLElement>(`.admin-home-day__${which}`) ?? null;
+        const classesOf = (element: Element | null | undefined): string[] => [...(element?.classList ?? [])];
+
+        // The track is a pill on the soft fill, a stronger fill while the link is hovered, as tall
+        // as the link it stands in; shorter where the chart spans the row, shorter still on a phone.
+        expect(classesOf(days[0]?.querySelector('a'))).toEqual(expect.arrayContaining(['group', 'flex', 'h-full', 'flex-col', 'items-center']));
+        expect(classesOf(days[0]?.querySelector('.admin-home-day__track'))).toEqual(
+            expect.arrayContaining(['flex', 'w-full', 'max-w-11', 'flex-1', 'items-end', 'rounded-full', 'bg-muted', 'p-1', 'group-hover:bg-tint-strong', 'motion-safe:transition-colors', 'motion-safe:duration-200', 'min-h-47.5', 'desktop:@max-5xl:min-h-37.5', 'max-desktop:min-h-32.5']),
+        );
+        expect(classesOf(part(4, 'confirmed'))).toEqual(expect.arrayContaining(['rounded-full', 'min-h-6']));
+        expect(classesOf(part(4, 'awaiting'))).toEqual(expect.arrayContaining(['rounded-full', 'min-h-6']));
+        expect(classesOf(days[4]?.querySelector('.admin-home-day__bar'))).toEqual(expect.arrayContaining(['flex', 'w-full', 'flex-col', 'min-h-fit']));
+        expect(part(4, 'awaiting')?.compareDocumentPosition(part(4, 'confirmed') as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
         // The tallest day, four, fills the bar: three confirmed over one awaiting.
         expect(days[4]?.querySelector<HTMLElement>('.admin-home-day__bar')?.style.height).toBe('100%');
@@ -505,7 +606,7 @@ describe('Home', () => {
         expect(part(0, 'awaiting')).toBeNull();
         expect(part(5, 'confirmed')).toBeNull();
         expect(days[1]?.querySelector('.admin-home-day__bar')).toBeNull();
-        expect(days[1]?.querySelector('.admin-home-day__none')).not.toBeNull();
+        expect(days[1]?.querySelector('.admin-home-day__track')?.children).toHaveLength(0);
     });
 
     it('sums the week in its header strip, the awaiting share named where there is one, and says what the colours mean', () => {
@@ -535,7 +636,8 @@ describe('Home', () => {
         renderHome();
         expect(texts('.admin-home-days__summary')).toEqual([home.choice('days.bookings', 0, { count: formatCount(0, home.locale) })]);
         expect(view.host.querySelectorAll('.admin-home-day__bar')).toHaveLength(0);
-        expect(view.host.querySelectorAll('.admin-home-day__none')).toHaveLength(7);
+        expect([...view.host.querySelectorAll('.admin-home-day__track')].map((track) => track.children.length)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+        expect(texts('.admin-home-day__count')).toEqual(['0', '0', '0', '0', '0', '0', '0']);
     });
 
     it('spells every count, amount and percentage by Intl in the user\'s language, el and en each its own forms', () => {
@@ -555,7 +657,7 @@ describe('Home', () => {
             formatPercent(58.3, locale),
             formatCount(2400, locale),
             home.choice('tiles.returning', 1700, { count: formatCount(1700, locale) }),
-            formatCount(1400, locale),
+            home.text('top.bookings_line', { count: formatCount(1400, locale) }),
             formatAmount(4900000, 'EUR', locale),
             formatCount(2300, locale),
             home.text('days.summary.many_awaiting', { count: formatCount(2300, locale), awaiting: formatCount(1100, locale) }),
@@ -837,7 +939,7 @@ function renderHome(): void {
 }
 
 describe('Home\'s feeds', () => {
-    it('lists Next up in the server\'s order under its header strip: the customer, the date and time in tabular figures at the right, the services with the member beneath, a provisional status chipped', () => {
+    it('lists Next up in the server\'s order in cards of the tenant\'s days under its header: the time in tabular figures, the customer, the services with the member beneath, a provisional status chipped', () => {
         inertia.props = propsWith({
             next_up: [
                 feedRow('b1'),
@@ -850,7 +952,7 @@ describe('Home\'s feeds', () => {
         expect(view.host.querySelector('#home-next-title')?.textContent).toBe(home.text('next_up.title'));
         expect(view.host.querySelector('#home-next-title')?.parentElement?.tagName).toBe('HEADER');
         expect(texts('.admin-home-next__customer')).toEqual(['Maria Rossi', home.text('customer_erased'), 'Maria Rossi']);
-        expect(texts('.admin-home-next__when')).toEqual(['02/11/2026 10:00', '04/11/2026 18:30', '02/11/2026 10:00']);
+        expect(texts('.admin-home-next__when')).toEqual(['10:00', '18:30', '10:00']);
         expect(view.host.querySelector('.admin-home-next__when')?.classList.contains('tabular-nums')).toBe(true);
         expect(view.host.querySelector('.admin-home-next__customer')?.compareDocumentPosition(view.host.querySelector('.admin-home-next__when') as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
         expect(texts('.admin-home-next__what')).toEqual([
@@ -859,6 +961,78 @@ describe('Home\'s feeds', () => {
             'Colour',
         ]);
         expect(view.host.querySelectorAll('.admin-home-next__row .admin-chip')).toHaveLength(1);
+
+        // Each run of rows on one of the tenant's days is a card named by its head, the long
+        // weekday and the date. Only the grouping is new: the rows keep the server's order, so a
+        // day it lists again after another opens a card of its own.
+        const head = (isoDay: number, date: string) => `${weekdayName(isoDay, 'long', 'en')} ${date}`;
+        expect([...view.host.querySelectorAll('.admin-home-next__day')].map((card) => [card.tagName, card.getAttribute('aria-labelledby') === card.querySelector('h3')?.id, card.querySelector('h3')?.textContent, card.querySelectorAll('.admin-home-next__row').length])).toEqual([
+            ['SECTION', true, head(1, '02/11/2026'), 1],
+            ['SECTION', true, head(3, '04/11/2026'), 1],
+            ['SECTION', true, head(1, '02/11/2026'), 1],
+        ]);
+        expect(new Set([...view.host.querySelectorAll('.admin-home-next__day h3')].map((h3) => h3.id)).size).toBe(3);
+        expect([...view.host.querySelectorAll('.admin-home-next__row-open')].map((button) => button.tagName)).toEqual(['BUTTON', 'BUTTON', 'BUTTON']);
+
+        // The day is said in the head alone, so each row is described by its card's head: moving
+        // from row to row, a screen reader still says the day of each.
+        expect([...view.host.querySelectorAll('.admin-home-next__row-open')].map((button) => document.getElementById(button.getAttribute('aria-describedby') ?? '')?.textContent)).toEqual([
+            head(1, '02/11/2026'),
+            head(3, '04/11/2026'),
+            head(1, '02/11/2026'),
+        ]);
+        expect([...view.host.querySelectorAll('.admin-home-next__day')].map((card) => [...card.querySelectorAll('.admin-home-next__row-open')].every((button) => button.getAttribute('aria-describedby') === card.querySelector('h3')?.id))).toEqual([true, true, true]);
+    });
+
+    it('lays Next up on the panel fill with no shadow, its day cards on the surface two to a row where the card has room, each row a rounded button the panel fill marks under a pointer, its chevron shown on hover, on focus and on a phone', () => {
+        inertia.props = propsWith({
+            next_up: [feedRow('b1'), feedRow('b3', { starts_at: '2026-11-02T12:00:00+00:00' }), feedRow('b2', { status: 'awaiting_payment', starts_at: '2026-11-04T16:30:00+00:00' })],
+        });
+        renderHome();
+
+        const classesOf = (element: Element | null | undefined): string[] => [...(element?.classList ?? [])];
+        const card = view.host.querySelector('.admin-home-next');
+        const row = view.host.querySelector('.admin-home-next__row');
+
+        expect(classesOf(card)).toEqual(expect.arrayContaining(['bg-muted', 'shadow-none', '@container']));
+        expect(classesOf(card)).not.toContain('bg-card');
+        expect(classesOf(view.host.querySelector('.admin-home-next__days'))).toEqual(expect.arrayContaining(['grid', 'gap-3.5', '@xl:grid-cols-2']));
+        // The day cards of a row stand as tall as each other, the weekday and the date at the two
+        // ends of the head.
+        expect(classesOf(view.host.querySelector('.admin-home-next__days'))).not.toContain('items-start');
+        expect(classesOf(view.host.querySelector('.admin-home-next__day h3'))).toEqual(expect.arrayContaining(['flex', 'justify-between']));
+        expect([...view.host.querySelectorAll('.admin-home-next__day')].map((day) => [day.querySelector('h3')?.textContent, texts(`#${day.querySelector('h3')?.id ?? ''} ~ ol .admin-home-next__when`).join(' ')])).toEqual([
+            [`${weekdayName(1, 'long', 'en')} 02/11/2026`, '10:00 14:00'],
+            [`${weekdayName(3, 'long', 'en')} 04/11/2026`, '18:30'],
+        ]);
+        expect(classesOf(view.host.querySelector('.admin-home-next__day'))).toEqual(expect.arrayContaining(['rounded-inner', 'bg-card']));
+        expect(classesOf(view.host.querySelector('.admin-home-next__weekday'))).toEqual(expect.arrayContaining(['font-display', 'text-[1.0625rem]', 'font-semibold']));
+        expect(classesOf(view.host.querySelector('.admin-home-next__date'))).toEqual(expect.arrayContaining(['text-[0.84375rem]', 'text-muted-foreground']));
+        expect(classesOf(row?.querySelector('.admin-home-next__row-open'))).toEqual(
+            expect.arrayContaining(['group', 'flex', 'w-full', 'rounded-field', 'px-2.5', 'py-2.75', 'text-left', 'hover:bg-muted', 'motion-safe:transition-colors', 'motion-safe:duration-200']),
+        );
+        expect(classesOf(row?.querySelector('.admin-home-next__when'))).toEqual(expect.arrayContaining(['order-first', 'font-display', 'text-lg', 'font-semibold', 'text-primary-deep', 'min-w-12.5', 'tabular-nums']));
+        expect(classesOf(row?.querySelector('.admin-home-next__customer'))).toContain('font-semibold');
+        expect(classesOf(row?.querySelector('.admin-home-next__what'))).toEqual(expect.arrayContaining(['text-small', 'text-muted-foreground', 'wrap-anywhere']));
+        expect(classesOf(row?.querySelector('.admin-home-next__what')?.parentElement)).toEqual(expect.arrayContaining(['min-w-0', 'flex-1']));
+        expect(row?.querySelector('.admin-home-next__chevron')?.getAttribute('aria-hidden')).toBe('true');
+        expect(classesOf(row?.querySelector('.admin-home-next__chevron'))).toEqual(expect.arrayContaining(['opacity-0', 'group-hover:opacity-100', 'group-focus-visible:opacity-100', 'max-desktop:opacity-100']));
+    });
+
+    it('draws the arcs behind what the awaiting card, Next up and the revenue tile hold, each card the arcs\' positioned and isolated ground, in the card\'s tone and strength at its corner', () => {
+        renderHome();
+
+        const arcs = (selector: string) => {
+            const card = view.host.querySelector(selector);
+            const svg = card?.querySelector<SVGElement>(':scope > .admin-arcs > svg');
+
+            return [card?.classList.contains('relative') === true && card.classList.contains('isolate'), [...(svg?.classList ?? [])].find((name) => name.startsWith('text-')), svg?.style.opacity, svg?.style.width, svg?.style.top, svg?.style.right, svg?.style.bottom];
+        };
+
+        expect(arcs('.admin-home-awaiting')).toEqual([true, 'text-attention', '0.35', '300px', '-90px', '-80px', '']);
+        expect(arcs('.admin-home-next')).toEqual([true, 'text-primary', '0.16', '340px', '', '-70px', '-100px']);
+        expect(arcs('.admin-figure-tile--revenue')).toEqual([true, 'text-primary', '0.22', '400px', '', '-90px', '-110px']);
+        expect(view.host.querySelectorAll('.admin-arcs')).toHaveLength(3);
     });
 
     it('names no member where the staff choice is not real, and says so when nothing is coming up', () => {
@@ -973,7 +1147,7 @@ describe('Home\'s feeds', () => {
         expect(view.host.querySelectorAll('.admin-home-activity__row')[1]?.classList.contains('@3xl:nth-2:border-t-0')).toBe(true);
     });
 
-    it('draws the keyboard\'s outline on a row of a card\'s list inside the row\'s own edge, the row at the card\'s foot rounded as the card is under the keyboard alone, and the house ring around a ticket and around each link', () => {
+    it('draws the keyboard\'s outline on a row of a card\'s list inside the row\'s own edge, the row at the card\'s foot rounded as the card is under the keyboard alone, and the house ring around a Next up row, a ticket and each link', () => {
         inertia.props = propsWith({
             next_up: [feedRow('b1'), feedRow('b2')],
             awaiting: [feedRow('r1', { status: 'awaiting_approval' })],
@@ -988,7 +1162,7 @@ describe('Home\'s feeds', () => {
         // A row of a list runs to the edges of a card that clips, so the house ring, which stands
         // clear of its control, would be cut there: the outline is drawn inside the row instead,
         // and the last row takes the card's own corners down the list so its outline follows them.
-        for (const feed of ['next', 'activity']) {
+        for (const feed of ['activity']) {
             const rows = [...view.host.querySelectorAll(`.admin-home-${feed}__row`)];
 
             expect(rows).toHaveLength(2);
@@ -1002,6 +1176,13 @@ describe('Home\'s feeds', () => {
             // in the middle of the card: the fill is square, and the card cuts it at the foot.
             expect(rows.map((row) => [...roundedAtRest(row), ...roundedAtRest(row.querySelector('button'))])).toEqual([[], []]);
         }
+
+        // A Next up row stands in its day card with room around it, so it carries the house ring and
+        // its own corners at rest, as a ticket does.
+        const nextRows = [...view.host.querySelectorAll('.admin-home-next__row')];
+        expect(nextRows).toHaveLength(2);
+        expect(nextRows.map((row) => missing(row.querySelector('.admin-home-next__row-open'), ['focus-ring', 'rounded-field']))).toEqual([[], []]);
+        expect(nextRows.map((row) => missing(row.querySelector('.admin-home-next__row-open'), inside))).toEqual([inside, inside]);
 
         // In two columns the foot holds two rows, each with the one corner it shares with the card.
         expect(missing(view.host.querySelector('.admin-home-activity__row'), ['@3xl:odd:last:has-focus-visible:rounded-br-none', '@3xl:even:last:has-focus-visible:rounded-bl-none', '@3xl:odd:nth-last-2:has-focus-visible:rounded-bl-[inherit]'])).toEqual([]);

@@ -16,9 +16,9 @@ import { type CustomersKey, useCustomers } from './words';
  * breakpoint where the card holds four in the longer language, two by two otherwise, a hairline
  * between them, and a zero in the muted ink so the counts that hold something stand out. Then Last
  * visit as a panel of its own, the day of the latest first start already passed in confirmed or
- * completed in the tenant's zone and date format, or "No visit yet": beside the strip where the
- * card has room for both in the longer language, under it otherwise, where it reads as one line of
- * its label and its day. Under them the Spent line, what the address's visits came to in each
+ * completed in the tenant's zone and date format, or "No visit yet", which a soft mark of two
+ * rings at the panel's lower corner sets apart: beside the strip where the card has room for both
+ * in the longer language, under it otherwise, where it reads as one line of its label and its day. Under them the Spent line, what the address's visits came to in each
  * currency the server summed, each in its own currency and scale, or the line saying nothing is
  * spent, followed by the sentence saying what Book now fills in. Every word is a key of the
  * customers section. The four counts are Intl's in the user's language, grouped as it groups them,
@@ -108,7 +108,7 @@ export function CustomerGlance({ customer, spent, clock }: { customer: Customer;
                     <Count id="no-shows" label={words.text('tiles.no_shows')} value={customer.no_shows} icon={<CircleAlert />} mark={MARKS.quiet} />
                     <Count id="cancelled" label={words.text('tiles.cancelled')} value={customer.cancelled} icon={<X />} mark={MARKS.quiet} />
                 </div>
-                <div className="admin-customer-glance__figure admin-customer-glance__figure--last-visit flex min-w-0 flex-wrap items-center justify-between gap-x-5 gap-y-1.5 rounded-inner bg-muted px-6 py-5 max-desktop:p-4.5 @min-[61.5rem]:flex-col @min-[61.5rem]:flex-nowrap @min-[61.5rem]:items-start @min-[61.5rem]:justify-center @min-[61.5rem]:gap-3">
+                <div className="admin-customer-glance__figure admin-customer-glance__figure--last-visit relative isolate flex min-w-0 overflow-hidden flex-wrap items-center justify-between gap-x-5 gap-y-1.5 rounded-inner bg-muted px-6 py-5 max-desktop:p-4.5 @min-[61.5rem]:flex-col @min-[61.5rem]:flex-nowrap @min-[61.5rem]:items-start @min-[61.5rem]:justify-center @min-[61.5rem]:gap-3">
                     <Label icon={<Clock />} mark="bg-card text-primary-deep">
                         {words.text('tiles.last_visit')}
                     </Label>
@@ -116,6 +116,11 @@ export function CustomerGlance({ customer, spent, clock }: { customer: Customer;
                         <strong className="text-tile-title text-muted-foreground">{words.text(NO_VISIT)}</strong>
                     ) : (
                         <strong className="text-[1.875rem] leading-[1.15] font-display font-semibold tracking-[-0.04em] tabular-nums">{formatInstantDay(customer.last_visit, clock)}</strong>
+                    )}
+                    {customer.last_visit === null && (
+                        // A circle drawn only by the two bands its shadow spreads around it, in the
+                        // theme colour, clipped by the panel and set behind its words.
+                        <span aria-hidden="true" className="admin-customer-glance__mark pointer-events-none absolute -right-8.5 -bottom-11 -z-10 size-30 rounded-full shadow-[0_0_0_12px_color-mix(in_oklab,var(--primary)_8%,transparent),0_0_0_26px_color-mix(in_oklab,var(--primary)_5%,transparent)]" />
                     )}
                 </div>
             </div>

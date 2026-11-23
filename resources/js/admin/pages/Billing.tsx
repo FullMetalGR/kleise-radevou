@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { PageHeader } from '@/components/ui/page-header';
 import { Section } from '@/components/ui/section';
+import { Arcs } from '@/figures/arcs';
 import { namedFeatures } from '@/lib/features';
 import { clockOf, formatAmount, formatInstant, type TenantClock } from '@/lib/format';
 import { listOf } from '@/lib/names';
@@ -193,20 +194,22 @@ function StateLines({ notice, graceEnds, trialEnd, resubscribe, checkout, large 
  * The free account's banner: a card on the green's soft ground inside a faint green ring, at most
  * 760px wide, a tick in a 60px green circle beside the words and above them below the desktop
  * breakpoint. The tick is cut in the card's own colour, white in light mode and near black in
- * dark mode, where the green is too light for white to read on it. It takes the notice's hook and
- * its status role, so the sentence is found and announced as the notice's was.
+ * dark mode, where the green is too light for white to read on it. The arcs, in the green, sit
+ * behind the words at its lower corner. It takes the notice's hook and its status role, so the
+ * sentence is found and announced as the notice's was.
  */
 function FreeBanner({ children }: { children: ReactNode }) {
     return (
         <Card
             flush
             role="status"
-            className="admin-billing__notice admin-billing__free flex max-w-[47.5rem] items-center gap-5 bg-positive-soft px-8.5 py-9 text-positive-ink shadow-none ring-1 ring-positive/35 max-desktop:flex-col max-desktop:items-start max-desktop:px-5.5 max-desktop:py-6.5"
+            className="admin-billing__notice admin-billing__free relative isolate flex max-w-[47.5rem] items-center gap-5 bg-positive-soft px-8.5 py-9 text-positive-ink shadow-none ring-1 ring-positive/35 max-desktop:flex-col max-desktop:items-start max-desktop:px-5.5 max-desktop:py-6.5"
         >
             <span className="admin-billing__tick grid size-15 shrink-0 place-items-center rounded-full bg-positive text-card [&_svg]:size-6.5" aria-hidden="true">
                 <Tick />
             </span>
             {children}
+            <Arcs edges={{ right: -60, bottom: -80 }} width={280} tone="positive" strength={25} />
         </Card>
     );
 }

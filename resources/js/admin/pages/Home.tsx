@@ -16,6 +16,7 @@ import { clockOf, formatCount } from '@/lib/format';
 import { weekdayName } from '@/lib/names';
 import { useShell } from '@/lib/strings';
 import { usePartialRead } from '@/lib/partial-read';
+import { cn } from '@/lib/utils';
 import { owning } from '@/lib/visits';
 import { CALENDAR_PATH } from '@/pages/Calendar';
 import type { Setup } from '@/setup/model';
@@ -31,7 +32,7 @@ import type { BookingsStrings, HomeStrings, SharedProps } from '@/types';
  * the range row, a choice of range being a visit to Home with the range in the address (none for
  * this week) that keeps the scroll and reads range_figures alone, the row busy while it reads and
  * a failed read said in Home's own sentence; the six tiles and the footnote; the next seven days
- * beside Top services and Top staff, one bar per day from the tenant's today, the confirmed part
+ * beside Top services and Top staff, one track per day from the tenant's today, the confirmed part
  * in the theme colour and the awaiting share in the attention colour, each a link opening the
  * Calendar's Day on its date; and Recent activity. Every figure is the server's and every word is
  * a key of the home section.
@@ -89,7 +90,7 @@ export function dayLink(date: string): string {
     return `${CALENDAR_PATH}?view=day&date=${date}`;
 }
 
-/** The day's name under its bar: the short weekday and the day of the month, no full date. */
+/** The day's name its link speaks: the short weekday and the day of the month, no full date. */
 function dayName(date: string, words: HomeWords): string {
     return words.text('days.day', { weekday: weekdayName(isoWeekday(date), 'short', words.language), day: String(Number(date.slice(8, 10))) });
 }
@@ -97,12 +98,15 @@ function dayName(date: string, words: HomeWords): string {
 /**
  * The next seven days: the sum in the header strip, one whole sentence per case, the awaiting
  * share named only where there is one: one awaiting a choice by the week's bookings, several
- * awaiting one plain sentence, since the week then holds two bookings or more; a bar per day, its
- * height the day's bookings over the busiest day's, the awaiting share stacked in the attention
- * colour, the awaiting chip's own, on the confirmed part in the theme colour, a day with none a
- * line at nought; the count above, the day's name beneath, the whole a link opening the
- * Calendar's Day on its date; and the footnote saying so. Across the row's two tracks in a middle
- * box, above the two Top tables.
+ * awaiting one plain sentence, since the week then holds two bookings or more; a track per day, a
+ * pill on the soft fill, its bar the day's bookings over the busiest day's, the awaiting share
+ * stacked in the attention colour, the awaiting chip's own, on the confirmed part in the theme
+ * colour, each part a pill tall enough to see however small its share, a day with none an empty
+ * track; the count above, the short weekday over the day of the month beneath, today's, the
+ * first, on the highlight; the whole a link opening the Calendar's Day on its date, named by one
+ * sentence, so what it draws is hidden; and the footnote saying so. The track stands shorter where
+ * the chart spans the row and shorter again on a phone. Across the row's two tracks in a middle
+ * box, above the two Top lists.
  */
 function Days({ days, words }: { days: HomeDay[]; words: HomeWords }) {
     const total = (day: HomeDay) => day.confirmed + day.awaiting;
@@ -120,27 +124,27 @@ function Days({ days, words }: { days: HomeDay[]; words: HomeWords }) {
     return (
         <Card flush className="admin-home-days @3xl:col-span-2 @5xl:col-span-1" aria-labelledby="home-days-title">
             <Strip titleId="home-days-title" title={words.choice('days.title', days.length)} aside={<span className="admin-home-days__summary text-body-sm text-muted-foreground">{summary}</span>} />
-            <ol className="grid h-[180px] grid-cols-7 gap-2 p-4">
-                {days.map((day) => {
-                    const named = dayName(day.date, words);
+            <ol className="grid grid-cols-7 gap-2 p-4 max-desktop:gap-1 max-desktop:px-3">
+                {days.map((day, index) => {
                     const count = total(day);
 
                     return (
-                        <li key={day.date} className="admin-home-day h-full" data-date={day.date} data-confirmed={day.confirmed} data-awaiting={day.awaiting}>
-                            <Link href={dayLink(day.date)} className="admin-home-day__link focus-ring flex h-full flex-col items-center justify-end gap-1 rounded-inner text-center hover:bg-muted" aria-label={words.choice('days.link', count, { day: named, count: formatCount(count, words.locale) })}>
-                                <span className="flex min-h-0 w-full flex-1 flex-col items-center justify-end gap-1" aria-hidden="true">
-                                    <span className="admin-home-day__count font-display text-small font-semibold tabular-nums">{formatCount(count, words.locale)}</span>
-                                    {count === 0 ? (
-                                        <span className="admin-home-day__none block h-0.5 w-full bg-border" />
-                                    ) : (
-                                        <span className="admin-home-day__bar flex max-h-[calc(100%-1.25rem)] w-full flex-col overflow-hidden rounded-t-lg" style={{ height: `${Math.round((count / most) * 100)}%` }}>
-                                            {day.awaiting > 0 && <span className="admin-home-day__awaiting basis-0 bg-attention" style={{ flexGrow: day.awaiting }} />}
-                                            {day.confirmed > 0 && <span className="admin-home-day__confirmed basis-0 bg-primary" style={{ flexGrow: day.confirmed }} />}
+                        <li key={day.date} className="admin-home-day min-w-0" data-date={day.date} data-confirmed={day.confirmed} data-awaiting={day.awaiting}>
+                            <Link href={dayLink(day.date)} className="admin-home-day__link group focus-ring flex h-full flex-col items-center gap-2 rounded-inner text-center" aria-label={words.choice('days.link', count, { day: dayName(day.date, words), count: formatCount(count, words.locale) })}>
+                                <span className="admin-home-day__count font-display text-base font-semibold text-foreground tabular-nums" aria-hidden="true">
+                                    {formatCount(count, words.locale)}
+                                </span>
+                                <span className="admin-home-day__track flex min-h-47.5 w-full max-w-11 flex-1 items-end rounded-full bg-muted p-1 group-hover:bg-tint-strong motion-safe:transition-colors motion-safe:duration-200 desktop:@max-5xl:min-h-37.5 max-desktop:min-h-32.5" aria-hidden="true">
+                                    {count > 0 && (
+                                        <span className="admin-home-day__bar flex min-h-fit w-full flex-col gap-0.75" style={{ height: `${Math.round((count / most) * 100)}%` }}>
+                                            {day.awaiting > 0 && <span className="admin-home-day__awaiting min-h-6 basis-0 rounded-full bg-attention" style={{ flexGrow: day.awaiting }} />}
+                                            {day.confirmed > 0 && <span className="admin-home-day__confirmed min-h-6 basis-0 rounded-full bg-primary" style={{ flexGrow: day.confirmed }} />}
                                         </span>
                                     )}
                                 </span>
-                                <span className="admin-home-day__name text-small text-muted-foreground" aria-hidden="true">
-                                    {named}
+                                <span className="admin-home-day__name flex flex-col items-center gap-0.5" aria-hidden="true">
+                                    <span className="admin-home-day__weekday text-[0.78125rem] leading-tight text-muted-foreground">{weekdayName(isoWeekday(day.date), 'short', words.language)}</span>
+                                    <span className={cn('admin-home-day__date font-display text-body leading-snug font-semibold text-foreground tabular-nums', index === 0 && 'rounded-full bg-spark px-2 text-spark-foreground')}>{Number(day.date.slice(8, 10))}</span>
                                 </span>
                             </Link>
                         </li>

@@ -1,19 +1,22 @@
 import type { ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Initials } from '@/components/initials';
 import { Segmented } from '@/components/ui/segmented';
-import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
+import { Arcs } from '@/figures/arcs';
 import { type ChangeKind, FigureLine, FigureTile, Gauge, Strip } from '@/figures/kit';
 import { formatAmount, formatCount, formatDate, formatPercent, type TenantClock } from '@/lib/format';
 import { unitFigure } from '@/lib/names';
+import { navIcon } from '@/shell/icons';
 import type { HomeWords } from './words';
 
 /*
  * Home's range and its figures: the range row, the six tiles, the footnote and the two Top
- * tables, every figure the server's range_figures prop. Nothing is counted here; the screen only
+ * lists, every figure the server's range_figures prop. Nothing is counted here; the screen only
  * words the facts.
  *
- * The tiles: revenue the hero on the strong fill, bookings and occupancy large, occupancy with the
+ * The tiles: revenue the hero on the strong fill, the arcs in its lower corner, bookings and
+ * occupancy large, occupancy with the
  * ring gauge beside its figure, cancelled on the attention fill, the rest regular. In the screen's
  * widest box revenue runs down the left beside the other five; narrower, it spans the top; on a
  * phone bookings and new customers share a line and the other three take a line each.
@@ -183,6 +186,8 @@ export function Tiles({ figures, words }: { figures: RangeFigures; words: HomeWo
         <>
             <div className="admin-home-figures grid grid-flow-row-dense grid-cols-6 gap-4.5 max-wide:gap-3.5 @5xl:grid-cols-[minmax(0,7fr)_repeat(6,minmax(0,2fr))]">
                 {counted('bookings', words.text('tiles.bookings'), tiles.bookings, true, { size: 'large' })}
+                {/* In dark mode the title and the lines take the full ink: the quiet ink sits too
+                    close to the strong fill there to keep its contrast where a ring runs under it. */}
                 <FigureTile
                     id="revenue"
                     title={words.text('tiles.revenue')}
@@ -191,11 +196,12 @@ export function Tiles({ figures, words }: { figures: RangeFigures; words: HomeWo
                     moreIsBetter
                     size="hero"
                     fill="strong"
-                    className={PLACES.revenue}
+                    className={`relative isolate dark:text-foreground ${PLACES.revenue}`}
                 >
                     {revenue.elsewhere.map((line) => (
                         <FigureLine key={line.currency}>{formatAmount(line.minor, line.currency, words.locale)}</FigureLine>
                     ))}
+                    <Arcs edges={{ right: -90, bottom: -110 }} width={400} tone="primary" strength={22} />
                 </FigureTile>
                 {occupancy.value === null ? (
                     <FigureTile id="occupancy" title={words.text('tiles.occupancy')} size="large" className={PLACES.occupancy}>
@@ -229,42 +235,85 @@ export function Tiles({ figures, words }: { figures: RangeFigures; words: HomeWo
 type TopRow = { id: number; name: string; bookings: number; revenue: Money; business?: boolean };
 
 /**
- * A Top table on the kit's card. It sits in a column of four or three twelfths in the screen's
- * widest box, too narrow for its grid, so it reads as rows wherever its own box is narrow as well
- * as below the wide breakpoint.
+ * A row's share of the first row's figure, as a width: the server ranks the rows by revenue, then
+ * by bookings, so the first row's revenue is the longest bar and every other row its share of it.
+ * Where the first row earned nothing, every row did, and their bookings alone ranked them.
  */
+function shareOf(row: TopRow, first: TopRow): string {
+    const [part, whole] = first.revenue.minor > 0 ? [row.revenue.minor, first.revenue.minor] : [row.bookings, first.bookings];
+    const share = whole > 0 ? Math.min(1, Math.max(0, part / whole)) : 0;
+
+    return `${Math.round(share * 1000) / 10}%`;
+}
+
+/**
+ * Top services as a ranked list: each row the icon Services carries in the navigation in a soft
+ * circle, the name and its revenue, then a bar of the row's share of the first row's figure and
+ * the row's bookings in words. The bar and the icon are decoration; the figures are read as text.
+ */
+function ServiceRows({ rows, words }: { rows: TopRow[]; words: HomeWords }) {
+    const Icon = navIcon('services');
+    const first = rows[0];
+
+    return (
+        <ol className="admin-home-top__list flex flex-col gap-4.5 p-4">
+            {rows.map((row) => (
+                <li key={row.id} className="admin-home-top__row flex items-center gap-3.5" data-business={row.business === true ? 'true' : undefined}>
+                    <span className="admin-home-top__icon grid size-11.5 shrink-0 place-items-center rounded-full bg-muted text-primary-deep" aria-hidden="true">
+                        <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <div className="flex items-baseline justify-between gap-3">
+                            <span className="admin-home-top__name min-w-0 font-display text-base font-semibold wrap-anywhere text-foreground">{row.name}</span>
+                            <span className="admin-home-top__revenue shrink-0 font-bold text-foreground tabular-nums">{formatAmount(row.revenue.minor, row.revenue.currency, words.locale)}</span>
+                        </div>
+                        <span className="admin-home-top__bar block h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                            <span className="block h-full rounded-full bg-primary" style={{ width: first === undefined ? '0%' : shareOf(row, first) }} />
+                        </span>
+                        <span className="admin-home-top__bookings text-[0.84375rem] text-muted-foreground">{words.text('top.bookings_line', { count: formatCount(row.bookings, words.locale) })}</span>
+                    </div>
+                </li>
+            ))}
+        </ol>
+    );
+}
+
+/**
+ * Top staff as cards on the panel fill: each the member's initials, the name, then the bookings
+ * and the revenue as terms over their values, the two pairs side by side where the card holds both
+ * and one under the other where it does not, so a figure never breaks inside itself. The cards
+ * stand one under another in the column the screen gives them, and side by side, wrapping, on a
+ * phone.
+ */
+function StaffCards({ rows, words }: { rows: TopRow[]; words: HomeWords }) {
+    return (
+        <ol className="admin-home-top__list flex flex-col gap-3 p-4 max-desktop:flex-row max-desktop:flex-wrap">
+            {rows.map((row) => (
+                <li key={row.id} className="admin-home-top__row flex min-w-0 flex-col gap-2.5 rounded-inner bg-muted p-4 max-desktop:min-w-[9.5rem] max-desktop:flex-1" data-business={row.business === true ? 'true' : undefined}>
+                    <Initials name={row.name} size="person" className="admin-home-top__avatar size-13 text-base" />
+                    <span className="admin-home-top__name font-display text-base font-semibold wrap-anywhere text-foreground">{row.name}</span>
+                    <dl className="flex flex-wrap gap-x-4.5 gap-y-2">
+                        <div className="min-w-0">
+                            <dt className="text-small text-muted-foreground">{words.text('top.bookings')}</dt>
+                            <dd className="admin-home-top__bookings font-display text-lg font-semibold text-foreground tabular-nums">{formatCount(row.bookings, words.locale)}</dd>
+                        </div>
+                        <div className="min-w-0">
+                            <dt className="text-small text-muted-foreground">{words.text('top.revenue')}</dt>
+                            <dd className="admin-home-top__revenue font-display text-lg font-semibold text-foreground tabular-nums">{formatAmount(row.revenue.minor, row.revenue.currency, words.locale)}</dd>
+                        </div>
+                    </dl>
+                </li>
+            ))}
+        </ol>
+    );
+}
+
+/** A Top list on the kit's card, under its header strip, or a line saying nothing was counted. */
 function Top({ id, title, rows, words }: { id: 'services' | 'staff'; title: string; rows: TopRow[]; words: HomeWords }) {
     return (
         <Card flush className={`admin-home-top admin-home-top--${id}`} aria-labelledby={`home-top-${id}-title`}>
             <Strip titleId={`home-top-${id}-title`} title={title} />
-            {rows.length === 0 ? (
-                <EmptyState className="admin-home-top__empty py-8">{words.text('top.empty')}</EmptyState>
-            ) : (
-                <Table compact="rows">
-                    <TableHead>
-                        <TableRow>
-                            <Th>{words.text('top.name')}</Th>
-                            <Th className="text-right">{words.text('top.bookings')}</Th>
-                            <Th className="text-right">{words.text('top.revenue')}</Th>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {rows.map((row) => (
-                            <TableRow key={row.id} className="admin-home-top__row" data-business={row.business === true ? 'true' : undefined}>
-                                <Td label={words.text('top.name')} header>
-                                    {row.name}
-                                </Td>
-                                <Td label={words.text('top.bookings')} className="text-right">
-                                    {formatCount(row.bookings, words.locale)}
-                                </Td>
-                                <Td label={words.text('top.revenue')} className="text-right">
-                                    {formatAmount(row.revenue.minor, row.revenue.currency, words.locale)}
-                                </Td>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            )}
+            {rows.length === 0 ? <EmptyState className="admin-home-top__empty py-8">{words.text('top.empty')}</EmptyState> : id === 'services' ? <ServiceRows rows={rows} words={words} /> : <StaffCards rows={rows} words={words} />}
         </Card>
     );
 }

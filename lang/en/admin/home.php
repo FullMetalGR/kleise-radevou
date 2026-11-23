@@ -66,8 +66,8 @@ return [
     'top' => [
         'services' => 'Top services',
         'staff' => 'Top staff',
-        'name' => 'Name',
         'bookings' => 'Bookings',
+        'bookings_line' => 'Bookings: :count',
         'revenue' => 'Revenue',
         'empty' => 'No confirmed or completed bookings in this range.',
     ],

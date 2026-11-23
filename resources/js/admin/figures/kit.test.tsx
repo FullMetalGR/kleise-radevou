@@ -74,13 +74,14 @@ describe('a range tile', () => {
         expect(classesOf(q('.admin-figure-tile'))).toContain('@container');
         expect(classesOf(q('.admin-figure-tile__value'))).toEqual(expect.arrayContaining(['text-[length:min(4.25rem,18cqi)]', 'max-desktop:text-[length:min(3.375rem,18cqi)]']));
 
-        // A hero tile may stand taller than its figure needs; the figure and its chip then sit at
-        // its foot, the title alone at its head.
-        expect(classesOf(q('.admin-figure-tile__value'))).toContain('mt-auto');
+        // A hero tile may stand taller than its figure needs; the figure still sits right under its
+        // title, as every tile's does, and the room left falls at the tile's foot.
+        expect(classesOf(q('.admin-figure-tile__value')).filter((name) => /^m[ty]-auto$/.test(name))).toEqual([]);
+        expect(q('.admin-figure-tile__title')?.nextElementSibling?.classList.contains('admin-figure-tile__value')).toBe(true);
 
         view.render(<FigureTile id="bookings" title="tile-title-token" value="23" size="large" />);
         expect(classesOf(q('.admin-figure-tile'))).not.toContain('@container');
-        expect(classesOf(q('.admin-figure-tile__value'))).not.toContain('mt-auto');
+        expect(classesOf(q('.admin-figure-tile__value')).filter((name) => /^m[ty]-auto$/.test(name))).toEqual([]);
     });
 
     it('lays a tile on the strong fill or the attention fill in place of the surface, its words in the attention ink on the second', () => {

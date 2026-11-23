@@ -190,7 +190,7 @@ export type HomeStrings = {
     tiles: { bookings: string; revenue: string; occupancy: string; new_customers: string; cancelled: string; no_shows: string; filled: string; duration: string; no_hours: string; returning: string };
     change: { day: HomeChange; week: HomeChange; month: HomeChange };
     footnote: string;
-    top: { services: string; staff: string; name: string; bookings: string; revenue: string; empty: string };
+    top: { services: string; staff: string; bookings: string; bookings_line: string; revenue: string; empty: string };
     customer_erased: string;
     with: string;
     next_up: { title: string; empty: string };

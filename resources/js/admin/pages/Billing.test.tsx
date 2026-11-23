@@ -353,6 +353,21 @@ describe('a free tenant', () => {
         expect([...(banner?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'items-center', 'max-desktop:flex-col', 'max-desktop:items-start']));
     });
 
+    it('draws the arcs behind the free banner\'s words, in the positive colour at its lower corner, decoration that takes no press', () => {
+        render({ notice: { kind: 'success', sentence: 'free-sentence-token', paused: null }, plan: null, change: null, unavailable: null, portal: false, vat: null, resubscribe: null }, { state: 'active' }, [], { free: true });
+
+        const banner = document.querySelector('.admin-billing__free');
+        const layers = [...(banner?.querySelectorAll(':scope > .admin-arcs') ?? [])];
+        const arcs = layers[0];
+        const ring = arcs?.querySelector<SVGElement>(':scope > svg');
+
+        expect([...(banner?.classList ?? [])]).toEqual(expect.arrayContaining(['relative', 'isolate']));
+        expect(layers).toHaveLength(1);
+        expect(arcs).toBe(banner?.lastElementChild);
+        expect([arcs?.getAttribute('aria-hidden'), arcs?.classList.contains('pointer-events-none')]).toEqual(['true', true]);
+        expect([ring?.classList.contains('text-positive'), ring?.style.opacity, ring?.style.right, ring?.style.bottom, ring?.style.top, ring?.style.width]).toEqual([true, '0.25', '-60px', '-80px', '', '280px']);
+    });
+
     it('keeps a tenant that is not free on the success notice, the banner the free state\'s alone', () => {
         render(ACTIVE, { state: 'active' }, [], { free: false });
 

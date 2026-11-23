@@ -73,8 +73,12 @@ const CUSTOMER_PAGE_LAST_VISIT = "document.fonts.ready.then(() => { const counts
 /** Whether every count's label stays inside its count, inside the padding, its words whole. */
 const CUSTOMER_PAGE_LABELS_INSIDE = "document.fonts.ready.then(() => [...document.querySelectorAll('.admin-customer-glance__counts > *')].every((count) => { const label = count.querySelector('span'); const edge = count.getBoundingClientRect(); const pad = parseFloat(getComputedStyle(count).paddingRight); const own = label.getBoundingClientRect(); return label.scrollWidth <= label.clientWidth + 1 && own.right <= edge.right - pad + 1; }))";
 
-/** Whether everything the hero card holds stays inside its edges, nothing scrolling inside it. */
-const CUSTOMER_PAGE_HERO_INSIDE = "document.fonts.ready.then(() => { const hero = document.querySelector('.admin-customer-hero'); if (hero === null) { return false; } const edge = hero.getBoundingClientRect(); return hero.scrollWidth <= hero.clientWidth + 1 && [...hero.querySelectorAll('*')].every((part) => { const own = part.getBoundingClientRect(); return own.width === 0 || (own.left >= edge.left - 1 && own.right <= edge.right + 1); }); })";
+/**
+ * Whether everything the hero card holds stays inside its edges, nothing scrolling inside it. The
+ * arcs' rings run past the corner by design and their layer, itself inside, clips them, so what
+ * the layer holds is left out.
+ */
+const CUSTOMER_PAGE_HERO_INSIDE = "document.fonts.ready.then(() => { const hero = document.querySelector('.admin-customer-hero'); if (hero === null) { return false; } const edge = hero.getBoundingClientRect(); return hero.scrollWidth <= hero.clientWidth + 1 && hero.querySelector(':scope > .admin-arcs') !== null && [...hero.querySelectorAll('*')].filter((part) => !part.matches('.admin-arcs *')).every((part) => { const own = part.getBoundingClientRect(); return own.width === 0 || (own.left >= edge.left - 1 && own.right <= edge.right + 1); }); })";
 
 /** How the Bookings table draws its rows: "table" as a grid, "block" as a block per booking. */
 const CUSTOMER_PAGE_TABLE_DISPLAY = "getComputedStyle(document.querySelector('.admin-bookings table')).display";

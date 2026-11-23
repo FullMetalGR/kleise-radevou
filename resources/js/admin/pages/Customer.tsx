@@ -23,6 +23,7 @@ import { CustomerProfileCard } from '@/customers/CustomerProfileCard';
 import { type Block, bookingCustomer, type Customer, CUSTOMERS_TITLE, type Note, type Profile, type Spent } from '@/customers/model';
 import { TagChips } from '@/customers/TagChips';
 import { type CustomersKey, CustomersProvider, customersWordsOf, useCustomers } from '@/customers/words';
+import { Arcs } from '@/figures/arcs';
 import { clockOf } from '@/lib/format';
 import { usePartialRead } from '@/lib/partial-read';
 import { owning } from '@/lib/visits';
@@ -116,7 +117,10 @@ function profileKey(profile: Profile): string {
     return JSON.stringify([profile.tags, profile.birthday, profile.language]);
 }
 
-/** The hero card under the heading: the initials, then the address and the chips where there are any. */
+/**
+ * The hero card under the heading: the initials, then the address and the chips where there are
+ * any, the arcs behind them in its upper corner.
+ */
 function CustomerHero({ customer }: { customer: Customer }) {
     const own = useCustomers();
     const others = customer.names.slice(1);
@@ -124,7 +128,7 @@ function CustomerHero({ customer }: { customer: Customer }) {
     const chips = customer.tags.length > 0 || others.length > 0;
 
     return (
-        <Card className="admin-customer-hero flex min-w-0 items-center gap-5 bg-accent">
+        <Card className="admin-customer-hero relative isolate flex min-w-0 items-center gap-5 bg-accent">
             <Initials name={customer.name} size="hero" />
             {(email !== undefined || chips) && (
                 <div className="flex min-w-0 flex-col gap-2.5">
@@ -142,6 +146,7 @@ function CustomerHero({ customer }: { customer: Customer }) {
                     )}
                 </div>
             )}
+            <Arcs edges={{ right: -50, top: -100 }} width={320} tone="primary" strength={17} />
         </Card>
     );
 }

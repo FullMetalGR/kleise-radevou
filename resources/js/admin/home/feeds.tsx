@@ -1,25 +1,32 @@
 import { Link } from '@inertiajs/react';
+import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { wallClockOf } from '../../booking/time';
 import { AWAITING_APPROVAL, NO_FILTERS, queryOf } from '@/bookings/model';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StatusChip } from '@/components/ui/status-chip';
-import { formatCount, formatInstant, type TenantClock } from '@/lib/format';
-import { listOf } from '@/lib/names';
+import { isoWeekday } from '@/lib/day';
+import { formatCount, formatDate, formatInstant, formatInstantDay, formatInstantTime, type TenantClock } from '@/lib/format';
+import { listOf, weekdayName } from '@/lib/names';
 import { type KeysOf, useShell } from '@/lib/strings';
+import { Arcs } from '@/figures/arcs';
 import { Strip } from '@/figures/kit';
 import type { HomeStrings } from '@/types';
 import type { HomeWords } from './words';
 
 /*
- * Home's three feeds: Next up, the next five live bookings, a card under a header strip;
- * Awaiting approval, the requests on a live hold, on the attention fill, its title beside the
+ * Home's three feeds: Next up, the next five live bookings, on the panel fill with the arcs at its
+ * lower corner, the rows in cards of the tenant's days on the surface, two to a line where the
+ * card has room, each row its time large at the left, the customer, the booking's services with
+ * its members beneath and a status other than confirmed chipped; Awaiting approval, the requests
+ * on a live hold, on the attention fill with the arcs at its upper corner, its title beside the
  * rail's pending number drawn large, each request a ticket on the surface, and a link to the
  * Bookings list's Approval inbox at its foot; and Recent activity, the trail's last five rows in
  * two columns where the screen is wide, each the whole sentence the server named, with All
- * bookings in its strip. Each row: who or what at the left, the instant in tabular figures in the
- * tenant's formats at the right, the booking's services with its members beneath, a request still
- * awaiting approval chipped. A row naming a booking opens the booking dialog on Home through
+ * bookings in its strip. A request's or an activity row's line: who or what at the left, the
+ * instant in tabular figures in the tenant's formats at the right, the booking's services with its
+ * members beneath, a request still awaiting approval chipped. A row naming a booking opens the booking dialog on Home through
  * onOpen. Every sentence is a key of the home section; the names in them are data, a list of them
  * joined as ICU joins one in the user's language.
  */
@@ -140,24 +147,98 @@ export function whatOf(services: string[], staff: string[], staffShown: boolean,
     return staffShown && staff.length > 0 ? words.text('with', { services: named, staff: listOf(staff, words.language) }) : named;
 }
 
-export function NextUp({ rows, clock, words, staffShown, onOpen }: BookingFeed) {
+/** The tenant's day an instant falls on, or null where the wire's instant cannot be read. */
+function dayOf(wire: string, clock: TenantClock): string | null {
+    try {
+        return wallClockOf(wire, clock.timezone).date;
+    } catch {
+        return null;
+    }
+}
+
+type DayRun = { day: string | null; rows: HomeBooking[] };
+
+/**
+ * The rows cut into runs on one tenant day each, in the server's order: a day the server lists
+ * again after another opens a run of its own, so no row ever moves.
+ */
+function runsOfDays(rows: HomeBooking[], clock: TenantClock): DayRun[] {
+    const runs: DayRun[] = [];
+
+    for (const row of rows) {
+        const day = dayOf(row.starts_at, clock);
+        const last = runs.at(-1);
+
+        if (last !== undefined && last.day === day) {
+            last.rows.push(row);
+        } else {
+            runs.push({ day, rows: [row] });
+        }
+    }
+
+    return runs;
+}
+
+/**
+ * A day card of Next up, named by its head: the long weekday at one end and the date in the
+ * tenant's format at the other, then its rows. A row is the button opening its booking, standing
+ * in the card with room around it, so it carries the house ring; its chevron shows under a pointer
+ * or the keyboard, and always on a phone, where there is no pointer to bring it up. The customer
+ * comes first to a screen reader, the time first to the eye, and the head describes every row, so
+ * moving from row to row still says the day. A long unbroken service name wraps inside the row.
+ */
+function NextDay({ id, run, clock, words, staffShown, onOpen }: Omit<BookingFeed, 'rows'> & { id: string; run: DayRun }) {
+    const first = run.rows[0]?.starts_at ?? '';
+
     return (
-        <Feed id="next" title={words.text('next_up.title')}>
+        <section className="admin-home-next__day flex min-w-0 flex-col gap-1 rounded-inner bg-card px-2.5 pt-4 pb-2.5" aria-labelledby={id}>
+            <h3 id={id} className="flex flex-wrap items-baseline justify-between gap-x-2 px-2.5">
+                {run.day !== null && <span className="admin-home-next__weekday font-display text-[1.0625rem] font-semibold text-foreground">{weekdayName(isoWeekday(run.day), 'long', words.language)}</span>}
+                {run.day !== null && ' '}
+                <span className="admin-home-next__date text-[0.84375rem] text-muted-foreground">{run.day === null ? formatInstantDay(first, clock) : formatDate(run.day, clock)}</span>
+            </h3>
+            <ol className="flex flex-col">
+                {run.rows.map((booking) => (
+                    <li key={booking.uuid} className="admin-home-next__row" data-booking={booking.uuid}>
+                        <button type="button" className="admin-home-next__row-open group focus-ring flex w-full items-start gap-3.5 rounded-field px-2.5 py-2.75 text-left text-body-sm hover:bg-muted motion-safe:transition-colors motion-safe:duration-200" aria-describedby={id} onClick={() => onOpen(booking.uuid)}>
+                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                <span className="flex min-w-0 flex-wrap items-center gap-2">
+                                    <span className="admin-home-next__customer font-semibold wrap-anywhere text-foreground">{customerOf(booking.customer, words)}</span>
+                                    {booking.status !== 'confirmed' && <StatusChip status={booking.status} />}
+                                </span>
+                                <span className="admin-home-next__what text-small wrap-anywhere text-muted-foreground">{whatOf(booking.services, booking.staff, staffShown, words)}</span>
+                            </span>
+                            <span className="admin-home-next__when order-first min-w-12.5 shrink-0 font-display text-lg leading-snug font-semibold text-primary-deep tabular-nums">{formatInstantTime(booking.starts_at, clock)}</span>
+                            <ChevronRight className="admin-home-next__chevron size-4 shrink-0 self-center text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 max-desktop:opacity-100 motion-safe:transition-opacity" aria-hidden="true" />
+                        </button>
+                    </li>
+                ))}
+            </ol>
+        </section>
+    );
+}
+
+export function NextUp({ rows, ...feed }: BookingFeed) {
+    const { words } = feed;
+
+    return (
+        <Card className="admin-home-feed admin-home-next relative isolate flex flex-col gap-4 bg-muted shadow-none @container" aria-labelledby="home-next-title">
+            <header>
+                <h2 id="home-next-title" className="text-tile-title">
+                    {words.text('next_up.title')}
+                </h2>
+            </header>
             {rows.length === 0 ? (
                 <Empty id="next">{words.text('next_up.empty')}</Empty>
             ) : (
-                <ol className={`flex flex-col ${FOOT}`}>
-                    {rows.map((booking) => (
-                        <Row key={booking.uuid} className="admin-home-next__row" uuid={booking.uuid} onOpen={onOpen}>
-                            <Head id="next" what={<span className="admin-home-next__customer font-medium">{customerOf(booking.customer, words)}</span>} when={formatInstant(booking.starts_at, clock)}>
-                                {booking.status !== 'confirmed' && <StatusChip status={booking.status} />}
-                            </Head>
-                            <span className="admin-home-next__what text-muted-foreground">{whatOf(booking.services, booking.staff, staffShown, words)}</span>
-                        </Row>
+                <div className="admin-home-next__days grid gap-3.5 @xl:grid-cols-2">
+                    {runsOfDays(rows, feed.clock).map((run, index) => (
+                        <NextDay key={run.rows[0]?.uuid ?? index} id={`home-next-day-${index}`} run={run} {...feed} />
                     ))}
-                </ol>
+                </div>
             )}
-        </Feed>
+            <Arcs edges={{ right: -70, bottom: -100 }} width={340} tone="primary" strength={16} />
+        </Card>
     );
 }
 
@@ -167,7 +248,7 @@ export function Awaiting({ rows, clock, words, staffShown, onOpen, pending }: Bo
     // The head holds the title and, where something waits, the figure; where the card is short of
     // room the figure wraps under the title rather than either giving way.
     return (
-        <Card className="admin-home-feed admin-home-awaiting flex flex-col gap-4 bg-attention-soft text-attention-ink inset-ring inset-ring-attention-line" aria-labelledby="home-awaiting-title">
+        <Card className="admin-home-feed admin-home-awaiting relative isolate flex flex-col gap-4 bg-attention-soft text-attention-ink inset-ring inset-ring-attention-line" aria-labelledby="home-awaiting-title">
             <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                 <h2 id="home-awaiting-title" className="text-tile-title">
                     {words.text('awaiting.title')}
@@ -203,6 +284,7 @@ export function Awaiting({ rows, clock, words, staffShown, onOpen, pending }: Bo
             <Link href={APPROVAL_INBOX} className="admin-home-awaiting__all focus-ring mt-auto self-start rounded-inner text-body-sm font-semibold underline underline-offset-2">
                 {words.text('awaiting.see_all')}
             </Link>
+            <Arcs edges={{ right: -80, top: -90 }} width={300} tone="attention" strength={35} />
         </Card>
     );
 }

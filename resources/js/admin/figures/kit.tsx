@@ -24,13 +24,14 @@ type Size = 'hero' | 'large' | 'regular';
 type Fill = 'strong' | 'attention';
 
 /**
- * A figure's size; the hero one measured by its own tile, so a long amount shrinks to fit it, and
- * set at the foot of a tile taller than it needs, its chip beneath it. An amount of five figures
+ * A figure's size; the hero one measured by its own tile, so a long amount shrinks to fit it. Every
+ * size sits right under its title, so a tile taller than its figure needs keeps the room at its
+ * foot, under the chip and the lines. An amount of five figures
  * with its cents and its sign runs to about five and a half of its own size, so at 18 hundredths
  * of the tile it still keeps to one line.
  */
 const SIZES: Record<Size, string> = {
-    hero: 'text-[length:min(4.25rem,18cqi)] max-desktop:text-[length:min(3.375rem,18cqi)] mt-auto',
+    hero: 'text-[length:min(4.25rem,18cqi)] max-desktop:text-[length:min(3.375rem,18cqi)]',
     large: 'text-[3.25rem] max-desktop:text-[2.625rem]',
     regular: 'text-[2.375rem]',
 };
