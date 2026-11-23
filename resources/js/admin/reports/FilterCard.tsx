@@ -21,10 +21,18 @@ import type { ReportsWords } from './words';
  * the export buttons' one road: busy while on its way, a failure a toast.
  *
  * Each select is as wide as its longest choice, up to 260px, so a long Greek word of Range or the
- * name of every member is not cut under the field's padding and chevron.
+ * name of every member is not cut under the field's padding and chevron. On a phone every control
+ * takes the card's whole width, one under another: the three selects, then Download CSV, and the
+ * custom range's From, To and Apply the same.
  *
  * The screen keys this card on the answer it was given, so each answer seeds it afresh.
  */
+
+/** A select's field: as wide as its longest choice up to 260px, the card's whole width on a phone. */
+const SELECT_FIELD = 'max-w-65 max-desktop:w-full max-desktop:max-w-none';
+
+/** A date's field of the custom range: a fixed width, the card's whole width on a phone. */
+const DATE_FIELD = 'w-44 max-desktop:w-full';
 
 type Props = {
     range: NamedRange;
@@ -78,11 +86,11 @@ export function FilterCard({ range, filters, options, clock, weekStart, loading,
     return (
         <Card className="admin-reports-filters flex flex-col gap-3">
             <div className="flex flex-wrap items-end gap-3">
-                <Field id="reports-range" label={words.text('filters.range')} className="max-w-65">
+                <Field id="reports-range" label={words.text('filters.range')} className={SELECT_FIELD}>
                     {(control) => <Select {...control} className="admin-reports-range-word w-full" options={RANGE_WORDS.map((value) => ({ value, label: words.text(`filters.words.${value}`) }))} value={word} onChange={chooseWord} />}
                 </Field>
                 {options.staff.length > 0 && (
-                    <Field id="reports-staff" label={words.text('filters.staff')} className="max-w-65">
+                    <Field id="reports-staff" label={words.text('filters.staff')} className={SELECT_FIELD}>
                         {(control) => (
                             <Select
                                 {...control}
@@ -94,7 +102,7 @@ export function FilterCard({ range, filters, options, clock, weekStart, loading,
                         )}
                     </Field>
                 )}
-                <Field id="reports-service" label={words.text('filters.service')} className="max-w-65">
+                <Field id="reports-service" label={words.text('filters.service')} className={SELECT_FIELD}>
                     {(control) => (
                         <Select
                             {...control}
@@ -105,19 +113,19 @@ export function FilterCard({ range, filters, options, clock, weekStart, loading,
                         />
                     )}
                 </Field>
-                <Button className="admin-reports-download ml-auto" busy={download.busy} busyLabel={words.text('filters.downloading')} onClick={() => download.start(csvUrl(range, filters))}>
+                <Button className="admin-reports-download ml-auto max-desktop:ml-0 max-desktop:w-full" busy={download.busy} busyLabel={words.text('filters.downloading')} onClick={() => download.start(csvUrl(range, filters))}>
                     {words.text('filters.download')}
                 </Button>
             </div>
             {word === 'custom' && (
                 <div className="admin-reports-custom flex flex-wrap items-start gap-3">
-                    <Field id="reports-from" label={words.text('filters.from')} className="w-44">
+                    <Field id="reports-from" label={words.text('filters.from')} className={DATE_FIELD}>
                         {(control) => <DateField {...control} className="admin-reports-from" value={from} clock={clock} weekStart={weekStart} onChange={setFrom} />}
                     </Field>
-                    <Field id="reports-to" label={words.text('filters.to')} error={error} className="w-44">
+                    <Field id="reports-to" label={words.text('filters.to')} error={error} className={DATE_FIELD}>
                         {(control) => <DateField {...control} className="admin-reports-to" value={to} clock={clock} weekStart={weekStart} onChange={setTo} />}
                     </Field>
-                    <Button variant="primary" className="admin-reports-apply mt-6" busy={loading && applying} busyLabel={words.text('filters.applying')} onClick={apply}>
+                    <Button variant="primary" className="admin-reports-apply mt-6 max-desktop:mt-0 max-desktop:w-full" busy={loading && applying} busyLabel={words.text('filters.applying')} onClick={apply}>
                         {words.text('filters.apply')}
                     </Button>
                 </div>

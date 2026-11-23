@@ -105,7 +105,7 @@ describe('the shell', () => {
         expect(host.querySelector('main h1')?.textContent).toBe('The page');
         expect(host.querySelector('main .admin-topbar .admin-controls .admin-user')?.textContent).toBe('Alex Owner');
         expect(host.querySelector('.admin-bottom-bar')).toBeNull();
-        expect(host.querySelector('.admin-menu')).toBeNull();
+        expect(host.querySelector('.admin-menu-button')).toBeNull();
     });
 
     it('puts its own button last in the page\'s first row, after the page\'s, quiet where the page has buttons of its own', () => {
@@ -268,7 +268,7 @@ describe('at or above the wide breakpoint', () => {
         render('/admin', PAGE);
 
         expect(host.querySelector(`aside.admin-sidebar ${RAIL}`)).not.toBeNull();
-        expect(host.querySelector('.admin-menu')).toBeNull();
+        expect(host.querySelector('.admin-menu-button')).toBeNull();
         expect(host.querySelector('.admin-topbar')?.firstElementChild?.matches('h1')).toBe(true);
         expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(0);
     });
@@ -295,7 +295,7 @@ describe.each([
 
     afterEach(() => undo());
 
-    const control = () => host.querySelector<HTMLButtonElement>('.admin-topbar .admin-menu');
+    const control = () => host.querySelector<HTMLButtonElement>('.admin-topbar .admin-menu-button');
     const drawer = () => document.querySelector('[role="dialog"]');
 
     function open(): HTMLButtonElement {
@@ -334,7 +334,7 @@ describe.each([
         expect(control()?.textContent).toBe(MENU);
         expect(control()?.getAttribute('aria-haspopup')).toBe('dialog');
         expect(control()?.getAttribute('aria-expanded')).toBe('false');
-        expect(host.querySelectorAll('.admin-menu')).toHaveLength(1);
+        expect(host.querySelectorAll('.admin-menu-button')).toHaveLength(1);
         expect([...host.querySelectorAll('nav.admin-bottom-bar a')].map((link) => link.getAttribute('href'))).toEqual(['/admin', '/admin/bookings']);
         expect(host.querySelector('main h1')?.textContent).toBe('The page');
     });
@@ -419,7 +419,7 @@ describe.each([
 
         const rail = drawer()?.querySelector(RAIL);
         const controls = drawer()?.querySelector('.admin-controls');
-        const twin = drawer()?.querySelector<HTMLButtonElement>('.admin-menu');
+        const twin = drawer()?.querySelector<HTMLButtonElement>('.admin-menu-button');
 
         expect([...(rail?.querySelectorAll('.admin-rail-entry__label') ?? [])].map((label) => label.textContent)).toEqual([N.calendar, N.bookings]);
         expect(controls?.classList.contains('flex-col')).toBe(true);
@@ -435,7 +435,7 @@ describe.each([
     it('closes on its twin of the button, focus going back to the button that opened it', async () => {
         const button = open();
 
-        press(drawer()?.querySelector('.admin-menu') ?? null);
+        press(drawer()?.querySelector('.admin-menu-button') ?? null);
         await settle();
 
         expect(drawer()).toBeNull();

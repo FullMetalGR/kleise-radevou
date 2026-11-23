@@ -21,7 +21,7 @@ afterEach(() => {
     mounted.unmount();
 });
 
-const button = () => mounted.host.querySelector<HTMLButtonElement>('button.admin-menu');
+const button = () => mounted.host.querySelector<HTMLButtonElement>('button.admin-menu-button');
 
 describe('MenuButton', () => {
     it('is a round button named Menu that says it opens a dialog, shut', () => {
@@ -34,7 +34,10 @@ describe('MenuButton', () => {
         expect(button()?.getAttribute('aria-expanded')).toBe('false');
         expect(button()?.classList).toContain('size-12');
         expect(button()?.classList).toContain('rounded-full');
-        expect(button()?.querySelectorAll('.admin-menu__bar')).toHaveLength(3);
+        expect(button()?.querySelectorAll('.admin-menu-button__bar')).toHaveLength(3);
+        // The dropdown menu's list owns the admin-menu class and its parts; the button shares neither.
+        expect(button()?.classList.contains('admin-menu')).toBe(false);
+        expect(button()?.querySelectorAll('[class*="admin-menu__"]')).toHaveLength(0);
         expect(button()?.querySelector('[role="img"]')).toBeNull();
 
         press(button());

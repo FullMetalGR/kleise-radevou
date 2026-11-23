@@ -324,6 +324,28 @@ describe('the filter card', () => {
         }
     });
 
+    it('stacks every control at the card\'s full width on a phone, Download CSV under the selects, and leaves the wider row as it is', () => {
+        inertia.props = propsWith();
+        view.render(<Page />);
+
+        const phone = (element: Element | null | undefined) => [...(element?.classList ?? [])].filter((utility) => utility.startsWith('max-desktop:')).sort();
+
+        for (const id of ['reports-range', 'reports-staff', 'reports-service']) {
+            expect(phone(q(`#${id}`)?.closest('.admin-field'))).toEqual(['max-desktop:max-w-none', 'max-desktop:w-full']);
+        }
+
+        expect(phone(q('.admin-reports-download'))).toEqual(['max-desktop:ml-0', 'max-desktop:w-full']);
+        expect(q('.admin-reports-download')?.classList.contains('ml-auto')).toBe(true);
+
+        choose('#reports-range', 'custom');
+
+        expect(phone(q('#reports-from')?.closest('.admin-field'))).toEqual(['max-desktop:w-full']);
+        expect(phone(q('#reports-to')?.closest('.admin-field'))).toEqual(['max-desktop:w-full']);
+        expect(phone(q('.admin-reports-apply'))).toEqual(['max-desktop:mt-0', 'max-desktop:w-full']);
+        expect(['reports-from', 'reports-to'].map((id) => q(`#${id}`)?.closest('.admin-field')?.classList.contains('w-44'))).toEqual([true, true]);
+        expect(q('.admin-reports-apply')?.classList.contains('mt-6')).toBe(true);
+    });
+
     it('leaves Staff out where no member but the business is offered, and seeds every control from the server\'s answer', () => {
         inertia.props = propsWith({ options: { staff: [], services: OPTIONS.services }, filters: { staff: null, service: 8 }, range: { word: 'last_month', from: '2026-09-01', to: '2026-09-30' } });
         view.render(<Page />);

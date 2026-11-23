@@ -65,10 +65,10 @@ const PHONE_DRAWER = '.admin-modal__frame--drawer';
 const PHONE_SHORT_CHIP_DRAWN = "new Promise((resolve) => { const started = Date.now(); const look = () => (document.querySelector('.admin-calendar-chip--short') !== null ? resolve(true) : Date.now() - started > 5000 ? resolve(false) : setTimeout(look, 50)); look(); })";
 
 /**
- * The first row's own Menu button. Its twin at the drawer's head and a dropdown's list carry the
- * same class, and neither stands in the first row.
+ * The first row's own Menu button. Its twin at the drawer's head carries the same class and does
+ * not stand in the first row.
  */
-const PHONE_MENU = '.admin-topbar .admin-menu';
+const PHONE_MENU = '.admin-topbar .admin-menu-button';
 
 beforeEach(function () {
     dropDemoSchemas();
@@ -116,7 +116,7 @@ it('opens a booking from a block of the Day calendar on a phone, Week drawn as i
     $page = Admin::onPhoneCalendar($this, 'luna', Admin::owner('luna'))->waitForText(adminLine(PHONE_FOOTNOTE));
     $page->assertPathIs('/admin/calendar')
         ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)
-        ->assertNotPresent('.admin-menu .admin-menu-pending')
+        ->assertNotPresent('.admin-menu-button .admin-menu-pending')
         ->assertScript(PhoneScripts::BAR_LABELS, [navLabel('home'), navLabel('calendar'), navLabel('bookings'), navLabel('shifts'), navLabel('menu')])
         ->assertAttribute('.admin-bottom-bar [aria-current="page"]', 'href', '/admin/calendar')
         ->assertNotPresent('.admin-aside')
@@ -168,14 +168,14 @@ it('opens a booking from a block of the Day calendar on a phone, Week drawn as i
         ->assertNotPresent('.admin-booking-dialog');
 
     // The drawer shuts on Escape and hands the focus back to the button that opened it.
-    $page->click('.admin-menu')
+    $page->click('.admin-menu-button')
         ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
         ->assertScript(PhoneScripts::BAR_HIDDEN, true)
-        ->keys(PHONE_DRAWER.' .admin-menu', 'Escape')
+        ->keys(PHONE_DRAWER.' .admin-menu-button', 'Escape')
         ->assertNotPresent(PHONE_DRAWER)
         ->assertScript(Admin::focusIsOn(PHONE_MENU), true);
 
-    $page->click('.admin-menu')
+    $page->click('.admin-menu-button')
         ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
         ->assertCount(PHONE_DRAWER.' .admin-rail-entry', 11)
         ->assertAttribute(PHONE_DRAWER.' [aria-current="page"]', 'href', '/admin/calendar')
@@ -197,7 +197,7 @@ it('opens the dialog from a row of Bookings on a phone, the row showing Service 
     ], range(0, 29)));
 
     $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
-    $page->click('.admin-menu')
+    $page->click('.admin-menu-button')
         ->click(PHONE_DRAWER.' a[href="/admin/bookings"]')
         ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']))
         ->assertPathIs('/admin/bookings')
@@ -222,7 +222,7 @@ it('opens the dialog from a row of Bookings on a phone, the row showing Service 
         ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']))
         ->assertPathIs('/admin/bookings');
 
-    $page->click('.admin-menu')
+    $page->click('.admin-menu-button')
         ->assertAttribute(PHONE_DRAWER.' [aria-current="page"]', 'href', '/admin/bookings')
         ->click(PHONE_DRAWER.' a[href="/admin/calendar"]')
         ->waitForText(adminLine(PHONE_FOOTNOTE))
@@ -236,7 +236,7 @@ it('cancels a booking from the dialog on a phone through its confirm to the toas
     phoneBooking('Cora Cancelled', athensDaysOn(63));
 
     $page = Admin::signInOnPhone($this, 'luna', Admin::owner('luna'))->assertVisible(Admin::HOME);
-    $page->click('.admin-menu')
+    $page->click('.admin-menu-button')
         ->click(PHONE_DRAWER.' a[href="/admin/bookings"]')
         ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']));
 
@@ -255,7 +255,7 @@ it('cancels a booking from the dialog on a phone through its confirm to the toas
 
     $page->click('.admin-booking-close')->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']));
 
-    $page->click('.admin-menu')
+    $page->click('.admin-menu-button')
         ->click(PHONE_DRAWER.' a[href="/admin/services"]')
         ->waitForText('Beard trim')
         ->assertPathIs('/admin/services')
@@ -345,7 +345,7 @@ it('carries the pending count on the bar\'s Bookings entry with the drawer close
         ->assertNotPresent('.admin-menu-pending')
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
 
-    $page->click('.admin-menu')
+    $page->click('.admin-menu-button')
         ->assertSeeIn(PHONE_DRAWER.' a[href="/admin/bookings"] .admin-rail-pending', '1')
         ->click(PHONE_DRAWER.' a[href="/admin/bookings"]')
         ->waitForText(adminLine('admin/bookings.table.count', ['count' => '1', 'total' => '1']))
@@ -386,7 +386,7 @@ it('slides the bar along the foot below the window as a long screen scrolls down
     // drawer hands focus back to the bar's button, and that focus holds nothing up either.
     $page->click('.admin-bottom-bar__menu')
         ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
-        ->click(PHONE_DRAWER.' .admin-menu')
+        ->click(PHONE_DRAWER.' .admin-menu-button')
         ->assertNotPresent(PHONE_DRAWER)
         ->assertScript(Admin::focusIsOn('.admin-bottom-bar__menu'), true)
         ->assertScript(PhoneScripts::barAfterScrollTo(400, away: true), true)
@@ -395,7 +395,7 @@ it('slides the bar along the foot below the window as a long screen scrolls down
     // Closed by Escape, it hands focus back to the same button.
     $page->click('.admin-bottom-bar__menu')
         ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
-        ->keys(PHONE_DRAWER.' .admin-menu', 'Escape')
+        ->keys(PHONE_DRAWER.' .admin-menu-button', 'Escape')
         ->assertNotPresent(PHONE_DRAWER)
         ->assertScript(Admin::focusIsOn('.admin-bottom-bar__menu'), true)
         ->assertNoJavaScriptErrors();
@@ -540,12 +540,12 @@ it('keeps every screen of the admin no wider than a phone, a customer\'s page am
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
 
     // The drawer over the customer's page: the whole menu, then the controls, inside its width.
-    $page->click('.admin-menu')
+    $page->click('.admin-menu-button')
         ->assertCount(PHONE_DRAWER.' .admin-rail-entry', 11)
         ->assertVisible(PHONE_DRAWER.' .admin-signout')
         ->assertScript(PhoneScripts::DRAWER_AT_EDGE, true)
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
-        ->click(PHONE_DRAWER.' .admin-menu')
+        ->click(PHONE_DRAWER.' .admin-menu-button')
         ->assertNotPresent(PHONE_DRAWER)
         ->assertScript(Admin::focusIsOn(PHONE_MENU), true);
 

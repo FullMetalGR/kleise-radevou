@@ -1,8 +1,9 @@
 import { Fragment } from 'react';
 import { Initials } from '@/components/initials';
+import { Instant } from '@/components/instant';
 import { Pagination } from '@/components/pagination';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
-import { formatInstant, type TenantClock } from '@/lib/format';
+import type { TenantClock } from '@/lib/format';
 import { inPage } from '@/lib/in-page';
 import { cn } from '@/lib/utils';
 import { contactShown, type Customer, NO_VISIT } from './model';
@@ -16,17 +17,17 @@ import { type CustomersKey, useCustomers } from './words';
  * rather than the browser so a failed open is the screen's own, then the other names seen, then a
  * row of the profile's tags and, where online booking is blocked for the address, a Blocked chip.
  * The Email and Phone columns render only where the server sent them, the CONTACT rule deciding on
- * the server. A visit is an instant, spelled in the tenant's zone and formats; the last visit is
- * the latest passed in confirmed or completed, "No visit yet" in the muted ink where none is. The
- * booking count is a small soft chip. Selection is the only row action, and it opens the
- * customer's page. No sorting: the server's order, the latest booking first. Every word is a key of
- * the customers section; the names are the customers' own.
+ * the server. A visit is an instant, spelled in the tenant's zone and formats, its date in bold and
+ * its time plain; the last visit is the latest passed in confirmed or completed, "No visit yet" in
+ * the muted ink where none is. The booking count is a small soft chip. Selection is the only row
+ * action, and it opens the customer's page. No sorting: the server's order, the latest booking
+ * first. Every word is a key of the customers section; the names are the customers' own.
  *
  * The table sits in no sideways box, so at a wide window its head row stays at the top of the
  * window while the page scrolls through the list. Its head labels, the name, the email past its
  * floor and the phones wrap rather than widen it, each phone moving whole onto a line of its own,
  * breaking at its spaces where it is wider than the line and anywhere where it has none. Below the
- * wide breakpoint, and whenever the card is narrower than 936px, each row is a block: the initials
+ * wide breakpoint, and whenever the card is narrower than 944px, each row is a block: the initials
  * and the name with the booking count at its end, then the email, the phones and the visits
  * beneath, lined up with the name, the two visits sharing one cell, each date after its head as a
  * small label. No cell is labelled there but the visits; the head row leaves the screen but not the
@@ -63,28 +64,31 @@ const BLOCKED = 'table.blocked' satisfies CustomersKey;
  * condition is the one that shares the visits, so the grid only ever draws them apart.
  */
 const BLOCK = {
-    table: 'max-wide:block @max-[58.5rem]:block',
-    head: 'max-wide:sr-only @max-[58.5rem]:sr-only',
-    body: 'max-wide:block @max-[58.5rem]:block',
-    row: 'max-wide:grid max-wide:grid-cols-[minmax(0,1fr)_auto] max-wide:items-center max-wide:gap-x-2.5 max-wide:gap-y-1.5 max-wide:border-t max-wide:px-4 max-wide:py-3.5 max-wide:first:border-t-0 @max-[58.5rem]:grid @max-[58.5rem]:grid-cols-[minmax(0,1fr)_auto] @max-[58.5rem]:items-center @max-[58.5rem]:gap-x-2.5 @max-[58.5rem]:gap-y-1.5 @max-[58.5rem]:border-t @max-[58.5rem]:px-4 @max-[58.5rem]:py-3.5 @max-[58.5rem]:first:border-t-0',
-    cell: 'max-wide:min-w-0 max-wide:border-t-0 max-wide:p-0 max-wide:first:pl-0 max-wide:last:pr-0 @max-[58.5rem]:min-w-0 @max-[58.5rem]:border-t-0 @max-[58.5rem]:p-0 @max-[58.5rem]:first:pl-0 @max-[58.5rem]:last:pr-0',
+    table: 'max-wide:block @max-[59rem]:block',
+    head: 'max-wide:sr-only @max-[59rem]:sr-only',
+    body: 'max-wide:block @max-[59rem]:block',
+    row: 'max-wide:grid max-wide:grid-cols-[minmax(0,1fr)_auto] max-wide:items-center max-wide:gap-x-2.5 max-wide:gap-y-1.5 max-wide:border-t max-wide:px-4 max-wide:py-3.5 max-wide:first:border-t-0 @max-[59rem]:grid @max-[59rem]:grid-cols-[minmax(0,1fr)_auto] @max-[59rem]:items-center @max-[59rem]:gap-x-2.5 @max-[59rem]:gap-y-1.5 @max-[59rem]:border-t @max-[59rem]:px-4 @max-[59rem]:py-3.5 @max-[59rem]:first:border-t-0',
+    cell: 'max-wide:min-w-0 max-wide:border-t-0 max-wide:p-0 max-wide:first:pl-0 max-wide:last:pr-0 @max-[59rem]:min-w-0 @max-[59rem]:border-t-0 @max-[59rem]:p-0 @max-[59rem]:first:pl-0 @max-[59rem]:last:pr-0',
     /** A line beneath the name, indented by the initials and the gap after them. */
-    beneath: 'max-wide:col-span-2 max-wide:ps-13.5 @max-[58.5rem]:col-span-2 @max-[58.5rem]:ps-13.5',
-    bookings: 'max-wide:col-start-2 max-wide:row-start-1 @max-[58.5rem]:col-start-2 @max-[58.5rem]:row-start-1',
+    beneath: 'max-wide:col-span-2 max-wide:ps-13.5 @max-[59rem]:col-span-2 @max-[59rem]:ps-13.5',
+    bookings: 'max-wide:col-start-2 max-wide:row-start-1 @max-[59rem]:col-start-2 @max-[59rem]:row-start-1',
     /** The name and the other names break anywhere, so neither runs under the booking count. */
-    anywhere: 'max-wide:wrap-anywhere @max-[58.5rem]:wrap-anywhere',
+    anywhere: 'max-wide:wrap-anywhere @max-[59rem]:wrap-anywhere',
     /** The two visits side by side in a block row, wrapping onto two lines where they must. */
-    visits: 'max-wide:flex-row max-wide:flex-wrap max-wide:gap-x-5 @max-[58.5rem]:flex-row @max-[58.5rem]:flex-wrap @max-[58.5rem]:gap-x-5',
+    visits: 'max-wide:flex-row max-wide:flex-wrap max-wide:gap-x-5 @max-[59rem]:flex-row @max-[59rem]:flex-wrap @max-[59rem]:gap-x-5',
 };
 
 /**
  * Which form the visits take: two columns of their own in a wide card, or one shared column in the
- * block rows, which a card narrower than 936px draws. One form shows at a time.
+ * block rows, which a card narrower than 944px draws. One form shows at a time.
  */
 const VISITS = {
-    apart: 'max-wide:hidden @max-[58.5rem]:hidden',
-    shared: 'hidden max-wide:table-cell @max-[58.5rem]:table-cell',
+    apart: 'max-wide:hidden @max-[59rem]:hidden',
+    shared: 'hidden max-wide:table-cell @max-[59rem]:table-cell',
 };
+
+/** A visit's date in bold, its time after it in the plain weight, so the two read apart. */
+const VISIT_DAY = 'font-bold';
 
 /** A head label wraps onto a second line rather than widening its column. */
 const HEAD = 'whitespace-normal';
@@ -174,7 +178,8 @@ export function CustomersTable({ rows, total, page, pageSize, clock, onSelect, o
                 </TableHead>
                 <TableBody className={BLOCK.body}>
                     {rows.map((customer) => {
-                        const last = customer.last_visit === null ? words.text(NO_VISIT) : formatInstant(customer.last_visit, clock);
+                        const first = <Instant wire={customer.first_visit} clock={clock} day={VISIT_DAY} />;
+                        const last = customer.last_visit === null ? words.text(NO_VISIT) : <Instant wire={customer.last_visit} clock={clock} day={VISIT_DAY} />;
                         const unvisited = customer.last_visit === null && 'text-muted-foreground';
 
                         return (
@@ -193,13 +198,13 @@ export function CustomersTable({ rows, total, page, pageSize, clock, onSelect, o
                                         ))}
                                     </Td>
                                 )}
-                                <Td className={cn('admin-customers__first', VISITS.apart)}>{formatInstant(customer.first_visit, clock)}</Td>
+                                <Td className={cn('admin-customers__first', VISITS.apart)}>{first}</Td>
                                 <Td className={cn('admin-customers__last', VISITS.apart, unvisited)}>{last}</Td>
                                 <Td className={cn('admin-customers__visits', VISITS.shared, BLOCK.cell, BLOCK.beneath)}>
                                     <div className={cn('flex flex-col gap-0.5', BLOCK.visits)}>
                                         <span className="flex flex-wrap items-baseline gap-x-2">
                                             <span className="text-small font-semibold text-muted-foreground">{words.text(FIRST_VISIT_HEADING)}</span>
-                                            <span>{formatInstant(customer.first_visit, clock)}</span>
+                                            <span>{first}</span>
                                         </span>
                                         <span className="flex flex-wrap items-baseline gap-x-2">
                                             <span className="text-small font-semibold text-muted-foreground">{words.text(LAST_VISIT_HEADING)}</span>

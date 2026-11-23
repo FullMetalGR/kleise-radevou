@@ -24,12 +24,12 @@ import type { AdminStrings, SharedProps, ShiftsStrings } from '@/types';
 import { addDays, todayIn } from '../../booking/time';
 
 /*
- * The Shifts screen: the heading and its sentence, beside them This week, the chevrons of the
- * previous and the next week around the range in bold in the tenant's date format, the three kept
- * on one line where the bar wraps, and the shared spinner before the words while a week reads;
- * then the week grid in one card. A row per member: the initials ringed in the member's hue, the
- * name linking to their staff page with the week's hours and the pattern's cadence beneath, and
- * Pattern under them; then seven day columns from the tenant's week start, each headed by the
+ * The Shifts screen: the heading and its sentence, then the week's own row of This week, the
+ * chevrons of the previous and the next week and the range in the tenant's date format, with the
+ * shared spinner before the words while a week reads; then the week grid in one card. A row per
+ * member: the initials ringed in the member's hue, the name linking to their staff page with the
+ * week's hours and the pattern's cadence beneath, and Pattern under them, the small secondary
+ * button; then seven day columns from the tenant's week start, each headed by the
  * weekday's ICU short name with the day and month on one line and the day's total beneath,
  * today's head on the highlight.
  * A cell's pills are centred: each window a round-cornered pill inside a line, Not working in a
@@ -282,7 +282,7 @@ function MemberRow({ member, hue, dates, heads, days, minutes, pattern, words, c
                         <span className="admin-shifts__row-head text-small text-muted-foreground">{rowHead(minutes, pattern, words, clock)}</span>
                     </span>
                     {editable && (
-                        <Button variant="tertiary" size="small" className={cn('admin-shifts__pattern col-start-2 mt-2 justify-self-start', BLOCK.pattern)} aria-label={words.text('page.edit_pattern', { name: member.name })} onClick={onEditPattern}>
+                        <Button size="small" className={cn('admin-shifts__pattern col-start-2 mt-2 justify-self-start', BLOCK.pattern)} aria-label={words.text('page.edit_pattern', { name: member.name })} onClick={onEditPattern}>
                             {words.text('page.pattern')}
                         </Button>
                     )}
@@ -295,23 +295,31 @@ function MemberRow({ member, hue, dates, heads, days, minutes, pattern, words, c
     );
 }
 
+/**
+ * The week's own row, under the header and its lead: This week, then the previous and the next
+ * week's chevrons kept together, then the week's range as a heading in the calendar's title size,
+ * taking the rest of the row and wrapping inside itself. Below the admin's breakpoint the range
+ * drops to a line of its own under the buttons, the row's whole width. While a week reads, the
+ * shared spinner and its words follow the range at the row's far end; below the breakpoint, with
+ * the range on its own line, they sit beside the buttons instead.
+ */
 function WeekBar({ week, last, loading, words, clock, onRead }: { week: ShiftWeek; last: string; loading: boolean; words: ShiftWords; clock: TenantClock; onRead: (query: Record<string, string>) => void }) {
     return (
-        <div className="admin-shifts__bar flex flex-wrap items-center gap-2">
-            <Button size="small" className="admin-shifts__this-week" disabled={loading} onClick={() => onRead({})}>
+        <div className="admin-shifts__bar flex flex-wrap items-center gap-3">
+            <Button className="admin-shifts__this-week" disabled={loading} onClick={() => onRead({})}>
                 {words.text('page.this_week')}
             </Button>
-            <div className="admin-shifts__step flex min-w-0 items-center gap-2">
-                <Button iconOnly size="small" icon={<Chevron to="previous" />} className="admin-shifts__previous" disabled={loading} aria-label={words.text('page.previous')} onClick={() => onRead({ week: addDays(week.from, -7) })}>
+            <div className="admin-shifts__step flex items-center gap-2">
+                <Button iconOnly icon={<Chevron to="previous" />} className="admin-shifts__previous" disabled={loading} aria-label={words.text('page.previous')} onClick={() => onRead({ week: addDays(week.from, -7) })}>
                     {words.text('page.previous')}
                 </Button>
-                <h2 className="admin-shifts__week min-w-0 text-base font-semibold" aria-busy={loading ? true : undefined}>
-                    {words.text('page.week', { from: formatDate(week.from, clock), to: formatDate(last, clock) })}
-                </h2>
-                <Button iconOnly size="small" icon={<Chevron to="next" />} className="admin-shifts__next" disabled={loading} aria-label={words.text('page.next')} onClick={() => onRead({ week: addDays(week.from, 7) })}>
+                <Button iconOnly icon={<Chevron to="next" />} className="admin-shifts__next" disabled={loading} aria-label={words.text('page.next')} onClick={() => onRead({ week: addDays(week.from, 7) })}>
                     {words.text('page.next')}
                 </Button>
             </div>
+            <h2 className="admin-shifts__week min-w-0 grow basis-80 text-section-title wrap-break-word max-desktop:order-last max-desktop:basis-full max-desktop:text-xl" aria-busy={loading ? true : undefined}>
+                {words.text('page.week', { from: formatDate(week.from, clock), to: formatDate(last, clock) })}
+            </h2>
             {loading && (
                 <span className="admin-shifts__loading text-sm text-muted-foreground">
                     <Spinner size="inline" className="mr-2" />
@@ -414,12 +422,8 @@ export default function Shifts() {
         <>
             <Head title={words.text('page.title')} />
             <div className="admin-shifts-screen flex flex-col gap-4">
-                <PageHeader
-                    title={words.text('page.title')}
-                    lead={<span className="admin-shifts__lead">{words.text('page.lead')}</span>}
-                    actions={<WeekBar week={props.week} last={last} loading={read.loading} words={words} clock={clock} onRead={(query) => read.read(SHIFTS, query)} />}
-                    quiet={false}
-                />
+                <PageHeader title={words.text('page.title')} lead={<span className="admin-shifts__lead">{words.text('page.lead')}</span>} />
+                <WeekBar week={props.week} last={last} loading={read.loading} words={words} clock={clock} onRead={(query) => read.read(SHIFTS, query)} />
                 {!props.editable && props.members.some((member) => !member.is_implicit) && !props.narrowed.includes('staff') && (
                     <Notice kind="info" className="admin-shifts-readonly">
                         <FeatureGone slug="staff" manageBilling={props.permissions.includes('manageBilling')} free={props.free} block="admin-shifts-readonly" />

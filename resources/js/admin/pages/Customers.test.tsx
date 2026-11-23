@@ -42,14 +42,14 @@ function under(selector: string, condition: string): string[] {
 }
 
 /**
- * The card condition under which a row turns into a block: a card narrower than 936px, the same
+ * The card condition under which a row turns into a block: a card narrower than 944px, the same
  * card in which the two visits share one column, so the shared column is drawn in the block rows
  * alone and never squeezed into the grid.
  */
-const BLOCK_CARD = '@max-[58.5rem]:';
+const BLOCK_CARD = '@max-[59rem]:';
 
-/** The card condition under which the two visits share one column: a card narrower than 936px. */
-const SHARED_CARD = '@max-[58.5rem]:';
+/** The card condition under which the two visits share one column: a card narrower than 944px. */
+const SHARED_CARD = '@max-[59rem]:';
 
 type Visit = { only?: string[]; replace?: boolean; preserveState?: boolean; onStart?: () => void; onSuccess?: () => void; onFinish?: () => void };
 
@@ -427,7 +427,7 @@ describe('the customers list\'s layout', () => {
         expect(q('.admin-customers__bookings svg')).toBeNull();
     });
 
-    it('lays a row out as a block on a phone and in a card narrower than 936px, the same utilities under both conditions: the initials and the name with the booking count at its right, then the email, the phones and the visits beneath, lined up with the name', () => {
+    it('lays a row out as a block on a phone and in a card narrower than 944px, the same utilities under both conditions: the initials and the name with the booking count at its right, then the email, the phones and the visits beneath, lined up with the name', () => {
         inertia.props = propsWith([ADA, CASEY]);
         show();
 
@@ -471,7 +471,7 @@ describe('the customers list\'s layout', () => {
         expect(new Set(conditions)).toEqual(new Set(['@max-2xl', BLOCK_CARD.slice(0, -1), SHARED_CARD.slice(0, -1)]));
     });
 
-    it('draws the first and the last visit apart in a wide card and in one shared column in a card narrower than 936px and in the block rows, each date after its head as a small label, one form at a time', () => {
+    it('draws the first and the last visit apart in a wide card and in one shared column in a card narrower than 944px and in the block rows, each date after its head as a small label, one form at a time', () => {
         inertia.props = propsWith([ADA, CASEY]);
         show();
 
@@ -513,6 +513,22 @@ describe('the customers list\'s layout', () => {
             [words.text('table.last_visit'), '20/11/2026 10:00'],
         ]);
         expect([...(q('.admin-customers__visits > * > * > :first-child')?.classList ?? [])]).toEqual(expect.arrayContaining(['text-small', 'text-muted-foreground']));
+    });
+
+    it('reads each visit\'s date in bold and its time in the plain weight, in both visit columns and the shared one, No visit yet left plain', () => {
+        inertia.props = propsWith([ADA, CASEY]);
+        show();
+
+        const parts = (cell: Element | undefined) => [...(cell?.querySelectorAll('.admin-instant__day, .admin-instant__time') ?? [])].map((part) => [part.textContent, [...part.classList]]);
+        const day = (text: string) => [text, ['admin-instant__day', 'font-bold']];
+        const time = (text: string) => [text, ['admin-instant__time']];
+
+        expect(parts(view.host.querySelectorAll('.admin-customers__first')[1])).toEqual([day('03/11/2026'), time('10:00')]);
+        expect(parts(view.host.querySelectorAll('.admin-customers__last')[1])).toEqual([day('20/11/2026'), time('10:00')]);
+        expect(parts(view.host.querySelectorAll('.admin-customers__visits')[1])).toEqual([day('03/11/2026'), time('10:00'), day('20/11/2026'), time('10:00')]);
+        expect(parts(view.host.querySelectorAll('.admin-customers__last')[0])).toEqual([]);
+        expect(parts(view.host.querySelectorAll('.admin-customers__visits')[0])).toEqual([day('01/12/2026'), time('10:00')]);
+        expect(view.host.querySelectorAll('.admin-customers__first')[1]?.textContent).toBe('03/11/2026 10:00');
     });
 
     it('reads as a table with its column headers to a screen reader whatever the layout', () => {

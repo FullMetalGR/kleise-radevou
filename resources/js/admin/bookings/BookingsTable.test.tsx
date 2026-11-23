@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, press, type Mounted } from '@/components/ui/harness';
-import type { TenantClock } from '@/lib/format';
+import { formatInstant, type TenantClock } from '@/lib/format';
 import { BookingsTable } from './BookingsTable';
 import { type Booking, CUSTOMER_ERASED } from './model';
 import { keyedBookings, WithBookings } from '@/testing/keyed';
@@ -67,6 +67,28 @@ describe('the bookings table', () => {
         expect(q('.admin-bookings__staff')?.textContent).toBe('Elena Papadaki, Nikos Georgiou');
         expect(q('.admin-bookings__when')?.textContent).toBe('03/11/2026 10:00');
         expect(view.host.querySelectorAll('.admin-bookings__total')[1]?.textContent).toMatch(/^\D*5,000$/);
+    });
+
+    it('reads the date in the muted ink and the time in bold a little after it, the cell\'s text the shared formatter\'s', () => {
+        render([booking('a')]);
+
+        const part = (name: 'day' | 'time') => [...(q(`.admin-bookings__when .admin-instant__${name}`)?.classList ?? [])];
+
+        expect(q('.admin-bookings__when')?.textContent).toBe('03/11/2026 10:00');
+        expect([q('.admin-bookings__when .admin-instant__day')?.textContent, q('.admin-bookings__when .admin-instant__time')?.textContent]).toEqual(['03/11/2026', '10:00']);
+        expect(part('day')).toEqual(['admin-instant__day', 'text-muted-foreground']);
+        expect(part('time')).toEqual(['admin-instant__time', 'ms-1', 'font-bold']);
+    });
+
+    it('keeps a void row\'s date in the body ink, since the row is already faded, and the time bold on every row, each cell\'s text the shared formatter\'s', () => {
+        render([booking('a'), booking('b', { status: 'cancelled' }), booking('c', { status: 'rejected' })]);
+
+        const cells = [...view.host.querySelectorAll('.admin-bookings__when')];
+        const part = (cell: Element, name: 'day' | 'time') => [...(cell.querySelector(`.admin-instant__${name}`)?.classList ?? [])];
+
+        expect(cells.map((cell) => cell.textContent)).toEqual(Array(3).fill(formatInstant(booking('a').items[0]?.start ?? '', CLOCK)));
+        expect(cells.map((cell) => part(cell, 'day'))).toEqual([['admin-instant__day', 'text-muted-foreground'], ['admin-instant__day'], ['admin-instant__day']]);
+        expect(cells.map((cell) => part(cell, 'time'))).toEqual(Array(3).fill(['admin-instant__time', 'ms-1', 'font-bold']));
     });
 
     it('carries the void styling on a cancelled row and none on a confirmed one', () => {

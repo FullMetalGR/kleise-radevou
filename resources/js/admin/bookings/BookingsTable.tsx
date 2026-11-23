@@ -1,9 +1,10 @@
+import { Instant } from '@/components/instant';
 import { Pagination } from '@/components/pagination';
 import { Card } from '@/components/ui/card';
 import { RowSelectButton } from '@/components/ui/row-select-button';
 import { StatusChip } from '@/components/ui/status-chip';
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '@/components/ui/table';
-import { formatAmount, formatInstant, type TenantClock } from '@/lib/format';
+import { formatAmount, type TenantClock } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { AWAITING_APPROVAL, type Booking, customerName, distinct, isVoid, startOf } from './model';
 import { useBookings } from './words';
@@ -14,8 +15,10 @@ import { useBookings } from './words';
  * action; a void row is struck through and faded rather than recoloured, and a row awaiting
  * approval wears an amber bar at its left edge beside its chip. No sorting: the server's order. A
  * booking whose customer was erased reads "Customer erased" in the Customer cell. On the
- * customer's own page the name is drawn plain, in the body colour, still the row's button. Every
- * word is a key of the bookings section, N of M one whole line.
+ * customer's own page the name is drawn plain, in the body colour, still the row's button. When
+ * reads the date in the muted ink and the time in bold a little after it; on a void row the date
+ * keeps the body ink, since the row's fade already sets it apart and muting it as well would drop
+ * it below a readable contrast. Every word is a key of the bookings section, N of M one whole line.
  *
  * The table sits in no sideways box, so at a wide window its head row stays at the top of the
  * window while the page scrolls through the list. Its head labels and the customer's name wrap
@@ -118,7 +121,9 @@ export function BookingsTable({ rows, total, page, pageSize, staffShown, plainNa
                             </Td>
                             <Td className={cn('admin-bookings__services', BLOCK.cell, BLOCK.services)}>{distinct(booking.items.map((item) => item.service_name)).join(', ')}</Td>
                             {staffShown && <Td className={cn('admin-bookings__staff', BLOCK.cell, BLOCK.staff)}>{distinct(booking.items.map((item) => item.staff_name)).join(', ')}</Td>}
-                            <Td className={cn('admin-bookings__when', BLOCK.cell, BLOCK.when)}>{formatInstant(startOf(booking), clock)}</Td>
+                            <Td className={cn('admin-bookings__when', BLOCK.cell, BLOCK.when)}>
+                                <Instant wire={startOf(booking)} clock={clock} day={isVoid(booking.status) ? undefined : 'text-muted-foreground'} time="ms-1 font-bold" />
+                            </Td>
                             <Td className={cn('admin-bookings__status', BLOCK.cell, BLOCK.status)}>
                                 <StatusChip status={booking.status} />
                             </Td>

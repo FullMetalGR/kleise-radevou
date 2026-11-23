@@ -20,7 +20,7 @@ export const MENU_LABEL = 'nav.menu';
 /** The same button's name while the drawer is open and a press closes it. */
 const CLOSE_LABEL = 'nav.close';
 
-const BAR = 'admin-menu__bar block h-0.5 w-4.5 rounded-full bg-current motion-safe:transition-[translate,rotate,scale,opacity] motion-safe:duration-350 motion-safe:ease-soft';
+const BAR = 'admin-menu-button__bar block h-0.5 w-4.5 rounded-full bg-current motion-safe:transition-[translate,rotate,scale,opacity] motion-safe:duration-350 motion-safe:ease-soft';
 
 type Props = {
     open: boolean;
@@ -37,7 +37,7 @@ export function MenuButton({ open, pending, onClick, ref }: Props) {
             ref={ref}
             type="button"
             className={cn(
-                'admin-menu focus-ring relative inline-flex size-12 shrink-0 flex-col items-center justify-center gap-0.75 rounded-full outline-none motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft',
+                'admin-menu-button focus-ring relative inline-flex size-12 shrink-0 flex-col items-center justify-center gap-0.75 rounded-full outline-none motion-safe:transition motion-safe:duration-200 motion-safe:ease-soft',
                 open ? 'bg-primary text-primary-foreground shadow-glow' : 'bg-card text-foreground inset-ring-[1.5px] inset-ring-border hover:bg-muted hover:inset-ring-ink-tertiary',
             )}
             aria-haspopup="dialog"

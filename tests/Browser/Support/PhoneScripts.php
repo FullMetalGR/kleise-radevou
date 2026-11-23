@@ -231,7 +231,7 @@ final class PhoneScripts
         JS;
 
     /** True while the element holding focus is the first row's Menu button. */
-    public const string FOCUS_ON_MENU = "document.activeElement !== null && document.activeElement.classList.contains('admin-menu')";
+    public const string FOCUS_ON_MENU = "document.activeElement !== null && document.activeElement.classList.contains('admin-menu-button')";
 
     /** The words under the icons of the bar along the foot of the screen, in order, its Menu button's last. */
     public const string BAR_LABELS = "document.fonts.ready.then(() => [...document.querySelectorAll('.admin-bottom-bar .admin-bottom-bar__label')].map((label) => label.textContent))";

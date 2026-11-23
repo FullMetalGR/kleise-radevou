@@ -358,7 +358,8 @@ describe('the week grid', () => {
         expect(texts('.admin-shifts__initials')).toEqual(['EP', 'NG', 'M']);
         expect([...document.querySelectorAll<HTMLElement>('.admin-shifts__initials')].map((initials) => initials.style.boxShadow)).toEqual([2, 3, 4].map((id) => `inset 0 0 0 3px ${hueOf(id, [])}`));
         expect(q('.admin-shifts__row[data-staff="2"] .admin-shifts__member > div')?.lastElementChild?.classList.contains('admin-shifts__pattern')).toBe(true);
-        expect(q('.admin-shifts__row[data-staff="2"] .admin-shifts__pattern')?.classList.contains('admin-button--small')).toBe(true);
+        // Pattern is the small secondary button: a pill 36 pixels tall drawn in its ring.
+        expect(['admin-button--small', 'admin-button--secondary', 'admin-button--tertiary'].map((name) => q('.admin-shifts__row[data-staff="2"] .admin-shifts__pattern')?.classList.contains(name))).toEqual([true, true, false]);
         expect([...document.querySelectorAll('.admin-shifts__name')].map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
             ['Elena Papadaki', '/admin/staff/2'],
             ['Nikos Georgiou', '/admin/staff/3'],
@@ -609,7 +610,7 @@ describe('the week grid', () => {
 });
 
 describe('the week\'s controls', () => {
-    it('asks the shell\'s button to stand filled in the first row, the week\'s controls holding no main button', () => {
+    it('asks the shell\'s button to stand filled in the first row, the header holding no buttons of the page\'s own', () => {
         inertia.props = propsWith();
         view.render(
             <FirstRowProvider value={{ start: null, controls: null, action: (quiet) => <span className="shell-action" data-quiet={String(quiet)} /> }}>
@@ -620,21 +621,24 @@ describe('the week\'s controls', () => {
         );
 
         expect(q('.admin-page-header__end .shell-action')?.getAttribute('data-quiet')).toBe('false');
+        expect(q('.admin-page-header__actions')).toBeNull();
+        expect(q('.admin-page-header .admin-shifts__bar')).toBeNull();
     });
 
     it('move the week through a partial reload of the week\'s props, the URL replaced, busy while it reads', () => {
         render();
 
         const hooks = (holder: Element | null) => [...(holder?.children ?? [])].map((element) => element.className.split(' ').find((name) => name.startsWith('admin-shifts__')));
-        expect(hooks(q('.admin-shifts__bar')).slice(0, 2)).toEqual(['admin-shifts__this-week', 'admin-shifts__step']);
-        expect(hooks(q('.admin-shifts__step'))).toEqual(['admin-shifts__previous', 'admin-shifts__week', 'admin-shifts__next']);
+        expect(hooks(q('.admin-shifts__bar'))).toEqual(['admin-shifts__this-week', 'admin-shifts__step', 'admin-shifts__week']);
+        expect(hooks(q('.admin-shifts__step'))).toEqual(['admin-shifts__previous', 'admin-shifts__next']);
         expect([q('.admin-shifts__previous')?.getAttribute('aria-label'), q('.admin-shifts__next')?.getAttribute('aria-label')]).toEqual([words.text('page.previous'), words.text('page.next')]);
         expect([q('.admin-shifts__previous svg'), q('.admin-shifts__next svg')].every((glyph) => glyph !== null)).toBe(true);
-        // The bar is a dense row: its buttons take the small height, the two chevrons round with their names kept for a screen reader.
-        expect(['this-week', 'previous', 'next'].map((name) => q(`.admin-shifts__${name}`)?.classList.contains('admin-button--small'))).toEqual([true, true, true]);
-        expect(['previous', 'next'].map((name) => [...(q(`.admin-shifts__${name}`)?.classList ?? [])].filter((each) => ['admin-button--icon-only', 'size-9', 'w-8', 'px-0'].includes(each)))).toEqual([
-            ['admin-button--icon-only', 'size-9'],
-            ['admin-button--icon-only', 'size-9'],
+        // The row's buttons stand at the default height, as the calendar's toolbar does, the two chevrons round with their names kept for a screen reader.
+        expect(['this-week', 'previous', 'next'].map((name) => q(`.admin-shifts__${name}`)?.classList.contains('admin-button--small'))).toEqual([false, false, false]);
+        expect(q('.admin-shifts__this-week')?.classList.contains('h-11')).toBe(true);
+        expect(['previous', 'next'].map((name) => [...(q(`.admin-shifts__${name}`)?.classList ?? [])].filter((each) => ['admin-button--icon-only', 'size-9', 'size-11', 'w-8', 'px-0'].includes(each)))).toEqual([
+            ['admin-button--icon-only', 'size-11'],
+            ['admin-button--icon-only', 'size-11'],
         ]);
         expect([q('.admin-shifts__previous .sr-only')?.textContent, q('.admin-shifts__next .sr-only')?.textContent]).toEqual([words.text('page.previous'), words.text('page.next')]);
         expect(q('.admin-shifts__previous')?.textContent).toBe(words.text('page.previous'));
@@ -657,17 +661,24 @@ describe('the week\'s controls', () => {
         expect(lastVisit(inertia.get).slice(0, 2)).toEqual(['/admin/shifts', {}]);
     });
 
-    it('keeps the two chevrons either side of the week\'s range on one line, the range wrapping inside itself where the bar is narrow', () => {
+    it('stands the week in a row of its own under the header and its lead, the two chevrons kept together, the range in the calendar\'s title size taking the rest of the row and a line of its own on a phone', () => {
         render();
 
+        const bar = q('.admin-shifts__bar');
         const step = q('.admin-shifts__step');
         const week = q('.admin-shifts__week');
 
-        expect(step?.parentElement).toBe(q('.admin-shifts__bar'));
-        expect([...(step?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'items-center', 'min-w-0']));
+        expect(bar?.parentElement).toBe(q('.admin-shifts-screen'));
+        expect(bar?.previousElementSibling).toBe(q('.admin-page-header'));
+        expect(q('.admin-page-header')?.querySelector('.admin-page-header__lead .admin-shifts__lead')).not.toBeNull();
+        expect([...(bar?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'items-center']));
+        expect(step?.parentElement).toBe(bar);
+        expect([...(step?.classList ?? [])]).toEqual(expect.arrayContaining(['flex', 'items-center']));
         expect([...(step?.classList ?? [])].filter((name) => name.includes('wrap'))).toEqual([]);
-        expect(week?.parentElement).toBe(step);
-        expect(week?.classList.contains('min-w-0')).toBe(true);
+        expect(week?.parentElement).toBe(bar);
+        expect([...(week?.classList ?? [])]).toEqual(expect.arrayContaining(['min-w-0', 'grow', 'basis-80', 'text-section-title', 'wrap-break-word']));
+        expect([...(week?.classList ?? [])].filter((name) => name.startsWith('max-desktop:')).sort()).toEqual(['max-desktop:basis-full', 'max-desktop:order-last', 'max-desktop:text-xl']);
+        expect([...(week?.classList ?? [])].filter((name) => /^(text-base|font-)/.test(name))).toEqual([]);
     });
 
     it('turns the shared spinner inline before the loading words while the week reads, kept from assistive technology', () => {
@@ -679,6 +690,7 @@ describe('the week\'s controls', () => {
         const loading = q('.admin-shifts__loading');
         const spinner = loading?.querySelector('.admin-spinner');
 
+        expect(loading?.parentElement).toBe(q('.admin-shifts__bar'));
         expect(loading?.firstElementChild).toBe(spinner);
         expect(loading?.textContent).toBe(words.text('page.loading'));
         expect(spinner?.getAttribute('aria-hidden')).toBe('true');

@@ -548,6 +548,7 @@ it('draws luna\'s week in Greek as a grid of eight columns inside its card at 14
         ->assertSeeIn($cell($nikos, 0), adminLine('admin/shifts.page.not_working', [], $el))
         ->assertAttribute('.admin-shifts__head[aria-current="date"]', 'data-date', athensToday()->format('Y-m-d'))
         ->assertScript(SHIFTS_GRID_FITS, [])
+        ->assertScript(sprintf(SHIFTS_WEEK_ROW, 'false'), [])
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     Look::shot($page, 'shifts-1440-el');
 
@@ -587,32 +588,52 @@ it('draws luna\'s week in Greek as a grid of eight columns inside its card at 14
 });
 
 /**
- * What is wrong with the week bar's step: the previous week's chevron, the week's range and the
- * next week's chevron in that order on one line, each centred on the same height, the next
- * chevron inside the page's width. An empty list where nothing is.
+ * What is wrong with the header and the week's row. The header's row is one line: the menu's
+ * button where the shell shows one, the title and the shell's button, each centred on the title's
+ * height. The week's row stands under the header outside it: This week, the previous week's
+ * chevron and the next week's in that order on one line, then the week's range. With %s true the
+ * range is a line of its own under the buttons, as wide as the row; with it false it is on the
+ * buttons' line after them and reaches the row's far end. Nothing passes the page's width. An
+ * empty list where nothing is.
  */
-const SHIFTS_WEEK_STEP = <<<'JS'
+const SHIFTS_WEEK_ROW = <<<'JS'
     document.fonts.ready.then(() => {
-        const [previous, week, next] = ['.admin-shifts__previous', '.admin-shifts__week', '.admin-shifts__next'].map((selector) => document.querySelector(selector)?.getBoundingClientRect());
-        if (previous === undefined || week === undefined || next === undefined) {
+        const apart = %s;
+        const header = document.querySelector('.admin-page-header__row');
+        const bar = document.querySelector('.admin-shifts__bar');
+        const [title, thisWeek, previous, next, week] = ['.admin-page-title', '.admin-shifts__this-week', '.admin-shifts__previous', '.admin-shifts__next', '.admin-shifts__week'].map((selector) => document.querySelector(selector)?.getBoundingClientRect());
+        if (header === null || bar === null || [title, thisWeek, previous, next, week].includes(undefined)) {
             return ['missing'];
         }
         const middle = (box) => box.top + box.height / 2;
         const wrong = [];
-        if (Math.abs(middle(previous) - middle(week)) > 1 || Math.abs(middle(next) - middle(week)) > 1) {
-            wrong.push('not on one line');
+        if ([...header.children].some((child) => Math.abs(middle(child.getBoundingClientRect()) - middle(title)) > 1)) {
+            wrong.push('header on more than one line');
         }
-        if (previous.right > week.left || week.right > next.left) {
-            wrong.push('out of order');
+        if (bar.closest('.admin-page-header') !== null) {
+            wrong.push('week inside the header');
         }
-        if (next.right > document.documentElement.clientWidth) {
+        if (Math.abs(middle(previous) - middle(thisWeek)) > 1 || Math.abs(middle(next) - middle(thisWeek)) > 1) {
+            wrong.push('buttons not on one line');
+        }
+        if (thisWeek.right > previous.left || previous.right > next.left) {
+            wrong.push('buttons out of order');
+        }
+        const row = bar.getBoundingClientRect();
+        if (apart && (week.top < Math.max(thisWeek.bottom, next.bottom) || Math.abs(week.left - row.left) > 1 || Math.abs(week.right - row.right) > 1)) {
+            wrong.push('range not on a line of its own');
+        }
+        if (!apart && (week.top > next.bottom || week.left < next.right || Math.abs(week.right - row.right) > 1)) {
+            wrong.push('range not after the buttons to the row\'s end');
+        }
+        if (Math.max(next.right, week.right, row.right) > document.documentElement.clientWidth) {
             wrong.push('past the page');
         }
         return wrong;
     })
     JS;
 
-it('keeps the week bar\'s two chevrons either side of the week\'s range on one line on a phone, at 390 and at 320 pixels', function (SiteLanguage $language) {
+it('stands the week in its own row under a header of one line on a phone, the range on a line of its own under the buttons, at 390 and at 320 pixels', function (SiteLanguage $language) {
     DB::table('users')->where('email', Admin::owner('luna'))->update(['locale' => $language->value]);
     shiftsLunaWeek();
 
@@ -621,11 +642,11 @@ it('keeps the week bar\'s two chevrons either side of the week\'s range on one l
         ->waitForText(adminLine('admin/shifts.page.lead', [], $language))
         ->assertScript(PhoneScripts::VIEWPORT_WIDTH, 390)
         ->assertScript(PhoneScripts::PAGE_LANGUAGE, $language->value)
-        ->assertScript(SHIFTS_WEEK_STEP, [])
+        ->assertScript(sprintf(SHIFTS_WEEK_ROW, 'true'), [])
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
 
     $page->resize(320, 700)
-        ->assertScript(SHIFTS_WEEK_STEP, [])
+        ->assertScript(sprintf(SHIFTS_WEEK_ROW, 'true'), [])
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true)
         ->assertNoJavaScriptErrors();
 })->with([SiteLanguage::English, SiteLanguage::Greek]);

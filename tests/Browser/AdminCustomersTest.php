@@ -673,7 +673,7 @@ it('keeps the list inside its card in Greek beside the open sidebar as rows at a
     expect($rows)->toBeGreaterThanOrEqual(824)->toBeLessThan(832);
     Look::shot($page, 'customers-1140-el');
 
-    $page->resize(1252, 800)
+    $page->resize(1260, 800)
         ->assertScript("getComputedStyle(document.querySelector('.admin-customers table')).display", 'table')
         ->assertScript(CUSTOMERS_LIST_VISITS_FORM, 'apart')
         ->assertScript(CUSTOMERS_LIST_TABLE_FITS, [])
@@ -682,10 +682,10 @@ it('keeps the list inside its card in Greek beside the open sidebar as rows at a
         ->assertScript(PhoneScripts::NO_SIDEWAYS_SCROLL, true);
     $apart = $page->script(CUSTOMERS_LIST_CARD_WIDTH);
     assert(is_int($apart));
-    expect($apart)->toBeGreaterThanOrEqual(936)->toBeLessThan(944);
-    Look::shot($page, 'customers-1252-el');
+    expect($apart)->toBeGreaterThanOrEqual(944)->toBeLessThan(952);
+    Look::shot($page, 'customers-1260-el');
 
-    $page->resize(1252 - ($apart - 935), 800)
+    $page->resize(1260 - ($apart - 943), 800)
         ->assertScript(CUSTOMERS_LIST_ROWS_READ, true)
         ->assertScript(CUSTOMERS_LIST_VISITS_COMPACT, [])
         ->assertScript(CUSTOMERS_LIST_LONG_EMAIL_INSIDE, true)
@@ -731,7 +731,7 @@ it('keeps a phone of two numbers, one of forty characters and one of forty unbro
     customersListPhoneCustomer('Unbroken Phone', 'unbroken.phone@example.test', CUSTOMERS_LIST_UNBROKEN_PHONE, 65);
     expect([strlen(CUSTOMERS_LIST_TWO_NUMBERS), strlen(CUSTOMERS_LIST_FORTY_PHONE), strlen(CUSTOMERS_LIST_UNBROKEN_PHONE)])->toBe([29, 40, 40]);
 
-    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1252, 800);
+    $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1260, 800);
     $page->navigate(Admin::url('luna', '/customers'))
         ->waitForText(adminLine('admin/customers.table.count', ['count' => '4', 'total' => '4'], $el))
         ->assertScript(PhoneScripts::PAGE_LANGUAGE, $el->value)
@@ -744,8 +744,8 @@ it('keeps a phone of two numbers, one of forty characters and one of forty unbro
         ->assertNoJavaScriptErrors();
     $card = $page->script(CUSTOMERS_LIST_CARD_WIDTH);
     assert(is_int($card));
-    expect($card)->toBeGreaterThanOrEqual(936)->toBeLessThan(944);
-    Look::shot($page, 'customers-1252-el-phones');
+    expect($card)->toBeGreaterThanOrEqual(944)->toBeLessThan(952);
+    Look::shot($page, 'customers-1260-el-phones');
 });
 
 it('keeps a phone of two numbers, one of forty characters, one of forty unbroken characters and a line of other names holding a long unbroken name inside each customer\'s block on a phone in Greek', function () {
@@ -849,7 +849,7 @@ it('reads the list in Greek at every card width from 808px up to the first that 
     // Every pixel from 808 to 832, then every seventh up to the step into the grid, which draws
     // the visits apart.
     $wrong = [];
-    foreach ([...range(808, 832), ...range(839, 935, 7), 935] as $width) {
+    foreach ([...range(808, 832), ...range(839, 943, 7), 943] as $width) {
         $page->resize($window($width), 800);
         $drawn = $page->script(CUSTOMERS_LIST_CARD_WIDTH);
         assert(is_int($drawn) || is_float($drawn));

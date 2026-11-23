@@ -90,7 +90,7 @@ describe('the bottom bar', () => {
         expect(menu?.textContent).toBe(shell.text('nav.menu'));
         expect(menu?.getAttribute('aria-haspopup')).toBe('dialog');
         expect(menu?.getAttribute('aria-expanded')).toBe('false');
-        expect(menu?.classList.contains('admin-menu')).toBe(false);
+        expect(menu?.classList.contains('admin-menu-button')).toBe(false);
 
         press(menu ?? null);
 

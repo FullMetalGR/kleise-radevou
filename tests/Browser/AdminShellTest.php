@@ -51,7 +51,7 @@ const SHELL_NEW_BOOKING_INSIDE = "document.fonts.ready.then(() => { const box = 
  * each stand whole inside the window and are round, as wide as they are tall, and the page
  * scrolls nothing sideways.
  */
-const SHELL_ROUND_BUTTONS_INSIDE = "document.fonts.ready.then(() => { const width = document.documentElement.clientWidth; const boxes = ['.admin-topbar .admin-menu', '.admin-topbar .admin-new-booking'].map((selector) => document.querySelector(selector)?.getBoundingClientRect()); return boxes.every((box) => box !== undefined && box.left >= 0 && box.right <= width + 1 && box.top >= 0 && Math.round(box.width) === Math.round(box.height)) && document.documentElement.scrollWidth <= width + 1; })";
+const SHELL_ROUND_BUTTONS_INSIDE = "document.fonts.ready.then(() => { const width = document.documentElement.clientWidth; const boxes = ['.admin-topbar .admin-menu-button', '.admin-topbar .admin-new-booking'].map((selector) => document.querySelector(selector)?.getBoundingClientRect()); return boxes.every((box) => box !== undefined && box.left >= 0 && box.right <= width + 1 && box.top >= 0 && Math.round(box.width) === Math.round(box.height)) && document.documentElement.scrollWidth <= width + 1; })";
 
 /**
  * The door at the window's width: how many main headings the page holds, the column's width,
@@ -208,7 +208,7 @@ it('stands the sidebar beside the page from the wide breakpoint, 276px on a wide
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(1600, 900);
 
     $page->assertPresent('.admin-sidebar')
-        ->assertNotPresent('.admin-menu')
+        ->assertNotPresent('.admin-menu-button')
         ->assertAttribute('.admin-sidebar-toggle', 'aria-expanded', 'true')
         ->assertScript(SHELL_SIDEBAR_WIDTH, 276);
 
@@ -290,7 +290,7 @@ it('cuts a sixty-character business name and user name with an ellipsis, each wh
     $page->resize(390, 844)
         ->assertScript(SHELL_ROUND_BUTTONS_INSIDE, true)
         ->assertNotPresent('.admin-user')
-        ->click('.admin-menu')
+        ->click('.admin-menu-button')
         ->assertAttribute('.admin-modal__frame--drawer .admin-business', 'title', $business)
         ->assertScript(sprintf(SHELL_CUT, '.admin-modal__frame--drawer .admin-business__name'), true)
         ->assertAttribute('.admin-modal__frame--drawer .admin-user', 'title', $user)
@@ -332,10 +332,10 @@ it('opens the menu as the drawer from the first row\'s Menu button below the wid
     $page = Admin::signedIn($this, 'luna', Admin::owner('luna'))->resize(850, 900);
 
     $page->assertNotPresent('.admin-sidebar')
-        ->assertScript("document.querySelector('.admin-page-header__row')?.firstElementChild?.classList.contains('admin-menu')", true)
+        ->assertScript("document.querySelector('.admin-page-header__row')?.firstElementChild?.classList.contains('admin-menu-button')", true)
         ->assertScript(PhoneScripts::BAR_LABELS, [navLabel('home'), navLabel('calendar'), navLabel('bookings'), navLabel('shifts'), navLabel('menu')])
         ->assertNotPresent('.admin-topbar .admin-controls')
-        ->click('.admin-menu')
+        ->click('.admin-menu-button')
         ->assertScript(PhoneScripts::BAR_HIDDEN, true)
         ->assertVisible('.admin-modal__frame--drawer .admin-controls .admin-signout')
         ->assertCount('.admin-modal__frame--drawer .admin-rail-entry', 11)
@@ -346,7 +346,7 @@ it('opens the menu as the drawer from the first row\'s Menu button below the wid
 
     $page->resize(1440, 900)
         ->assertPresent('.admin-sidebar')
-        ->assertNotPresent('.admin-menu')
+        ->assertNotPresent('.admin-menu-button')
         ->assertNotPresent('.admin-bottom-bar')
         ->assertPresent('.admin-topbar .admin-controls')
         ->assertNoJavaScriptErrors();
